@@ -1,0 +1,10 @@
+# CD asset staging directory
+.cdk.staging
+cdk.out
+# Project exclude paths
+/.gradle/
+/build/
+/build/classes/kotlin/main/
+/MarkdownProcessor/build/
+/MarkdownProcessor/build/classes/kotlin/main/
+/MarkdownProcessor/build/classes/kotlin/test/
