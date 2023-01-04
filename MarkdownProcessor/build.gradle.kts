@@ -27,6 +27,9 @@ dependencies {
 
     runtimeOnly("com.amazonaws:aws-lambda-java-log4j2:1.5.1")
 
+    // markdown processing
+    implementation("com.vladsch.flexmark:flexmark-all:0.64.0")
+
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.0")
@@ -42,5 +45,5 @@ tasks.getByName<Test>("test") {
 tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
-    archiveBaseName.set("FileUploadHandler")
+    archiveBaseName.set("MarkdownProcessorHandler")
 }

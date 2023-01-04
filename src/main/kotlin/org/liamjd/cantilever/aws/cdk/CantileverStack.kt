@@ -2,15 +2,15 @@ package org.liamjd.cantilever.aws.cdk
 
 import software.amazon.awscdk.*
 import software.amazon.awscdk.services.events.targets.SqsQueue
+import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.Function
 import software.amazon.awscdk.services.lambda.Runtime
-import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.eventsources.S3EventSource
+import software.amazon.awscdk.services.lambda.eventsources.SqsEventSource
 import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.EventType
 import software.amazon.awscdk.services.s3.deployment.BucketDeployment
 import software.amazon.awscdk.services.s3.deployment.Source
-import software.amazon.awscdk.services.sqs.IQueue
 import software.amazon.awscdk.services.sqs.Queue
 import software.constructs.Construct
 
@@ -36,17 +36,21 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             .destinationBucket(destinationBucket)
             .build()
 
-        // SQS for inter-lambda communication
+        // SQS for inter-lambda communication. The visibility timeout should be > the max processing time of the lambdas, so setting to 3
         println("Creating markdown processing queue")
         val markdownProcessingQueue =
-            SqsQueue.Builder.create(Queue.Builder.create(this, "cantilever-markdown-to-html-queue").build()).build()
+            SqsQueue.Builder.create(
+                Queue.Builder.create(this, "cantilever-markdown-to-html-queue").visibilityTimeout(
+                    Duration.minutes(3)
+                ).build()
+            ).build()
 
         println("Creating FileUploadHandler Lambda function")
         val fileUploadLambda = createLambda(
             stack = this,
             id = "cantilever-file-upload-lambda",
             description = "Lambda function which responds to file upload events",
-            codePath = "./FileUploadHandler/build/libs/fileUploadHandler.jar",
+            codePath = "./FileUploadHandler/build/libs/FileUploadHandler.jar",
             handler = "org.liamjd.cantilever.lambda.FileUploadHandler",
             environment = mapOf(
                 "destination_bucket" to destinationBucket.bucketName,
@@ -54,19 +58,41 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             )
         )
 
-        // I suspect this isn't the most secure way to do this. Better a new IAM role?
-        sourceBucket.grantRead(fileUploadLambda)
-        destinationBucket.grantRead(fileUploadLambda)
-        destinationBucket.grantWrite(fileUploadLambda)
+        println("Creating MarkdownProcessorHandler Lambda function")
+        val markdownProcessorLambda = createLambda(
+            stack = this,
+            id = "cantilever-markdown-processor-lambda",
+            description = "Lambda function which converts a markdown file to an HTML file or fragment",
+            codePath = "./MarkdownProcessor/build/libs/MarkdownProcessorHandler.jar",
+            handler = "org.liamjd.cantilever.lambda.md.MarkdownProcessorHandler",
+            environment = mapOf(
+                "source_bucket" to sourceBucket.bucketName,
+                "destination_bucket" to destinationBucket.bucketName
+            )
+        )
 
+        // I suspect this isn't the most secure way to do this. Better a new IAM role?
+        println("Granting lambda permissions")
+        sourceBucket.grantRead(fileUploadLambda)
+        sourceBucket.grantRead(markdownProcessorLambda)
+        destinationBucket.grantRead(fileUploadLambda)
+        destinationBucket.grantWrite(markdownProcessorLambda)
+
+        println("Add S3 PUT/PUSH event source to fileUpload lambda")
         fileUploadLambda.addEventSource(
             S3EventSource.Builder.create(sourceBucket)
                 .events(mutableListOf(EventType.OBJECT_CREATED_PUT, EventType.OBJECT_CREATED_POST)).build()
         )
 
+        println("Add markdown processor SQS event source to markdown processor lambda")
+        markdownProcessorLambda.addEventSource(
+            SqsEventSource.Builder.create(markdownProcessingQueue.queue).build()
+        )
+
 
         // grant permissions to the file upload lambda
         markdownProcessingQueue.queue.grantSendMessages(fileUploadLambda)
+        markdownProcessingQueue.queue.grantConsumeMessages(markdownProcessorLambda)
 
 //        fileUploadLambda.addEnvironment("markdown-processing-queue",markdownProcessingQueue.)
     }
