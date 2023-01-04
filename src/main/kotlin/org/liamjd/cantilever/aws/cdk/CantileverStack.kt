@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.aws.cdk
 
 import software.amazon.awscdk.*
+import software.amazon.awscdk.services.events.targets.SqsQueue
 import software.amazon.awscdk.services.lambda.Function
 import software.amazon.awscdk.services.lambda.Runtime
 import software.amazon.awscdk.services.lambda.Code
@@ -9,6 +10,8 @@ import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.EventType
 import software.amazon.awscdk.services.s3.deployment.BucketDeployment
 import software.amazon.awscdk.services.s3.deployment.Source
+import software.amazon.awscdk.services.sqs.IQueue
+import software.amazon.awscdk.services.sqs.Queue
 import software.constructs.Construct
 
 class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(scope, id, props) {
@@ -16,7 +19,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
     constructor(scope: Construct, id: String) : this(scope, id, null)
 
     init {
-        Tags.of(this).add("Cantilever", "v0.1")
+        Tags.of(this).add("Cantilever", "v0.0.1")
 
         // Source bucket where Markdown, template files will be stored
         // I may wish to change the removal and deletion policies
@@ -33,6 +36,11 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             .destinationBucket(destinationBucket)
             .build()
 
+        // SQS for inter-lambda communication
+        println("Creating markdown processing queue")
+        val markdownProcessingQueue =
+            SqsQueue.Builder.create(Queue.Builder.create(this, "cantilever-markdown-to-html-queue").build()).build()
+
         println("Creating FileUploadHandler Lambda function")
         val fileUploadLambda = createLambda(
             stack = this,
@@ -40,7 +48,10 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             description = "Lambda function which responds to file upload events",
             codePath = "./FileUploadHandler/build/libs/fileUploadHandler.jar",
             handler = "org.liamjd.cantilever.lambda.FileUploadHandler",
-            environment = mapOf("destination_bucket" to destinationBucket.bucketName)
+            environment = mapOf(
+                "destination_bucket" to destinationBucket.bucketName,
+                "markdown_processing_queue" to markdownProcessingQueue.queue.queueUrl
+            )
         )
 
         // I suspect this isn't the most secure way to do this. Better a new IAM role?
@@ -52,6 +63,12 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             S3EventSource.Builder.create(sourceBucket)
                 .events(mutableListOf(EventType.OBJECT_CREATED_PUT, EventType.OBJECT_CREATED_POST)).build()
         )
+
+
+        // grant permissions to the file upload lambda
+        markdownProcessingQueue.queue.grantSendMessages(fileUploadLambda)
+
+//        fileUploadLambda.addEnvironment("markdown-processing-queue",markdownProcessingQueue.)
     }
 
     private fun createDestinationBucket(): Bucket = Bucket.Builder.create(this, "cantilever-website")

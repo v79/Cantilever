@@ -19,6 +19,7 @@ dependencies {
     implementation(platform("software.amazon.awssdk:bom:2.19.8"))
     implementation("software.amazon.awssdk:s3")
     implementation("software.amazon.awssdk:lambda")
+    implementation("software.amazon.awssdk:sqs")
 
     // lambda functions
     implementation("com.amazonaws:aws-lambda-java-core:1.2.2")
