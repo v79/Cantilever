@@ -41,5 +41,5 @@ tasks.getByName<Test>("test") {
 tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
-    archiveBaseName.set("markdownProcessor")
+    archiveBaseName.set("fileuploadHandler")
 }

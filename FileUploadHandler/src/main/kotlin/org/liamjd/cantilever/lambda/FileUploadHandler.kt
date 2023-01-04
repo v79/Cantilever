@@ -16,7 +16,7 @@ import java.nio.charset.Charset
  * In this test implementation, it merely wraps the source text in an HTML file
  * and writes it to the destination bucket, as specified in an environment variable
  */
-class FileUploadProcessor : RequestHandler<S3Event, String> {
+class FileUploadHandler : RequestHandler<S3Event, String> {
 
     override fun handleRequest(event: S3Event, context: Context): String {
         val logger = context.logger
@@ -26,7 +26,7 @@ class FileUploadProcessor : RequestHandler<S3Event, String> {
             val eventRecord = event.records[0]
             val srcKey = eventRecord.s3.`object`.urlDecodedKey
             val srcBucket = eventRecord.s3.bucket.name
-            logger.log("FileUpload processor RECORD=${eventRecord.eventName} SOURCEKEY=$srcKey")
+            logger.log("FileUpload handler RECORD=${eventRecord.eventName} SOURCEKEY=$srcKey")
 
             val s3Client = S3Client.builder()
                 .region(Region.EU_WEST_2)
@@ -40,7 +40,7 @@ class FileUploadProcessor : RequestHandler<S3Event, String> {
                     .build()
 
                 val sourceBytes: ByteArray = s3Client.getObjectAsBytes(request).asByteArray()
-                logger.log("FileUpload processor: source bytes: ${sourceBytes.toString(Charset.defaultCharset())}")
+                logger.log("FileUpload handler: source bytes: ${sourceBytes.toString(Charset.defaultCharset())}")
 
                 val outputString = """
                 <html>
@@ -52,7 +52,7 @@ class FileUploadProcessor : RequestHandler<S3Event, String> {
             """.trimIndent()
 
 
-                logger.log("FileUpload processor: output string: $outputString}")
+                logger.log("FileUpload handler: output string: $outputString}")
 
                 val customMetadata = mutableMapOf<String, String>()
                 customMetadata["source-file"] = srcKey
@@ -76,7 +76,7 @@ class FileUploadProcessor : RequestHandler<S3Event, String> {
             }
 
         } finally {
-            logger.log("FileUploadProcess completed")
+            logger.log("FileUploadHandler completed")
         }
 
         return response

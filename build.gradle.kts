@@ -37,5 +37,5 @@ application {
 }
 
 tasks.withType<JavaExec> {
-    dependsOn(":MarkdownProcessor:shadowJar")
+    dependsOn(":FileUploadHandler:shadowJar")
 }

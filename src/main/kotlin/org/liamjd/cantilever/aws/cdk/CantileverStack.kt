@@ -33,13 +33,13 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             .destinationBucket(destinationBucket)
             .build()
 
-        println("Creating FileUploadProcessor Lambda function")
+        println("Creating FileUploadHandler Lambda function")
         val fileUploadLambda = createLambda(
             stack = this,
             id = "cantilever-file-upload-lambda",
             description = "Lambda function which responds to file upload events",
-            codePath = "./MarkdownProcessor/build/libs/markdownProcessor.jar",
-            handler = "org.liamjd.cantilever.lambda.FileUploadProcessor",
+            codePath = "./FileUploadHandler/build/libs/fileUploadHandler.jar",
+            handler = "org.liamjd.cantilever.lambda.FileUploadHandler",
             environment = mapOf("destination_bucket" to destinationBucket.bucketName)
         )
 
