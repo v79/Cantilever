@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "org.liamjd"
-version = "0.1"
+version = "0.0.1"
 
 repositories {
     mavenCentral()
@@ -38,4 +38,5 @@ application {
 
 tasks.withType<JavaExec> {
     dependsOn(":FileUploadHandler:shadowJar")
+    dependsOn(":MarkdownProcessor:shadowJar")
 }

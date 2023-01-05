@@ -3,12 +3,14 @@ package org.liamjd.cantilever.lambda
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.S3Event
-import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
-import software.amazon.awssdk.services.s3.model.PutObjectRequest
+import software.amazon.awssdk.services.sqs.SqsClient
+import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest
+import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
+import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 import java.nio.charset.Charset
 
 /**
@@ -34,41 +36,38 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
             try {
                 val destBucketName = System.getenv("destination_bucket") ?: srcBucket
+                val queueUrl = System.getenv("markdown_processing_queue")
                 val request = GetObjectRequest.builder()
                     .key(srcKey)
                     .bucket(srcBucket)
                     .build()
 
-                val sourceBytes: ByteArray = s3Client.getObjectAsBytes(request).asByteArray()
-                logger.log("FileUpload handler: source bytes: ${sourceBytes.toString(Charset.defaultCharset())}")
+                val fileType = srcKey.substringAfterLast('.').lowercase()
+                logger.log("FileUpload handler: file type is $fileType")
+                when (fileType) {
+                    "md" -> {
+                        // send to markdown processing queue
+                        val markdownQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
+                        try {
+                            val sourceBytes: ByteArray = s3Client.getObjectAsBytes(request).asByteArray()
+                            val msgResponse = markdownQueue.sendMessage(
+                                SendMessageRequest.builder()
+                                    .queueUrl(queueUrl)
+                                    .messageBody(srcKey)
+                                    .build()
+                            )
+                            logger.log("FileUpload handler: Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                        } catch (qdne: QueueDoesNotExistException) {
+                            logger.log("FileUpload handler EXCEPTION: queue '$queueUrl' does not exist; ${qdne.message}")
+                        }
+                    }
 
-                val outputString = """
-                <html>
-                    <head></head>
-                    <body>
-                        ${sourceBytes.toString(Charset.defaultCharset())}
-                    </body>
-                </html>
-            """.trimIndent()
-
-
-                logger.log("FileUpload handler: output string: $outputString}")
-
-                val customMetadata = mutableMapOf<String, String>()
-                customMetadata["source-file"] = srcKey
-
-                val outputBytes = outputString.toByteArray(Charset.defaultCharset())
-
-                val putObjectRequest = PutObjectRequest.builder()
-                    .bucket(destBucketName)
-                    .key(srcKey.removeSuffix(".md"))
-                    .metadata(customMetadata)
-                    .contentType("text/html")
-                    .contentLength(outputBytes.size.toLong())
-                    .build()
-
-                logger.log("Writing transformed file '${putObjectRequest.key()}' to $destBucketName")
-                s3Client.putObject(putObjectRequest, RequestBody.fromBytes(outputBytes))
+                    "jpg", "jpeg", "png", "gif", "webp" -> {
+                        // send to image processing queue
+                        logger.log("FileUpload handler: Processing JPG image: NOT YET IMPLEMENTED")
+                    }
+                    // etc
+                }
 
             } catch (nske: NoSuchKeyException) {
                 logger.log("FileUpload EXCEPTION ${nske.message}")
