@@ -42,9 +42,6 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                     .bucket(srcBucket)
                     .build()
 
-                val sourceBytes: ByteArray = s3Client.getObjectAsBytes(request).asByteArray()
-                logger.log("FileUpload handler: source bytes: ${sourceBytes.toString(Charset.defaultCharset())}")
-
                 val fileType = srcKey.substringAfterLast('.').lowercase()
                 logger.log("FileUpload handler: file type is $fileType")
                 when (fileType) {
@@ -52,6 +49,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                         // send to markdown processing queue
                         val markdownQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
                         try {
+                            val sourceBytes: ByteArray = s3Client.getObjectAsBytes(request).asByteArray()
                             val msgResponse = markdownQueue.sendMessage(
                                 SendMessageRequest.builder()
                                     .queueUrl(queueUrl)
