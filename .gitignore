@@ -8,3 +8,4 @@ cdk.out
 /MarkdownProcessor/build/
 /MarkdownProcessor/build/classes/kotlin/main/
 /MarkdownProcessor/build/classes/kotlin/test/
+/SharedModels/build/libs/SharedModels-0.0.1.jar

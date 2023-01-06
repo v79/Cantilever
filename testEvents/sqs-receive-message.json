@@ -1,0 +1,22 @@
+{
+  "Records": [
+    {
+      "messageId": "19dd0b57-b21e-4ac1-bd88-01bbb068cb78",
+      "receiptHandle": "MessageReceiptHandle",
+      "body": "{\n  \"metadata\": {\n    \"title\": \"Title not from yaml\",\n    \"date\": \"2023-01-05\"\n  },\n  \"markdownText\": \"\\r\\n# Markdown source file\\r\\n\\r\\nThis is a _simple_ markdown source file containing a few common elements.\\r\\n\\r\\n- Here is a list\\r\\n- With three\\r\\n- Elements\\r\\n\\r\\nThis is a [link](https://github.com/v79/Cantilever) to the Cantilever project.\\r\\n\\r\\nThis source file contains front matter in yaml or toml format.\"\n}",
+      "attributes": {
+        "ApproximateReceiveCount": "1",
+        "SentTimestamp": "1523232000000",
+        "SenderId": "123456789012",
+        "ApproximateFirstReceiveTimestamp": "1523232000001"
+      },
+      "messageAttributes": {},
+      "md5OfBody": "7b270e59b47ff90a553787216d55d91d",
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:eu-west-2:086949310404:CantileverStack-cantilevermarkdowntohtmlqueueD48EE89D-aGdhVWYxGKYc",
+      "awsRegion": "us-east-1"
+    }
+  ]
+}
+
+

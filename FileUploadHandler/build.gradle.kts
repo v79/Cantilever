@@ -1,7 +1,7 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
-    kotlin("jvm") version "1.7.10"
+    kotlin("jvm") version "1.7.20"
     kotlin("plugin.serialization") version "1.6.21"
     id("com.github.johnrengelman.shadow") version "7.1.2"
 }
@@ -15,6 +15,13 @@ repositories {
 }
 
 dependencies {
+    // shared elements
+    implementation(project(":SharedModels"))
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+
+    // serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
+
     // sdk v2
     implementation(platform("software.amazon.awssdk:bom:2.19.8"))
     implementation("software.amazon.awssdk:s3")

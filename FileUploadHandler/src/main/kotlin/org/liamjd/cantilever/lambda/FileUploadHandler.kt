@@ -3,12 +3,17 @@ package org.liamjd.cantilever.lambda
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.S3Event
+import kotlinx.datetime.LocalDate
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import org.liamjd.cantilever.common.now
+import org.liamjd.cantilever.models.PostMetadata
+import org.liamjd.cantilever.models.sqs.MarkdownUploadMsg
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.sqs.SqsClient
-import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 import java.nio.charset.Charset
@@ -50,10 +55,18 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                         val markdownQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
                         try {
                             val sourceBytes: ByteArray = s3Client.getObjectAsBytes(request).asByteArray()
+
+                            // extract metadata
+                            val metadata = PostMetadata(title = "Title not from yaml",template = "post", date = LocalDate.now())
+                            // extract body
+                            val markdownBody = String(sourceBytes).substringAfterLast("---")
+                            logger.log("FileUpload handler: Markdown body = $markdownBody")
+                            val message = MarkdownUploadMsg(metadata,markdownBody)
+
                             val msgResponse = markdownQueue.sendMessage(
                                 SendMessageRequest.builder()
                                     .queueUrl(queueUrl)
-                                    .messageBody(srcKey)
+                                    .messageBody(Json.encodeToString(message))
                                     .build()
                             )
                             logger.log("FileUpload handler: Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
@@ -82,4 +95,5 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
     }
 
 }
+
 
