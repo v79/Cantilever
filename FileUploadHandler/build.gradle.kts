@@ -1,4 +1,5 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "1.7.20"
@@ -21,6 +22,7 @@ dependencies {
 
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
+    implementation("com.charleskorn.kaml:kaml:0.49.0")
 
     // sdk v2
     implementation(platform("software.amazon.awssdk:bom:2.19.8"))
@@ -44,6 +46,13 @@ dependencies {
 
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
+}
+
+// Crazy experiment with context receivers!
+tasks.withType<KotlinCompile> {
+    kotlinOptions {
+        freeCompilerArgs += "-Xcontext-receivers"
+    }
 }
 
 tasks.withType<ShadowJar> {

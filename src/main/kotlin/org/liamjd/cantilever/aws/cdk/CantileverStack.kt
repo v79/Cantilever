@@ -26,7 +26,6 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         println("Creating source bucket")
         val sourceBucket = createSourceBucket()
 
-
         println("Creating destination bucket")
         val destinationBucket = createDestinationBucket()
 
@@ -127,7 +126,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
     ): Function = Function.Builder.create(stack, id)
         .description(description ?: "")
         .runtime(Runtime.JAVA_11)
-        .memorySize(256)
+        .memorySize(320)
         .timeout(Duration.minutes(2))
         .code(Code.fromAsset(codePath))
         .handler(handler)

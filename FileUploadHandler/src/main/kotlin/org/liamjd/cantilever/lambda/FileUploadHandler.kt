@@ -1,13 +1,12 @@
 package org.liamjd.cantilever.lambda
 
 import com.amazonaws.services.lambda.runtime.Context
+import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.S3Event
-import kotlinx.datetime.LocalDate
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.liamjd.cantilever.common.now
-import org.liamjd.cantilever.models.PostMetadata
 import org.liamjd.cantilever.models.sqs.MarkdownUploadMsg
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
@@ -16,7 +15,6 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
-import java.nio.charset.Charset
 
 /**
  * Responds to a file upload event (PUT or PUSH)
@@ -33,7 +31,8 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val eventRecord = event.records[0]
             val srcKey = eventRecord.s3.`object`.urlDecodedKey
             val srcBucket = eventRecord.s3.bucket.name
-            logger.log("FileUpload handler RECORD=${eventRecord.eventName} SOURCEKEY=$srcKey")
+
+            logger.info("RECORD=${eventRecord.eventName} SOURCEKEY=$srcKey")
 
             val s3Client = S3Client.builder()
                 .region(Region.EU_WEST_2)
@@ -48,47 +47,56 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                     .build()
 
                 val fileType = srcKey.substringAfterLast('.').lowercase()
-                logger.log("FileUpload handler: file type is $fileType")
+                logger.info("FileUpload handler: file type is $fileType")
                 when (fileType) {
                     "md" -> {
                         // send to markdown processing queue
                         val markdownQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
                         try {
                             val sourceBytes: ByteArray = s3Client.getObjectAsBytes(request).asByteArray()
-
+                            val sourceString = String(sourceBytes)
                             // extract metadata
-                            val metadata = PostMetadata(title = "Title not from yaml",template = "post", date = LocalDate.now())
-                            // extract body
-                            val markdownBody = String(sourceBytes).substringAfterLast("---")
-                            logger.log("FileUpload handler: Markdown body = $markdownBody")
-                            val message = MarkdownUploadMsg(metadata,markdownBody)
 
-                            val msgResponse = markdownQueue.sendMessage(
-                                SendMessageRequest.builder()
-                                    .queueUrl(queueUrl)
-                                    .messageBody(Json.encodeToString(message))
-                                    .build()
-                            )
-                            logger.log("FileUpload handler: Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                            with(logger) {
+                                val metadata = extractPostMetadata(filename = srcKey, sourceString)
+
+                                logger.info("Extracted metadata: $metadata")
+                                // extract body
+                                val markdownBody = sourceString.substringAfterLast("---")
+//                            logger.info("Markdown body = $markdownBody")
+                                val message = MarkdownUploadMsg(metadata, markdownBody)
+
+
+                                val msgResponse = markdownQueue.sendMessage(
+                                    SendMessageRequest.builder()
+                                        .queueUrl(queueUrl)
+                                        .messageBody(Json.encodeToString(message))
+                                        .build()
+                                )
+
+                                logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                            }
                         } catch (qdne: QueueDoesNotExistException) {
-                            logger.log("FileUpload handler EXCEPTION: queue '$queueUrl' does not exist; ${qdne.message}")
+                            logger.error("queue '$queueUrl' does not exist; ${qdne.message}")
+                        } catch (se: SerializationException) {
+                            logger.error("Failed to parse metadata string; ${se.message}")
                         }
                     }
 
                     "jpg", "jpeg", "png", "gif", "webp" -> {
                         // send to image processing queue
-                        logger.log("FileUpload handler: Processing JPG image: NOT YET IMPLEMENTED")
+                        logger.warn("FileUpload handler: Processing JPG image: NOT YET IMPLEMENTED")
                     }
                     // etc
                 }
 
             } catch (nske: NoSuchKeyException) {
-                logger.log("FileUpload EXCEPTION ${nske.message}")
+                logger.error("FileUpload EXCEPTION ${nske.message}")
                 response = "500 Internal Server Error"
             }
 
         } finally {
-            logger.log("FileUploadHandler completed")
+            logger.info("Request completed")
         }
 
         return response
@@ -96,4 +104,12 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
 }
 
-
+/**
+ * Wrappers for logging to make it slightly less annoying
+ */
+fun LambdaLogger.info(function: String, message: String) = log("INFO $function:  $message\n")
+fun LambdaLogger.info(message: String) = info("FileUploadHandler", message)
+fun LambdaLogger.warn(function: String, message: String) = log("WARN $function:  $message\n")
+fun LambdaLogger.warn(message: String) = warn("FileUploadHandler", message)
+fun LambdaLogger.error(function: String, message: String) = log("ERROR $function:  $message\n")
+fun LambdaLogger.error(message: String) = error("FileUploadHandler", message)
