@@ -21,7 +21,7 @@ fun extractPostMetadata(filename: String, source: String): PostMetadata {
         try {
             return Yaml.default.decodeFromString(PostMetadata.serializer(), metadataString)
         } catch (se: SerializationException) {
-            println("Yaml exception: ${se.message}") // TODO logger
+            log("ERROR: Yaml exception: ${se.message}")
         }
 
     }

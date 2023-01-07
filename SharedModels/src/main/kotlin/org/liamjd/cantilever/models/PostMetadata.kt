@@ -1,6 +1,8 @@
 package org.liamjd.cantilever.models
 
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import org.liamjd.cantilever.common.toSlug
 
@@ -9,8 +11,9 @@ import org.liamjd.cantilever.common.toSlug
  * The [slug] field should be provided, but if not it will be calculated from the title
  * in the format "The Title Is Hello" becomes "the-title-is-hello"
  */
+@OptIn(ExperimentalSerializationApi::class) // required for @EncodeDefault
 @Serializable
-data class PostMetadata(val title: String, val template: String = "post", val slug: String = title.toSlug(), val date: LocalDate)
+data class PostMetadata(val title: String, @EncodeDefault val template: String = "post", @EncodeDefault val slug: String = title.toSlug(), val date: LocalDate)
 
 /**
  * Experimental inline value class for Slug?

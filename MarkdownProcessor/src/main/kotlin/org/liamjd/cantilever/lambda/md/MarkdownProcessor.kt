@@ -10,15 +10,11 @@ import com.vladsch.flexmark.util.data.MutableDataSet
  * Using the flexmark-java library, convert the markdown source to an HTML string
  */
 fun convertMDToHTML(mdSource: String, log: LambdaLogger): String {
-    log.log("convertMDToHTML initiating")
     val options = MutableDataSet()
     val parser: Parser = Parser.builder(options).build()
     val renderer: HtmlRenderer = HtmlRenderer.builder(options).build()
 
     val document: Node = parser.parse(mdSource)
     val html: String = renderer.render(document)
-
-    log.log("convertMDToHTML complete")
-
     return html
 }
