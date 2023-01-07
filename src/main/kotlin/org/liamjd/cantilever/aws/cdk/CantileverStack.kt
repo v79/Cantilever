@@ -113,7 +113,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
     /**
      * Create a lambda function with several assumptions:
      * - Java 11 runtime
-     * - 256Mb RAM
+     * - 320Mb RAM
      * - 2 minute timeout
      */
     private fun createLambda(
@@ -130,6 +130,6 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         .timeout(Duration.minutes(2))
         .code(Code.fromAsset(codePath))
         .handler(handler)
-        .environment(environment ?: emptyMap())  // TODO this should be a CloudFormation parameter CfnParameter
+        .environment(environment ?: emptyMap())  // TODO should this should be a CloudFormation parameter CfnParameter
         .build()
 }

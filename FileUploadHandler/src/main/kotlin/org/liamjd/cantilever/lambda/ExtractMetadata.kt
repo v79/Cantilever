@@ -9,9 +9,10 @@ import org.liamjd.cantilever.common.toSlug
 import org.liamjd.cantilever.models.PostMetadata
 
 /**
- * Extract [PostMetadata] object from the markdown file
- * It should be deliminated between a pair of '---' lines
- * If this couldn't be extracted, it will attempt to construct a generic but valid object based on some assumptions
+ * Extract [PostMetadata] object from the markdown file.
+ * It should be deliminated between a pair of '---' lines.
+ * If this couldn't be extracted, it will attempt to construct a generic but valid object based on some assumptions.
+ * This is using experimental Context Receivers to inject the [LambdaLogger].
  */
 context (LambdaLogger)
 fun extractPostMetadata(filename: String, source: String): PostMetadata {

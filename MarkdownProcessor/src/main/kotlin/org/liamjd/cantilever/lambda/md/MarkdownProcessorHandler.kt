@@ -33,7 +33,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         logger.info("metadata=${markdownUploadMsg.metadata}")
 
         val html = convertMDToHTML(log = logger, mdSource = markdownUploadMsg.markdownText)
-        logger.info("HTML OUTPUT=$html")
+        logger.info("HTML OUTPUT=${html.substring(0..150)}...")
 
         val s3Client = S3Client.builder()
             .region(Region.EU_WEST_2)
