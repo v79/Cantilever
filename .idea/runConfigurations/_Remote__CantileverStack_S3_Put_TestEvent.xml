@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="[Remote] CantileverStack-S3-Put-TestEvent" type="aws.lambda" factoryName="Remote">
+    <option name="credentialProviderId" value="profile:default" />
+    <option name="regionId" value="eu-west-2" />
+    <option name="functionName" value="CantileverStack-cantileverfileuploadlambda54E3EA9D-qCAV7Vcah2GH" />
+    <option name="input" value="C:\Development\AWS and Cloud\Cantilever\testEvents\s3Put.json" />
+    <option name="inputIsFile" value="true" />
+    <method v="2" />
+  </configuration>
+</component>
