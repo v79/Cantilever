@@ -7,6 +7,7 @@ import software.amazon.awscdk.services.lambda.Function
 import software.amazon.awscdk.services.lambda.Runtime
 import software.amazon.awscdk.services.lambda.eventsources.S3EventSource
 import software.amazon.awscdk.services.lambda.eventsources.SqsEventSource
+import software.amazon.awscdk.services.logs.RetentionDays
 import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.EventType
 import software.amazon.awscdk.services.s3.deployment.BucketDeployment
@@ -16,6 +17,14 @@ import software.constructs.Construct
 
 class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(scope, id, props) {
 
+    enum class ENV {
+        destination_bucket,
+        source_bucket,
+        working_bucket,
+        markdown_processing_queue,
+        handlebar_template_queue
+    }
+
     constructor(scope: Construct, id: String) : this(scope, id, null)
 
     init {
@@ -24,10 +33,13 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         // Source bucket where Markdown, template files will be stored
         // I may wish to change the removal and deletion policies
         println("Creating source bucket")
-        val sourceBucket = createSourceBucket()
+        val sourceBucket = createBucket("cantilever-sources")
 
         println("Creating destination bucket")
         val destinationBucket = createDestinationBucket()
+
+        println("Creating temporary bucket")
+        val workingBucket = createBucket("cantilever-working")
 
         println("Adding temporary index.html")
         val indexHtml = BucketDeployment.Builder.create(this, "cantilever-website-index")
@@ -59,8 +71,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             codePath = "./FileUploadHandler/build/libs/FileUploadHandler.jar",
             handler = "org.liamjd.cantilever.lambda.FileUploadHandler",
             environment = mapOf(
-                "destination_bucket" to destinationBucket.bucketName,
-                "markdown_processing_queue" to markdownProcessingQueue.queue.queueUrl
+                ENV.working_bucket.name to workingBucket.bucketName,
+                ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl
             )
         )
 
@@ -72,8 +84,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             codePath = "./MarkdownProcessor/build/libs/MarkdownProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.md.MarkdownProcessorHandler",
             environment = mapOf(
-                "source_bucket" to sourceBucket.bucketName,
-                "handlebar_template_queue" to handlebarProcessingQueue.queue.queueUrl
+                ENV.working_bucket.name to workingBucket.bucketName,
+                ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl
             )
         )
 
@@ -85,18 +97,41 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             codePath = "./TemplateProcessor/build/libs/TemplateProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.TemplateProcessorHandler",
             environment = mapOf(
-                "source_bucket" to sourceBucket.bucketName,
-                "destination_bucket" to destinationBucket.bucketName,
+                ENV.source_bucket.name to sourceBucket.bucketName,
+                ENV.working_bucket.name to workingBucket.bucketName,
+                ENV.destination_bucket.name to destinationBucket.bucketName,
             )
         )
 
         // I suspect this isn't the most secure way to do this. Better a new IAM role?
-        println("Granting lambda permissions")
-        sourceBucket.grantRead(fileUploadLambda)
+        println("Granting lambda permissions to buckets")
+        fileUploadLambda.apply {
+            // upload lambda needs to read from the source bucket, and write the structure file to the working bucket
+            sourceBucket.grantRead(this)
+            workingBucket.grantWrite(this)
+        }
+        markdownProcessorLambda.apply {
+            // markdown processor reads from the source and writes to the working bucket
+            sourceBucket.grantRead(this)
+            workingBucket.grantWrite(this)
+        }
+        templateProcessorLambda.apply {
+            // template processor needs to read from source and working buckets, and write to working and destination buckets
+            sourceBucket.grantRead(this)
+            workingBucket.grantRead(this)
+            workingBucket.grantWrite(this)
+            destinationBucket.grantWrite(this)
+        }
+
+       /* sourceBucket.grantRead(fileUploadLambda)
         sourceBucket.grantRead(markdownProcessorLambda)
         sourceBucket.grantWrite(markdownProcessorLambda)
+        sourceBucket.grantWrite(fileUploadLambda)
         sourceBucket.grantRead(templateProcessorLambda)
-        destinationBucket.grantWrite(templateProcessorLambda)
+        workingBucket.grantWrite(fileUploadLambda)
+        workingBucket.grantWrite(markdownProcessorLambda)
+        workingBucket.grantWrite(templateProcessorLambda)
+        destinationBucket.grantWrite(templateProcessorLambda)*/
 
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
         fileUploadLambda.addEventSource(
@@ -129,7 +164,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         .websiteIndexDocument("index.html")
         .build()
 
-    private fun createSourceBucket(): Bucket = Bucket.Builder.create(this, "cantilever-sources")
+    private fun createBucket(name: String): Bucket = Bucket.Builder.create(this, name)
         .versioned(false)
         .removalPolicy(RemovalPolicy.DESTROY)
         .autoDeleteObjects(true)
@@ -140,6 +175,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
      * - Java 11 runtime
      * - 320Mb RAM
      * - 2 minute timeout
+     * - one month's logs
      */
     private fun createLambda(
         stack: Stack,
@@ -155,6 +191,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         .timeout(Duration.minutes(2))
         .code(Code.fromAsset(codePath))
         .handler(handler)
+        .logRetention(RetentionDays.ONE_MONTH)
         .environment(environment ?: emptyMap())  // TODO should this should be a CloudFormation parameter CfnParameter
         .build()
 }

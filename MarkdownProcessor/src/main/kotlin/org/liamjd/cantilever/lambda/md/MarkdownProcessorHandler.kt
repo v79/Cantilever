@@ -27,7 +27,7 @@ import java.io.ByteArrayOutputStream
 class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
-        val sourceBucket = System.getenv("source_bucket")
+        val workingBucket = System.getenv("working_bucket")
         val handlebarQueueUrl = System.getenv("handlebar_template_queue")
         val logger = context.logger
         var response = "200 OK"
@@ -39,7 +39,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         logger.info("metadata=${markdownUploadMsg.metadata}")
 
         val html = convertMDToHTML(log = logger, mdSource = markdownUploadMsg.markdownText)
-        logger.info("HTML OUTPUT=${html.substring(0..150)}...")
+        logger.info("HTML OUTPUT=${html.take(150)}...")
 
         val s3Client = S3Client.builder()
             .region(Region.EU_WEST_2)
@@ -54,7 +54,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
             val htmlKey = "htmlFragments/" + markdownUploadMsg.metadata.slug
             s3Client.putObject(
                 PutObjectRequest.builder().contentLength(html.length.toLong()).contentType("text/html")
-                    .bucket(sourceBucket).key(htmlKey).build(),
+                    .bucket(workingBucket).key(htmlKey).build(),
                 RequestBody.fromBytes(html.toByteArray())
             )
             logger.info("Wrote HTML file '$htmlKey'")

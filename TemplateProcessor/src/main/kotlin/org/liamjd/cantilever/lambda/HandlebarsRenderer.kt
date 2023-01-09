@@ -19,9 +19,9 @@ class HandlebarsRenderer : TemplateRender {
 
     override fun render(model: Map<String, Any?>, template: String): String {
         log("HandlebarsRenderer processing model (${model.size} entries) for template ${template.substring(0..(if (template.length < 100) template.length-1 else 100))}")
-        val template = handlebars.compileInline(template)
+        val hbTemplate = handlebars.compileInline(template)
 
-        return template.apply(model)
+        return hbTemplate.apply(model)
     }
 
 }

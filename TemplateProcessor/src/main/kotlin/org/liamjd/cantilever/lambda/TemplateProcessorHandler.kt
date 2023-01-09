@@ -27,6 +27,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         var response = "200 OK"
 
         val sourceBucket = System.getenv("source_bucket")
+        val workingBucket = System.getenv("working_bucket")
         val destinationBucket = System.getenv("destination_bucket")
 
         try {
@@ -42,12 +43,12 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                 .bucket(sourceBucket)
                 .build()
             val templateString = String(s3Client.getObjectAsBytes(s3TemplateRequest).asByteArray())
-            logger.info("Loaded template string from '$template': ${templateString.substring(0..100)}")
+            logger.info("Loaded template string from '$template': ${templateString.take(100)}")
 
-            // load html fragment
+            // load html fragment from working bucket
             val fragmentRequest = GetObjectRequest.builder()
                 .key(message.fragmentKey)
-                .bucket(sourceBucket)
+                .bucket(workingBucket)
                 .build()
             val body = String(s3Client.getObjectAsBytes(fragmentRequest).asByteArray())
 
@@ -60,7 +61,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                 val renderer = HandlebarsRenderer()
                 renderer.render(model = model, template = templateString)
             }
-            logger.info("Rendered HTML: ${html.substring(0..100)}")
+            logger.info("Rendered HTML: ${html.take(100)}")
 
             // save to S3
             s3Client.putObject(

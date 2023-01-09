@@ -3,6 +3,7 @@ package org.liamjd.cantilever.lambda
 import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.charleskorn.kaml.Yaml
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.SerializationException
 import org.liamjd.cantilever.common.now
 import org.liamjd.cantilever.common.toSlug
@@ -29,6 +30,7 @@ fun extractPostMetadata(filename: String, source: String): PostMetadata {
         title = filename.removeSuffix(".md"),
         template = "post",
         slug = filename.removeSuffix(".md").toSlug(),
-        date = LocalDate.now()
+        date = LocalDate.now(),
+        lastModified = LocalDateTime.now()
     )
 }

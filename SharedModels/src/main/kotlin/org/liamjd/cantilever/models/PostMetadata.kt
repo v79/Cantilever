@@ -1,9 +1,11 @@
 package org.liamjd.cantilever.models
 
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
+import org.liamjd.cantilever.common.now
 import org.liamjd.cantilever.common.toSlug
 
 /**
@@ -13,7 +15,13 @@ import org.liamjd.cantilever.common.toSlug
  */
 @OptIn(ExperimentalSerializationApi::class) // required for @EncodeDefault
 @Serializable
-data class PostMetadata(val title: String, @EncodeDefault val template: String = "post", @EncodeDefault val slug: String = title.toSlug(), val date: LocalDate)
+data class PostMetadata(
+    val title: String,
+    @EncodeDefault val template: String = "post",
+    @EncodeDefault val slug: String = title.toSlug(),
+    val date: LocalDate,
+    @EncodeDefault val lastModified: LocalDateTime = LocalDateTime.now()
+)
 
 /**
  * Experimental inline value class for Slug?
@@ -29,7 +37,7 @@ value class Slug(private val slug: String) {
         private val legitimate = "INSERT VALID CHARACTERS HERE".toRegex()
         private val reserved = "[;/?:@&=+\$, ]".toRegex()
 
-        fun String.toSlug() : Slug {
+        fun String.toSlug(): Slug {
             return Slug(this.replace(reserved, "-").lowercase())
         }
     }
