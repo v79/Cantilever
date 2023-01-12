@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.aws.cdk
 
 import software.amazon.awscdk.App
+import software.amazon.awscdk.Environment
 import software.amazon.awscdk.StackProps
 
 fun main() {
@@ -14,4 +15,13 @@ fun main() {
     )
 
     app.synth()
+
+
+}
+
+fun makeEnv(account: String, region: String): Environment {
+    return Environment.builder()
+        .account(account)
+        .region(region)
+        .build()
 }

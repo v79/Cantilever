@@ -10,10 +10,10 @@ data class Post(val title: String, val srcKey: String, val url: String, val temp
 data class Template(val key: String, val lastUpdated: LocalDateTime)
 
 @Serializable
-data class Layouts(val templates: List<Template>)
+data class Layouts(val templates: MutableMap<String, Template>)
 
 @Serializable
-data class Items(val posts: Map<String,Post>)
+data class Items(val posts: MutableMap<String,Post>)
 
 @Serializable
 data class Structure(val layouts: Layouts, val items: Items)

@@ -20,14 +20,14 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest
  */
 class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
-    private val templatePath = "templates/"
+    private val templatesKey = "sources/templates/"
+    private val fragmentsKey = "generated/htmlFragments/"
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
         val logger = context.logger
         var response = "200 OK"
 
         val sourceBucket = System.getenv("source_bucket")
-        val workingBucket = System.getenv("working_bucket")
         val destinationBucket = System.getenv("destination_bucket")
 
         try {
@@ -37,7 +37,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             logger.info("Processing message $message")
 
             // load template file as specified by metadata
-            val template = templatePath + message.metadata.template + ".html.hbs"
+            val template = templatesKey + message.metadata.template + ".html.hbs"
             val s3TemplateRequest = GetObjectRequest.builder()
                 .key(template)
                 .bucket(sourceBucket)
@@ -47,8 +47,8 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
             // load html fragment from working bucket
             val fragmentRequest = GetObjectRequest.builder()
-                .key(message.fragmentKey)
-                .bucket(workingBucket)
+                .key(fragmentsKey + message.fragmentKey)
+                .bucket(sourceBucket)
                 .build()
             val body = String(s3Client.getObjectAsBytes(fragmentRequest).asByteArray())
 
