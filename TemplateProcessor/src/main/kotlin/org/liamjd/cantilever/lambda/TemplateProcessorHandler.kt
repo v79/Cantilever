@@ -7,6 +7,8 @@ import com.amazonaws.services.lambda.runtime.events.SQSEvent
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import org.liamjd.cantilever.common.fileTypes.HTML_HBS
+import org.liamjd.cantilever.common.s3Keys.fragmentsKey
 import org.liamjd.cantilever.models.sqs.HTMLFragmentReadyMsg
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
@@ -20,9 +22,6 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest
  */
 class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
-    private val templatesKey = "sources/templates/"
-    private val fragmentsKey = "generated/htmlFragments/"
-
     override fun handleRequest(event: SQSEvent, context: Context): String {
         val logger = context.logger
         var response = "200 OK"
@@ -33,24 +32,31 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         try {
             val eventRecord = event.records[0]
             val s3Client = S3Client.builder().region(Region.EU_WEST_2).build()
+            logger.info("RAW message: ${eventRecord.body}")
             val message: HTMLFragmentReadyMsg = Json.decodeFromString(eventRecord.body)
-            logger.info("Processing message $message")
+            logger.info("Processing message: $message")
+
+            val fragmentRequest = GetObjectRequest.builder()
+                .key(message.fragmentKey)
+                .bucket(sourceBucket)
+                .build()
+
+            val body = String(s3Client.getObjectAsBytes(fragmentRequest).asByteArray())
+            logger.info("Loaded body fragment from '${fragmentsKey + message.fragmentKey}: ${body.take(100)}'")
+
 
             // load template file as specified by metadata
-            val template = templatesKey + message.metadata.template + ".html.hbs"
+            val template = message.metadata.template + HTML_HBS
+            logger.info("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
             val s3TemplateRequest = GetObjectRequest.builder()
                 .key(template)
                 .bucket(sourceBucket)
                 .build()
+            logger.info("Request is: $s3TemplateRequest: ${s3TemplateRequest.bucket()} ${s3TemplateRequest.key()}")
+//            val templObj = s3Client.getObject(s3TemplateRequest).response()
             val templateString = String(s3Client.getObjectAsBytes(s3TemplateRequest).asByteArray())
-            logger.info("Loaded template string from '$template': ${templateString.take(100)}")
+            logger.info("Got templateString: ${templateString.take(100)}")
 
-            // load html fragment from working bucket
-            val fragmentRequest = GetObjectRequest.builder()
-                .key(fragmentsKey + message.fragmentKey)
-                .bucket(sourceBucket)
-                .build()
-            val body = String(s3Client.getObjectAsBytes(fragmentRequest).asByteArray())
 
             // build model from project and from html fragment
             val model = mutableMapOf<String, Any?>()

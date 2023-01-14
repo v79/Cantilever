@@ -8,6 +8,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.liamjd.cantilever.common.s3Keys.fragmentsKey
 import org.liamjd.cantilever.models.sqs.HTMLFragmentReadyMsg
 import org.liamjd.cantilever.models.sqs.MarkdownUploadMsg
 import software.amazon.awssdk.core.sync.RequestBody
@@ -25,8 +26,6 @@ import java.io.ByteArrayOutputStream
  * Then write the resultant file to the destination bucket
  */
 class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
-
-    private val fragmentsKey = "generated/htmlFragments/"
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
         val sourceBucket = System.getenv("source_bucket")

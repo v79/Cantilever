@@ -1,7 +1,6 @@
 package org.liamjd.cantilever.aws.cdk
 
 import software.amazon.awscdk.*
-import software.amazon.awscdk.services.cloudfront.*
 import software.amazon.awscdk.services.events.targets.SqsQueue
 import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.Function
@@ -9,8 +8,6 @@ import software.amazon.awscdk.services.lambda.Runtime
 import software.amazon.awscdk.services.lambda.eventsources.S3EventSource
 import software.amazon.awscdk.services.lambda.eventsources.SqsEventSource
 import software.amazon.awscdk.services.logs.RetentionDays
-import software.amazon.awscdk.services.route53.HostedZone
-import software.amazon.awscdk.services.route53.HostedZoneProviderProps
 import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.EventType
 import software.amazon.awscdk.services.s3.NotificationKeyFilter
@@ -40,9 +37,6 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
 
         println("Creating destination bucket")
         val destinationBucket = createDestinationBucket()
-
-       /* println("Creating temporary bucket")
-        val workingBucket = createBucket("cantilever-working")*/
 
         println("Adding temporary index.html")
         val indexHtml = BucketDeployment.Builder.create(this, "cantilever-website-index")
@@ -105,141 +99,24 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             )
         )
 
-        println("Setting up website domain and cloudfront distribution for destination website bucket")
-        // taken from https://johntipper.org/a-static-website-with-api-backend-using-aws-cdk-and-java/
-
-        // Route53 hosted zone created out-of-band, e.g already existing
-        // but this requires the environment to be configured in the stack, which means putting the account ID in git
-
-        /*        val hostedZone = HostedZone.fromLookup(
-                    this, "HostedZone", HostedZoneProviderProps.builder()
-                        .domainName("cantilevers.org")
-                        .build()
-                )*/
-
-
-        val webOai = OriginAccessIdentity.Builder.create(this, "WebOai").build()
-        destinationBucket.grantRead(webOai)
-
-        /**
-         * this bit goes after the comment, below, if I had a certificate set up
-         *  .viewerCertificate(
-         *                     ViewerCertificate.fromAcmCertificate(
-         *                         websiteCertificate, ViewerCertificateOptions.builder()
-         *                             .aliases(List.of(stackConfig.getDomainName()))
-         *                             .build()
-         *                     )
-         *                 )
-         */
-
-        val cloudFrontWebDistribution: CloudFrontWebDistribution =
-            CloudFrontWebDistribution.Builder.create(this, "cantilever-CloudFrontWebDistribution")
-                .comment(java.lang.String.format("CloudFront distribution for cantilever"))
-
-                .originConfigs(
-                    listOf(
-                        SourceConfiguration.builder()
-                            .behaviors(
-                                listOf(
-                                    Behavior.builder()
-                                        .isDefaultBehavior(true)
-                                        .defaultTtl(Duration.minutes(5))
-                                        .maxTtl(Duration.minutes(5))
-                                        .build()
-                                )
-                            )
-                            .s3OriginSource(
-                                S3OriginConfig.builder()
-                                    .originAccessIdentity(webOai)
-                                    .s3BucketSource(destinationBucket)
-                                    .build()
-                            )
-                            .build()
-                    )
-                )
-                .priceClass(PriceClass.PRICE_CLASS_100)
-                .viewerProtocolPolicy(ViewerProtocolPolicy.REDIRECT_TO_HTTPS)
-                .errorConfigurations(
-                    listOf(
-                        CfnDistribution.CustomErrorResponseProperty.builder()
-                            .errorCode(403)
-                            .responseCode(200)
-                            .responsePagePath("/index.html")
-                            .build(),
-                        CfnDistribution.CustomErrorResponseProperty.builder()
-                            .errorCode(404)
-                            .responseCode(200)
-                            .responsePagePath("/index.html")
-                            .build()
-                    )
-                )
-                .build()
-
-
-        /**
-
-         *
-         * DnsValidatedCertificate websiteCertificate = DnsValidatedCertificate.Builder.create(this, "WebsiteCertificate")
-         *                                                                             .hostedZone(hostedZone)
-         *                                                                             .region("us-east-1")
-         *                                                                             .domainName(stackConfig.getDomainName())
-         *                                                                             .subjectAlternativeNames(List.of(String.format("www.%s", stackConfig.getDomainName())))
-         *                                                                             .build();
-         *
-         * SET UP www REDIRECT
-         *
-         * HttpsRedirect webHttpsRedirect = HttpsRedirect.Builder.create(this, "WebHttpsRedirect")
-         *
-         *                                                       .certificate(websiteCertificate)
-         *
-         *                                                       .recordNames(List.of(String.format("www.%s", stackConfig.getDomainName())))
-         *
-         *                                                       .targetDomain(stackConfig.getDomainName())
-         *
-         *                                                       .zone(hostedZone)
-         *
-         *                                                       .build();
-         *
-         * ARecord apexARecord = ARecord.Builder.create(this, "ApexARecord")
-         *
-         *                                      .recordName(stackConfig.getDomainName())
-         *
-         *                                      .zone(hostedZone)
-         *
-         *                                      .target(RecordTarget.fromAlias(new CloudFrontTarget(cloudFrontWebDistribution)))
-         *
-         *                                      .build();
-         */
-
+        println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
+        val cloudfrontSubstack = CloudFrontSubstack()
+        cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
 
         // I suspect this isn't the most secure way to do this. Better a new IAM role?
         println("Granting lambda permissions to buckets")
         fileUploadLambda.apply {
-            // upload lambda needs to read from the source bucket, and write the structure file to the working bucket
             sourceBucket.grantRead(this)
-//            workingBucket.grantRead(this)
             sourceBucket.grantWrite(this)
         }
         markdownProcessorLambda.apply {
-            // markdown processor reads from the source and writes to the working bucket
             sourceBucket.grantRead(this)
             sourceBucket.grantWrite(this)
         }
         templateProcessorLambda.apply {
-            // template processor needs to read from source and working buckets, and write to working and destination buckets
             sourceBucket.grantRead(this)
             destinationBucket.grantWrite(this)
         }
-
-        /* sourceBucket.grantRead(fileUploadLambda)
-         sourceBucket.grantRead(markdownProcessorLambda)
-         sourceBucket.grantWrite(markdownProcessorLambda)
-         sourceBucket.grantWrite(fileUploadLambda)
-         sourceBucket.grantRead(templateProcessorLambda)
-         workingBucket.grantWrite(fileUploadLambda)
-         workingBucket.grantWrite(markdownProcessorLambda)
-         workingBucket.grantWrite(templateProcessorLambda)
-         destinationBucket.grantWrite(templateProcessorLambda)*/
 
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
         fileUploadLambda.addEventSource(
