@@ -29,7 +29,7 @@ fun extractPostMetadata(filename: String, source: String): PostMetadata {
     return PostMetadata(
         title = filename.removeSuffix(".md"),
         template = "post",
-        slug = filename.removeSuffix(".md").toSlug(),
+        slug = filename.removeSuffix(".md").removePrefix("sources").toSlug(),
         date = LocalDate.now(),
         lastModified = LocalDateTime.now()
     )

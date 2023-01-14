@@ -9,6 +9,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.fileTypes.HTML_HBS
 import org.liamjd.cantilever.common.s3Keys.fragmentsKey
+import org.liamjd.cantilever.common.s3Keys.templatesKey
 import org.liamjd.cantilever.models.sqs.HTMLFragmentReadyMsg
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
@@ -44,19 +45,16 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             val body = String(s3Client.getObjectAsBytes(fragmentRequest).asByteArray())
             logger.info("Loaded body fragment from '${fragmentsKey + message.fragmentKey}: ${body.take(100)}'")
 
-
             // load template file as specified by metadata
-            val template = message.metadata.template + HTML_HBS
+            val template = templatesKey + message.metadata.template + HTML_HBS
             logger.info("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
             val s3TemplateRequest = GetObjectRequest.builder()
                 .key(template)
                 .bucket(sourceBucket)
                 .build()
             logger.info("Request is: $s3TemplateRequest: ${s3TemplateRequest.bucket()} ${s3TemplateRequest.key()}")
-//            val templObj = s3Client.getObject(s3TemplateRequest).response()
             val templateString = String(s3Client.getObjectAsBytes(s3TemplateRequest).asByteArray())
             logger.info("Got templateString: ${templateString.take(100)}")
-
 
             // build model from project and from html fragment
             val model = mutableMapOf<String, Any?>()

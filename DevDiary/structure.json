@@ -1,0 +1,74 @@
+{
+  "layouts": {
+    "templates": {
+      "templates/post.html.hbs": {
+        "key": "templates/post.html.hbs",
+        "lastUpdated": "2023-01-12T22:50:59"
+      }
+    }
+  },
+  "items": {
+    "posts": {
+      "sources/20230107.md": {
+        "title": "Adding Templating",
+        "srcKey": "sources/20230107.md",
+        "url": "adding-templating",
+        "template": {
+          "key": "templates/post.html.hbs",
+          "lastUpdated": "2023-01-12T22:50:59"
+        },
+        "lastUpdated": "2023-01-14T07:58:38.270311"
+      },
+      "sources/20231001.md": {
+        "title": "A File Upload Locking Issue",
+        "srcKey": "sources/20231001.md",
+        "url": "a-file-upload-locking-issue",
+        "template": {
+          "key": "templates/post.html.hbs",
+          "lastUpdated": "2023-01-12T22:50:59"
+        },
+        "lastUpdated": "2023-01-13T07:30:13.638333"
+      },
+      "sources/20230109.md": {
+        "title": "More Bucket Ponderings",
+        "srcKey": "sources/20230109.md",
+        "url": "bucket-ponderings",
+        "template": {
+          "key": "templates/post.html.hbs",
+          "lastUpdated": "2023-01-12T22:50:59"
+        },
+        "lastUpdated": "2023-01-13T07:37:14.787899"
+      },
+      "sources/20230106.md": {
+        "title": "Progress Update 06/01/2023",
+        "srcKey": "sources/20230106.md",
+        "url": "progress-update-06-01-2023",
+        "template": {
+          "key": "templates/post.html.hbs",
+          "lastUpdated": "2023-01-12T22:50:59"
+        },
+        "lastUpdated": "2023-01-14T07:58:39.718018"
+      },
+      "sources/20230104.md": {
+        "title": "Flexmark for Markdown processing",
+        "srcKey": "sources/20230104.md",
+        "url": "flexmark-for-markdown-processing",
+        "template": {
+          "key": "templates/post.html.hbs",
+          "lastUpdated": "2023-01-12T22:50:59"
+        },
+        "lastUpdated": "2023-01-14T07:58:37.359666"
+      },
+      "sources/20230114.md": {
+        "title": "One small bug, two days of pain",
+        "srcKey": "sources/20230114.md",
+        "url": "small-bug-big-pain",
+        "template": {
+          "key": "templates/post.html.hbs",
+          "lastUpdated": "2023-01-12T22:50:59"
+        },
+        "lastUpdated": "2023-01-14T08:12:54.979192"
+      }
+    }
+  }
+}

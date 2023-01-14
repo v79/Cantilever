@@ -60,7 +60,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                             // extract metadata
 
                             with(logger) {
-                                val metadata = extractPostMetadata(filename = srcKey, sourceString)
+                                val metadata = extractPostMetadata(filename = srcKey, source = sourceString)
                                 logger.info("Extracted metadata: $metadata")
                                 // extract body
                                 val markdownBody = sourceString.substringAfterLast("---")
