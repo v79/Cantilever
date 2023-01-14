@@ -1,16 +1,25 @@
 package org.liamjd.cantilever.lambda
 
 import com.amazonaws.services.lambda.runtime.LambdaLogger
+import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.runs
 import kotlinx.datetime.LocalDate
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.liamjd.cantilever.common.now
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 internal class ExtractMetadataKtTest {
 
     private val mockLogger = mockk<LambdaLogger>()
+
+    @BeforeTest
+    fun init() {
+        every { mockLogger.log(any<String>()) } just runs
+    }
 
     @Test
     fun `can deserialize a metadata string with no --- block or markdown text`() {

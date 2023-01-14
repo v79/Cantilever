@@ -12,6 +12,7 @@
             <option value="$PROJECT_DIR$/FileUploadHandler" />
             <option value="$PROJECT_DIR$/MarkdownProcessor" />
             <option value="$PROJECT_DIR$/SharedModels" />
+            <option value="$PROJECT_DIR$/TemplateProcessor" />
           </set>
         </option>
       </GradleProjectSettings>

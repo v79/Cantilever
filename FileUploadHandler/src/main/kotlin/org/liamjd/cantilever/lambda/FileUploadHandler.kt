@@ -7,6 +7,7 @@ import com.amazonaws.services.lambda.runtime.events.S3Event
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.liamjd.cantilever.common.toLocalDateTime
 import org.liamjd.cantilever.models.sqs.MarkdownUploadMsg
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
@@ -31,6 +32,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val eventRecord = event.records[0]
             val srcKey = eventRecord.s3.`object`.urlDecodedKey
             val srcBucket = eventRecord.s3.bucket.name
+            val structureManager = StructureManager()
 
             logger.info("RECORD=${eventRecord.eventName} SOURCEKEY=$srcKey")
 
@@ -39,7 +41,6 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                 .build()
 
             try {
-                val destBucketName = System.getenv("destination_bucket") ?: srcBucket
                 val queueUrl = System.getenv("markdown_processing_queue")
                 val request = GetObjectRequest.builder()
                     .key(srcKey)
@@ -53,8 +54,9 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                         // send to markdown processing queue
                         val markdownQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
                         try {
-                            val sourceBytes: ByteArray = s3Client.getObjectAsBytes(request).asByteArray()
-                            val sourceString = String(sourceBytes)
+                            val mdObject = s3Client.getObject(request).response()
+                            val srcLastModified = mdObject.lastModified().toLocalDateTime()
+                            val sourceString = String(s3Client.getObjectAsBytes(request).asByteArray())
                             // extract metadata
 
                             with(logger) {
@@ -72,6 +74,17 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                                 )
 
                                 logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+
+                                with(logger) {
+                                    structureManager.updateStructure(
+                                        context = context,
+                                        s3Client = s3Client,
+                                        sourceBucket = srcBucket,
+                                        markdown = message,
+                                        srcKey = srcKey
+                                    )
+                                }
+
                             }
                         } catch (qdne: QueueDoesNotExistException) {
                             logger.error("queue '$queueUrl' does not exist; ${qdne.message}")
@@ -98,7 +111,6 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
         return response
     }
-
 }
 
 /**

@@ -4,13 +4,20 @@ import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.SQSEvent
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.liamjd.cantilever.common.s3Keys.fragmentsKey
+import org.liamjd.cantilever.models.sqs.HTMLFragmentReadyMsg
 import org.liamjd.cantilever.models.sqs.MarkdownUploadMsg
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
+import software.amazon.awssdk.services.sqs.SqsClient
+import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
+import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 import java.io.ByteArrayOutputStream
 
 /**
@@ -22,7 +29,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
         val sourceBucket = System.getenv("source_bucket")
-        val destinationBucket = System.getenv("destination_bucket")
+        val handlebarQueueUrl = System.getenv("handlebar_template_queue")
         val logger = context.logger
         var response = "200 OK"
 
@@ -33,7 +40,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         logger.info("metadata=${markdownUploadMsg.metadata}")
 
         val html = convertMDToHTML(log = logger, mdSource = markdownUploadMsg.markdownText)
-        logger.info("HTML OUTPUT=${html.substring(0..150)}...")
+        logger.info("HTML OUTPUT=${html.take(150)}...")
 
         val s3Client = S3Client.builder()
             .region(Region.EU_WEST_2)
@@ -42,14 +49,30 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         val outputStream = ByteArrayOutputStream()
         outputStream.bufferedWriter().write(html)
 
+        val handlebarQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
+
         try {
-            val htmlKey = markdownUploadMsg.metadata.slug
+            val htmlKey = fragmentsKey + markdownUploadMsg.metadata.slug
             s3Client.putObject(
                 PutObjectRequest.builder().contentLength(html.length.toLong()).contentType("text/html")
-                    .bucket(destinationBucket).key(htmlKey).build(),
+                    .bucket(sourceBucket).key(htmlKey).build(),
                 RequestBody.fromBytes(html.toByteArray())
             )
             logger.info("Wrote HTML file '$htmlKey'")
+            logger.info("Sending message to handlebars handler")
+            val message = HTMLFragmentReadyMsg(fragmentKey = htmlKey, metadata = markdownUploadMsg.metadata)
+            logger.info("Prepared message: $message")
+            val msgResponse = handlebarQueue.sendMessage(
+                SendMessageRequest.builder()
+                    .queueUrl(handlebarQueueUrl)
+                    .messageBody(Json.encodeToString(message))
+                    .build()
+            )
+            logger.info("Message '${Json.encodeToString(message)}' sent, message ID is ${msgResponse.messageId()}")
+        } catch (qdne: QueueDoesNotExistException) {
+            logger.error("queue '$handlebarQueueUrl' does not exist; ${qdne.message}")
+        } catch (se: SerializationException) {
+            logger.error("Failed to parse metadata string; ${se.message}")
         } catch (e: Exception) {
             logger.error("${e.message}")
         }
@@ -62,8 +85,8 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
  * Wrappers for logging to make it slightly less annoying
  */
 fun LambdaLogger.info(function: String, message: String) = log("INFO $function:  $message\n")
-fun LambdaLogger.info(message: String) = info("MarkdownProcessorHandler",message)
+fun LambdaLogger.info(message: String) = info("MarkdownProcessorHandler", message)
 fun LambdaLogger.warn(function: String, message: String) = log("WARN $function:  $message\n")
-fun LambdaLogger.warn(message: String) = warn("MarkdownProcessorHandler",message)
+fun LambdaLogger.warn(message: String) = warn("MarkdownProcessorHandler", message)
 fun LambdaLogger.error(function: String, message: String) = log("ERROR $function:  $message\n")
-fun LambdaLogger.error(message: String) = error("MarkdownProcessorHandler",message)
+fun LambdaLogger.error(message: String) = error("MarkdownProcessorHandler", message)

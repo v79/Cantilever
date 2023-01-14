@@ -1,0 +1,14 @@
+{
+  "Records": [
+    {
+      "messageId": "19dd0b57-b21e-4ac1-bd88-01bbb068cb78",
+      "receiptHandle": "MessageReceiptHandle",
+      "body": "{\"fragmentKey\": \"generated\/htmlFragments\/progress-update-06-01-2023\",\"metadata\": {\"title\": \"Progress Update 06\/01\/2023\",\"template\": \"post\",\"slug\": \"progress-update-06-01-2023\",\"date\": \"2023-01-06\",\"lastModified\": \"2023-01-12T21:30:10.294572\"}}",
+      "messageAttributes": {},
+      "md5OfBody": "7b270e59b47ff90a553787216d55d91d",
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:eu-west-2:086949310404:CantileverStack-cantilevermarkdowntohtmlqueueD48EE89D-aGdhVWYxGKYc",
+      "awsRegion": "eu-west-2"
+    }
+  ]
+}

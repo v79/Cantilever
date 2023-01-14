@@ -5,3 +5,7 @@ sam local invoke -t .\cdk.out\CantileverStack.template.json cantileverfileupload
 # LAMBDA Markdown Processor SQS
 
 sam local invoke -t .\cdk.out\CantileverStack.template.json cantilevermarkdownprocessorlambda0411F890 -e .\testEvents\sqs-receive-message.json
+
+# Handlebars Processor
+
+sam local invoke -t .\cdk.out\CantileverStack.template.json cantileverhandlebarprocessorlambda57BEC134 -e .\testEvents\sqs-receive-template-message.json  --env-vars .\testEvents\template-env.json

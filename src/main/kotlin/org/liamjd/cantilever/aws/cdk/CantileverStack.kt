@@ -7,8 +7,10 @@ import software.amazon.awscdk.services.lambda.Function
 import software.amazon.awscdk.services.lambda.Runtime
 import software.amazon.awscdk.services.lambda.eventsources.S3EventSource
 import software.amazon.awscdk.services.lambda.eventsources.SqsEventSource
+import software.amazon.awscdk.services.logs.RetentionDays
 import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.EventType
+import software.amazon.awscdk.services.s3.NotificationKeyFilter
 import software.amazon.awscdk.services.s3.deployment.BucketDeployment
 import software.amazon.awscdk.services.s3.deployment.Source
 import software.amazon.awscdk.services.sqs.Queue
@@ -16,15 +18,22 @@ import software.constructs.Construct
 
 class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(scope, id, props) {
 
+    enum class ENV {
+        destination_bucket,
+        source_bucket,
+        markdown_processing_queue,
+        handlebar_template_queue
+    }
+
     constructor(scope: Construct, id: String) : this(scope, id, null)
 
     init {
-        Tags.of(this).add("Cantilever", "v0.0.1")
+        Tags.of(this).add("Cantilever", "v0.0.2")
 
         // Source bucket where Markdown, template files will be stored
         // I may wish to change the removal and deletion policies
         println("Creating source bucket")
-        val sourceBucket = createSourceBucket()
+        val sourceBucket = createBucket("cantilever-sources")
 
         println("Creating destination bucket")
         val destinationBucket = createDestinationBucket()
@@ -44,6 +53,13 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
                 ).build()
             ).build()
 
+        println("Creating handlebar templating processing queue")
+        val handlebarProcessingQueue =
+            SqsQueue.Builder.create(
+                Queue.Builder.create(this, "cantiliver-html-handlebar-queue").visibilityTimeout(Duration.minutes(3))
+                    .build()
+            ).build()
+
         println("Creating FileUploadHandler Lambda function")
         val fileUploadLambda = createLambda(
             stack = this,
@@ -52,8 +68,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             codePath = "./FileUploadHandler/build/libs/FileUploadHandler.jar",
             handler = "org.liamjd.cantilever.lambda.FileUploadHandler",
             environment = mapOf(
-                "destination_bucket" to destinationBucket.bucketName,
-                "markdown_processing_queue" to markdownProcessingQueue.queue.queueUrl
+                ENV.source_bucket.name to sourceBucket.bucketName,
+                ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl
             )
         )
 
@@ -65,35 +81,65 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             codePath = "./MarkdownProcessor/build/libs/MarkdownProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.md.MarkdownProcessorHandler",
             environment = mapOf(
-                "source_bucket" to sourceBucket.bucketName,
-                "destination_bucket" to destinationBucket.bucketName
+                ENV.source_bucket.name to sourceBucket.bucketName,
+                ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl
             )
         )
 
+        println("Creating TemplateProcessorHandler Lambda function")
+        val templateProcessorLambda = createLambda(
+            stack = this,
+            id = "cantilever-handlebar-processor-lambda",
+            description = "Lambda function which renders a handlebars template with the given HTML fragment after markdown processing",
+            codePath = "./TemplateProcessor/build/libs/TemplateProcessorHandler.jar",
+            handler = "org.liamjd.cantilever.lambda.TemplateProcessorHandler",
+            environment = mapOf(
+                ENV.source_bucket.name to sourceBucket.bucketName,
+                ENV.destination_bucket.name to destinationBucket.bucketName,
+            )
+        )
+
+        println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
+        val cloudfrontSubstack = CloudFrontSubstack()
+        cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
+
         // I suspect this isn't the most secure way to do this. Better a new IAM role?
-        println("Granting lambda permissions")
-        sourceBucket.grantRead(fileUploadLambda)
-        sourceBucket.grantRead(markdownProcessorLambda)
-        destinationBucket.grantRead(fileUploadLambda)
-        destinationBucket.grantWrite(markdownProcessorLambda)
+        println("Granting lambda permissions to buckets")
+        fileUploadLambda.apply {
+            sourceBucket.grantRead(this)
+            sourceBucket.grantWrite(this)
+        }
+        markdownProcessorLambda.apply {
+            sourceBucket.grantRead(this)
+            sourceBucket.grantWrite(this)
+        }
+        templateProcessorLambda.apply {
+            sourceBucket.grantRead(this)
+            destinationBucket.grantWrite(this)
+        }
 
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
         fileUploadLambda.addEventSource(
             S3EventSource.Builder.create(sourceBucket)
+                .filters(listOf(NotificationKeyFilter.Builder().prefix("sources/").build()))
                 .events(mutableListOf(EventType.OBJECT_CREATED_PUT, EventType.OBJECT_CREATED_POST)).build()
         )
-
         println("Add markdown processor SQS event source to markdown processor lambda")
         markdownProcessorLambda.addEventSource(
             SqsEventSource.Builder.create(markdownProcessingQueue.queue).build()
         )
 
+        println("Add template processor SQS event source to template processor lambda")
+        templateProcessorLambda.addEventSource(
+            SqsEventSource.Builder.create(handlebarProcessingQueue.queue).build()
+        )
 
-        // grant permissions to the file upload lambda
+        println("Granting queue permissions")
         markdownProcessingQueue.queue.grantSendMessages(fileUploadLambda)
         markdownProcessingQueue.queue.grantConsumeMessages(markdownProcessorLambda)
+        handlebarProcessingQueue.queue.grantSendMessages(markdownProcessorLambda)
+        handlebarProcessingQueue.queue.grantConsumeMessages(templateProcessorLambda)
 
-//        fileUploadLambda.addEnvironment("markdown-processing-queue",markdownProcessingQueue.)
     }
 
     private fun createDestinationBucket(): Bucket = Bucket.Builder.create(this, "cantilever-website")
@@ -104,7 +150,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         .websiteIndexDocument("index.html")
         .build()
 
-    private fun createSourceBucket(): Bucket = Bucket.Builder.create(this, "cantilever-sources")
+    private fun createBucket(name: String): Bucket = Bucket.Builder.create(this, name)
         .versioned(false)
         .removalPolicy(RemovalPolicy.DESTROY)
         .autoDeleteObjects(true)
@@ -115,6 +161,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
      * - Java 11 runtime
      * - 320Mb RAM
      * - 2 minute timeout
+     * - one month's logs
      */
     private fun createLambda(
         stack: Stack,
@@ -130,6 +177,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         .timeout(Duration.minutes(2))
         .code(Code.fromAsset(codePath))
         .handler(handler)
+        .logRetention(RetentionDays.ONE_MONTH)
         .environment(environment ?: emptyMap())  // TODO should this should be a CloudFormation parameter CfnParameter
         .build()
 }
