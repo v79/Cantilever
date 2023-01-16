@@ -20,6 +20,9 @@
 - DELETE - _delete source file from the project_
 - PUT (or PATCH) - _update the markdown file with the given key_
 
+`/post/preview/{key}`
+- GET - _generate and load an HTML preview of the given markdown file_
+
 `/templates`
 - GET - _get a list of all handlebars templates_
 - PUT - _create a handlebar template_
@@ -37,3 +40,6 @@
 `/media`
 - GET - _get complete list of media files_
 - PUT - _upload a new media file_
+
+`/post/{key}/media`
+- GET - _get list of media associated with this source file_ **maybe structure just provides this**
