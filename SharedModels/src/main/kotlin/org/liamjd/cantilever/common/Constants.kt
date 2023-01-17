@@ -3,11 +3,11 @@ package org.liamjd.cantilever.common
 object s3Keys {
     const val sourcesKey = "sources/"
     const val fragmentsKey = "generated/htmlFragments/"
-    const val templatesKey = "templates"
+    const val templatesKey = "templates/"
 }
 
 object fileTypes {
-    const val HTML_HBS = ".hbs"
+    const val HTML_HBS = ".html.hbs"
 }
 
 /*
