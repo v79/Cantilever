@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "1.7.20"
+    kotlin("jvm") version "1.7.21"
     kotlin("plugin.serialization") version "1.7.20"
 }
 
@@ -9,6 +9,7 @@ version = "0.0.1"
 repositories {
     mavenCentral()
     google()
+    mavenLocal()
 }
 
 dependencies {
@@ -28,5 +29,5 @@ tasks.getByName<Test>("test") {
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "11"
 }
