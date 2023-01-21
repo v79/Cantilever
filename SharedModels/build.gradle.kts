@@ -19,6 +19,12 @@ dependencies {
     // multiplatform datetime library
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
 
+    // sdk v2
+    implementation(platform("software.amazon.awssdk:bom:2.19.8"))
+    implementation("software.amazon.awssdk:s3")
+    implementation("software.amazon.awssdk:lambda")
+    implementation("software.amazon.awssdk:sqs")
+
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.0")

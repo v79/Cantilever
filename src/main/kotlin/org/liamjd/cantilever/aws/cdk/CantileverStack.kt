@@ -108,7 +108,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             codePath = "./API/build/libs/APIRouter.jar",
             handler = "org.liamjd.cantilever.api.Router",
             environment = mapOf(
-                ENV.source_bucket.name to sourceBucket.bucketName)
+                ENV.source_bucket.name to sourceBucket.bucketName,
+                ENV.destination_bucket.name to destinationBucket.bucketName)
         )
 
         println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")

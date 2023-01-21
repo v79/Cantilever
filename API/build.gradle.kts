@@ -29,9 +29,12 @@ dependencies {
     // routing
     /**
      * This requires my own custom build of lambda-kotlin-request-router available from https://github.com/v79/lambda-kotlin-request-router
-     * This fixes the ability to use the GET("/route", controller::getRouteMethod) syntax
+     * This fixes the ability to use the get("/route", controller::getRouteMethod) syntax
     */
     implementation("com.github.moia-dev:router:1.2-SNAPSHOT")
+
+    // DI
+    implementation("io.insert-koin:koin-core:3.3.2")
 
     // sdk v2
     implementation(platform("software.amazon.awssdk:bom:2.19.8"))
@@ -48,6 +51,7 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
     testImplementation("com.amazonaws:aws-lambda-java-tests:1.1.1")
     testImplementation("io.mockk:mockk:1.13.3")
+    testImplementation("io.insert-koin:koin-test:3.3.2")
     testImplementation(kotlin("test"))
 }
 
