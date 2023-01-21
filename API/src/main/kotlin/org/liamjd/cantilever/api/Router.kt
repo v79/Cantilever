@@ -1,12 +1,13 @@
 package org.liamjd.cantilever.api
 
-import io.moia.router.Filter
-import io.moia.router.RequestHandler
-import io.moia.router.Router.Companion.router
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 import org.liamjd.cantilever.api.controllers.PostController
 import org.liamjd.cantilever.api.controllers.StructureController
+import org.liamjd.cantilever.routing.Request
+import org.liamjd.cantilever.routing.RequestHandlerWrapper
+import org.liamjd.cantilever.routing.ResponseEntity
+import org.liamjd.cantilever.routing.Router
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
@@ -18,7 +19,7 @@ val appModule = module {
 /**
  * The Router class responds to the AWS API Gateway {proxy+} "path" parameter
  */
-class Router : RequestHandler() {
+class LambdaRouter : RequestHandlerWrapper() {
 
     val sourceBucket = System.getenv("source_bucket")
     val destinationBucket = System.getenv("destination_bucket")
@@ -34,20 +35,27 @@ class Router : RequestHandler() {
     private val postController = PostController()
     private val structureController = StructureController(sourceBucket = sourceBucket)
 
-    override val router = router {
-        filter = loggingFilter()
+    override val router = Router.router {
+//        filter = loggingFilter()
 
-        get("/structure", structureController::getStructureFile)
+        get("/route") { r: Request<String> ->
+            ResponseEntity.ok(MyResponse(r.body))
+        }.expects(null)
 
-        post("/newPost", postController::newPost)
-    }
-
-    private fun loggingFilter() = Filter { next ->
-        { request ->
-            println("Handling request ${request.httpMethod} ${request.path}")
-            next(request)
+        get("/hello") { _: Request<String> ->
+            ResponseEntity.ok(body = "Hello")
         }
+//        get("/structure", structureController::getStructureFile)
+
+//        post("/newPost", postController::newPost)
     }
+
+    /* private fun loggingFilter() = Filter { next ->
+         { request ->
+             println("Handling request ${request.httpMethod} ${request.path}")
+             next(request)
+         }
+     }*/
 }
 
 data class MyResponse(val text: String)

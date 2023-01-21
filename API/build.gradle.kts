@@ -26,14 +26,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
     implementation("com.charleskorn.kaml:kaml:0.49.0")
 
-    // routing
-    /**
-     * This requires my own custom build of lambda-kotlin-request-router available from https://github.com/v79/lambda-kotlin-request-router
-     * This fixes the ability to use the get("/route", controller::getRouteMethod) syntax
-    */
-    implementation("com.github.moia-dev:router:1.2-SNAPSHOT")
-
-    // DI
+     // DI
     implementation("io.insert-koin:koin-core:3.3.2")
 
     // sdk v2
@@ -52,7 +45,6 @@ dependencies {
     testImplementation("com.amazonaws:aws-lambda-java-tests:1.1.1")
     testImplementation("io.mockk:mockk:1.13.3")
     testImplementation("io.insert-koin:koin-test:3.3.2")
-    testImplementation(kotlin("test"))
 }
 
 tasks.getByName<Test>("test") {
