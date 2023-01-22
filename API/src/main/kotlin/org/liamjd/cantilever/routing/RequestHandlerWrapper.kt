@@ -44,6 +44,7 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
                     ?: router.produceByDefault.first()
 
                 val entity: ResponseEntity<out Any> = try {
+                    println("Calling the handler function $handler")
                     // this is where we'd add authorization checks, which may throw exceptions
                     val requestBody = "TODO: deserialize the input request body"
                     val request = Request(input, requestBody, routerFunction.requestPredicate.pathPattern)
@@ -86,23 +87,52 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         responseEntity: ResponseEntity<T>,
         mimeType: MimeType
     ): APIGatewayProxyResponseEvent {
-        println("Attempting to serialize $responseEntity (class ${responseEntity.clazz})")
+        println("Attempting to serialize $responseEntity (class ${responseEntity.kType})")
 
         var contentType: String = ""
-        val kSerializer = responseEntity.clazz?.serializer()
-        println("Serializer is $kSerializer")
+
         val body: String = when (mimeType) {
             MimeType.json -> {
-                kSerializer?.let {
-                    contentType = mimeType.toString()
-                    Json.encodeToString(kSerializer,responseEntity.body as T)
-                } ?: "no-serializer"
+                responseEntity.kType?.let { ktype ->
+                    val kSerializer = serializer(ktype)
+                    println("Serializer is $kSerializer")
+                    kSerializer.let {
+                        contentType = mimeType.toString()
+                        Json.encodeToString(kSerializer, responseEntity.body as T)
+                    }
+                } ?: "could not ---- could not get serializer for $responseEntity"
+
             }
 
-            MimeType.html -> { "html"}
-            MimeType.plainText -> { "text"}
-            else -> { "error"}
+            MimeType.html -> {
+                "html"
+            }
+
+            MimeType.plainText -> {
+                "text"
+            }
+
+            else -> {
+                "error"
+            }
         }
+
+        /**could I serialize the body object to a string
+        serialize a Result.Success() object to a string
+        then stitch in the body into the result json?
+
+         * { "result":
+         *   { "statusCode": "200",
+         *     "body" : "!!!!" <-- leave blank
+         *   }
+         *  }
+         *
+         *  then string.replace("!!!!",bodyJson)
+         *
+         *  I'd have to escape bodyJson though to make it valid (I think)
+         */
+
+
         val resp = APIGatewayProxyResponseEvent().withStatusCode(200)
             .withHeaders(mapOf("Content-Type" to contentType))
             .withBody(body)

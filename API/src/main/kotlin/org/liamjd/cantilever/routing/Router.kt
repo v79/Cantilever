@@ -1,10 +1,13 @@
 package org.liamjd.cantilever.routing
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.serializer
 import org.liamjd.cantilever.routing.ResponseEntity.Companion.ok
-import kotlin.reflect.KClass
+import kotlin.reflect.KType
+import kotlin.reflect.typeOf
 
 class Router {
 
@@ -104,32 +107,34 @@ data class Request<I>(
  * @param headers the HTTP response headers, which should always include a Content-Type header
  * It is recommended that you use one of the companion functions, like [ok], to construct response entities.
  */
+@Serializable
 data class ResponseEntity<T : Any>(
     val statusCode: Int,
     val body: T? = null,
     val headers: Map<String, String> = emptyMap(),
 ) {
-    var clazz: KClass<T>? = null
+    @Transient
+    var kType: KType? = null
 
     companion object {
         /**
          * Create a default successful response with the body and headers provided
          */
         inline fun <reified T : Any> ok(body: T? = null, headers: Map<String, String> = emptyMap()): ResponseEntity<T> {
-            val tt = T::class
-            return ResponseEntity<T>(HttpCodes.OK.code, body, headers).apply { clazz = tt }
+            val tt: KType = typeOf<T>()
+            return ResponseEntity<T>(HttpCodes.OK.code, body, headers).apply { kType = tt }
         }
 
         // TODO: Other typical responses, such as 'created', 'accepted', 'no content', 'bad request', 'not found' etc
 
         inline fun <reified T : Any> notFound(body: T? = null, headers: Map<String, String> = emptyMap()): ResponseEntity<T> {
-            val tt = T::class
-            return ResponseEntity<T>(HttpCodes.NOT_FOUND.code, body, headers).apply { clazz = tt }
+            val tt: KType = typeOf<T>()
+            return ResponseEntity<T>(HttpCodes.NOT_FOUND.code, body, headers).apply { kType = tt }
         }
 
         inline fun <reified T : Any> serverError(body: T? = null, headers: Map<String, String> = emptyMap()): ResponseEntity<T> {
-            val tt = T::class
-            return ResponseEntity<T>(HttpCodes.SERVER_ERROR.code, body, headers).apply { clazz = tt }
+            val tt: KType = typeOf<T>()
+            return ResponseEntity<T>(HttpCodes.SERVER_ERROR.code, body, headers).apply { kType = tt }
         }
     }
 }
