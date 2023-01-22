@@ -37,8 +37,8 @@ dependencies {
     runtimeOnly("com.amazonaws:aws-lambda-java-log4j2:1.5.1")
 
     // testing
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
     testImplementation("com.amazonaws:aws-lambda-java-tests:1.1.1")
     testImplementation("io.mockk:mockk:1.13.3")
     testImplementation(kotlin("test"))

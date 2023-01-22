@@ -1,8 +1,9 @@
 package org.liamjd.cantilever.api
 
+import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.Serializable
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
-import org.liamjd.cantilever.api.controllers.PostController
 import org.liamjd.cantilever.api.controllers.StructureController
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.RequestHandlerWrapper
@@ -32,20 +33,26 @@ class LambdaRouter : RequestHandlerWrapper() {
     }
 
     // May need some DI here once I start needing to add services for S3 etc
-    private val postController = PostController()
+//    private val postController = PostController()
     private val structureController = StructureController(sourceBucket = sourceBucket)
 
+    @OptIn(InternalSerializationApi::class)
     override val router = Router.router {
 //        filter = loggingFilter()
 
-        get("/route") { r: Request<String> ->
-            ResponseEntity.ok(MyResponse(r.body))
+        get("/route") { req: Request<String> ->
+            ResponseEntity.ok(MyResponse(req.body))
         }.expects(null)
 
         get("/hello") { _: Request<String> ->
             ResponseEntity.ok(body = "Hello")
         }
-//        get("/structure", structureController::getStructureFile)
+
+        post("/new") { req: Request<MyRequest> ->
+            ResponseEntity.ok(MyResponse("new object created from ${req.body.message}"))
+        }
+
+        get("/structure", structureController::getStructureFile)
 
 //        post("/newPost", postController::newPost)
     }
@@ -58,5 +65,7 @@ class LambdaRouter : RequestHandlerWrapper() {
      }*/
 }
 
+@Serializable
 data class MyResponse(val text: String)
+@Serializable
 data class MyRequest(val message: String)

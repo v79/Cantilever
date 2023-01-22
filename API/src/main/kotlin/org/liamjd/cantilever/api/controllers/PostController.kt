@@ -1,5 +1,6 @@
 package org.liamjd.cantilever.api.controllers
 
+/*
 import io.moia.router.Request
 import io.moia.router.ResponseEntity
 import org.koin.core.component.KoinComponent
@@ -17,4 +18,4 @@ class PostController : KoinComponent {
         return ResponseEntity.created(body = MyResponse("Created " + request.body.message))
     }
 
-}
+}*/

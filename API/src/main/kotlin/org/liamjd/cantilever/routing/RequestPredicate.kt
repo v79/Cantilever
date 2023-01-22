@@ -11,9 +11,9 @@ data class RequestPredicate(
     val method: String,
     val pathPattern: String,
     private var consumes: Set<MimeType>,
-    private var produces: Set<MimeType>
-) {
+    private var produces: Set<MimeType>,
 
+) {
     val accepts
         get() = consumes
     val supplies
@@ -45,6 +45,11 @@ data class RequestPredicate(
     }
 
     private fun methodMatches(request: APIGatewayProxyRequestEvent) = method.equals(request.httpMethod, true)
+
+    fun matchedAcceptType(acceptedMediaTypes: List<MimeType>): MimeType? =
+        produces
+            .firstOrNull { acceptedMediaTypes.any { acceptedType -> it.isCompatibleWith(acceptedType) } }
+
     fun expects(mimeTypes: Set<MimeType>?): RequestPredicate {
         mimeTypes?.let {
             consumes = mimeTypes
@@ -70,23 +75,3 @@ data class RequestMatchResult(
         get() = matchPath && matchMethod && matchAcceptType && matchContentType
 }
 
-/**
- * Basic representation of a mime type like "text/html" or "application/json"
- */
-data class MimeType(val type: String, val subType: String) {
-    fun matches(acceptHeader: String?): Boolean {
-        return acceptHeader?.let { parse(it).type == type && parse(acceptHeader).subType == subType } ?: false
-    }
-
-    override fun toString() = "$type/$subType"
-
-    companion object {
-
-        val json = MimeType("application", "json")
-        val html = MimeType("text", "html")
-        fun parse(s: String): MimeType {
-            val parts = s.split('/')
-            return MimeType(parts[0].lowercase(), parts[1].lowercase())
-        }
-    }
-}

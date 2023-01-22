@@ -4,8 +4,14 @@ import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
+import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.serializer
 
 abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+
+    val serializersModule = SerializersModule { }
 
     abstract val router: Router
 
@@ -16,8 +22,15 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
             .let { handleRequest(input) }
 
 
+    @Suppress("UNCHECKED_CAST")
     internal fun handleRequest(input: APIGatewayProxyRequestEvent): APIGatewayProxyResponseEvent {
-        println("RequestHandlerWrapper: handleRequest(): looking for route which matches request  ${input.httpMethod} ${input.path} <${input.getHeader("Content-Type")}->${input.acceptedMediaTypes()}>")
+        println(
+            "RequestHandlerWrapper: handleRequest(): looking for route which matches request  ${input.httpMethod} ${input.path} <${
+                input.getHeader(
+                    "Content-Type"
+                )
+            }->${input.acceptedMediaTypes()}>"
+        )
         // find matching route
         val routes = router.routes as List<RouterFunction<Any, Any>>
         println("Valid routes:")
@@ -25,18 +38,22 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         println()
         val matchResults: List<RequestMatchResult> = routes.map { routerFunction: RouterFunction<Any, Any> ->
             val matchResult = routerFunction.requestPredicate.match(input)
-            println("RequestHandlerWrapper: HandleRequest(): ${routerFunction.requestPredicate} matchResult=$matchResult")
             if (matchResult.matches) {
                 val handler: HandlerFunction<Any, Any> = routerFunction.handler
-                val response: ResponseEntity<out Any?> = try {
-                    val requestBody = "faked"
+                val matchedAcceptType = routerFunction.requestPredicate.matchedAcceptType(input.acceptedMediaTypes())
+                    ?: router.produceByDefault.first()
+
+                val entity: ResponseEntity<out Any> = try {
+                    // this is where we'd add authorization checks, which may throw exceptions
+                    val requestBody = "TODO: deserialize the input request body"
                     val request = Request(input, requestBody, routerFunction.requestPredicate.pathPattern)
                     (handler as HandlerFunction<*, *>)(request)
                 } catch (e: Exception) {
-                    println("RequestHandlerWrapper: handleRequest() Error! ${e.message}")
-                    ResponseEntity(500)
+                    ResponseEntity.serverError(e.message)
+                    // TODO return createErrorResponse(errorEntity)
                 }
-                return createResponse(response)
+
+                return createResponse(entity, matchedAcceptType)
             }
             matchResult
 
@@ -44,6 +61,9 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         return createNoMatchingRouteResponse(input.httpMethod, input.path, input.acceptedMediaTypes())
     }
 
+    /**
+     * Return a 404 message with some useful details
+     */
     private fun createNoMatchingRouteResponse(
         httpMethod: String?,
         path: String?,
@@ -55,12 +75,41 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
             .withBody("No match found for route '$httpMethod' '$path' which only accepts $acceptedMediaTypes")
     }
 
+    /**
+     * Create a response to return to the client
+     * @param responseEntity the object being returned
+     * @param mimeType the mime type of the response, typically application/json
+     * @return an AWS [APIGatewayProxyResponseEvent] with the body of the response entity serialized in some way
+     */
+    @OptIn(InternalSerializationApi::class)
+    private fun <T : Any> createResponse(
+        responseEntity: ResponseEntity<T>,
+        mimeType: MimeType
+    ): APIGatewayProxyResponseEvent {
 
-    private fun <T> createResponse(responseEntity: ResponseEntity<T>): APIGatewayProxyResponseEvent =
-        APIGatewayProxyResponseEvent().withStatusCode(200)
-            .withHeaders(mapOf("Content-Type" to "application/json"))
-            .withBody("createResponse() function responding with T=$responseEntity")
+        var contentType: String = ""
+        val kSerializer = responseEntity.clazz?.serializer()
+        println("Serializer is $kSerializer")
+        val body: String = when (mimeType) {
+            MimeType.json -> {
+                kSerializer?.let {
+                    contentType = mimeType.toString()
+                    Json.encodeToString(kSerializer,responseEntity.body as T)
+                } ?: "no-serializer"
+            }
+
+            MimeType.html -> { "html"}
+            MimeType.plainText -> { "text"}
+            else -> { "error"}
+        }
+        val resp = APIGatewayProxyResponseEvent().withStatusCode(200)
+            .withHeaders(mapOf("Content-Type" to contentType))
+            .withBody(body)
+
+        return resp
+    }
 
     private fun <T> createErrorResponse(): APIGatewayProxyResponseEvent =
         APIGatewayProxyResponseEvent().withStatusCode(500)
 }
+

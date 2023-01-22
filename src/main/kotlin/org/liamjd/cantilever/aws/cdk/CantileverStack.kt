@@ -106,7 +106,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             id = "cantilever-api-router-lambda",
             description = "Lambda function which handles API routing, for API Gateway",
             codePath = "./API/build/libs/APIRouter.jar",
-            handler = "org.liamjd.cantilever.api.Router",
+            handler = "org.liamjd.cantilever.api.LambdaRouter",
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.destination_bucket.name to destinationBucket.bucketName)
