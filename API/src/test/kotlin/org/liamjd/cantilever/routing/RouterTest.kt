@@ -1,7 +1,10 @@
 package org.liamjd.cantilever.routing
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -90,7 +93,37 @@ class RouterTest {
         response.body.let {
             println(it)
             assertTrue(it.startsWith("{"))
+            assertTrue(it.endsWith("}"))
+        }
+    }
 
+    @Test
+    fun `can serialize a error sealed class with a message`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/sealedNo").withHttpMethod("GET").withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertNotNull(response.body)
+        response.body.let {
+            println(it)
+            assertTrue(it.startsWith("{"))
+            assertTrue(it.endsWith("}"))
+        }
+    }
+
+    @Test
+    fun `can serialize a sealed class containing a generic`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/sealedYes").withHttpMethod("GET").withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertNotNull(response.body)
+        response.body.let {
+            println(it)
+            assertTrue(it.startsWith("{"))
+            assertTrue(it.endsWith("}"))
         }
     }
 }
@@ -112,9 +145,13 @@ class TestRouter : RequestHandlerWrapper() {
                 emptySet()
             )
 
-        get("/getSimple") { _: Request<Unit> -> ResponseEntity.ok(body = SimpleClass("hello from simpleClass"))}
+        get("/getSimple") { _: Request<Unit> -> ResponseEntity.ok(body = SimpleClass("hello from simpleClass")) }
 
         get("/controller", testController::doSomething)
+
+        get("/sealedNo") { _: Request<Unit> -> ResponseEntity.ok(ServiceResult.Error(exceptionMessage = "No here")) }
+
+        get("/sealedYes") { request: Request<Unit> -> ResponseEntity.ok(ServiceResult.Success(data = SimpleClass("Ok from SimpleClass"))) }
     }
 }
 
@@ -122,9 +159,70 @@ class TestController {
 
     fun doSomething(request: Request<Unit>): ResponseEntity<SimpleClass> {
         println("TestController doSomething()")
-       return ResponseEntity.ok(body = SimpleClass(message = "TestController has done stuff"))
+        return ResponseEntity.ok(body = SimpleClass(message = "TestController has done stuff"))
     }
 }
 
 @Serializable
 data class SimpleClass(val message: String)
+
+@Serializable(with = ServiceResultSerializer::class)
+sealed class ServiceResult<out T : Any> {
+    @Serializable
+    data class Success<out T : Any>(val data: T) : ServiceResult<T>()
+    @Serializable
+    data class Error(val exceptionMessage: String?) : ServiceResult<Nothing>()
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+class ServiceResultSerializer<T : Any>(
+    tSerializer: KSerializer<T>
+) : KSerializer<ServiceResult<T>> {
+    @Serializable
+    @SerialName("ServiceResult")
+
+    data class ServiceResultSurrogate<T : Any>  constructor(
+        val type: Type,
+        // The annotation is not necessary, but it avoids serializing "data = null"
+        // for "Error" results.
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        val data: T? = null,
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        val exceptionMessage: String? = null
+    ) {
+        enum class Type { SUCCESS, ERROR }
+    }
+
+    private val surrogateSerializer = ServiceResultSurrogate.serializer(tSerializer)
+
+    override val descriptor: SerialDescriptor = surrogateSerializer.descriptor
+
+    override fun deserialize(decoder: Decoder): ServiceResult<T> {
+        val surrogate = surrogateSerializer.deserialize(decoder)
+        return when (surrogate.type) {
+            ServiceResultSurrogate.Type.SUCCESS ->
+                if (surrogate.data != null)
+                    ServiceResult.Success(surrogate.data)
+                else
+                    throw SerializationException("Missing data for successful result")
+
+            ServiceResultSurrogate.Type.ERROR ->
+                ServiceResult.Error(surrogate.exceptionMessage)
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: ServiceResult<T>) {
+        val surrogate = when (value) {
+            is ServiceResult.Error -> ServiceResultSurrogate(
+                ServiceResultSurrogate.Type.ERROR,
+                exceptionMessage = value.exceptionMessage
+            )
+
+            is ServiceResult.Success -> ServiceResultSurrogate(
+                ServiceResultSurrogate.Type.SUCCESS,
+                data = value.data
+            )
+        }
+        surrogateSerializer.serialize(encoder, surrogate)
+    }
+}

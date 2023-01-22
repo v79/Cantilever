@@ -86,6 +86,7 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         responseEntity: ResponseEntity<T>,
         mimeType: MimeType
     ): APIGatewayProxyResponseEvent {
+        println("Attempting to serialize $responseEntity (class ${responseEntity.clazz})")
 
         var contentType: String = ""
         val kSerializer = responseEntity.clazz?.serializer()

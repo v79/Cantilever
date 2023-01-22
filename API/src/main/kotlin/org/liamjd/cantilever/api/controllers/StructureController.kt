@@ -47,5 +47,4 @@ sealed class Result {
     data class Error(val message: String) : Result()
     @Serializable
     data class OK(val message: String) : Result()
-    object Empty : Result()
 }
