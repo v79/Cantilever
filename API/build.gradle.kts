@@ -2,7 +2,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.7.21"
+    kotlin("jvm") version "1.8.0"
     kotlin("plugin.serialization") version "1.6.21"
     id("com.github.johnrengelman.shadow") version "7.1.2"
 }
@@ -23,7 +23,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
 
     // serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0-RC")
     implementation("com.charleskorn.kaml:kaml:0.49.0")
 
      // DI
