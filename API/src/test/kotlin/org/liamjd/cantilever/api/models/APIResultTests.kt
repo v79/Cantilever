@@ -53,7 +53,11 @@ class APIResultTests {
 
     @Test
     fun `can serialize really big generic Result Success object`() {
-        val reallyBig = ReallyBigObject(longValue = 751L, isTrue = false, bigObject = BigObject(count = 23, text = "This isn't so big"))
+        val reallyBig = ReallyBigObject(
+            longValue = 751L,
+            isTrue = false,
+            bigObject = BigObject(count = 23, text = "This isn't so big")
+        )
         val success = APIResult.Success<ReallyBigObject>(value = reallyBig)
 
         val result = Json.encodeToString(success)
@@ -83,7 +87,7 @@ class APIResultTests {
     }
 
     @Test
-    fun `can serialise a response entity wrapping an APIResult`() {
+    fun `can serialize a response entity wrapping an APIResult`() {
         val ok = APIResult.OK(message = "OK message")
         val entity = ResponseEntity.ok(body = ok)
 
@@ -98,7 +102,7 @@ class APIResultTests {
     }
 
     @Test
-    fun `can serialise a response entity wrapping an bigger APIResult`() {
+    fun `can serialize a response entity wrapping an bigger APIResult`() {
         val bigObject = BigObject(count = 23, text = "This isn't so big")
         val success = APIResult.Success<BigObject>(value = bigObject)
         val entity = ResponseEntity.ok(body = success)
@@ -113,10 +117,29 @@ class APIResultTests {
         }
     }
 
- }
+    @Test
+    fun `can serialize an API JsonSuccess result containing a literal json string`() {
+        val expected = """
+            {"raw":{"some":"json"},"count":1}
+        """.trimIndent()
+
+        val jsonObject = WillBeJson(raw = RawJsonString("""{"some":"json"}"""), count = 1)
+        val jsonObjectString = Json.encodeToString(jsonObject)
+        val jsonSuccess = APIResult.JsonSuccess(jsonString = RawJsonString(jsonObjectString))
+
+        val result = Json.encodeToString(jsonSuccess)
+
+        println(result)
+        assertEquals(expected, result)
+    }
+
+}
 
 @Serializable
 data class BigObject(val count: Int, val text: String)
 
 @Serializable
 data class ReallyBigObject(val longValue: Long, val isTrue: Boolean, val bigObject: BigObject)
+
+@Serializable
+data class WillBeJson(@Serializable(with = RawJsonStringSerializer::class) val raw: RawJsonString, val count: Int)

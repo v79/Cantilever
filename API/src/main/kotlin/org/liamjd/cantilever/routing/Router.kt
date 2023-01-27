@@ -105,6 +105,7 @@ data class Request<I>(
  * @param statusCode the HTTP Status Code
  * @param body the object returned from the server, which could be text, an object to be serialized later, or null
  * @param headers the HTTP response headers, which should always include a Content-Type header
+ * @property kType internal property to keep track of the type of the body, for serialization
  * It is recommended that you use one of the companion functions, like [ok], to construct response entities.
  */
 @Serializable
@@ -139,6 +140,9 @@ data class ResponseEntity<T : Any>(
     }
 }
 
+/**
+ * Collection of useful HTTP codes I'm likely to need
+ */
 enum class HttpCodes(val code: Int, val message: String) {
     OK(200,"OK"),
     CREATED(201,"Created"),
@@ -152,5 +156,4 @@ enum class HttpCodes(val code: Int, val message: String) {
     TEAPOT(418,"I'm a teapot"),
     SERVER_ERROR(500,"Internal Server Error"),
     NOT_IMPLEMENTED(501,"Not Implemented"),
-
 }

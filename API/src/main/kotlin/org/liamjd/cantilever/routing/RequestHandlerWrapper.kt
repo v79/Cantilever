@@ -4,14 +4,10 @@ import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
-import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.serializer
 
 abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
-
-    val serializersModule = SerializersModule { }
 
     abstract val router: Router
 
@@ -44,7 +40,7 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
                     ?: router.produceByDefault.first()
 
                 val entity: ResponseEntity<out Any> = try {
-                    println("Calling the handler function $handler")
+                    println("RequestHandlerWrapper: handleRequest(): Calling the handler $handler")
                     // this is where we'd add authorization checks, which may throw exceptions
                     val requestBody = "TODO: deserialize the input request body"
                     val request = Request(input, requestBody, routerFunction.requestPredicate.pathPattern)
@@ -53,6 +49,9 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
                     ResponseEntity.serverError(e.message)
                     // TODO return createErrorResponse(errorEntity)
                 }
+
+                println("RequestHandlerWrapper: handleRequest() entity created:")
+                println("\t${entity.statusCode}, ${entity.kType}")
 
                 return createResponse(entity, matchedAcceptType)
             }
@@ -82,62 +81,42 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
      * @param mimeType the mime type of the response, typically application/json
      * @return an AWS [APIGatewayProxyResponseEvent] with the body of the response entity serialized in some way
      */
-    @OptIn(InternalSerializationApi::class)
     private fun <T : Any> createResponse(
         responseEntity: ResponseEntity<T>,
         mimeType: MimeType
     ): APIGatewayProxyResponseEvent {
-        println("Attempting to serialize $responseEntity (class ${responseEntity.kType})")
+        println("\tcreateResponse() Attempting to serialize responseEntity class ${responseEntity.kType}\n")
 
-        var contentType: String = ""
-
+        var contentType = ""
+        val jsonFormat = Json { prettyPrint = false }
         val body: String = when (mimeType) {
             MimeType.json -> {
                 responseEntity.kType?.let { ktype ->
                     val kSerializer = serializer(ktype)
-                    println("Serializer is $kSerializer")
+                    println("createResponse() serializing body ,from ApiResult.${responseEntity.javaClass.simpleName}, ktype is $ktype, Serializer is $kSerializer\n")
+                    contentType = mimeType.toString()
                     kSerializer.let {
-                        contentType = mimeType.toString()
-                        Json.encodeToString(kSerializer, responseEntity.body as T)
+                        jsonFormat.encodeToString(kSerializer, responseEntity.body as T)
                     }
                 } ?: "could not ---- could not get serializer for $responseEntity"
 
             }
-
             MimeType.html -> {
                 "html"
             }
-
             MimeType.plainText -> {
-                "text"
+                responseEntity.body.toString()
             }
-
             else -> {
                 "error"
             }
         }
 
-        /**could I serialize the body object to a string
-        serialize a Result.Success() object to a string
-        then stitch in the body into the result json?
-
-         * { "result":
-         *   { "statusCode": "200",
-         *     "body" : "!!!!" <-- leave blank
-         *   }
-         *  }
-         *
-         *  then string.replace("!!!!",bodyJson)
-         *
-         *  I'd have to escape bodyJson though to make it valid (I think)
-         */
-
-
-        val resp = APIGatewayProxyResponseEvent().withStatusCode(200)
+        println("\tcreateResponse() final body is:")
+        println(body)
+        return APIGatewayProxyResponseEvent().withStatusCode(200)
             .withHeaders(mapOf("Content-Type" to contentType))
             .withBody(body)
-
-        return resp
     }
 
     private fun <T> createErrorResponse(): APIGatewayProxyResponseEvent =

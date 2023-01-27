@@ -7,6 +7,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.liamjd.cantilever.api.models.RawJsonString
 
 class RouterTest {
 
@@ -126,6 +127,18 @@ class RouterTest {
             assertTrue(it.endsWith("}"))
         }
     }
+
+    @Test
+    fun `router correctly serializes an API Response containing a raw json part`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/getJsonString").withHttpMethod("GET").withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertNotNull(response.body)
+        assertTrue(response.body.contains(""""colour""""))
+        assertTrue(response.body.contains(""""red""""))
+    }
 }
 
 class TestRouter : RequestHandlerWrapper() {
@@ -152,6 +165,8 @@ class TestRouter : RequestHandlerWrapper() {
         get("/sealedNo") { _: Request<Unit> -> ResponseEntity.ok(ServiceResult.Error(exceptionMessage = "No here")) }
 
         get("/sealedYes") { request: Request<Unit> -> ResponseEntity.ok(ServiceResult.Success(data = SimpleClass("Ok from SimpleClass"))) }
+
+        get("/getJsonString", testController::returnJsonString)
     }
 }
 
@@ -161,10 +176,18 @@ class TestController {
         println("TestController doSomething()")
         return ResponseEntity.ok(body = SimpleClass(message = "TestController has done stuff"))
     }
+
+    fun returnJsonString(request: Request<Unit>): ResponseEntity<RawJsonString> {
+        println("TestController returnJsonString")
+        return ResponseEntity.ok(body = RawJsonString("""{ "colour": "red", "age": 23}"""))
+    }
 }
 
 @Serializable
 data class SimpleClass(val message: String)
+
+@Serializable
+data class ClassContainingRawJson(val name: String, val raw: RawJsonString)
 
 @Serializable(with = ServiceResultSerializer::class)
 sealed class ServiceResult<out T : Any> {
@@ -173,6 +196,7 @@ sealed class ServiceResult<out T : Any> {
     @Serializable
     data class Error(val exceptionMessage: String?) : ServiceResult<Nothing>()
 }
+
 
 @OptIn(ExperimentalSerializationApi::class)
 class ServiceResultSerializer<T : Any>(
