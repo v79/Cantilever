@@ -1,6 +1,5 @@
 package org.liamjd.cantilever.api
 
-import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
@@ -36,7 +35,6 @@ class LambdaRouter : RequestHandlerWrapper() {
 //    private val postController = PostController()
     private val structureController = StructureController(sourceBucket = sourceBucket)
 
-    @OptIn(InternalSerializationApi::class)
     override val router = Router.router {
 //        filter = loggingFilter()
 

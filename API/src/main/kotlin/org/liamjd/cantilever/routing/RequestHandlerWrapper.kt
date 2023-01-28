@@ -29,9 +29,6 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         )
         // find matching route
         val routes = router.routes as List<RouterFunction<Any, Any>>
-        println("Valid routes:")
-        router.listRoutes()
-        println()
         val matchResults: List<RequestMatchResult> = routes.map { routerFunction: RouterFunction<Any, Any> ->
             val matchResult = routerFunction.requestPredicate.match(input)
             if (matchResult.matches) {
@@ -40,7 +37,6 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
                     ?: router.produceByDefault.first()
 
                 val entity: ResponseEntity<out Any> = try {
-                    println("RequestHandlerWrapper: handleRequest(): Calling the handler $handler")
                     // this is where we'd add authorization checks, which may throw exceptions
                     val requestBody = "TODO: deserialize the input request body"
                     val request = Request(input, requestBody, routerFunction.requestPredicate.pathPattern)
@@ -49,9 +45,6 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
                     ResponseEntity.serverError(e.message)
                     // TODO return createErrorResponse(errorEntity)
                 }
-
-                println("RequestHandlerWrapper: handleRequest() entity created:")
-                println("\t${entity.statusCode}, ${entity.kType}")
 
                 return createResponse(entity, matchedAcceptType)
             }
@@ -85,7 +78,6 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         responseEntity: ResponseEntity<T>,
         mimeType: MimeType
     ): APIGatewayProxyResponseEvent {
-        println("\tcreateResponse() Attempting to serialize responseEntity class ${responseEntity.kType}\n")
 
         var contentType = ""
         val jsonFormat = Json { prettyPrint = false }
@@ -93,7 +85,6 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
             MimeType.json -> {
                 responseEntity.kType?.let { ktype ->
                     val kSerializer = serializer(ktype)
-                    println("createResponse() serializing body ,from ApiResult.${responseEntity.javaClass.simpleName}, ktype is $ktype, Serializer is $kSerializer\n")
                     contentType = mimeType.toString()
                     kSerializer.let {
                         jsonFormat.encodeToString(kSerializer, responseEntity.body as T)
@@ -101,19 +92,19 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
                 } ?: "could not ---- could not get serializer for $responseEntity"
 
             }
+
             MimeType.html -> {
                 "html"
             }
+
             MimeType.plainText -> {
                 responseEntity.body.toString()
             }
+
             else -> {
                 "error"
             }
         }
-
-        println("\tcreateResponse() final body is:")
-        println(body)
         return APIGatewayProxyResponseEvent().withStatusCode(200)
             .withHeaders(mapOf("Content-Type" to contentType))
             .withBody(body)

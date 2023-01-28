@@ -147,25 +147,18 @@ class TestRouter : RequestHandlerWrapper() {
     override val router: Router = Router.router {
         // supplies JSON by default. Expects nothing.
         get("/") { _: Request<Unit> -> ResponseEntity(statusCode = 200, body = null) }
-
         get("/returnHtml") { _: Request<Unit> -> ResponseEntity.ok("<html></html>") }.supplies(setOf(MimeType.html))
             .expects(
                 emptySet()
             )
-
         post("/postImage") { _: Request<Unit> -> ResponseEntity.ok("image bytes here") }.expects(setOf(MimeType.parse("img/jpeg")))
             .supplies(
                 emptySet()
             )
-
         get("/getSimple") { _: Request<Unit> -> ResponseEntity.ok(body = SimpleClass("hello from simpleClass")) }
-
         get("/controller", testController::doSomething)
-
         get("/sealedNo") { _: Request<Unit> -> ResponseEntity.ok(ServiceResult.Error(exceptionMessage = "No here")) }
-
-        get("/sealedYes") { request: Request<Unit> -> ResponseEntity.ok(ServiceResult.Success(data = SimpleClass("Ok from SimpleClass"))) }
-
+        get("/sealedYes") { _: Request<Unit> -> ResponseEntity.ok(ServiceResult.Success(data = SimpleClass("Ok from SimpleClass"))) }
         get("/getJsonString", testController::returnJsonString)
     }
 }
