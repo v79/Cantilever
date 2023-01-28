@@ -65,7 +65,7 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         return APIGatewayProxyResponseEvent()
             .withStatusCode(404)
             .withHeaders(mapOf("Content-Type" to "text/plain"))
-            .withBody("No match found for route '$httpMethod' '$path' which only accepts $acceptedMediaTypes")
+            .withBody("No match found for route '$httpMethod' '$path';  accepts $acceptedMediaTypes")
     }
 
     /**
@@ -105,8 +105,10 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
                 "error"
             }
         }
+        // with CORS enabled, I have to include Access-Control-Allow-Origin header to *
+        // according to https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-cors-console.html
         return APIGatewayProxyResponseEvent().withStatusCode(200)
-            .withHeaders(mapOf("Content-Type" to contentType))
+            .withHeaders(mapOf("Content-Type" to contentType, "Access-Control-Allow-Origin" to "*"))
             .withBody(body)
     }
 

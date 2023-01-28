@@ -1,7 +1,11 @@
 package org.liamjd.cantilever.aws.cdk
 
 import software.amazon.awscdk.*
+import software.amazon.awscdk.services.apigateway.CorsOptions
+import software.amazon.awscdk.services.apigateway.DomainNameOptions
+import software.amazon.awscdk.services.apigateway.EndpointType
 import software.amazon.awscdk.services.apigateway.LambdaRestApi
+import software.amazon.awscdk.services.certificatemanager.Certificate
 import software.amazon.awscdk.services.events.targets.SqsQueue
 import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.Function
@@ -157,9 +161,12 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         handlebarProcessingQueue.queue.grantConsumeMessages(templateProcessorLambda)
 
         println("Creating API Gateway integrations")
+        val certificate  = Certificate.fromCertificateArn(this, "cantilever-api-edge-certificate","arn:aws:acm:us-east-1:086949310404:certificate/9b8f27c6-87be-4c14-a368-e6ad3ac4fb68")
         val gateway = LambdaRestApi.Builder.create(this, "cantilever-rest-api")
             .restApiName("Cantilever REST API")
             .description("Gateway function to Cantilever services, handling routing")
+            .domainName(DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName("api.cantilevers.org").certificate(certificate).build())
+            .defaultCorsPreflightOptions(CorsOptions.builder().allowHeaders(listOf("'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'")).allowMethods(listOf("GET","OPTIONS")).allowOrigins(listOf("'*'")).build())
             .handler(apiRoutingLambda)
             .proxy(true)
             .build()

@@ -1,0 +1,4 @@
+### get structure
+GET https://h2ezadb0cl.execute-api.eu-west-2.amazonaws.com/prod/structure
+Content-Type: "application/json"
+Accept: "application/json"
