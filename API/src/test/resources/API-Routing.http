@@ -1,0 +1,10 @@
+### Initial tests
+GET  https://h2ezadb0cl.execute-api.eu-west-2.amazonaws.com/
+Accept: application/json
+Content-Type: text/plain
+Host: "h2ezadb0cl.execute-api.eu-west-2.amazonaws.com"
+
+### GET /structure
+GET
+Accept: application/json
+Host: "h2ezadb0cl.execute-api.eu-west-2.amazonaws.com"

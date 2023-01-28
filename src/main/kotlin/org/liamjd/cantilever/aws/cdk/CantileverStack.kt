@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.aws.cdk
 
 import software.amazon.awscdk.*
+import software.amazon.awscdk.services.apigateway.LambdaRestApi
 import software.amazon.awscdk.services.events.targets.SqsQueue
 import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.Function
@@ -56,7 +57,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         println("Creating handlebar templating processing queue")
         val handlebarProcessingQueue =
             SqsQueue.Builder.create(
-                Queue.Builder.create(this, "cantiliver-html-handlebar-queue").visibilityTimeout(Duration.minutes(3))
+                Queue.Builder.create(this, "cantilever-html-handlebar-queue").visibilityTimeout(Duration.minutes(3))
                     .build()
             ).build()
 
@@ -99,6 +100,18 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             )
         )
 
+        println("Creating API routing Lambda function")
+        val apiRoutingLambda = createLambda(
+            stack = this,
+            id = "cantilever-api-router-lambda",
+            description = "Lambda function which handles API routing, for API Gateway",
+            codePath = "./API/build/libs/APIRouter.jar",
+            handler = "org.liamjd.cantilever.api.LambdaRouter",
+            environment = mapOf(
+                ENV.source_bucket.name to sourceBucket.bucketName,
+                ENV.destination_bucket.name to destinationBucket.bucketName)
+        )
+
         println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
         val cloudfrontSubstack = CloudFrontSubstack()
         cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
@@ -116,6 +129,9 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         templateProcessorLambda.apply {
             sourceBucket.grantRead(this)
             destinationBucket.grantWrite(this)
+        }
+        apiRoutingLambda.apply {
+            sourceBucket.grantRead(this)
         }
 
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
@@ -139,6 +155,15 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         markdownProcessingQueue.queue.grantConsumeMessages(markdownProcessorLambda)
         handlebarProcessingQueue.queue.grantSendMessages(markdownProcessorLambda)
         handlebarProcessingQueue.queue.grantConsumeMessages(templateProcessorLambda)
+
+        println("Creating API Gateway integrations")
+        val gateway = LambdaRestApi.Builder.create(this, "cantilever-rest-api")
+            .restApiName("Cantilever REST API")
+            .description("Gateway function to Cantilever services, handling routing")
+            .handler(apiRoutingLambda)
+            .proxy(true)
+            .build()
+
 
     }
 

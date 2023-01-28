@@ -1,13 +1,13 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.7.20"
+    kotlin("jvm") version "1.8.0"
     application
     `maven-publish`
 }
 
 group = "org.liamjd"
-version = "0.0.2"
+version = "0.0.3"
 
 repositories {
     mavenCentral()
@@ -18,11 +18,10 @@ repositories {
 dependencies {
     // AWS CDK
     implementation("software.amazon.awscdk:aws-cdk-lib:2.58.1")
-    implementation("software.constructs:constructs:10.1.207")
+    implementation("software.constructs:constructs:10.1.222")
 
     // multiplatform datetime library
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
-
 
     testImplementation(kotlin("test"))
 }
@@ -32,7 +31,7 @@ tasks.test {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "11"
 }
 
 application {
@@ -43,4 +42,5 @@ tasks.withType<JavaExec> {
     dependsOn(":FileUploadHandler:shadowJar")
     dependsOn(":MarkdownProcessor:shadowJar")
     dependsOn(":TemplateProcessor:shadowJar")
+    dependsOn(":API:shadowJar")
 }

@@ -7,12 +7,14 @@ plugins {
     id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 
-group = "org.liamjd.cantilever.lambda"
-version = "0.1"
+group = "org.liamjd.cantilever"
+version = "0.0.2"
 
 repositories {
     mavenCentral()
     google()
+    mavenLocal()
+    maven(url ="https://jitpack.io" )
 }
 
 dependencies {
@@ -21,8 +23,11 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
 
     // serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0-RC")
     implementation("com.charleskorn.kaml:kaml:0.49.0")
+
+     // DI
+    implementation("io.insert-koin:koin-core:3.3.2")
 
     // sdk v2
     implementation(platform("software.amazon.awssdk:bom:2.19.8"))
@@ -34,21 +39,18 @@ dependencies {
     implementation("com.amazonaws:aws-lambda-java-core:1.2.2")
     implementation("com.amazonaws:aws-lambda-java-events:3.11.0")
 
-    runtimeOnly("com.amazonaws:aws-lambda-java-log4j2:1.5.1")
-
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
     testImplementation("com.amazonaws:aws-lambda-java-tests:1.1.1")
     testImplementation("io.mockk:mockk:1.13.3")
-    testImplementation(kotlin("test"))
+    testImplementation("io.insert-koin:koin-test:3.3.2")
 }
 
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
 }
 
-// Crazy experiment with context receivers!
 tasks.withType<KotlinCompile> {
     kotlinOptions {
         freeCompilerArgs += "-Xcontext-receivers"
@@ -58,5 +60,5 @@ tasks.withType<KotlinCompile> {
 tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
-    archiveBaseName.set("FileUploadHandler")
+    archiveBaseName.set("APIRouter")
 }

@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "1.7.20"
+    kotlin("jvm") version "1.8.0"
     kotlin("plugin.serialization") version "1.7.20"
 }
 
@@ -9,6 +9,7 @@ version = "0.0.1"
 repositories {
     mavenCentral()
     google()
+    mavenLocal()
 }
 
 dependencies {
@@ -17,6 +18,12 @@ dependencies {
 
     // multiplatform datetime library
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+
+    // sdk v2
+    implementation(platform("software.amazon.awssdk:bom:2.19.8"))
+    implementation("software.amazon.awssdk:s3")
+    implementation("software.amazon.awssdk:lambda")
+    implementation("software.amazon.awssdk:sqs")
 
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
@@ -28,5 +35,5 @@ tasks.getByName<Test>("test") {
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "11"
 }

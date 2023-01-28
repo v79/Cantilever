@@ -4,6 +4,10 @@
       "templates/post.html.hbs": {
         "key": "templates/post.html.hbs",
         "lastUpdated": "2023-01-12T22:50:59"
+      },
+      "templates/news.html.hbs": {
+        "key": "templates/news.html.hbs",
+        "lastUpdated": "2023-01-14T08:27:17"
       }
     }
   },
@@ -17,7 +21,7 @@
           "key": "templates/post.html.hbs",
           "lastUpdated": "2023-01-12T22:50:59"
         },
-        "lastUpdated": "2023-01-14T07:58:38.270311"
+        "lastUpdated": "2023-01-14T10:34:09.936271"
       },
       "sources/20231001.md": {
         "title": "A File Upload Locking Issue",
@@ -67,7 +71,67 @@
           "key": "templates/post.html.hbs",
           "lastUpdated": "2023-01-12T22:50:59"
         },
-        "lastUpdated": "2023-01-14T08:12:54.979192"
+        "lastUpdated": "2023-01-17T20:02:01.712363"
+      },
+      "sources/newsItem.md": {
+        "title": "A News Item uses a different template",
+        "srcKey": "sources/newsItem.md",
+        "url": "news-14-01-2023",
+        "template": {
+          "key": "templates/news.html.hbs",
+          "lastUpdated": "2023-01-14T08:27:17"
+        },
+        "lastUpdated": "2023-01-14T08:50:26.007656"
+      },
+      "sources/20230108.md": {
+        "title": "Building Navigation, part 1",
+        "srcKey": "sources/20230108.md",
+        "url": "navigation-part-1",
+        "template": {
+          "key": "templates/post.html.hbs",
+          "lastUpdated": "2023-01-12T22:50:59"
+        },
+        "lastUpdated": "2023-01-14T08:43:26.605932"
+      },
+      "sources/20230103.md": {
+        "title": "Getting started",
+        "srcKey": "sources/20230103.md",
+        "url": "getting-started",
+        "template": {
+          "key": "templates/post.html.hbs",
+          "lastUpdated": "2023-01-12T22:50:59"
+        },
+        "lastUpdated": "2023-01-14T08:50:40.493926"
+      },
+      "sources/20230117.md": {
+        "title": "Starting the API",
+        "srcKey": "sources/20230117.md",
+        "url": "starting-api",
+        "template": {
+          "key": "templates/post.html.hbs",
+          "lastUpdated": "2023-01-12T22:50:59"
+        },
+        "lastUpdated": "2023-01-18T20:14:22.186047"
+      },
+      "sources/20230118.md": {
+        "title": "Forking a library",
+        "srcKey": "sources/20230118.md",
+        "url": "forking-library",
+        "template": {
+          "key": "templates/post.html.hbs",
+          "lastUpdated": "2023-01-12T22:50:59"
+        },
+        "lastUpdated": "2023-01-19T21:31:47.610931"
+      },
+      "sources/20230121.md": {
+        "title": "Serializing Failures",
+        "srcKey": "sources/20230121.md",
+        "url": "serializing-failures",
+        "template": {
+          "key": "templates/post.html.hbs",
+          "lastUpdated": "2023-01-12T22:50:59"
+        },
+        "lastUpdated": "2023-01-21T10:18:54.263767"
       }
     }
   }

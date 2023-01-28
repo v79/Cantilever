@@ -9,3 +9,11 @@ sam local invoke -t .\cdk.out\CantileverStack.template.json cantilevermarkdownpr
 # Handlebars Processor
 
 sam local invoke -t .\cdk.out\CantileverStack.template.json cantileverhandlebarprocessorlambda57BEC134 -e .\testEvents\sqs-receive-template-message.json  --env-vars .\testEvents\template-env.json
+
+# API Gateway GET /structure
+
+sam local invoke -t ./cdk.out/CantileverStack.template.json cantilever-api-router-lambda -e ./API/src/test/resources/getStructure.event.json --env-vars ./testEvents/template-env.json
+
+
+# Start local API Gateway in debug mode on port 5858
+sam local start-api -d 5858
