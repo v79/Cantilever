@@ -74,7 +74,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                                 )
 
                                 logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
-
+/*
                                 with(logger) {
                                     structureManager.updateStructure(
                                         context = context,
@@ -84,6 +84,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                                         srcKey = srcKey
                                     )
                                 }
+                                */
 
                             }
                         } catch (qdne: QueueDoesNotExistException) {

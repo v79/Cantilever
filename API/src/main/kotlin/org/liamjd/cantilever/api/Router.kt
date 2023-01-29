@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 import org.liamjd.cantilever.api.controllers.StructureController
+import org.liamjd.cantilever.api.services.StructureService
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.RequestHandlerWrapper
 import org.liamjd.cantilever.routing.ResponseEntity
@@ -12,8 +13,12 @@ import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
 
+/**
+ * Set up koin dependency injection
+ */
 val appModule = module {
     single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
+    single { StructureService() }
 }
 
 /**
@@ -50,7 +55,10 @@ class LambdaRouter : RequestHandlerWrapper() {
             ResponseEntity.ok(MyResponse("new object created from ${req.body.message}"))
         }
 
+        // TODO I'll want to investigate route grouping here
         get("/structure", structureController::getStructureFile)
+        get("/rebuildStructure", structureController::rebuildStructureFile)
+        post("/addSource", structureController::addFileToStructure)
 
 //        post("/newPost", postController::newPost)
     }

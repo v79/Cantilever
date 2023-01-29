@@ -19,16 +19,24 @@ class S3ServiceImpl(region: Region) : S3Service {
         return String(bytes)
     }
 
-    override fun putObject(key: String, bucket: String, string: String, contentType: String?) {
+    override fun putObject(key: String, bucket: String, contents: String, contentType: String?) {
         val requestBuilder = PutObjectRequest.builder()
-            .contentLength(string.length.toLong())
+            .contentLength(contents.length.toLong())
             .key(key)
             .bucket(bucket)
         contentType?.let {
             requestBuilder.contentType(it)
         }
         val request = requestBuilder.build()
-        s3Client.putObject(request, RequestBody.fromBytes(string.toByteArray()))
+        s3Client.putObject(request, RequestBody.fromBytes(contents.toByteArray()))
+    }
+
+    override fun getObject(key: String, bucket: String): GetObjectResponse? {
+        val request = GetObjectRequest.builder()
+            .key(key)
+            .bucket(bucket)
+            .build()
+        return s3Client.getObject(request).response()
     }
 
     override fun objectExists(key: String, bucket: String): Boolean {
@@ -42,5 +50,9 @@ class S3ServiceImpl(region: Region) : S3Service {
             exists = false
         }
         return exists
+    }
+
+    override fun listObjects(prefix: String, bucket: String): ListObjectsV2Response {
+        return s3Client.listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).build())
     }
 }
