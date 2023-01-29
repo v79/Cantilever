@@ -5,16 +5,14 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.toLocalDateTime
-import org.liamjd.cantilever.models.*
+import org.liamjd.cantilever.models.Layouts
+import org.liamjd.cantilever.models.Post
+import org.liamjd.cantilever.models.Structure
+import org.liamjd.cantilever.models.Template
 import org.liamjd.cantilever.models.sqs.MarkdownUploadMsg
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.GetObjectRequest
-import software.amazon.awssdk.services.s3.model.HeadObjectRequest
-import software.amazon.awssdk.services.s3.model.HeadObjectResponse
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException
-import software.amazon.awssdk.services.s3.model.PutObjectRequest
-import software.amazon.awssdk.services.s3.model.S3Exception
+import software.amazon.awssdk.services.s3.model.*
 
 class StructureManager {
 
@@ -57,9 +55,7 @@ class StructureManager {
         val structure = if (!s3Client.objectExists(structureKey, sourceBucket)) {
             error("Structure file does not exist; creating it from template: $template and post: $post")
             val layouts = Layouts(mutableMapOf(templateKey to template))
-            val posts = mutableMapOf(srcKey to post)
-            val items = Items(posts)
-            Structure(layouts, items)
+            Structure(layouts, mutableListOf())
         } else {
             info("Loading existing structure from json file $structureKey")
             val json = String(
@@ -68,8 +64,8 @@ class StructureManager {
             )
             loadStructureFromFile(json)
         }
-        info("Adding post $srcKey, template ${template.key} to Structure (had ${structure.items.posts.size} posts)")
-        structure.items.posts[srcKey] = post
+        info("Adding post $srcKey, template ${template.key} to Structure (had ${structure.posts.size} posts)")
+        structure.posts.add(post)
         structure.layouts.templates[templateKey] = template
 
 
