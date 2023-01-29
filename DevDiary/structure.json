@@ -3,11 +3,7 @@
     "templates": {
       "templates/post.html.hbs": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-14T07:58:11"
-      },
-      "templates/news.html.hbs": {
-        "key": "templates/news.html.hbs",
-        "lastUpdated": "2023-01-14T08:49:59"
+        "lastUpdated": "2023-01-29T20:48:17"
       }
     }
   },
@@ -18,9 +14,9 @@
       "url": "getting-started",
       "template": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-29T10:31:24"
+        "lastUpdated": "2023-01-29T20:48:18"
       },
-      "lastUpdated": "2023-01-29T18:04:02.398218"
+      "lastUpdated": "2023-01-29T20:48:56.031120"
     },
     {
       "title": "Flexmark for Markdown processing",
@@ -28,19 +24,19 @@
       "url": "flexmark-for-markdown-processing",
       "template": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-29T10:31:24"
+        "lastUpdated": "2023-01-29T20:48:18"
       },
-      "lastUpdated": "2023-01-29T18:04:02.837500"
+      "lastUpdated": "2023-01-29T20:48:56.488721"
     },
     {
       "title": "Progress Update 06/01/2023",
       "srcKey": "sources/20230106.md",
-      "url": "progress-update-06-01-2023",
+      "url": "progress-update-06012023",
       "template": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-29T10:31:24"
+        "lastUpdated": "2023-01-29T20:48:18"
       },
-      "lastUpdated": "2023-01-29T18:04:02.957457"
+      "lastUpdated": "2023-01-29T20:48:56.571381"
     },
     {
       "title": "Adding Templating",
@@ -48,9 +44,9 @@
       "url": "adding-templating",
       "template": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-29T10:31:24"
+        "lastUpdated": "2023-01-29T20:48:18"
       },
-      "lastUpdated": "2023-01-29T18:04:03.082164"
+      "lastUpdated": "2023-01-29T20:48:56.651765"
     },
     {
       "title": "Building Navigation, part 1",
@@ -58,9 +54,9 @@
       "url": "navigation-part-1",
       "template": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-29T10:31:25"
+        "lastUpdated": "2023-01-29T20:48:18"
       },
-      "lastUpdated": "2023-01-29T18:04:03.197599"
+      "lastUpdated": "2023-01-29T20:48:56.751432"
     },
     {
       "title": "More Bucket Ponderings",
@@ -68,9 +64,9 @@
       "url": "bucket-ponderings",
       "template": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-29T10:31:22"
+        "lastUpdated": "2023-01-29T20:48:19"
       },
-      "lastUpdated": "2023-01-29T18:04:03.297510"
+      "lastUpdated": "2023-01-29T20:48:56.851426"
     },
     {
       "title": "A File Upload Locking Issue",
@@ -78,9 +74,9 @@
       "url": "a-file-upload-locking-issue",
       "template": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-29T10:31:22"
+        "lastUpdated": "2023-01-29T20:48:19"
       },
-      "lastUpdated": "2023-01-29T18:04:03.386076"
+      "lastUpdated": "2023-01-29T20:48:56.968946"
     },
     {
       "title": "One small bug, two days of pain",
@@ -88,9 +84,9 @@
       "url": "small-bug-big-pain",
       "template": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-29T10:31:22"
+        "lastUpdated": "2023-01-29T20:48:16"
       },
-      "lastUpdated": "2023-01-29T18:04:03.517455"
+      "lastUpdated": "2023-01-29T20:48:57.070360"
     },
     {
       "title": "Starting the API",
@@ -98,9 +94,9 @@
       "url": "starting-api",
       "template": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-29T10:31:23"
+        "lastUpdated": "2023-01-29T20:48:16"
       },
-      "lastUpdated": "2023-01-29T18:04:03.617817"
+      "lastUpdated": "2023-01-29T20:48:57.170621"
     },
     {
       "title": "Forking a library",
@@ -108,9 +104,9 @@
       "url": "forking-library",
       "template": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-29T10:31:23"
+        "lastUpdated": "2023-01-29T20:48:16"
       },
-      "lastUpdated": "2023-01-29T18:04:03.697446"
+      "lastUpdated": "2023-01-29T20:48:57.255503"
     },
     {
       "title": "Serializing Failures",
@@ -118,9 +114,9 @@
       "url": "serializing-failures",
       "template": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-29T10:31:23"
+        "lastUpdated": "2023-01-29T20:48:17"
       },
-      "lastUpdated": "2023-01-29T18:04:03.752661"
+      "lastUpdated": "2023-01-29T20:48:57.391720"
     },
     {
       "title": "Serialization Progress",
@@ -128,9 +124,9 @@
       "url": "serialization-progress",
       "template": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-29T10:31:23"
+        "lastUpdated": "2023-01-29T20:48:17"
       },
-      "lastUpdated": "2023-01-29T18:04:03.797525"
+      "lastUpdated": "2023-01-29T20:48:57.491813"
     },
     {
       "title": "Starting the web front-end",
@@ -138,30 +134,10 @@
       "url": "starting-web-front-end",
       "template": {
         "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-29T15:18:50"
+        "lastUpdated": "2023-01-29T20:48:17"
       },
-      "lastUpdated": "2023-01-29T18:04:03.887737"
-    },
-    {
-      "title": "A File Upload Locking Issue",
-      "srcKey": "sources/20231001.md",
-      "url": "a-file-upload-locking-issue",
-      "template": {
-        "key": "templates/post.html.hbs",
-        "lastUpdated": "2023-01-14T07:58:11"
-      },
-      "lastUpdated": "2023-01-29T18:04:03.936525"
-    },
-    {
-      "title": "A News Item uses a different template",
-      "srcKey": "sources/newsItem.md",
-      "url": "news-14-01-2023",
-      "template": {
-        "key": "templates/news.html.hbs",
-        "lastUpdated": "2023-01-14T08:49:59"
-      },
-      "lastUpdated": "2023-01-29T18:04:03.997677"
+      "lastUpdated": "2023-01-29T20:48:57.608331"
     }
   ],
-  "postCount": 15
+  "postCount": 13
 }
