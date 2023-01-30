@@ -52,7 +52,7 @@ class StructureController(val sourceBucket: String) : KoinComponent {
     fun rebuildStructureFile(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         println("StructureController: Rebuilding structure file")
         val listResponse = s3Service.listObjects(prefix = "sources/", bucket = sourceBucket)
-        println("Sources exist in ${sourceBucket}: ${listResponse.hasContents()} (up to ${listResponse.keyCount()} files)")
+        println("Sources exist in '${sourceBucket}': ${listResponse.hasContents()} (up to ${listResponse.keyCount()} files)")
         var filesProcessed = 0
         if (listResponse.hasContents()) {
             val layouts = Layouts(mutableMapOf())
@@ -69,7 +69,7 @@ class StructureController(val sourceBucket: String) : KoinComponent {
                         val lastModified = obj.lastModified().toLocalDateTime()
                         Template(templateKey, lastModified)
                     } catch (nske: NoSuchKeyException) {
-                        println("Cannot find template file $templateKey; aborting for file ${obj.key()}")
+                        println("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
                         return@forEach
                     }
 
@@ -78,13 +78,14 @@ class StructureController(val sourceBucket: String) : KoinComponent {
                         srcKey = obj.key(),
                         url = postMetadata.slug,
                         template = template,
+                        date = postMetadata.date,
                         lastUpdated = postMetadata.lastModified
                     )
                     structure.posts.add(post)
                     structure.layouts.templates[templateKey] = template
                     filesProcessed++
                 } else {
-                    println("Skipping non-markdown file ${obj.key()}")
+                    println("Skipping non-markdown file '${obj.key()}'")
                 }
             }
             structure.postCount = filesProcessed

@@ -45,6 +45,7 @@ class StructureManager {
             srcKey = srcKey,
             url = markdown.metadata.slug,
             template = template,
+            date = markdown.metadata.date,
             lastUpdated = markdown.metadata.lastModified
         )
 
