@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/API/Cantilever.API.main.iml" filepath="$PROJECT_DIR$/.idea/modules/API/Cantilever.API.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/API/Cantilever.API.test.iml" filepath="$PROJECT_DIR$/.idea/modules/API/Cantilever.API.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Web/Web.iml" filepath="$PROJECT_DIR$/Web/Web.iml" />
     </modules>
   </component>
 </project>
