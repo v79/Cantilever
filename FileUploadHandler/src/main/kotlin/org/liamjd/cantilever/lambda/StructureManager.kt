@@ -45,6 +45,7 @@ class StructureManager {
             srcKey = srcKey,
             url = markdown.metadata.slug,
             template = template,
+            date = markdown.metadata.date,
             lastUpdated = markdown.metadata.lastModified
         )
 
@@ -55,7 +56,7 @@ class StructureManager {
         val structure = if (!s3Client.objectExists(structureKey, sourceBucket)) {
             error("Structure file does not exist; creating it from template: $template and post: $post")
             val layouts = Layouts(mutableMapOf(templateKey to template))
-            Structure(layouts, mutableListOf())
+            Structure(layouts, mutableListOf(), 0)
         } else {
             info("Loading existing structure from json file $structureKey")
             val json = String(

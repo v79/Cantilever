@@ -136,6 +136,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         }
         apiRoutingLambda.apply {
             sourceBucket.grantRead(this)
+            sourceBucket.grantWrite(this)
         }
 
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
