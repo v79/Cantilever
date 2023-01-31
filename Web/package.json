@@ -36,6 +36,7 @@
 	},
 	"type": "module",
 	"dependencies": {
-		"@sveltejs/adapter-static": "^1.0.5"
+		"@sveltejs/adapter-static": "^1.0.5",
+		"daisyui": "^2.49.0"
 	}
 }
