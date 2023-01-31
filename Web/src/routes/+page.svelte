@@ -1,17 +1,28 @@
 <script>
-    import PostList from '../components/postList.svelte';
+	import PostList from '../components/postList.svelte';
+	import TopMenu from '../components/topMenu.svelte';
+	import Footer from '../components/footer.svelte';
+	import MarkdownEditor from '../components/markdownEditor.svelte';
 </script>
 
-<h1 class="text-3xl font-bold underline">Welcome to Cantilever Svelte Test</h1>
+<TopMenu/>
 
-<div class="grid grid-cols-3">
-    <div><PostList /></div>
-    <div>Col 2</div>
-    <div>Col 3</div>
+<div class="flex flex-row">
+	<div class="basis-1/4 bg-slate-400">
+		<PostList />
+	</div>
+	<div class="divider divider-horizontal"></div>
+	<div class="basis-1/2 bg-slate-600">
+		<MarkdownEditor/>
+	</div>
+	<div class="divider divider-horizontal"></div>
+	<div class="basis-1/4 bg-slate-800"><h3 class="px-4 py-4 text-2xl font-bold text-slate-200">Assets</h3></div>
 </div>
 
+<Footer/>
+
 <style lang="postcss">
-    :global(html) {
-        background-color: theme(colors.gray.200);
-    }
+	:global(html) {
+		background-color: theme(colors.gray.200);
+	}
 </style>

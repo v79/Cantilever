@@ -1,55 +1,65 @@
 <script lang="ts">
-    import type {Post, Structure} from '../models/structure';
-    import {onDestroy, onMount} from 'svelte';
-    import {writable} from 'svelte/store';
+	import { structureStore, postStore } from '../stores/postsStore.svelte';
+	import { onDestroy, onMount } from 'svelte';
 
-    const structureStore = writable<Structure>({ layouts: [], posts: [], postCount: 0 });
-    const postStore = writable<Post[]>();
+	$: postsSorted = $postStore.sort(
+		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
+	);
 
-    $: postsSorted = $postStore.sort((a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf());
+	onMount(async () => {
+		fetch('https://h2ezadb0cl.execute-api.eu-west-2.amazonaws.com/prod/structure', {
+			method: 'GET',
+			headers: {
+				Accept: 'application/json'
+			},
+			mode: 'cors'
+		})
+			.then((response) => response.json())
+			.then((data) => {
+				console.log(data);
+				structureStore.set(data.data);
+			})
+			.catch((error) => {
+				console.log(error);
+				return {};
+			});
+	});
 
-    onMount(async () => {
-        fetch('https://h2ezadb0cl.execute-api.eu-west-2.amazonaws.com/prod/structure', {
-            method: 'GET',
-            headers: {
-                Accept: 'application/json'
-            },
-            mode: 'cors'
-        })
-            .then((response) => response.json())
-            .then((data) => {
-                console.log(data);
-                structureStore.set(data.data);
-            })
-            .catch((error) => {
-                console.log(error);
-                return {};
-            });
-    });
-    // structureStore.subscribe((value) => value);
-    const structStoreUnsubscribe = structureStore.subscribe((data) => {
-        postStore.set(data.posts);
-    });
+	const structStoreUnsubscribe = structureStore.subscribe((data) => {
+		postStore.set(data.posts);
+	});
 
-    onDestroy(structStoreUnsubscribe);
-
-    // structureStore.subscribe((data) => {
-    // 	posts = data.items[0].posts;
-    // });
+	onDestroy(structStoreUnsubscribe);
 </script>
 
-{#if $structureStore}
-    <p>{$structureStore.postCount} posts</p>
-{/if}
-<ol class="list-decimal pl-10">
-    {#each postsSorted as post}
-        {@const postDateString = new Date(post.date).toLocaleDateString('en-GB')}
-        <li>
-            <a href="https://www.cantilevers.org/{post.url}" rel="noreferrer" target="_blank"
-            >{post.title}</a
-            > <span class="text-green-800">{postDateString}</span>
-        </li>
-    {:else}
-        <li class="p-0">loading posts...</li>
-    {/each}
-</ol>
+<h3 class="px-4 py-4 text-2xl font-bold text-slate-900">Posts</h3>
+<div class="px-8 btn-group lg:btn-group-horizontal">
+	<button class="btn" disabled>Another</button>
+	<button class="btn" disabled>Something</button>
+	<button class="btn btn-active">New Post</button>
+</div>
+<div class="px-8">
+	{#if $structureStore}
+		<h4 class="text-sm text-slate-900 text-right">{$structureStore.postCount} posts</h4>
+	{/if}
+	{#if postsSorted.length > 0}
+		<div class="py-2 flex justify-left">
+			<ul class="bg-white rounded-lg border border-gray-400 w-96 text-slate-900">
+				{#each postsSorted as post}
+					{@const postDateString = new Date(post.date).toLocaleDateString('en-GB')}
+					<li class="px-6 py-2 border-b border-grey-400 w-full hover:bg-slate-400 cursor-pointer">
+						{post.title}
+					</li>
+				{/each}
+			</ul>
+		</div>
+	{:else}
+		<div class="py-4 flex justify-center items-center">
+			<div
+				class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-slate-900"
+				role="status"
+			/>
+			<span class="px-4 text-slate-900">Loading...</span>
+		</div>
+	{/if}
+</div>
