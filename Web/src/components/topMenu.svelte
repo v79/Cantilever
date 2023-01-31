@@ -8,9 +8,9 @@
             </label>
             <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
             <ul tabindex="0" class="menu menu-compact dropdown-content mt-3 p-2 shadow bg-base-100 rounded-box w-52">
-              <li><a>Menu Item 1</a></li>
-              <li><a>Menu Item 2</a></li>
-              <li><a>Menu Item 3</a></li>
+              <li><a href="#">Menu Item 1</a></li>
+              <li><a href="#">Menu Item 2</a></li>
+              <li><a href="#">Menu Item 3</a></li>
             </ul>
           </div>
 	</div>

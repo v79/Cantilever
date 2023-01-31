@@ -32,17 +32,34 @@
 	onDestroy(structStoreUnsubscribe);
 </script>
 
-{#if $structureStore}
-	<h4 class="text-sm text-slate-900">{$structureStore.postCount} posts</h4>
-{/if}
-<button class="btn">New Post</button>
-<ol class="list-decimal pl-10">
-	{#each postsSorted as post}
-		{@const postDateString = new Date(post.date).toLocaleDateString('en-GB')}
-		<li class="text-slate-900">
-			{post.title}
-		</li>
+<h3 class="px-4 py-4 text-2xl font-bold text-slate-900">Posts</h3>
+<div class="px-8 btn-group lg:btn-group-horizontal">
+	<button class="btn" disabled>Another</button>
+	<button class="btn" disabled>Something</button>
+	<button class="btn btn-active">New Post</button>
+</div>
+<div class="px-8">
+	{#if $structureStore}
+		<h4 class="text-sm text-slate-900 text-right">{$structureStore.postCount} posts</h4>
+	{/if}
+	{#if postsSorted.length > 0}
+		<div class="py-2 flex justify-left">
+			<ul class="bg-white rounded-lg border border-gray-400 w-96 text-slate-900">
+				{#each postsSorted as post}
+					{@const postDateString = new Date(post.date).toLocaleDateString('en-GB')}
+					<li class="px-6 py-2 border-b border-grey-400 w-full hover:bg-slate-400 cursor-pointer">
+						{post.title}
+					</li>
+				{/each}
+			</ul>
+		</div>
 	{:else}
-		<span class="animate-bounce">Loading...</span>
-	{/each}
-</ol>
+		<div class="py-4 flex justify-center items-center">
+			<div
+				class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-slate-900"
+				role="status"
+			/>
+			<span class="px-4 text-slate-900">Loading...</span>
+		</div>
+	{/if}
+</div>

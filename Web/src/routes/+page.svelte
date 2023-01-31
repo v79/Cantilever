@@ -9,16 +9,14 @@
 
 <div class="flex flex-row">
 	<div class="basis-1/4 bg-slate-400">
-		<h3 class="text-xl text-slate-900">Posts</h3>
 		<PostList />
 	</div>
 	<div class="divider divider-horizontal"></div>
 	<div class="basis-1/2 bg-slate-600">
-		<h3 class="text-xl">Markdown Editor</h3>
 		<MarkdownEditor/>
 	</div>
 	<div class="divider divider-horizontal"></div>
-	<div class="basis-1/4 bg-slate-800"><h3 class="text-lg text-slate-200">Tools</h3></div>
+	<div class="basis-1/4 bg-slate-800"><h3 class="px-4 py-4 text-2xl font-bold text-slate-200">Assets</h3></div>
 </div>
 
 <Footer/>
