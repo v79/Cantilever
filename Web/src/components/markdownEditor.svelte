@@ -41,7 +41,7 @@
 					</div>
 					<div class="col-span-6">
 						<label for="markdown" class="block text-sm font-medium text-slate-200">Markdown</label>
-						<textarea name="markdown" id="markdown" class="textarea-lg block w-full" placeholder="Markdown goes here" />
+						<textarea name="markdown" id="markdown" class="mt-1 textarea-lg  focus:ring-indigo-500 focus:border-indigo-500 block w-full rounded-md" placeholder="Markdown goes here" />
 					</div>
 				</div>
 			</div>
