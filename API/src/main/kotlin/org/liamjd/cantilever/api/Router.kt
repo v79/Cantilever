@@ -5,10 +5,7 @@ import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 import org.liamjd.cantilever.api.controllers.StructureController
 import org.liamjd.cantilever.api.services.StructureService
-import org.liamjd.cantilever.routing.Request
-import org.liamjd.cantilever.routing.RequestHandlerWrapper
-import org.liamjd.cantilever.routing.ResponseEntity
-import org.liamjd.cantilever.routing.Router
+import org.liamjd.cantilever.routing.*
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
@@ -40,7 +37,7 @@ class LambdaRouter : RequestHandlerWrapper() {
 //    private val postController = PostController()
     private val structureController = StructureController(sourceBucket = sourceBucket)
 
-    override val router = Router.router {
+    override val router = lambdaRouter {
 //        filter = loggingFilter()
 
         get("/route") { req: Request<String> ->
@@ -55,12 +52,16 @@ class LambdaRouter : RequestHandlerWrapper() {
             ResponseEntity.ok(MyResponse("new object created from ${req.body.message}"))
         }
 
-        // TODO I'll want to investigate route grouping here
-        get("/structure", structureController::getStructureFile)
-        get("/rebuildStructure", structureController::rebuildStructureFile)
-        post("/addSource", structureController::addFileToStructure)
+        group("/structure") {
+            get("/", structureController::getStructureFile)
+            get("/rebuild", structureController::rebuildStructureFile)
+            post("/addSource", structureController::addFileToStructure)
+        }
 
-//        post("/newPost", postController::newPost)
+        /*authorize("permission_name") {
+            get("/requiresAuth") { req: Request<Any> -> ResponseEntity.ok(body = "Authorised to do something") }
+        }*/
+
     }
 
     /* private fun loggingFilter() = Filter { next ->
@@ -73,5 +74,6 @@ class LambdaRouter : RequestHandlerWrapper() {
 
 @Serializable
 data class MyResponse(val text: String)
+
 @Serializable
 data class MyRequest(val message: String)

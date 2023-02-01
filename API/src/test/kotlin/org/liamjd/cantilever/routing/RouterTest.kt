@@ -131,7 +131,8 @@ class RouterTest {
     @Test
     fun `router correctly serializes an API Response containing a raw json part`() {
         val testR = TestRouter()
-        val event = APIGatewayProxyRequestEvent().withPath("/getJsonString").withHttpMethod("GET").withHeaders(acceptJson)
+        val event =
+            APIGatewayProxyRequestEvent().withPath("/getJsonString").withHttpMethod("GET").withHeaders(acceptJson)
         val response = testR.handleRequest(event)
 
         assertEquals(200, response.statusCode)
@@ -139,12 +140,50 @@ class RouterTest {
         assertTrue(response.body.contains(""""colour""""))
         assertTrue(response.body.contains(""""red""""))
     }
+
+   // not implemented yet
+    fun `requires auth header matching permission for authorize routes`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/requiresTestPermission").withHttpMethod("GET")
+            .withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+
+        testR.router.listRoutes()
+
+        assertEquals(200, response.statusCode)
+        assertNotNull(response.body)
+        assertEquals("\"Permission granted\"", response.body)
+    }
+
+    @Test
+    fun `can correctly match a nested route`() {
+        val testR = TestRouter()
+        val event =
+            APIGatewayProxyRequestEvent().withPath("/group/route/").withHttpMethod("GET").withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertNotNull(response.body)
+        assertEquals("\"Matching the nested route /route/\"", response.body)
+    }
+
+    @Test
+    fun `can correctly match a deeply nested route`() {
+        val testR = TestRouter()
+        val event =
+            APIGatewayProxyRequestEvent().withPath("/group/nested/wow").withHttpMethod("GET").withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertNotNull(response.body)
+        assertEquals("\"This is deeply nested route /group/nested/wow\"", response.body)
+    }
 }
 
 class TestRouter : RequestHandlerWrapper() {
 
     private val testController = TestController()
-    override val router: Router = Router.router {
+    override val router: Router = lambdaRouter {
         // supplies JSON by default. Expects nothing.
         get("/") { _: Request<Unit> -> ResponseEntity(statusCode = 200, body = null) }
         get("/returnHtml") { _: Request<Unit> -> ResponseEntity.ok("<html></html>") }.supplies(setOf(MimeType.html))
@@ -160,6 +199,30 @@ class TestRouter : RequestHandlerWrapper() {
         get("/sealedNo") { _: Request<Unit> -> ResponseEntity.ok(ServiceResult.Error(exceptionMessage = "No here")) }
         get("/sealedYes") { _: Request<Unit> -> ResponseEntity.ok(ServiceResult.Success(data = SimpleClass("Ok from SimpleClass"))) }
         get("/getJsonString", testController::returnJsonString)
+
+        /*
+        authorize("TEST_PERMISSION") {
+            get("/requiresTestPermission") {
+                _: Request<Unit> -> ResponseEntity.ok(body = "Permission granted")
+            }
+            post("/requiresTestPermission") {
+                    _: Request<Unit> -> ResponseEntity.ok(body = "Permission granted to POST")
+            }
+        }
+
+        get("/requiresTestPermission2")  {
+                _: Request<Unit> -> ResponseEntity.ok(body = "Permission granted")
+        }
+
+         */
+
+        group("/group") {
+            post("/new") { req: Request<String> -> ResponseEntity.ok(body = "Created a new ${req.body}") }
+            get("/route") { req: Request<Any> -> ResponseEntity.ok(body = "Matching the nested route /route/") }
+            group("/nested") {
+                get("/wow") { req: Request<Any> -> ResponseEntity.ok(body = "This is deeply nested route /group/nested/wow") }
+            }
+        }
     }
 }
 
@@ -176,6 +239,9 @@ class TestController {
     }
 }
 
+/**
+ * Test classes below to simplify testing without bringing in other dependencies
+ */
 @Serializable
 data class SimpleClass(val message: String)
 
@@ -186,6 +252,7 @@ data class ClassContainingRawJson(val name: String, val raw: RawJsonString)
 sealed class ServiceResult<out T : Any> {
     @Serializable
     data class Success<out T : Any>(val data: T) : ServiceResult<T>()
+
     @Serializable
     data class Error(val exceptionMessage: String?) : ServiceResult<Nothing>()
 }
@@ -198,7 +265,7 @@ class ServiceResultSerializer<T : Any>(
     @Serializable
     @SerialName("ServiceResult")
 
-    data class ServiceResultSurrogate<T : Any>  constructor(
+    data class ServiceResultSurrogate<T : Any> constructor(
         val type: Type,
         // The annotation is not necessary, but it avoids serializing "data = null"
         // for "Error" results.

@@ -28,11 +28,11 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
             }->${input.acceptedMediaTypes()}>"
         )
         // find matching route
-        val routes = router.routes as List<RouterFunction<Any, Any>>
-        val matchResults: List<RequestMatchResult> = routes.map { routerFunction: RouterFunction<Any, Any> ->
+        val routes: List<RouterFunction<*, *>> = router.routes.values.toList()
+        val matchResults: List<RequestMatchResult> = routes.map { routerFunction: RouterFunction<*, *> ->
             val matchResult = routerFunction.requestPredicate.match(input)
             if (matchResult.matches) {
-                val handler: HandlerFunction<Any, Any> = routerFunction.handler
+                val handler: (Nothing) -> ResponseEntity<out Any> = routerFunction.handler
                 val matchedAcceptType = routerFunction.requestPredicate.matchedAcceptType(input.acceptedMediaTypes())
                     ?: router.produceByDefault.first()
 
@@ -114,5 +114,7 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
 
     private fun <T> createErrorResponse(): APIGatewayProxyResponseEvent =
         APIGatewayProxyResponseEvent().withStatusCode(500)
+
+//    abstract fun authorize(permissionName: String, function: () -> RequestPredicate)
 }
 

@@ -9,10 +9,9 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
  */
 data class RequestPredicate(
     val method: String,
-    val pathPattern: String,
+    var pathPattern: String,
     private var consumes: Set<MimeType>,
-    private var produces: Set<MimeType>,
-
+    private var produces: Set<MimeType>
 ) {
     val accepts
         get() = consumes
@@ -63,6 +62,7 @@ data class RequestPredicate(
         }
         return this
     }
+
 }
 
 data class RequestMatchResult(
