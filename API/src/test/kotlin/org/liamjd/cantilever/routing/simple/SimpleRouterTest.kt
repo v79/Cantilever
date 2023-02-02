@@ -25,8 +25,8 @@ class SimpleRouterTest {
 
         val event = APIGatewayProxyRequestEvent().withPath("/").withHttpMethod("GET").withHeaders(acceptJson)
         val response = router.handleRequest(event)
-        assertEquals(200,response.statusCode)
-        assertEquals("OK",response.body)
+        assertEquals(200, response.statusCode)
+        assertEquals("OK", response.body)
     }
 
     @Test
@@ -43,36 +43,49 @@ class SimpleRouterTest {
 
         val event = APIGatewayProxyRequestEvent().withPath("/notFound").withHttpMethod("GET").withHeaders(acceptJson)
         val response = router.handleRequest(event)
-        assertEquals(404,response.statusCode)
-        assertEquals("Route not found",response.body)
+        assertEquals(404, response.statusCode)
+        assertEquals("Route not found", response.body)
     }
 
     @Test
     fun `can match a nested route`() {
         val router = simpleRouter {
             group("/users") {
-                get("/bob") { request: SimpleRequest<Unit> -> SimpleResponse(200,"Bob")  }
+                get("/bob") { request: SimpleRequest<Unit> -> SimpleResponse(200, "Bob") }
             }
         }
         router.listRoutes()
         val event = APIGatewayProxyRequestEvent().withPath("/users/bob").withHttpMethod("GET").withHeaders(acceptJson)
         val response = router.handleRequest(event)
-        assertEquals(200,response.statusCode)
-        assertEquals("Bob",response.body)
+        assertEquals(200, response.statusCode)
+        assertEquals("Bob", response.body)
     }
 
     @Test
     fun `does not match a nested route with wrong path`() {
         val router = simpleRouter {
             group("/users") {
-                get("/bob") { request: SimpleRequest<Unit> -> SimpleResponse(200,"Bob")  }
+                get("/bob") { request: SimpleRequest<Unit> -> SimpleResponse(200, "Bob") }
             }
         }
         router.listRoutes()
         val event = APIGatewayProxyRequestEvent().withPath("/bob").withHttpMethod("GET").withHeaders(acceptJson)
         val response = router.handleRequest(event)
-        assertEquals(404,response.statusCode)
-        assertEquals("Route not found",response.body)
+        assertEquals(404, response.statusCode)
+        assertEquals("Route not found", response.body)
+    }
+
+    @Test
+    fun `can wrap a route with an auth block but not do anything with it`() {
+        val router = simpleRouter {
+            auth("A_THING") {
+                get("/secure") { _: SimpleRequest<Unit> -> SimpleResponse(200, "Nothing") }
+            }
+        }
+        val event = APIGatewayProxyRequestEvent().withPath("/secure").withHttpMethod("GET").withHeaders(acceptJson)
+        val response = router.handleRequest(event)
+        assertEquals(200, response.statusCode)
+        assertEquals("Nothing", response.body)
     }
 }
 

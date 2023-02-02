@@ -7,7 +7,7 @@
 	);
 
 	onMount(async () => {
-		fetch('https://h2ezadb0cl.execute-api.eu-west-2.amazonaws.com/prod/structure', {
+		fetch('https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/structure', {
 			method: 'GET',
 			headers: {
 				Accept: 'application/json'

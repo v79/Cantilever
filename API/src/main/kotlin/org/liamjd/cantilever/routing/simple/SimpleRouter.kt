@@ -26,11 +26,20 @@ class SimpleRouter {
 }
 
 fun SimpleRouter.group(parentPath: String, block: SimpleRouter.() -> Unit) {
-    val childRoute = SimpleRouter()
-    childRoute.block()
-    childRoute.routes.forEach {
+    val childRouter = SimpleRouter()
+    childRouter.block()
+    childRouter.routes.forEach {
         val routeCopy = it.key.copy(pathPattern = parentPath + it.key.pathPattern)
         routes[routeCopy] = it.value
+    }
+}
+
+fun SimpleRouter.auth(thingy: String, block: SimpleRouter.() -> Unit) {
+    val childRouter = SimpleRouter()
+    childRouter.block()
+    childRouter.routes.forEach {
+        // add some authentication property/requirement to the child routes based on the thingy
+        routes[it.key] = it.value
     }
 }
 

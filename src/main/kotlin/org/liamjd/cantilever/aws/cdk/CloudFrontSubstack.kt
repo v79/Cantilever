@@ -2,6 +2,7 @@ package org.liamjd.cantilever.aws.cdk
 
 import software.amazon.awscdk.Duration
 import software.amazon.awscdk.Stack
+import software.amazon.awscdk.Tags
 import software.amazon.awscdk.services.cloudfront.*
 import software.amazon.awscdk.services.s3.IBucket
 
@@ -20,6 +21,8 @@ class CloudFrontSubstack {
 
     fun createCloudfrontDistribution(stack: Stack, sourceBucket: IBucket, destinationBucket: IBucket) {
 
+        Tags.of(stack).add("Cantilever", "v0.0.4")
+
         val webOai = OriginAccessIdentity.Builder.create(stack, "WebOai").build()
         destinationBucket.grantRead(webOai)
 
@@ -37,7 +40,6 @@ class CloudFrontSubstack {
         val cloudFrontWebDistribution: CloudFrontWebDistribution =
             CloudFrontWebDistribution.Builder.create(stack, "cantilever-CloudFrontWebDistribution")
                 .comment(java.lang.String.format("CloudFront distribution for cantilever"))
-
                 .originConfigs(
                     listOf(
                         SourceConfiguration.builder()

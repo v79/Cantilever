@@ -53,6 +53,7 @@ tasks.getByName<Test>("test") {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
+        jvmTarget = "11"
         freeCompilerArgs += "-Xcontext-receivers"
     }
 }

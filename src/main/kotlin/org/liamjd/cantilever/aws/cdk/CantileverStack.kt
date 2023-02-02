@@ -1,11 +1,14 @@
 package org.liamjd.cantilever.aws.cdk
 
 import software.amazon.awscdk.*
+import software.amazon.awscdk.services.apigateway.Authorizer
+import software.amazon.awscdk.services.apigateway.CognitoUserPoolsAuthorizer
 import software.amazon.awscdk.services.apigateway.CorsOptions
 import software.amazon.awscdk.services.apigateway.DomainNameOptions
 import software.amazon.awscdk.services.apigateway.EndpointType
 import software.amazon.awscdk.services.apigateway.LambdaRestApi
 import software.amazon.awscdk.services.certificatemanager.Certificate
+import software.amazon.awscdk.services.cognito.*
 import software.amazon.awscdk.services.events.targets.SqsQueue
 import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.Function
@@ -33,7 +36,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
     constructor(scope: Construct, id: String) : this(scope, id, null)
 
     init {
-        Tags.of(this).add("Cantilever", "v0.0.2")
+        Tags.of(this).add("Cantilever", "v0.0.4")
 
         // Source bucket where Markdown, template files will be stored
         // I may wish to change the removal and deletion policies
@@ -172,6 +175,20 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             .proxy(true)
             .build()
 
+      /* println("Creating Cognito identity pool")
+        val pool = UserPool.Builder.create(this,"cantilever-user-pool").userPoolName("cantilever-user-pool").signInCaseSensitive(true)
+            .signInAliases(SignInAliases.builder().email(true).phone(false).username(false).build())
+            .passwordPolicy(PasswordPolicy.builder().minLength(12).build())
+            .mfa(Mfa.OFF) // TODO: change this later
+            .accountRecovery(AccountRecovery.EMAIL_ONLY)
+            .selfSignUpEnabled(false)
+            .email(UserPoolEmail.withCognito())
+            .build()
+        val appClient = pool.addClient("cantilever-app", UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).build() )*/
+
+       /* println("Adding Cognito authentication to API Gateway")
+        val authorizer = CognitoUserPoolsAuthorizer.Builder.create(this,"CantileverCognitoAuth").authorizerName("CantileverCognitoAuth").cognitoUserPools(
+            listOf(pool)).build()*/
 
     }
 
