@@ -1,3 +1,7 @@
+<script>
+	import LoginButton from "./loginButton.svelte";
+</script>
+
 <nav class="navbar">
 	<div class="navbar-start">
         <div class="dropdown">
@@ -18,7 +22,8 @@
 		<span class="normal-case text-xl font-bold">Cantilever Editor</span>
 	</div>
 	<div class="navbar-end">
-		<button class="btn btn-ghost btn-circle">
+		<!-- search -->
+		<button class="btn btn-ghost btn-circle" title="Search">
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				class="h-5 w-5"
@@ -33,7 +38,8 @@
 				/></svg
 			>
 		</button>
-		<button class="btn btn-ghost btn-circle">
+		<!-- alerts -->
+		<button class="btn btn-ghost btn-circle" title="Alerts">
 			<div class="indicator">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -51,5 +57,7 @@
 				<span class="badge badge-xs badge-primary indicator-item" />
 			</div>
 		</button>
+		<!-- login / identity -->
+		<LoginButton/>
 	</div>
 </nav>
