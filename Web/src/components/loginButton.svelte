@@ -22,13 +22,9 @@
 	console.log('Logging in via AWS Cognito to ' + loginUrl);
 
 	onMount(async () => {
-		console.log('ON MOUNT parseIdToken()');
 		authToken = extractIdToken();
-		console.log('ON MOUNT: authToken = ' + authToken);
 		if (authToken) {
 			tokenPayload = jwt_decode<JwtPayload>(authToken);
-			console.log('ON MOUNT: jwt_decode(authToken) = ');
-			console.dir(tokenPayload);
 			if (tokenPayload) {
 				$userStore = new User(
 					tokenPayload.name,
@@ -42,18 +38,13 @@
 	});
 
 	function login() {
-		console.log('AuthToken: ' + authToken);
 		if (authToken) {
-			console.log('Authenticated');
-			console.log(authToken);
 			return;
 		}
-		console.log('Not logged in, redirecting...');
 		window.location.assign(loginUrl);
 	}
 
 	function extractIdToken() {
-		console.log('Parsing code token ' + window.location);
 		if (window.location.hash) {
 			let hash = window.location.hash.substr(1);
 			let regex = /id_token=([^&]*)/;

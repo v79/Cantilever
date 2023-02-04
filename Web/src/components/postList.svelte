@@ -7,11 +7,16 @@
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
 	);
 
-	onMount(async () => {
-		fetch('https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/structure', {
+	onMount(async () => {});
+
+	function loadStructure(token: String) {
+		// https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/
+		// https://api.cantilevers.org/structure
+		fetch('https://api.cantilevers.org/structure', {
 			method: 'GET',
 			headers: {
-				Accept: 'application/json'
+				Accept: 'application/json',
+				Authorization: 'Bearer ' + token
 			},
 			mode: 'cors'
 		})
@@ -23,6 +28,12 @@
 				console.log(error);
 				return {};
 			});
+	}
+
+	const userStoreUnsubscribe = userStore.subscribe((data) => {
+		if(data) {
+			loadStructure(data.token);
+		}
 	});
 
 	const structStoreUnsubscribe = structureStore.subscribe((data) => {
@@ -30,13 +41,13 @@
 	});
 
 	onDestroy(structStoreUnsubscribe);
+	onDestroy(userStoreUnsubscribe);
 </script>
 
 <h3 class="px-4 py-4 text-2xl font-bold text-slate-900">Posts</h3>
 
 {#if $userStore === undefined}
-<div class="px-8">	<p class="text-lg text-warning">Login to see posts</p>
-	</div>
+	<div class="px-8"><p class="text-lg text-warning">Login to see posts</p></div>
 {:else}
 	<div class="px-8 btn-group lg:btn-group-horizontal">
 		<button class="btn" disabled>Another</button>
