@@ -30,10 +30,18 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         markdown_processing_queue,
         handlebar_template_queue
     }
+    // TODO: I suppose I'm going to need to set up a dev and production environment for this sort of thing. Boo.
 
     constructor(scope: Construct, id: String) : this(scope, id, null)
 
     init {
+        // Get the "deploymentDomain" value from cdk.json, or default to the dev URL if not found
+        @Suppress("UNCHECKED_CAST")
+        val envKey =  scope.node.tryGetContext("env") as String?
+        val env = scope.node.tryGetContext(envKey ?: "env") as LinkedHashMap<String, String>?
+        val deploymentDomain = (env?.get("domainName")) ?: "http://localhost:5173"
+        println("ENVIRONMENT: $env; deploymentDomain: $deploymentDomain")
+
         Tags.of(this).add("Cantilever", "v0.0.4")
 
         // Source bucket where Markdown, template files will be stored
@@ -120,7 +128,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
 
         println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
         val cloudfrontSubstack = CloudFrontSubstack()
-        cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
+        val cloudFrontDistribution =
+            cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
 
         // I suspect this isn't the most secure way to do this. Better a new IAM role?
         println("Granting lambda permissions to buckets")
@@ -179,7 +188,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             .defaultCorsPreflightOptions(
                 CorsOptions.builder()
                     .allowHeaders(listOf("'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"))
-                    .allowMethods(listOf("GET", "OPTIONS")).allowOrigins(listOf("'*'")).build()
+                    .allowMethods(listOf("GET", "OPTIONS")).allowOrigins(listOf(deploymentDomain)).build()
             )
             .handler(apiRoutingLambda)
             .proxy(true)
@@ -201,10 +210,13 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             UserPoolDomainOptions.builder()
                 .cognitoDomain(CognitoDomainOptions.builder().domainPrefix("cantilever").build()).build()
         )
-        val appUrls = listOf("https://www.cantilevers.org/app/","http://localhost:5173/")
+        val appUrls = listOf("https://www.cantilevers.org/app/", "http://localhost:5173/")
         val appClient = pool.addClient(
             "cantilever-app",
-            UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(true).build()).callbackUrls(appUrls).logoutUrls(appUrls).build()).build()
+            UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
+                OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(true).build())
+                    .callbackUrls(appUrls).logoutUrls(appUrls).build()
+            ).build()
         )
         /* println("Adding Cognito authentication to API Gateway")
           val authorizer = CognitoUserPoolsAuthorizer.Builder.create(this,"CantileverCognitoAuth").authorizerName("CantileverCognitoAuth").cognitoUserPools(

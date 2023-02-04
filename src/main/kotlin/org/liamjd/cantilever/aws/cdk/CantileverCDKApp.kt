@@ -16,7 +16,6 @@ fun main() {
 
     app.synth()
 
-
 }
 
 fun makeEnv(account: String, region: String): Environment {
