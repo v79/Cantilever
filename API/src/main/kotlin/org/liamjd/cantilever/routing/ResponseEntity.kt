@@ -43,5 +43,10 @@ data class ResponseEntity<T : Any>(
             val tt: KType = typeOf<T>()
             return ResponseEntity<T>(HttpCodes.SERVER_ERROR.code, body, headers).apply { kType = tt }
         }
+
+        inline fun <reified T : Any> unauthorized(body: T? = null, headers: Map<String, String> = emptyMap()): ResponseEntity<T> {
+            val tt: KType = typeOf<T>()
+            return ResponseEntity<T>(HttpCodes.UNAUTHORIZED.code, body, headers).apply { kType = tt }
+        }
     }
 }

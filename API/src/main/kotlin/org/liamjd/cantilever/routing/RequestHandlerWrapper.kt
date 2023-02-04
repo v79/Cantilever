@@ -32,26 +32,47 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         val matchResults: List<RequestMatchResult> = routes.map { routerFunction: RouterFunction<*, *> ->
             val matchResult = routerFunction.requestPredicate.match(input)
             if (matchResult.matches) {
-                val handler: (Nothing) -> ResponseEntity<out Any> = routerFunction.handler
                 val matchedAcceptType = routerFunction.requestPredicate.matchedAcceptType(input.acceptedMediaTypes())
                     ?: router.produceByDefault.first()
 
-                val entity: ResponseEntity<out Any> = try {
-                    // this is where we'd add authorization checks, which may throw exceptions
-                    val requestBody = "TODO: deserialize the input request body"
-                    val request = Request(input, requestBody, routerFunction.requestPredicate.pathPattern)
-                    (handler as HandlerFunction<*, *>)(request)
-                } catch (e: Exception) {
-                    ResponseEntity.serverError(e.message)
-                    // TODO return createErrorResponse(errorEntity)
-                }
-
+                val entity: ResponseEntity<out Any> = processRoute(input, routerFunction)
                 return createResponse(entity, matchedAcceptType)
             }
             matchResult
 
         }
         return createNoMatchingRouteResponse(input.httpMethod, input.path, input.acceptedMediaTypes())
+    }
+
+    /**
+     * Process the matching route by extracting the request body (if any), and calling the handler function
+     * @param input the raw request event from AWS API Gateway
+     * @param routerFunction the request predicate, handler and ???
+     * @return a [ResponseEntity] object ready to be serialized and returned to the requester
+     */
+    private fun processRoute(
+        input: APIGatewayProxyRequestEvent,
+        routerFunction: RouterFunction<*, *>
+    ): ResponseEntity<out Any> {
+        println("Processing route ${routerFunction.requestPredicate}")
+        routerFunction.authorizer?.let {auth ->
+            println("Checking authentication/authorization for ${auth.simpleName}")
+            if(!auth.authorize(input)) {
+                println("Authorization check failed")
+                return ResponseEntity.unauthorized("Oh no you don't!")
+            }
+        }
+
+        val handler: (Nothing) -> ResponseEntity<out Any> = routerFunction.handler
+        val entity: ResponseEntity<out Any> = try {
+            // this is where we'd add authorization checks, which may throw exceptions
+            val requestBody = "TODO: deserialize the input request body"
+            val request = Request(input, requestBody, routerFunction.requestPredicate.pathPattern)
+            (handler as HandlerFunction<*, *>)(request)
+        } catch (e: Exception) {
+            ResponseEntity.serverError(e.message)
+        }
+        return entity
     }
 
     /**
@@ -90,7 +111,6 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
                         jsonFormat.encodeToString(kSerializer, responseEntity.body as T)
                     }
                 } ?: "could not ---- could not get serializer for $responseEntity"
-
             }
 
             MimeType.html -> {
@@ -107,7 +127,8 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         }
         // with CORS enabled, I have to include Access-Control-Allow-Origin header to *
         // according to https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-cors-console.html
-        return APIGatewayProxyResponseEvent().withStatusCode(200)
+        // though this may only be allowed for non-authenticated requests
+        return APIGatewayProxyResponseEvent().withStatusCode(responseEntity.statusCode)
             .withHeaders(mapOf("Content-Type" to contentType, "Access-Control-Allow-Origin" to "*"))
             .withBody(body)
     }

@@ -5,6 +5,7 @@ import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 import org.liamjd.cantilever.api.controllers.StructureController
 import org.liamjd.cantilever.api.services.StructureService
+import org.liamjd.cantilever.auth.CognitoJWTAuthorizer
 import org.liamjd.cantilever.routing.*
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
@@ -52,10 +53,12 @@ class LambdaRouter : RequestHandlerWrapper() {
             ResponseEntity.ok(MyResponse("new object created from ${req.body.message}"))
         }
 
-        group("/structure") {
-            get("/", structureController::getStructureFile)
-            get("/rebuild", structureController::rebuildStructureFile)
-            post("/addSource", structureController::addFileToStructure)
+        auth(CognitoJWTAuthorizer) {
+            group("/structure") {
+                get("/", structureController::getStructureFile)
+                get("/rebuild", structureController::rebuildStructureFile)
+                post("/addSource", structureController::addFileToStructure)
+            }
         }
 
         /*authorize("permission_name") {

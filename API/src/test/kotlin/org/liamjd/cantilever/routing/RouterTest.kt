@@ -8,6 +8,7 @@ import kotlinx.serialization.encoding.Encoder
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.liamjd.cantilever.api.models.RawJsonString
+import org.liamjd.cantilever.auth.Authorizer
 
 class RouterTest {
 
@@ -141,7 +142,7 @@ class RouterTest {
         assertTrue(response.body.contains(""""red""""))
     }
 
-   // not implemented yet
+    // not implemented yet
     fun `requires auth header matching permission for authorize routes`() {
         val testR = TestRouter()
         val event = APIGatewayProxyRequestEvent().withPath("/requiresTestPermission").withHttpMethod("GET")
@@ -178,6 +179,28 @@ class RouterTest {
         assertNotNull(response.body)
         assertEquals("\"This is deeply nested route /group/nested/wow\"", response.body)
     }
+
+    @Test
+    fun `secure route fails with 401 when but no credentials supplied`() {
+        val testR = TestRouter()
+        val event =
+            APIGatewayProxyRequestEvent().withPath("/auth/hello").withHttpMethod("GET").withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertEquals(401, response.statusCode)
+    }
+
+    @Test
+    fun `secure route succeeds when no credentials supplied`() {
+        val testR = TestRouter()
+        val event =
+            APIGatewayProxyRequestEvent().withPath("/auth/hello").withHttpMethod("GET")
+                .withHeaders(mapOf("Authorization" to "Bearer 123123123") + acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+    }
+
 }
 
 class TestRouter : RequestHandlerWrapper() {
@@ -200,28 +223,16 @@ class TestRouter : RequestHandlerWrapper() {
         get("/sealedYes") { _: Request<Unit> -> ResponseEntity.ok(ServiceResult.Success(data = SimpleClass("Ok from SimpleClass"))) }
         get("/getJsonString", testController::returnJsonString)
 
-        /*
-        authorize("TEST_PERMISSION") {
-            get("/requiresTestPermission") {
-                _: Request<Unit> -> ResponseEntity.ok(body = "Permission granted")
-            }
-            post("/requiresTestPermission") {
-                    _: Request<Unit> -> ResponseEntity.ok(body = "Permission granted to POST")
-            }
-        }
-
-        get("/requiresTestPermission2")  {
-                _: Request<Unit> -> ResponseEntity.ok(body = "Permission granted")
-        }
-
-         */
-
         group("/group") {
             post("/new") { req: Request<String> -> ResponseEntity.ok(body = "Created a new ${req.body}") }
             get("/route") { req: Request<Any> -> ResponseEntity.ok(body = "Matching the nested route /route/") }
             group("/nested") {
                 get("/wow") { req: Request<Any> -> ResponseEntity.ok(body = "This is deeply nested route /group/nested/wow") }
             }
+        }
+
+        auth(FakeAuthorizer) {
+            get("/auth/hello") { _: Request<Unit> -> ResponseEntity.ok(body = SimpleClass("Authenticated route says hello")) }
         }
     }
 }
@@ -255,6 +266,19 @@ sealed class ServiceResult<out T : Any> {
 
     @Serializable
     data class Error(val exceptionMessage: String?) : ServiceResult<Nothing>()
+}
+
+object FakeAuthorizer : Authorizer {
+    override val simpleName: String
+        get() = "Looks for an Authorize Header which starts with 'Bearer '"
+
+    override fun authorize(request: APIGatewayProxyRequestEvent): Boolean {
+        val authHead = request.getHeader("Authorization")
+        if (authHead != null) {
+            return authHead.startsWith("Bearer ")
+        }
+        return false
+    }
 }
 
 
