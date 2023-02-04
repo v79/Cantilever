@@ -1,8 +1,6 @@
 package org.liamjd.cantilever.aws.cdk
 
 import software.amazon.awscdk.*
-import software.amazon.awscdk.services.apigateway.Authorizer
-import software.amazon.awscdk.services.apigateway.CognitoUserPoolsAuthorizer
 import software.amazon.awscdk.services.apigateway.CorsOptions
 import software.amazon.awscdk.services.apigateway.DomainNameOptions
 import software.amazon.awscdk.services.apigateway.EndpointType
@@ -116,7 +114,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             handler = "org.liamjd.cantilever.api.LambdaRouter",
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
-                ENV.destination_bucket.name to destinationBucket.bucketName)
+                ENV.destination_bucket.name to destinationBucket.bucketName
+            )
         )
 
         println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
@@ -165,18 +164,30 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         handlebarProcessingQueue.queue.grantConsumeMessages(templateProcessorLambda)
 
         println("Creating API Gateway integrations")
-        val certificate  = Certificate.fromCertificateArn(this, "cantilever-api-edge-certificate","arn:aws:acm:us-east-1:086949310404:certificate/9b8f27c6-87be-4c14-a368-e6ad3ac4fb68")
+        val certificate = Certificate.fromCertificateArn(
+            this,
+            "cantilever-api-edge-certificate",
+            "arn:aws:acm:us-east-1:086949310404:certificate/9b8f27c6-87be-4c14-a368-e6ad3ac4fb68"
+        )
         val gateway = LambdaRestApi.Builder.create(this, "cantilever-rest-api")
             .restApiName("Cantilever REST API")
             .description("Gateway function to Cantilever services, handling routing")
-            .domainName(DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName("api.cantilevers.org").certificate(certificate).build())
-            .defaultCorsPreflightOptions(CorsOptions.builder().allowHeaders(listOf("'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'")).allowMethods(listOf("GET","OPTIONS")).allowOrigins(listOf("'*'")).build())
+            .domainName(
+                DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName("api.cantilevers.org")
+                    .certificate(certificate).build()
+            )
+            .defaultCorsPreflightOptions(
+                CorsOptions.builder()
+                    .allowHeaders(listOf("'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"))
+                    .allowMethods(listOf("GET", "OPTIONS")).allowOrigins(listOf("'*'")).build()
+            )
             .handler(apiRoutingLambda)
             .proxy(true)
             .build()
 
-      /* println("Creating Cognito identity pool")
-        val pool = UserPool.Builder.create(this,"cantilever-user-pool").userPoolName("cantilever-user-pool").signInCaseSensitive(true)
+        println("Creating Cognito identity pool")
+        val pool = UserPool.Builder.create(this, "cantilever-user-pool").userPoolName("cantilever-user-pool")
+            .signInCaseSensitive(true)
             .signInAliases(SignInAliases.builder().email(true).phone(false).username(false).build())
             .passwordPolicy(PasswordPolicy.builder().minLength(12).build())
             .mfa(Mfa.OFF) // TODO: change this later
@@ -184,11 +195,21 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             .selfSignUpEnabled(false)
             .email(UserPoolEmail.withCognito())
             .build()
-        val appClient = pool.addClient("cantilever-app", UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).build() )*/
 
-       /* println("Adding Cognito authentication to API Gateway")
-        val authorizer = CognitoUserPoolsAuthorizer.Builder.create(this,"CantileverCognitoAuth").authorizerName("CantileverCognitoAuth").cognitoUserPools(
-            listOf(pool)).build()*/
+        val cognitoPoolDomain = pool.addDomain(
+            "cantilever-api",
+            UserPoolDomainOptions.builder()
+                .cognitoDomain(CognitoDomainOptions.builder().domainPrefix("cantilever").build()).build()
+        )
+        val appUrls = listOf("https://www.cantilevers.org/app/","http://localhost:5173/")
+        val appClient = pool.addClient(
+            "cantilever-app",
+            UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(true).build()).callbackUrls(appUrls).logoutUrls(appUrls).build()).build()
+        )
+        /* println("Adding Cognito authentication to API Gateway")
+          val authorizer = CognitoUserPoolsAuthorizer.Builder.create(this,"CantileverCognitoAuth").authorizerName("CantileverCognitoAuth").cognitoUserPools(
+              listOf(pool)).build()*/
+
 
     }
 
