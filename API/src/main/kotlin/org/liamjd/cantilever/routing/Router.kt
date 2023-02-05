@@ -154,14 +154,34 @@ typealias HandlerFunction<I, T> = (request: Request<I>) -> ResponseEntity<T>
  * A RouterFunction combines a [RequestPredicate] (the HTTP method, the path, and the accept/return types, with the [HandlerFunction] which responds to the [Request] and returns a [ResponseEntity]
  */
 data class RouterFunction<I, T : Any>(
-    val requestPredicate: RequestPredicate, val handler: HandlerFunction<I, T>, var authorizer: Authorizer? = null)
+    val requestPredicate: RequestPredicate, val handler: HandlerFunction<I, T>, var authorizer: Authorizer? = null
+)
 
 /**
- * Simple wrapper around the AWS [APIGatewayProxyRequestEvent] class
+ * Simple wrapper around the AWS [APIGatewayProxyRequestEvent] class, created after a matching route has been found
+ * @property apiRequest the full event from API Gateway
+ * @property body the body, which will be empty for a GET but should have a value for PUT, POST etc
+ * @property pathPattern the path pattern from the predicate, with the {parameters} etc
+ * @property pathParameters a map of matching path parameters and their values, i.e path /get/{id} with id = 3 becomes `map[id] = 3`
  */
 data class Request<I>(
-    val apiRequest: APIGatewayProxyRequestEvent, val body: I, val pathPattern: String = apiRequest.path
-)
+    val apiRequest: APIGatewayProxyRequestEvent,
+    val body: I,
+    val pathPattern: String = apiRequest.path
+) {
+    val pathParameters: Map<String, String> by lazy {
+        val tmpMap = mutableMapOf<String, String>()
+        val inputParts = apiRequest.path.split("/")
+        val routeParts = pathPattern.split("/")
+        for (i in routeParts.indices) {
+            if (routeParts[i].startsWith("{") && routeParts[i].endsWith("}")) {
+                val param = routeParts[i].removeSurrounding("{", "}")
+                tmpMap[param] = inputParts[i]
+            }
+        }
+        tmpMap.toMap()
+    }
+}
 
 /**
  * Collection of useful HTTP codes I'm likely to need

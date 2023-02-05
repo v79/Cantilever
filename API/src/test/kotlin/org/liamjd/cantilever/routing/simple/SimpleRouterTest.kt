@@ -87,5 +87,20 @@ class SimpleRouterTest {
         assertEquals(200, response.statusCode)
         assertEquals("Nothing", response.body)
     }
+
+    @Test
+    fun `can match a route with a path parameter and extract its value`() {
+        val router = simpleRouter {
+            get("/get/{key}") {
+                req: SimpleRequest<Unit> ->
+                val keyVal = req.pathParameters["key"]
+                SimpleResponse(200, body = keyVal?.uppercase())
+            }
+        }
+        val event = APIGatewayProxyRequestEvent().withPath("/get/special").withHttpMethod("GET").withHeaders(mapOf("accept" to "text/plain"))
+        val response = router.handleRequest(event)
+        assertEquals(200,response.statusCode)
+        assertEquals("SPECIAL",response.body)
+    }
 }
 

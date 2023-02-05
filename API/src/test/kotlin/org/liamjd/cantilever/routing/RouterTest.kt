@@ -161,9 +161,9 @@ class RouterTest {
     fun `can correctly match a nested route`() {
         val testR = TestRouter()
         val event =
-            APIGatewayProxyRequestEvent().withPath("/group/route/").withHttpMethod("GET").withHeaders(acceptJson)
+            APIGatewayProxyRequestEvent().withPath("/group/route").withHttpMethod("GET").withHeaders(acceptJson)
         val response = testR.handleRequest(event)
-
+        testR.router.listRoutes()
         assertEquals(200, response.statusCode)
         assertNotNull(response.body)
         assertEquals("\"Matching the nested route /route/\"", response.body)
@@ -202,13 +202,37 @@ class RouterTest {
         assertEquals(200, response.statusCode)
     }
 
+    @Test
+    fun `can match a route with a path parameter and extract its value`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/getParam/special").withHttpMethod("GET")
+            .withHeaders(mapOf("accept" to "text/plain"))
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertEquals("SPECIAL", response.body)
+    }
+
+    @Test
+    fun `can match a route with a multiple path parameters`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/customer/xy123/purchaseOrder/2523").withHttpMethod("GET")
+            .withHeaders(mapOf("accept" to "text/plain"))
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertEquals("Customer 'xy123' made order #2523", response.body)
+    }
+
 }
 
 class TestRouter : RequestHandlerWrapper() {
 
     private val testController = TestController()
     override val router: Router = lambdaRouter {
-        // supplies JSON by default. Expects nothing.
+        /**
+         * Test basic routing, return types, calling external controllers and so on
+         */
         get("/") { _: Request<Unit> -> ResponseEntity(statusCode = 200, body = null) }
         get("/returnHtml") { _: Request<Unit> -> ResponseEntity.ok("<html></html>") }.supplies(setOf(MimeType.html))
             .expects(
@@ -224,6 +248,9 @@ class TestRouter : RequestHandlerWrapper() {
         get("/sealedYes") { _: Request<Unit> -> ResponseEntity.ok(ServiceResult.Success(data = SimpleClass("Ok from SimpleClass"))) }
         get("/getJsonString", testController::returnJsonString)
 
+        /**
+         * Test grouping
+         */
         group("/group") {
             post("/new") { req: Request<String> -> ResponseEntity.ok(body = "Created a new ${req.body}") }
             get("/route") { req: Request<Any> -> ResponseEntity.ok(body = "Matching the nested route /route/") }
@@ -232,9 +259,22 @@ class TestRouter : RequestHandlerWrapper() {
             }
         }
 
+        /**
+         * Test authorization
+         */
         auth(FakeAuthorizer) {
             get("/auth/hello") { _: Request<Unit> -> ResponseEntity.ok(body = SimpleClass("Authenticated route says hello")) }
         }
+
+        /**
+         * Test path parameter matching
+         */
+        get("/getParam/{key}") { request: Request<Unit> -> ResponseEntity.ok(body = request.pathParameters["key"]?.uppercase()) }.supplies(
+            setOf(MimeType.parse("text/plain"))
+        )
+        get("/customer/{id}/purchaseOrder/{po}") { request: Request<Unit> ->
+            ResponseEntity.ok(body = "Customer '${request.pathParameters["id"]}' made order #${request.pathParameters["po"]}")
+        }.supplies(setOf(MimeType("text", "plain")))
     }
 }
 

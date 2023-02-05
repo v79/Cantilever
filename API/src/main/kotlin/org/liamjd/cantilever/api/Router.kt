@@ -41,17 +41,6 @@ class LambdaRouter : RequestHandlerWrapper() {
     override val router = lambdaRouter {
 //        filter = loggingFilter()
 
-        get("/route") { req: Request<String> ->
-            ResponseEntity.ok(MyResponse(req.body))
-        }.expects(null)
-
-        get("/hello") { _: Request<String> ->
-            ResponseEntity.ok(body = "Hello")
-        }
-
-        post("/new") { req: Request<MyRequest> ->
-            ResponseEntity.ok(MyResponse("new object created from ${req.body.message}"))
-        }
 
         auth(CognitoJWTAuthorizer) {
             group("/structure") {
@@ -61,10 +50,11 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
-        /*authorize("permission_name") {
-            get("/requiresAuth") { req: Request<Any> -> ResponseEntity.ok(body = "Authorised to do something") }
-        }*/
-
+        auth(CognitoJWTAuthorizer) {
+            group("/posts") {
+                get("load/{srcKey}") { request: Request<Unit> -> ResponseEntity.ok(body = "Retrieving file ${request}")  }
+            }
+        }
     }
 
     /* private fun loggingFilter() = Filter { next ->
