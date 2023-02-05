@@ -57,9 +57,9 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         println("Processing route ${routerFunction.requestPredicate}")
         routerFunction.authorizer?.let {auth ->
             println("Checking authentication/authorization for ${auth.simpleName}")
-            if(!auth.authorize(input)) {
-                println("Authorization check failed")
-                return ResponseEntity.unauthorized("Oh no you don't!")
+            val authResult = auth.authorize(input)
+            if(!authResult.authorized) {
+                return ResponseEntity.unauthorized("Authorization check failed: ${authResult.message}")
             }
         }
 

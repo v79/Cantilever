@@ -39,8 +39,10 @@ dependencies {
     implementation("com.amazonaws:aws-lambda-java-core:1.2.2")
     implementation("com.amazonaws:aws-lambda-java-events:3.11.0")
 
-    // cognito
-    implementation("aws.sdk.kotlin:cognitoidentity:0.20.0-beta")
+    // auth
+//    implementation("aws.sdk.kotlin:cognitoidentity:0.20.0-beta")
+    implementation("com.auth0:java-jwt:4.2.2")
+    implementation("com.auth0:jwks-rsa:0.21.3")
 
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")

@@ -8,6 +8,7 @@ import kotlinx.serialization.encoding.Encoder
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.liamjd.cantilever.api.models.RawJsonString
+import org.liamjd.cantilever.auth.AuthResult
 import org.liamjd.cantilever.auth.Authorizer
 
 class RouterTest {
@@ -272,12 +273,12 @@ object FakeAuthorizer : Authorizer {
     override val simpleName: String
         get() = "Looks for an Authorize Header which starts with 'Bearer '"
 
-    override fun authorize(request: APIGatewayProxyRequestEvent): Boolean {
+    override fun authorize(request: APIGatewayProxyRequestEvent): AuthResult {
         val authHead = request.getHeader("Authorization")
         if (authHead != null) {
-            return authHead.startsWith("Bearer ")
+            return AuthResult(authHead.startsWith("Bearer "), "AuthResultMessage")
         }
-        return false
+        return AuthResult(false, "Invalid")
     }
 }
 
