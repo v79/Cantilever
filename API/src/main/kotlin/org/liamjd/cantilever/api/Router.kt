@@ -26,6 +26,7 @@ class LambdaRouter : RequestHandlerWrapper() {
 
     val sourceBucket = System.getenv("source_bucket")
     val destinationBucket = System.getenv("destination_bucket")
+    override val corsDomain: String = System.getenv("cors_domain") ?: "https://www.cantilevers.org/"
 
     init {
         println("Router init: source bucket: $sourceBucket")
@@ -36,7 +37,7 @@ class LambdaRouter : RequestHandlerWrapper() {
 
     // May need some DI here once I start needing to add services for S3 etc
 //    private val postController = PostController()
-    private val structureController = StructureController(sourceBucket = sourceBucket)
+    private val structureController = StructureController(sourceBucket = sourceBucket, corsDomain = corsDomain)
 
     override val router = lambdaRouter {
 //        filter = loggingFilter()

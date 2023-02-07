@@ -17,7 +17,10 @@ import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.S3Service
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 
-class StructureController(val sourceBucket: String) : KoinComponent {
+/**
+ * Handle functions relating to the structure.json file
+ */
+class StructureController(val sourceBucket: String, val corsDomain: String = "https://www.cantilevers.org") : KoinComponent {
 
     private val s3Service: S3Service by inject()
     private val structureService: StructureService by inject()

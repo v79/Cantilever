@@ -7,7 +7,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 
-abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.cantilevers.org/") : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
     abstract val router: Router
 
@@ -130,7 +130,7 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         // according to https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-cors-console.html
         // though this may only be allowed for non-authenticated requests
         return APIGatewayProxyResponseEvent().withStatusCode(responseEntity.statusCode)
-            .withHeaders(mapOf("Content-Type" to contentType, "Access-Control-Allow-Origin" to "*"))
+            .withHeaders(mapOf("Content-Type" to contentType, "Access-Control-Allow-Origin" to corsDomain))
             .withBody(body)
     }
 

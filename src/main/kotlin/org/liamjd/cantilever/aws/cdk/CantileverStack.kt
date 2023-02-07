@@ -28,7 +28,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         destination_bucket,
         source_bucket,
         markdown_processing_queue,
-        handlebar_template_queue
+        handlebar_template_queue,
+        cors_domain
     }
     // TODO: I suppose I'm going to need to set up a dev and production environment for this sort of thing. Boo.
 
@@ -122,7 +123,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             handler = "org.liamjd.cantilever.api.LambdaRouter",
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
-                ENV.destination_bucket.name to destinationBucket.bucketName
+                ENV.destination_bucket.name to destinationBucket.bucketName,
+                ENV.cors_domain.name to deploymentDomain
             )
         )
 
