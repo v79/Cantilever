@@ -35,7 +35,6 @@ class StructureController(val sourceBucket: String) : KoinComponent {
                 val structureJson = s3Service.getObjectAsString(structureKey, sourceBucket)
                 val structure = Json.decodeFromString<Structure>(structureJson)
                 println("StructureController: Returning structure object with ${structure.posts.size} posts")
-//                ResponseEntity.ok(body = APIResult.JsonSuccess(RawJsonString(structureJson)))
                 ResponseEntity.ok(body = APIResult.Success(structure))
             } catch (se: SerializationException) {
                 ResponseEntity.serverError(body = APIResult.Error(se.message ?: "Serialization Exception"))
@@ -73,15 +72,14 @@ class StructureController(val sourceBucket: String) : KoinComponent {
                         return@forEach
                     }
 
-                    val post = Post(
+                    structure.posts.add(Post(
                         title = postMetadata.title,
                         srcKey = obj.key(),
                         url = postMetadata.slug,
                         template = template,
                         date = postMetadata.date,
                         lastUpdated = postMetadata.lastModified
-                    )
-                    structure.posts.add(post)
+                    ))
                     structure.layouts.templates[templateKey] = template
                     filesProcessed++
                 } else {

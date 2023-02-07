@@ -167,19 +167,18 @@ data class RouterFunction<I, T : Any>(
 data class Request<I>(
     val apiRequest: APIGatewayProxyRequestEvent,
     val body: I,
-    val pathPattern: String = apiRequest.path
+    val pathPattern: String
 ) {
     val pathParameters: Map<String, String> by lazy {
-        val tmpMap = mutableMapOf<String, String>()
-        val inputParts = apiRequest.path.split("/")
-        val routeParts = pathPattern.split("/")
-        for (i in routeParts.indices) {
-            if (routeParts[i].startsWith("{") && routeParts[i].endsWith("}")) {
-                val param = routeParts[i].removeSurrounding("{", "}")
-                tmpMap[param] = inputParts[i]
+        buildMap {
+            val inputParts = apiRequest.path.split("/")
+            val routeParts = pathPattern.split("/")
+            for (i in routeParts.indices) {
+                if (routeParts[i].startsWith("{") && routeParts[i].endsWith("}")) {
+                    put(routeParts[i].removeSurrounding("{", "}"), inputParts[i])
+                }
             }
         }
-        tmpMap.toMap()
     }
 }
 

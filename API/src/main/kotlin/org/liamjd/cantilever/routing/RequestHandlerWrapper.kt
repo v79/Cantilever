@@ -83,6 +83,7 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         path: String?,
         acceptedMediaTypes: List<MimeType>
     ): APIGatewayProxyResponseEvent {
+        println("Not route match found for $httpMethod $path")
         return APIGatewayProxyResponseEvent()
             .withStatusCode(404)
             .withHeaders(mapOf("Content-Type" to "text/plain"))

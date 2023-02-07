@@ -43,8 +43,8 @@ class LambdaRouter : RequestHandlerWrapper() {
 
 
         auth(CognitoJWTAuthorizer) {
+            get("/structure", structureController::getStructureFile)
             group("/structure") {
-                get("/", structureController::getStructureFile)
                 get("/rebuild", structureController::rebuildStructureFile)
                 post("/addSource", structureController::addFileToStructure)
             }
@@ -52,7 +52,7 @@ class LambdaRouter : RequestHandlerWrapper() {
 
         auth(CognitoJWTAuthorizer) {
             group("/posts") {
-                get("load/{srcKey}") { request: Request<Unit> -> ResponseEntity.ok(body = "Retrieving file ${request}")  }
+                get("load/{srcKey}") { request: Request<Unit> -> ResponseEntity.ok(body = "Retrieving file $request")  }
             }
         }
     }
