@@ -23,7 +23,7 @@
 
 	onMount(async () => {
 		authToken = extractIdToken();
-		console.log(authToken)
+		console.log(authToken);
 		if (authToken) {
 			tokenPayload = jwt_decode<JwtPayload>(authToken);
 			if (tokenPayload) {
@@ -59,13 +59,14 @@
 </script>
 
 {#if $userStore === undefined}
-	<button class="btn btn-sm btn-primary" title="Login" on:click={login}> Login </button>
+	<button type="button" class="btn-sm btn-primary btn" title="Login" on:click={login}>
+		Login
+	</button>
 {:else}
 	<span class="pr-2">{$userStore.name}</span>
 	<a
 		href="{cognitoDomain}/logout?client_id={appClientId}&logout_uri={PUBLIC_COGNITO_CALLBACK_URL}"
-		title="Logout"
-	>
+		title="Logout">
 		<svg
 			version="1.1"
 			id="Capa_1"
@@ -75,23 +76,20 @@
 			xml:space="preserve"
 			height="32px"
 			width="24px"
-			class="svg-icon"
-		>
+			class="svg-icon">
 			<g>
 				<g>
 					<g>
 						<polygon
 							class="svg-icon polygon"
 							points="134.921,34.204 134.921,54.399 284.398,54.399 284.398,250.183 134.921,250.183 
-				134.921,270.384 304.588,270.384 304.588,34.204 			"
-						/>
+				134.921,270.384 304.588,270.384 304.588,34.204 			" />
 					</g>
 					<g>
 						<polygon
 							class="svg-icon polygon"
 							points="150.27,223.581 166.615,239.931 254.26,152.286 166.615,64.651 150.27,80.979 
-				210.013,140.733 0,140.733 0,163.838 210.008,163.838 			"
-						/>
+				210.013,140.733 0,140.733 0,163.838 210.008,163.838 			" />
 					</g>
 				</g>
 			</g>

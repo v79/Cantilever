@@ -3,7 +3,7 @@
 </script>
 
 <nav
-	class=" navbar navbar-expand-lg navbar-light relative flex w-full flex-wrap items-center justify-between bg-slate-800 py-4 text-gray-500 shadow-lg hover:text-gray-700 focus:text-gray-700 ">
+	class=" navbar navbar-light navbar-expand-lg relative flex w-full flex-wrap items-center justify-between bg-slate-800 py-4 text-gray-500 shadow-lg hover:text-gray-700 focus:text-gray-700 ">
 	<div class="container-fluid flex w-full flex-wrap items-center justify-between px-6">
 		<button
 			aria-controls="navbarSupportedContent"
@@ -28,15 +28,6 @@
 			</svg>
 		</button>
 		<div class="navbar-collapse collapse flex-grow items-center" id="navbarSupportedContent">
-			<a
-				class=" mt-2 mr-1 flex items-center text-gray-900 hover:text-gray-900 focus:text-gray-900 lg:mt-0 "
-				href="#">
-				<img
-					alt=""
-					loading="lazy"
-					src="https://mdbootstrap.com/img/logo/mdb-transaprent-noshadows.png"
-					style="height: 15px" />
-			</a>
 			<!-- Left links -->
 			<ul class="list-style-none navbar-nav mr-auto flex flex-col pl-0">
 				<li class="nav-item p-2">

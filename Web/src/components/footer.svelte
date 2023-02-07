@@ -1,8 +1,14 @@
-<footer class="bg-white dark:bg-slate-800 first:p-10">
-	<div class="grid grid-cols-2 md:grid-cols-4 gap-8 px-6 py-8">
-		<h2 class="mb-6 text-slate-200">About Cantilever</h2>
-		<ul>
-			<li class="mb-4"><a href="#">Project history</a></li>
-		</ul>
+<footer class="bg-slate-400 first:p-10 dark:bg-slate-800">
+	<div class="container py-6 px-12">
+		<div class="grid md:grid-cols-2 lg:grid-cols-4">
+			<div class="mb-6">
+				<h5 class="mb-2.5 font-bold uppercase text-gray-800">About Cantilever</h5>
+				<ul class="mb-0 list-none">
+					<li>
+						<a href="#!" class="text-gray-800">Project history</a>
+					</li>
+				</ul>
+			</div>
+		</div>
 	</div>
 </footer>
