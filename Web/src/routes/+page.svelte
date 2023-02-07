@@ -16,7 +16,7 @@
 		<MarkdownEditor/>
 	</div>
 	<div class="divider divider-horizontal"></div>
-	<div class="basis-1/4 bg-slate-800"><h3 class="px-4 py-4 text-2xl font-bold text-slate-200">Assets</h3></div>
+	<div class="basis-1/4 sm:collapse bg-slate-800"><h3 class="px-4 py-4 text-2xl font-bold text-slate-200">Assets</h3></div>
 </div>
 
 <Footer/>

@@ -1,63 +1,109 @@
 <script>
-	import LoginButton from "./loginButton.svelte";
+	import LoginButton from './loginButton.svelte';
 </script>
 
-<nav class="navbar">
-	<div class="navbar-start">
-        <div class="dropdown">
-            <!-- svelte-ignore a11y-label-has-associated-control -->
-            <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
-            <label tabindex="0" class="btn btn-ghost btn-circle">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" /></svg>
-            </label>
-            <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
-            <ul tabindex="0" class="menu menu-compact dropdown-content mt-3 p-2 shadow bg-base-100 rounded-box w-52">
-              <li><a href="#">Menu Item 1</a></li>
-              <li><a href="#">Menu Item 2</a></li>
-              <li><a href="#">Menu Item 3</a></li>
-            </ul>
-          </div>
-	</div>
-	<div class="navbar-center">
-		<span class="normal-case text-xl font-bold">Cantilever Editor</span>
-	</div>
-	<div class="navbar-end">
-		<!-- search -->
-		<button class="btn btn-ghost btn-circle" title="Search">
+<nav
+	class=" navbar navbar-expand-lg navbar-light relative flex w-full flex-wrap items-center justify-between bg-slate-800 py-4 text-gray-500 shadow-lg hover:text-gray-700 focus:text-gray-700 ">
+	<div class="container-fluid flex w-full flex-wrap items-center justify-between px-6">
+		<button
+			aria-controls="navbarSupportedContent"
+			aria-expanded="false"
+			aria-label="Toggle navigation"
+			class=" navbar-toggler border-0 bg-transparent py-2 px-2.5 text-gray-500 hover:no-underline hover:shadow-none focus:no-underline focus:shadow-none focus:outline-none focus:ring-0 "
+			data-bs-target="#navbarSupportedContent"
+			data-bs-toggle="collapse"
+			type="button">
 			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="h-5 w-5"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				><path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-				/></svg
-			>
+				aria-hidden="true"
+				class="w-6"
+				data-icon="bars"
+				data-prefix="fas"
+				focusable="false"
+				role="img"
+				viewBox="0 0 448 512"
+				xmlns="http://www.w3.org/2000/svg">
+				<path
+					d="M16 132h416c8.837 0 16-7.163 16-16V76c0-8.837-7.163-16-16-16H16C7.163 60 0 67.163 0 76v40c0 8.837 7.163 16 16 16zm0 160h416c8.837 0 16-7.163 16-16v-40c0-8.837-7.163-16-16-16H16c-8.837 0-16 7.163-16 16v40c0 8.837 7.163 16 16 16zm0 160h416c8.837 0 16-7.163 16-16v-40c0-8.837-7.163-16-16-16H16c-8.837 0-16 7.163-16 16v40c0 8.837 7.163 16 16 16z"
+					fill="currentColor" />
+			</svg>
 		</button>
-		<!-- alerts -->
-		<button class="btn btn-ghost btn-circle" title="Alerts">
-			<div class="indicator">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-5 w-5"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					><path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-					/></svg
-				>
-				<span class="badge badge-xs badge-primary indicator-item" />
+		<div class="navbar-collapse collapse flex-grow items-center" id="navbarSupportedContent">
+			<a
+				class=" mt-2 mr-1 flex items-center text-gray-900 hover:text-gray-900 focus:text-gray-900 lg:mt-0 "
+				href="#">
+				<img
+					alt=""
+					loading="lazy"
+					src="https://mdbootstrap.com/img/logo/mdb-transaprent-noshadows.png"
+					style="height: 15px" />
+			</a>
+			<!-- Left links -->
+			<ul class="list-style-none navbar-nav mr-auto flex flex-col pl-0">
+				<li class="nav-item p-2">
+					<a class="nav-link p-0 text-gray-500 hover:text-gray-700 focus:text-gray-700" href="#"
+						>Dashboard</a>
+				</li>
+				<li class="nav-item p-2">
+					<a class="nav-link p-0 text-gray-500 hover:text-gray-700 focus:text-gray-700" href="#"
+						>Team</a>
+				</li>
+				<li class="nav-item p-2">
+					<a class="nav-link p-0 text-gray-500 hover:text-gray-700 focus:text-gray-700" href="#"
+						>Projects</a>
+				</li>
+			</ul>
+			<!-- Left links -->
+		</div>
+		<!-- Collapsible wrapper -->
+
+		<!-- Right elements -->
+		<div class="relative flex items-center">
+			<div class="dropdown relative">
+				<a
+					aria-expanded="false"
+					class=" hidden-arrow dropdown-toggle mr-4 flex items-center text-gray-500 hover:text-gray-700 focus:text-gray-700 "
+					data-bs-toggle="dropdown"
+					href="#"
+					id="dropdownMenuButton1"
+					role="button">
+					<svg
+						aria-hidden="true"
+						class="w-4"
+						data-icon="bell"
+						data-prefix="fas"
+						focusable="false"
+						role="img"
+						viewBox="0 0 448 512"
+						xmlns="http://www.w3.org/2000/svg">
+						<path
+							d="M224 512c35.32 0 63.97-28.65 63.97-64H160.03c0 35.35 28.65 64 63.97 64zm215.39-149.71c-19.32-20.76-55.47-51.99-55.47-154.29 0-77.7-54.48-139.9-127.94-155.16V32c0-17.67-14.32-32-31.98-32s-31.98 14.33-31.98 32v20.84C118.56 68.1 64.08 130.3 64.08 208c0 102.3-36.15 133.53-55.47 154.29-6 6.45-8.66 14.16-8.61 21.71.11 16.4 12.98 32 32.1 32h383.8c19.12 0 32-15.6 32.1-32 .05-7.55-2.61-15.27-8.61-21.71z"
+							fill="currentColor" />
+					</svg>
+					<span class="absolute -mt-2.5 ml-2 rounded-full bg-red-700 py-0 px-1.5 text-xs text-white"
+						>1</span>
+				</a>
+				<ul
+					aria-labelledby="dropdownMenuButton1"
+					class=" dropdown-menu absolute left-auto right-0 z-50 float-left m-0 mt-1 hidden min-w-max list-none rounded-lg border-none bg-white bg-clip-padding py-2 text-left text-base shadow-lg">
+					<li>
+						<a
+							class=" dropdown-item block w-full whitespace-nowrap bg-transparent py-2 px-4 text-sm font-normal text-gray-700 hover:bg-gray-100 "
+							href="#">Action</a>
+					</li>
+					<li>
+						<a
+							class=" dropdown-item block w-full whitespace-nowrap bg-transparent py-2 px-4 text-sm font-normal text-gray-700 hover:bg-gray-100 "
+							href="#">Another action</a>
+					</li>
+					<li>
+						<a
+							class=" dropdown-item block w-full whitespace-nowrap bg-transparent py-2 px-4 text-sm font-normal text-gray-700 hover:bg-gray-100 "
+							href="#">Something else here</a>
+					</li>
+				</ul>
 			</div>
-		</button>
-		<!-- login / identity -->
-		<LoginButton/>
+			<LoginButton />
+		</div>
+		<!-- Right elements -->
 	</div>
 </nav>

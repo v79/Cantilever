@@ -5,7 +5,8 @@ module.exports = {
     extend: {},
   },
   plugins: [
-    require('daisyui'),
-    require('@tailwindcss/forms')
+    require('@tailwindcss/forms'),
+    require('tw-elements/dist/plugin')
   ],
+  darkMode: 'class',
 }

@@ -23,6 +23,7 @@
 
 	onMount(async () => {
 		authToken = extractIdToken();
+		console.log(authToken)
 		if (authToken) {
 			tokenPayload = jwt_decode<JwtPayload>(authToken);
 			if (tokenPayload) {
