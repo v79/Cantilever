@@ -3,10 +3,14 @@ package org.liamjd.cantilever.api
 import kotlinx.serialization.Serializable
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
+import org.liamjd.cantilever.api.controllers.PostController
 import org.liamjd.cantilever.api.controllers.StructureController
 import org.liamjd.cantilever.api.services.StructureService
 import org.liamjd.cantilever.auth.CognitoJWTAuthorizer
-import org.liamjd.cantilever.routing.*
+import org.liamjd.cantilever.routing.RequestHandlerWrapper
+import org.liamjd.cantilever.routing.auth
+import org.liamjd.cantilever.routing.group
+import org.liamjd.cantilever.routing.lambdaRouter
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
@@ -36,8 +40,8 @@ class LambdaRouter : RequestHandlerWrapper() {
     }
 
     // May need some DI here once I start needing to add services for S3 etc
-//    private val postController = PostController()
     private val structureController = StructureController(sourceBucket = sourceBucket, corsDomain = corsDomain)
+    private val postController = PostController(sourceBucket = sourceBucket)
 
     override val router = lambdaRouter {
 //        filter = loggingFilter()
@@ -53,7 +57,7 @@ class LambdaRouter : RequestHandlerWrapper() {
 
         auth(CognitoJWTAuthorizer) {
             group("/posts") {
-                get("load/{srcKey}") { request: Request<Unit> -> ResponseEntity.ok(body = "Retrieving file $request")  }
+                get("/load/{srcKey}", postController::loadMarkdownSource)
             }
         }
     }

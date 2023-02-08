@@ -106,6 +106,10 @@ class Router internal constructor() {
         }
     }
 
+    companion object {
+        const val CONTENT_TYPE = "Content-Type"
+    }
+
 }
 
 /**
