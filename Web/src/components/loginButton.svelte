@@ -1,11 +1,10 @@
 <script lang="ts">
-	import { PUBLIC_COGNITO_CALLBACK_URL } from '$env/static/public';
+	import {PUBLIC_COGNITO_CALLBACK_URL} from '$env/static/public';
+	import type {JwtPayload} from 'jwt-decode';
 	import jwt_decode from 'jwt-decode';
-	import type { JwtPayload } from 'jwt-decode';
-	import { onMount } from 'svelte';
-	import { writable } from 'svelte/store';
-	import { User } from '../models/authUser';
-	import { userStore } from '../stores/userStore.svelte';
+	import {onMount} from 'svelte';
+	import {User} from '../models/authUser';
+	import {userStore} from '../stores/userStore.svelte';
 
 	let authToken: any;
 	let tokenPayload: JwtPayload;
@@ -63,6 +62,10 @@
 		Login
 	</button>
 {:else}
+	<img
+		src="https://mdbcdn.b-cdn.net/img/new/avatars/2.webp"
+		class="w-8 rounded-full"
+		alt="Avatar" />
 	<span class="pr-2">{$userStore.name}</span>
 	<a
 		href="{cognitoDomain}/logout?client_id={appClientId}&logout_uri={PUBLIC_COGNITO_CALLBACK_URL}"

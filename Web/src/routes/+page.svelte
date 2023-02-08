@@ -5,21 +5,21 @@
 	import MarkdownEditor from '../components/markdownEditor.svelte';
 </script>
 
-<TopMenu/>
+<TopMenu />
 
 <div class="flex flex-row">
 	<div class="basis-1/4 bg-slate-400">
 		<PostList />
 	</div>
-	<div class="divider divider-horizontal"></div>
 	<div class="basis-1/2 bg-slate-600">
-		<MarkdownEditor/>
+		<MarkdownEditor />
 	</div>
-	<div class="divider divider-horizontal"></div>
-	<div class="basis-1/4 sm:collapse bg-slate-800"><h3 class="px-4 py-4 text-2xl font-bold text-slate-200">Assets</h3></div>
+	<div class="invisible basis-1/4 bg-slate-800 lg:visible">
+		<h3 class="px-4 py-4 text-2xl font-bold text-slate-200">Assets</h3>
+	</div>
 </div>
 
-<Footer/>
+<Footer />
 
 <style lang="postcss">
 	:global(html) {
