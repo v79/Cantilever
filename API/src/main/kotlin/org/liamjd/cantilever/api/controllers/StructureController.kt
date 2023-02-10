@@ -17,7 +17,10 @@ import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.S3Service
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 
-class StructureController(val sourceBucket: String) : KoinComponent {
+/**
+ * Handle functions relating to the structure.json file
+ */
+class StructureController(val sourceBucket: String, val corsDomain: String = "https://www.cantilevers.org") : KoinComponent {
 
     private val s3Service: S3Service by inject()
     private val structureService: StructureService by inject()
@@ -35,7 +38,6 @@ class StructureController(val sourceBucket: String) : KoinComponent {
                 val structureJson = s3Service.getObjectAsString(structureKey, sourceBucket)
                 val structure = Json.decodeFromString<Structure>(structureJson)
                 println("StructureController: Returning structure object with ${structure.posts.size} posts")
-//                ResponseEntity.ok(body = APIResult.JsonSuccess(RawJsonString(structureJson)))
                 ResponseEntity.ok(body = APIResult.Success(structure))
             } catch (se: SerializationException) {
                 ResponseEntity.serverError(body = APIResult.Error(se.message ?: "Serialization Exception"))
@@ -73,15 +75,14 @@ class StructureController(val sourceBucket: String) : KoinComponent {
                         return@forEach
                     }
 
-                    val post = Post(
+                    structure.posts.add(Post(
                         title = postMetadata.title,
                         srcKey = obj.key(),
                         url = postMetadata.slug,
                         template = template,
                         date = postMetadata.date,
                         lastUpdated = postMetadata.lastModified
-                    )
-                    structure.posts.add(post)
+                    ))
                     structure.layouts.templates[templateKey] = template
                     filesProcessed++
                 } else {

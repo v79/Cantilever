@@ -4,6 +4,7 @@ plugins {
     kotlin("jvm") version "1.8.0"
     application
     `maven-publish`
+    id("org.sonarqube") version "3.5.0.2730"
 }
 
 group = "org.liamjd"

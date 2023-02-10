@@ -13,6 +13,13 @@
     "@aws-cdk/aws-iam:minimizePolicies": true,
     "@aws-cdk/core:validateSnapshotRemovalPolicy": true,
     "@aws-cdk/aws-codepipeline:crossAccountKeyAliasStackSafeResourceName": true,
-    "@aws-cdk/aws-s3:createDefaultLoggingPolicy": true
+    "@aws-cdk/aws-s3:createDefaultLoggingPolicy": true,
+
+    "dev": {
+      "domainName" : "http://localhost:5173"
+    },
+    "prod": {
+      "domainName" : "https://www.cantilevers.org"
+    }
   }
 }

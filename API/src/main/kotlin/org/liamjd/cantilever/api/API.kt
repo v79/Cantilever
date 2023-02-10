@@ -3,12 +3,14 @@ package org.liamjd.cantilever.api
 import kotlinx.serialization.Serializable
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
+import org.liamjd.cantilever.api.controllers.PostController
 import org.liamjd.cantilever.api.controllers.StructureController
 import org.liamjd.cantilever.api.services.StructureService
-import org.liamjd.cantilever.routing.Request
+import org.liamjd.cantilever.auth.CognitoJWTAuthorizer
 import org.liamjd.cantilever.routing.RequestHandlerWrapper
-import org.liamjd.cantilever.routing.ResponseEntity
-import org.liamjd.cantilever.routing.Router
+import org.liamjd.cantilever.routing.auth
+import org.liamjd.cantilever.routing.group
+import org.liamjd.cantilever.routing.lambdaRouter
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
@@ -28,6 +30,7 @@ class LambdaRouter : RequestHandlerWrapper() {
 
     val sourceBucket = System.getenv("source_bucket")
     val destinationBucket = System.getenv("destination_bucket")
+    override val corsDomain: String = System.getenv("cors_domain") ?: "https://www.cantilevers.org/"
 
     init {
         println("Router init: source bucket: $sourceBucket")
@@ -37,30 +40,26 @@ class LambdaRouter : RequestHandlerWrapper() {
     }
 
     // May need some DI here once I start needing to add services for S3 etc
-//    private val postController = PostController()
-    private val structureController = StructureController(sourceBucket = sourceBucket)
+    private val structureController = StructureController(sourceBucket = sourceBucket, corsDomain = corsDomain)
+    private val postController = PostController(sourceBucket = sourceBucket)
 
-    override val router = Router.router {
+    override val router = lambdaRouter {
 //        filter = loggingFilter()
 
-        get("/route") { req: Request<String> ->
-            ResponseEntity.ok(MyResponse(req.body))
-        }.expects(null)
 
-        get("/hello") { _: Request<String> ->
-            ResponseEntity.ok(body = "Hello")
+        auth(CognitoJWTAuthorizer) {
+            get("/structure", structureController::getStructureFile)
+            group("/structure") {
+                get("/rebuild", structureController::rebuildStructureFile)
+                post("/addSource", structureController::addFileToStructure)
+            }
         }
 
-        post("/new") { req: Request<MyRequest> ->
-            ResponseEntity.ok(MyResponse("new object created from ${req.body.message}"))
+        auth(CognitoJWTAuthorizer) {
+            group("/posts") {
+                get("/load/{srcKey}", postController::loadMarkdownSource)
+            }
         }
-
-        // TODO I'll want to investigate route grouping here
-        get("/structure", structureController::getStructureFile)
-        get("/rebuildStructure", structureController::rebuildStructureFile)
-        post("/addSource", structureController::addFileToStructure)
-
-//        post("/newPost", postController::newPost)
     }
 
     /* private fun loggingFilter() = Filter { next ->
@@ -73,5 +72,6 @@ class LambdaRouter : RequestHandlerWrapper() {
 
 @Serializable
 data class MyResponse(val text: String)
+
 @Serializable
 data class MyRequest(val message: String)

@@ -6,8 +6,9 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
+import org.liamjd.cantilever.routing.Router.Companion.CONTENT_TYPE
 
-abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.cantilevers.org/") : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
     abstract val router: Router
 
@@ -23,35 +24,62 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         println(
             "RequestHandlerWrapper: handleRequest(): looking for route which matches request  ${input.httpMethod} ${input.path} <${
                 input.getHeader(
-                    "Content-Type"
+                    CONTENT_TYPE
                 )
             }->${input.acceptedMediaTypes()}>"
         )
         // find matching route
-        val routes = router.routes as List<RouterFunction<Any, Any>>
-        val matchResults: List<RequestMatchResult> = routes.map { routerFunction: RouterFunction<Any, Any> ->
+        val routes: List<RouterFunction<*, *>> = router.routes.values.toList()
+        routes.map { routerFunction: RouterFunction<*, *> ->
             val matchResult = routerFunction.requestPredicate.match(input)
             if (matchResult.matches) {
-                val handler: HandlerFunction<Any, Any> = routerFunction.handler
                 val matchedAcceptType = routerFunction.requestPredicate.matchedAcceptType(input.acceptedMediaTypes())
                     ?: router.produceByDefault.first()
 
-                val entity: ResponseEntity<out Any> = try {
-                    // this is where we'd add authorization checks, which may throw exceptions
-                    val requestBody = "TODO: deserialize the input request body"
-                    val request = Request(input, requestBody, routerFunction.requestPredicate.pathPattern)
-                    (handler as HandlerFunction<*, *>)(request)
-                } catch (e: Exception) {
-                    ResponseEntity.serverError(e.message)
-                    // TODO return createErrorResponse(errorEntity)
-                }
-
+                val entity: ResponseEntity<out Any> = processRoute(input, routerFunction)
                 return createResponse(entity, matchedAcceptType)
             }
             matchResult
 
         }
         return createNoMatchingRouteResponse(input.httpMethod, input.path, input.acceptedMediaTypes())
+    }
+
+    /**
+     * Process the matching route by extracting the request body (if any), and calling the handler function
+     * @param input the raw request event from AWS API Gateway
+     * @param routerFunction the request predicate, handler and ???
+     * @return a [ResponseEntity] object ready to be serialized and returned to the requester
+     */
+    private fun processRoute(
+        input: APIGatewayProxyRequestEvent,
+        routerFunction: RouterFunction<*, *>
+    ): ResponseEntity<out Any> {
+        println("Processing route ${routerFunction.requestPredicate}")
+        routerFunction.authorizer?.let {auth ->
+            println("Checking authentication/authorization for ${auth.simpleName}")
+            println("BAD - BYPASSING AUTH!")
+
+            if(corsDomain != "http://localhost:5173") {
+                val authResult = auth.authorize(input)
+                if (!authResult.authorized) {
+                    return ResponseEntity.unauthorized("Authorization check failed: ${authResult.message}")
+                }
+            }
+
+            println("END BAD!")
+        }
+
+        val handler: (Nothing) -> ResponseEntity<out Any> = routerFunction.handler
+        val entity: ResponseEntity<out Any> = try {
+            // this is where we'd add authorization checks, which may throw exceptions
+            val requestBody = "TODO: deserialize the input request body"
+            val request = Request(input, requestBody, routerFunction.requestPredicate.pathPattern)
+            (handler as HandlerFunction<*, *>)(request)
+        } catch (e: Exception) {
+            ResponseEntity.serverError(e.message)
+        }
+        return entity
     }
 
     /**
@@ -62,6 +90,7 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         path: String?,
         acceptedMediaTypes: List<MimeType>
     ): APIGatewayProxyResponseEvent {
+        println("Not route match found for $httpMethod $path")
         return APIGatewayProxyResponseEvent()
             .withStatusCode(404)
             .withHeaders(mapOf("Content-Type" to "text/plain"))
@@ -90,7 +119,6 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
                         jsonFormat.encodeToString(kSerializer, responseEntity.body as T)
                     }
                 } ?: "could not ---- could not get serializer for $responseEntity"
-
             }
 
             MimeType.html -> {
@@ -107,12 +135,14 @@ abstract class RequestHandlerWrapper : RequestHandler<APIGatewayProxyRequestEven
         }
         // with CORS enabled, I have to include Access-Control-Allow-Origin header to *
         // according to https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-cors-console.html
-        return APIGatewayProxyResponseEvent().withStatusCode(200)
-            .withHeaders(mapOf("Content-Type" to contentType, "Access-Control-Allow-Origin" to "*"))
+        // though this may only be allowed for non-authenticated requests
+        return APIGatewayProxyResponseEvent().withStatusCode(responseEntity.statusCode)
+            .withHeaders(mapOf(CONTENT_TYPE to contentType, "Access-Control-Allow-Origin" to corsDomain))
             .withBody(body)
     }
 
     private fun <T> createErrorResponse(): APIGatewayProxyResponseEvent =
         APIGatewayProxyResponseEvent().withStatusCode(500)
+
 }
 

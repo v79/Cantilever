@@ -10,3 +10,12 @@ cdk.out
 /MarkdownProcessor/build/classes/kotlin/test/
 /SharedModels/build/libs/SharedModels-0.0.1.jar
 FileUploadHandler/gradle/wrapper/gradle-wrapper.properties
+.idea/sonarlint-state.xml
+.idea/sonarlint.xml
+.idea/sonarlint/
+API/.gradle/
+API/build/
+FileUploadHandler/.gradle/
+FileUploadHandler/build/
+SharedModels/build/
+TemplateProcessor/build/

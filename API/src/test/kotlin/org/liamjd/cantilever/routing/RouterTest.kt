@@ -8,6 +8,8 @@ import kotlinx.serialization.encoding.Encoder
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.liamjd.cantilever.api.models.RawJsonString
+import org.liamjd.cantilever.auth.AuthResult
+import org.liamjd.cantilever.auth.Authorizer
 
 class RouterTest {
 
@@ -131,7 +133,8 @@ class RouterTest {
     @Test
     fun `router correctly serializes an API Response containing a raw json part`() {
         val testR = TestRouter()
-        val event = APIGatewayProxyRequestEvent().withPath("/getJsonString").withHttpMethod("GET").withHeaders(acceptJson)
+        val event =
+            APIGatewayProxyRequestEvent().withPath("/getJsonString").withHttpMethod("GET").withHeaders(acceptJson)
         val response = testR.handleRequest(event)
 
         assertEquals(200, response.statusCode)
@@ -139,13 +142,97 @@ class RouterTest {
         assertTrue(response.body.contains(""""colour""""))
         assertTrue(response.body.contains(""""red""""))
     }
+
+    // not implemented yet
+    fun `requires auth header matching permission for authorize routes`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/requiresTestPermission").withHttpMethod("GET")
+            .withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+
+        testR.router.listRoutes()
+
+        assertEquals(200, response.statusCode)
+        assertNotNull(response.body)
+        assertEquals("\"Permission granted\"", response.body)
+    }
+
+    @Test
+    fun `can correctly match a nested route`() {
+        val testR = TestRouter()
+        val event =
+            APIGatewayProxyRequestEvent().withPath("/group/route").withHttpMethod("GET").withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+        testR.router.listRoutes()
+        assertEquals(200, response.statusCode)
+        assertNotNull(response.body)
+        assertEquals("\"Matching the nested route /route/\"", response.body)
+    }
+
+    @Test
+    fun `can correctly match a deeply nested route`() {
+        val testR = TestRouter()
+        val event =
+            APIGatewayProxyRequestEvent().withPath("/group/nested/wow").withHttpMethod("GET").withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertNotNull(response.body)
+        assertEquals("\"This is deeply nested route /group/nested/wow\"", response.body)
+    }
+
+    @Test
+    fun `secure route fails with 401 when but no credentials supplied`() {
+        val testR = TestRouter()
+        val event =
+            APIGatewayProxyRequestEvent().withPath("/auth/hello").withHttpMethod("GET").withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertEquals(401, response.statusCode)
+    }
+
+    @Test
+    fun `secure route succeeds when no credentials supplied`() {
+        val testR = TestRouter()
+        val event =
+            APIGatewayProxyRequestEvent().withPath("/auth/hello").withHttpMethod("GET")
+                .withHeaders(mapOf("Authorization" to "Bearer 123123123") + acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+    }
+
+    @Test
+    fun `can match a route with a path parameter and extract its value`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/getParam/special").withHttpMethod("GET")
+            .withHeaders(mapOf("accept" to "text/plain"))
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertEquals("SPECIAL", response.body)
+    }
+
+    @Test
+    fun `can match a route with a multiple path parameters`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/customer/xy123/purchaseOrder/2523").withHttpMethod("GET")
+            .withHeaders(mapOf("accept" to "text/plain"))
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertEquals("Customer 'xy123' made order #2523", response.body)
+    }
+
 }
 
 class TestRouter : RequestHandlerWrapper() {
 
     private val testController = TestController()
-    override val router: Router = Router.router {
-        // supplies JSON by default. Expects nothing.
+    override val router: Router = lambdaRouter {
+        /**
+         * Test basic routing, return types, calling external controllers and so on
+         */
         get("/") { _: Request<Unit> -> ResponseEntity(statusCode = 200, body = null) }
         get("/returnHtml") { _: Request<Unit> -> ResponseEntity.ok("<html></html>") }.supplies(setOf(MimeType.html))
             .expects(
@@ -160,6 +247,34 @@ class TestRouter : RequestHandlerWrapper() {
         get("/sealedNo") { _: Request<Unit> -> ResponseEntity.ok(ServiceResult.Error(exceptionMessage = "No here")) }
         get("/sealedYes") { _: Request<Unit> -> ResponseEntity.ok(ServiceResult.Success(data = SimpleClass("Ok from SimpleClass"))) }
         get("/getJsonString", testController::returnJsonString)
+
+        /**
+         * Test grouping
+         */
+        group("/group") {
+            post("/new") { req: Request<String> -> ResponseEntity.ok(body = "Created a new ${req.body}") }
+            get("/route") { req: Request<Any> -> ResponseEntity.ok(body = "Matching the nested route /route/") }
+            group("/nested") {
+                get("/wow") { req: Request<Any> -> ResponseEntity.ok(body = "This is deeply nested route /group/nested/wow") }
+            }
+        }
+
+        /**
+         * Test authorization
+         */
+        auth(FakeAuthorizer) {
+            get("/auth/hello") { _: Request<Unit> -> ResponseEntity.ok(body = SimpleClass("Authenticated route says hello")) }
+        }
+
+        /**
+         * Test path parameter matching
+         */
+        get("/getParam/{key}") { request: Request<Unit> -> ResponseEntity.ok(body = request.pathParameters["key"]?.uppercase()) }.supplies(
+            setOf(MimeType.parse("text/plain"))
+        )
+        get("/customer/{id}/purchaseOrder/{po}") { request: Request<Unit> ->
+            ResponseEntity.ok(body = "Customer '${request.pathParameters["id"]}' made order #${request.pathParameters["po"]}")
+        }.supplies(setOf(MimeType("text", "plain")))
     }
 }
 
@@ -176,6 +291,9 @@ class TestController {
     }
 }
 
+/**
+ * Test classes below to simplify testing without bringing in other dependencies
+ */
 @Serializable
 data class SimpleClass(val message: String)
 
@@ -186,8 +304,22 @@ data class ClassContainingRawJson(val name: String, val raw: RawJsonString)
 sealed class ServiceResult<out T : Any> {
     @Serializable
     data class Success<out T : Any>(val data: T) : ServiceResult<T>()
+
     @Serializable
     data class Error(val exceptionMessage: String?) : ServiceResult<Nothing>()
+}
+
+object FakeAuthorizer : Authorizer {
+    override val simpleName: String
+        get() = "Looks for an Authorize Header which starts with 'Bearer '"
+
+    override fun authorize(request: APIGatewayProxyRequestEvent): AuthResult {
+        val authHead = request.getHeader("Authorization")
+        if (authHead != null) {
+            return AuthResult(authHead.startsWith("Bearer "), "AuthResultMessage")
+        }
+        return AuthResult(false, "Invalid")
+    }
 }
 
 
@@ -198,7 +330,7 @@ class ServiceResultSerializer<T : Any>(
     @Serializable
     @SerialName("ServiceResult")
 
-    data class ServiceResultSurrogate<T : Any>  constructor(
+    data class ServiceResultSurrogate<T : Any> constructor(
         val type: Type,
         // The annotation is not necessary, but it avoids serializing "data = null"
         // for "Error" results.

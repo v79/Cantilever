@@ -6,6 +6,7 @@ import software.amazon.awscdk.services.apigateway.DomainNameOptions
 import software.amazon.awscdk.services.apigateway.EndpointType
 import software.amazon.awscdk.services.apigateway.LambdaRestApi
 import software.amazon.awscdk.services.certificatemanager.Certificate
+import software.amazon.awscdk.services.cognito.*
 import software.amazon.awscdk.services.events.targets.SqsQueue
 import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.Function
@@ -27,13 +28,22 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         destination_bucket,
         source_bucket,
         markdown_processing_queue,
-        handlebar_template_queue
+        handlebar_template_queue,
+        cors_domain
     }
+    // TODO: I suppose I'm going to need to set up a dev and production environment for this sort of thing. Boo.
 
     constructor(scope: Construct, id: String) : this(scope, id, null)
 
     init {
-        Tags.of(this).add("Cantilever", "v0.0.2")
+        // Get the "deploymentDomain" value from cdk.json, or default to the dev URL if not found
+        @Suppress("UNCHECKED_CAST")
+        val envKey =  scope.node.tryGetContext("env") as String?
+        val env = scope.node.tryGetContext(envKey ?: "env") as LinkedHashMap<String, String>?
+        val deploymentDomain = (env?.get("domainName")) ?: "http://localhost:5173"
+        println("ENVIRONMENT: $env; deploymentDomain: $deploymentDomain")
+
+        Tags.of(this).add("Cantilever", "v0.0.4")
 
         // Source bucket where Markdown, template files will be stored
         // I may wish to change the removal and deletion policies
@@ -113,12 +123,15 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             handler = "org.liamjd.cantilever.api.LambdaRouter",
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
-                ENV.destination_bucket.name to destinationBucket.bucketName)
+                ENV.destination_bucket.name to destinationBucket.bucketName,
+                ENV.cors_domain.name to deploymentDomain
+            )
         )
 
         println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
         val cloudfrontSubstack = CloudFrontSubstack()
-        cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
+        val cloudFrontDistribution =
+            cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
 
         // I suspect this isn't the most secure way to do this. Better a new IAM role?
         println("Granting lambda permissions to buckets")
@@ -162,15 +175,54 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         handlebarProcessingQueue.queue.grantConsumeMessages(templateProcessorLambda)
 
         println("Creating API Gateway integrations")
-        val certificate  = Certificate.fromCertificateArn(this, "cantilever-api-edge-certificate","arn:aws:acm:us-east-1:086949310404:certificate/9b8f27c6-87be-4c14-a368-e6ad3ac4fb68")
+        val certificate = Certificate.fromCertificateArn(
+            this,
+            "cantilever-api-edge-certificate",
+            "arn:aws:acm:us-east-1:086949310404:certificate/9b8f27c6-87be-4c14-a368-e6ad3ac4fb68"
+        )
         val gateway = LambdaRestApi.Builder.create(this, "cantilever-rest-api")
             .restApiName("Cantilever REST API")
             .description("Gateway function to Cantilever services, handling routing")
-            .domainName(DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName("api.cantilevers.org").certificate(certificate).build())
-            .defaultCorsPreflightOptions(CorsOptions.builder().allowHeaders(listOf("'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'")).allowMethods(listOf("GET","OPTIONS")).allowOrigins(listOf("'*'")).build())
+            .domainName(
+                DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName("api.cantilevers.org")
+                    .certificate(certificate).build()
+            )
+            .defaultCorsPreflightOptions(
+                CorsOptions.builder()
+                    .allowHeaders(listOf("'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"))
+                    .allowMethods(listOf("GET", "OPTIONS")).allowOrigins(listOf(deploymentDomain)).build()
+            )
             .handler(apiRoutingLambda)
             .proxy(true)
             .build()
+
+        println("Creating Cognito identity pool")
+        val pool = UserPool.Builder.create(this, "cantilever-user-pool").userPoolName("cantilever-user-pool")
+            .signInCaseSensitive(true)
+            .signInAliases(SignInAliases.builder().email(true).phone(false).username(false).build())
+            .passwordPolicy(PasswordPolicy.builder().minLength(12).build())
+            .mfa(Mfa.OFF) // TODO: change this later
+            .accountRecovery(AccountRecovery.EMAIL_ONLY)
+            .selfSignUpEnabled(false)
+            .email(UserPoolEmail.withCognito())
+            .build()
+
+        val cognitoPoolDomain = pool.addDomain(
+            "cantilever-api",
+            UserPoolDomainOptions.builder()
+                .cognitoDomain(CognitoDomainOptions.builder().domainPrefix("cantilever").build()).build()
+        )
+        val appUrls = listOf("https://www.cantilevers.org/app/", "http://localhost:5173/")
+        val appClient = pool.addClient(
+            "cantilever-app",
+            UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
+                OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(true).build())
+                    .callbackUrls(appUrls).logoutUrls(appUrls).build()
+            ).build()
+        )
+        /* println("Adding Cognito authentication to API Gateway")
+          val authorizer = CognitoUserPoolsAuthorizer.Builder.create(this,"CantileverCognitoAuth").authorizerName("CantileverCognitoAuth").cognitoUserPools(
+              listOf(pool)).build()*/
 
 
     }

@@ -2,8 +2,10 @@ package org.liamjd.cantilever.aws.cdk
 
 import software.amazon.awscdk.Duration
 import software.amazon.awscdk.Stack
+import software.amazon.awscdk.Tags
 import software.amazon.awscdk.services.cloudfront.*
 import software.amazon.awscdk.services.s3.IBucket
+import java.lang.String
 
 class CloudFrontSubstack {
 
@@ -18,65 +20,57 @@ class CloudFrontSubstack {
                     .build()
             )*/
 
-    fun createCloudfrontDistribution(stack: Stack, sourceBucket: IBucket, destinationBucket: IBucket) {
+    fun createCloudfrontDistribution(
+        stack: Stack,
+        sourceBucket: IBucket,
+        destinationBucket: IBucket
+    ): CloudFrontWebDistribution {
+
+        Tags.of(stack).add("Cantilever", "v0.0.4")
 
         val webOai = OriginAccessIdentity.Builder.create(stack, "WebOai").build()
         destinationBucket.grantRead(webOai)
 
-        /**
-         * this bit goes after the comment, below, if I had a certificate set up
-         *  .viewerCertificate(
-         *                     ViewerCertificate.fromAcmCertificate(
-         *                         websiteCertificate, ViewerCertificateOptions.builder()
-         *                             .aliases(List.of(stackConfig.getDomainName()))
-         *                             .build()
-         *                     )
-         *                 )
-         */
-
-        val cloudFrontWebDistribution: CloudFrontWebDistribution =
-            CloudFrontWebDistribution.Builder.create(stack, "cantilever-CloudFrontWebDistribution")
-                .comment(java.lang.String.format("CloudFront distribution for cantilever"))
-
-                .originConfigs(
-                    listOf(
-                        SourceConfiguration.builder()
-                            .behaviors(
-                                listOf(
-                                    Behavior.builder()
-                                        .isDefaultBehavior(true)
-                                        .defaultTtl(Duration.minutes(5))
-                                        .maxTtl(Duration.minutes(5))
-                                        .build()
-                                )
-                            )
-                            .s3OriginSource(
-                                S3OriginConfig.builder()
-                                    .originAccessIdentity(webOai)
-                                    .s3BucketSource(destinationBucket)
+        return CloudFrontWebDistribution.Builder.create(stack, "cantilever-CloudFrontWebDistribution")
+            .comment(String.format("CloudFront distribution for cantilever"))
+            .originConfigs(
+                listOf(
+                    SourceConfiguration.builder()
+                        .behaviors(
+                            listOf(
+                                Behavior.builder()
+                                    .isDefaultBehavior(true)
+                                    .defaultTtl(Duration.minutes(5))
+                                    .maxTtl(Duration.minutes(5))
                                     .build()
                             )
-                            .build()
-                    )
+                        )
+                        .s3OriginSource(
+                            S3OriginConfig.builder()
+                                .originAccessIdentity(webOai)
+                                .s3BucketSource(destinationBucket)
+                                .build()
+                        )
+                        .build()
                 )
-                .priceClass(PriceClass.PRICE_CLASS_100)
-                .viewerProtocolPolicy(ViewerProtocolPolicy.REDIRECT_TO_HTTPS)
-                .errorConfigurations(
-                    listOf(
-                        CfnDistribution.CustomErrorResponseProperty.builder()
-                            .errorCode(403)
-                            .responseCode(200)
-                            .responsePagePath("/index.html")
-                            .build(),
-                        CfnDistribution.CustomErrorResponseProperty.builder()
-                            .errorCode(404)
-                            .responseCode(200)
-                            .responsePagePath("/index.html")
-                            .build()
-                    )
+            )
+            .priceClass(PriceClass.PRICE_CLASS_100)
+            .viewerProtocolPolicy(ViewerProtocolPolicy.REDIRECT_TO_HTTPS)
+            .errorConfigurations(
+                listOf(
+                    CfnDistribution.CustomErrorResponseProperty.builder()
+                        .errorCode(403)
+                        .responseCode(200)
+                        .responsePagePath("/index.html")
+                        .build(),
+                    CfnDistribution.CustomErrorResponseProperty.builder()
+                        .errorCode(404)
+                        .responseCode(200)
+                        .responsePagePath("/index.html")
+                        .build()
                 )
-                .build()
-
+            )
+            .build()
     }
     /**
 

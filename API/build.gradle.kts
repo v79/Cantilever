@@ -39,6 +39,11 @@ dependencies {
     implementation("com.amazonaws:aws-lambda-java-core:1.2.2")
     implementation("com.amazonaws:aws-lambda-java-events:3.11.0")
 
+    // auth
+//    implementation("aws.sdk.kotlin:cognitoidentity:0.20.0-beta")
+    implementation("com.auth0:java-jwt:4.2.2")
+    implementation("com.auth0:jwks-rsa:0.21.3")
+
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
@@ -53,6 +58,7 @@ tasks.getByName<Test>("test") {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
+        jvmTarget = "11"
         freeCompilerArgs += "-Xcontext-receivers"
     }
 }
