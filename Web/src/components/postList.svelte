@@ -1,7 +1,7 @@
 <script lang="ts">
-	import {postStore, structureStore} from '../stores/postsStore.svelte';
-	import {onDestroy, onMount} from 'svelte';
-	import {userStore} from '../stores/userStore.svelte';
+	import { postStore, structureStore } from '../stores/postsStore.svelte';
+	import { onDestroy, onMount } from 'svelte';
+	import { userStore } from '../stores/userStore.svelte';
 
 	$: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
@@ -55,10 +55,18 @@
 {#if $userStore === undefined}
 	<div class="px-8"><p class="text-warning text-lg">Login to see posts</p></div>
 {:else}
-	<div class="btn-group lg:btn-group-horizontal px-8">
-		<button class="btn" disabled>Another</button>
-		<button class="btn" disabled>Something</button>
-		<button class="btn-active btn">New Post</button>
+	<div
+		class="flex items-center justify-center shadow-md hover:shadow-lg focus:shadow-lg"
+		role="group">
+		<button
+			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+			disabled>Another</button>
+		<button
+			class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+			disabled>Something</button>
+		<button
+			class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+			>New Post</button>
 	</div>
 	<div class="px-8">
 		{#if $structureStore}

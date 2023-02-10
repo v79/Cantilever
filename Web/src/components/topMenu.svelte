@@ -54,7 +54,6 @@
 					aria-expanded="false"
 					class=" hidden-arrow dropdown-toggle mr-4 flex items-center text-gray-500 hover:text-gray-700 focus:text-gray-700 "
 					data-bs-toggle="dropdown"
-					href="#"
 					id="dropdownMenuButton1"
 					role="button">
 					<svg
@@ -79,17 +78,17 @@
 					<li>
 						<a
 							class=" dropdown-item block w-full whitespace-nowrap bg-transparent py-2 px-4 text-sm font-normal text-gray-700 hover:bg-gray-100 "
-							href="#">Action</a>
+							>Action</a>
 					</li>
 					<li>
 						<a
 							class=" dropdown-item block w-full whitespace-nowrap bg-transparent py-2 px-4 text-sm font-normal text-gray-700 hover:bg-gray-100 "
-							href="#">Another action</a>
+							>Another action</a>
 					</li>
 					<li>
 						<a
 							class=" dropdown-item block w-full whitespace-nowrap bg-transparent py-2 px-4 text-sm font-normal text-gray-700 hover:bg-gray-100 "
-							href="#">Something else here</a>
+							>Something else here</a>
 					</li>
 				</ul>
 			</div>

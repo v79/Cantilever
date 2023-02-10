@@ -1,10 +1,10 @@
 <script lang="ts">
-	import {PUBLIC_COGNITO_CALLBACK_URL} from '$env/static/public';
-	import type {JwtPayload} from 'jwt-decode';
+	import { PUBLIC_COGNITO_CALLBACK_URL } from '$env/static/public';
+	import type { JwtPayload } from 'jwt-decode';
 	import jwt_decode from 'jwt-decode';
-	import {onMount} from 'svelte';
-	import {User} from '../models/authUser';
-	import {userStore} from '../stores/userStore.svelte';
+	import { onMount } from 'svelte';
+	import { User } from '../models/authUser';
+	import { userStore } from '../stores/userStore.svelte';
 
 	let authToken: any;
 	let tokenPayload: JwtPayload;
@@ -18,7 +18,6 @@
 		'&redirect_uri=' +
 		PUBLIC_COGNITO_CALLBACK_URL +
 		'&scope=openid+profile';
-	console.log('Logging in via AWS Cognito to ' + loginUrl);
 
 	onMount(async () => {
 		authToken = extractIdToken();
