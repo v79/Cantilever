@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { structureStore, postStore } from '../stores/postsStore.svelte';
-	import { onDestroy, onMount } from 'svelte';
-	import { userStore } from '../stores/userStore.svelte';
+	import {postStore, structureStore} from '../stores/postsStore.svelte';
+	import {onDestroy, onMount} from 'svelte';
+	import {userStore} from '../stores/userStore.svelte';
 
 	$: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
@@ -33,6 +33,7 @@
 
 	function loadMarkdown(srcKey: String) {
 		console.log('Loading markdown file... ' + srcKey);
+		fetch('https://api.cantilevers.org/posts/load/' + encodeURIComponent(srcKey));
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
