@@ -5,7 +5,7 @@
 				<h5 class="mb-2.5 font-bold uppercase text-gray-800">About Cantilever</h5>
 				<ul class="mb-0 list-none">
 					<li>
-						<a href="#!" class="text-gray-800">Project history</a>
+						<a href="#" class="text-gray-800">Project history</a>
 					</li>
 				</ul>
 			</div>
