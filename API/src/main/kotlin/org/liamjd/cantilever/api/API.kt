@@ -7,10 +7,7 @@ import org.liamjd.cantilever.api.controllers.PostController
 import org.liamjd.cantilever.api.controllers.StructureController
 import org.liamjd.cantilever.api.services.StructureService
 import org.liamjd.cantilever.auth.CognitoJWTAuthorizer
-import org.liamjd.cantilever.routing.RequestHandlerWrapper
-import org.liamjd.cantilever.routing.auth
-import org.liamjd.cantilever.routing.group
-import org.liamjd.cantilever.routing.lambdaRouter
+import org.liamjd.cantilever.routing.*
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
@@ -46,6 +43,10 @@ class LambdaRouter : RequestHandlerWrapper() {
     override val router = lambdaRouter {
 //        filter = loggingFilter()
 
+        // /warm is an attempt to pre-warm this lambda. /ping is an API Gateway reserved route
+        get("/warm") { _: Request<Unit> -> println("Ping received; warming"); ResponseEntity.ok("warming") }.supplies(
+            setOf(MimeType.plainText)
+        )
 
         auth(CognitoJWTAuthorizer) {
             get("/structure", structureController::getStructureFile)

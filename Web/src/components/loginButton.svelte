@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { PUBLIC_COGNITO_CALLBACK_URL } from '$env/static/public';
-	import type { JwtPayload } from 'jwt-decode';
+	import {PUBLIC_COGNITO_CALLBACK_URL} from '$env/static/public';
+	import type {JwtPayload} from 'jwt-decode';
 	import jwt_decode from 'jwt-decode';
-	import { onMount } from 'svelte';
-	import { User } from '../models/authUser';
-	import { userStore } from '../stores/userStore.svelte';
+	import {onMount} from 'svelte';
+	import {User} from '../models/authUser';
+	import {userStore} from '../stores/userStore.svelte';
 
 	let authToken: any;
 	let tokenPayload: JwtPayload;
@@ -21,7 +21,6 @@
 
 	onMount(async () => {
 		authToken = extractIdToken();
-		console.log(authToken);
 		if (authToken) {
 			tokenPayload = jwt_decode<JwtPayload>(authToken);
 			if (tokenPayload) {

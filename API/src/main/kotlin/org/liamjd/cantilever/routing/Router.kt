@@ -132,7 +132,6 @@ fun Router.group(parentPath: String, block: Router.() -> Unit) {
         val routeCopy = it.key.copy(pathPattern = parentPath + it.key.pathPattern)
         routes[routeCopy] =
             it.value.copy().apply { it.value.requestPredicate.pathPattern = parentPath + it.key.pathPattern }
-        println("Added $routeCopy to $this routes")
     }
 }
 
