@@ -55,7 +55,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         input: APIGatewayProxyRequestEvent,
         routerFunction: RouterFunction<*, *>
     ): ResponseEntity<out Any> {
-        println("Processing route ${routerFunction.requestPredicate}")
+        println("Processing route ${routerFunction.requestPredicate.method} ${routerFunction.requestPredicate.pathPattern}, supplying ${routerFunction.requestPredicate.supplies}")
         routerFunction.authorizer?.let {auth ->
             println("Checking authentication/authorization for ${auth.simpleName}")
             println("BAD - BYPASSING AUTH!")

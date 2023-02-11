@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import PostList from '../components/postList.svelte';
 	import TopMenu from '../components/topMenu.svelte';
 	import Footer from '../components/footer.svelte';
