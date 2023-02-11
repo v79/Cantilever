@@ -224,6 +224,17 @@ class RouterTest {
         assertEquals("Customer 'xy123' made order #2523", response.body)
     }
 
+    @Test
+    fun `can match a nested path parameter route`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/posts/load/123").withHttpMethod("GET")
+            .withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertEquals("""\"Request for /posts/load/123 received\"""", response.body)
+    }
+
 }
 
 class TestRouter : RequestHandlerWrapper() {
@@ -275,6 +286,10 @@ class TestRouter : RequestHandlerWrapper() {
         get("/customer/{id}/purchaseOrder/{po}") { request: Request<Unit> ->
             ResponseEntity.ok(body = "Customer '${request.pathParameters["id"]}' made order #${request.pathParameters["po"]}")
         }.supplies(setOf(MimeType("text", "plain")))
+
+        group("/posts") {
+            get("/load/{key}") { request: Request<Unit> -> ResponseEntity.ok("Request for /posts/load/${request.pathParameters["key"]} received") }
+        }
     }
 }
 

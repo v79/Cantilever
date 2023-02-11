@@ -22,7 +22,6 @@ dependencies {
 
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
-    implementation("com.charleskorn.kaml:kaml:0.49.0")
 
     // sdk v2
     implementation(platform("software.amazon.awssdk:bom:2.19.8"))

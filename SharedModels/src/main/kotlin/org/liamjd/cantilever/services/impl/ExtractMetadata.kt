@@ -1,6 +1,5 @@
-package org.liamjd.cantilever.lambda
+package org.liamjd.cantilever.services.impl
 
-import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.charleskorn.kaml.Yaml
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -13,16 +12,14 @@ import org.liamjd.cantilever.models.PostMetadata
  * Extract [PostMetadata] object from the markdown file.
  * It should be deliminated between a pair of '---' lines.
  * If this couldn't be extracted, it will attempt to construct a generic but valid object based on some assumptions.
- * This is using experimental Context Receivers to inject the [LambdaLogger].
  */
-context (LambdaLogger)
 fun extractPostMetadata(filename: String, source: String): PostMetadata {
     val metadataString = source.substringAfter("---").substringBeforeLast("---")
     if (metadataString.isNotEmpty()) {
         try {
             return Yaml.default.decodeFromString(PostMetadata.serializer(), metadataString)
         } catch (se: SerializationException) {
-            log("ERROR: Yaml exception: ${se.message}")
+            println("ERROR: Yaml exception: ${se.message}")
         }
 
     }

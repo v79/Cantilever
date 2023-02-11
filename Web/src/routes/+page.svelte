@@ -15,7 +15,7 @@
 		<MarkdownEditor />
 	</div>
 	<div class="invisible basis-1/4 bg-slate-800 lg:visible">
-		<h3 class="px-4 py-4 text-2xl font-bold text-slate-200">Assets</h3>
+		<h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-200">Assets</h3>
 	</div>
 </div>
 

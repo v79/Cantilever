@@ -21,3 +21,8 @@ export interface Post {
     date: string,
     lastUpdated: string;
 }
+
+export interface MarkdownPost {
+    post: Post;
+    body: String
+}

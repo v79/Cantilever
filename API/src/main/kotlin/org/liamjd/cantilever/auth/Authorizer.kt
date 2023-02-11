@@ -15,12 +15,21 @@ import java.net.URL
 import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
 
-
+/**
+ * General interface for any Authorizer class
+ * @property simpleName a user-friendly name for the authorizer; not functionally relevant
+ * Only on method, `authorize`, which returns an [AuthResult]
+ */
 interface Authorizer {
     val simpleName: String
     fun authorize(request: APIGatewayProxyRequestEvent): AuthResult
 }
 
+/**
+ * The result of an authorization attempt
+ * @property authorized true or false
+ * @property message helpful message, explaining why authorization has failed
+ */
 data class AuthResult(val authorized: Boolean, val message: String)
 
 /**
@@ -63,7 +72,6 @@ object CognitoJWTAuthorizer : Authorizer {
         return header.substringAfter("Bearer ", "")
     }
 
-
 }
 
 internal class AWSCognitoRSAKeyProvider(cognitoRegion: String, userPoolID: String) : RSAKeyProvider {
@@ -81,7 +89,6 @@ internal class AWSCognitoRSAKeyProvider(cognitoRegion: String, userPoolID: Strin
         }
         provider = JwkProviderBuilder(awsKidStoreUrl).build()
     }
-
 
     override fun getPublicKeyById(kid: String?): RSAPublicKey {
         return try {

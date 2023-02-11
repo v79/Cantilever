@@ -15,6 +15,7 @@ repositories {
 dependencies {
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
+    implementation("com.charleskorn.kaml:kaml:0.49.0")
 
     // multiplatform datetime library
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")

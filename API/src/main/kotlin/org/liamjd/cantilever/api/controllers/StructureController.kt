@@ -15,6 +15,7 @@ import org.liamjd.cantilever.models.Template
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.S3Service
+import org.liamjd.cantilever.services.impl.extractPostMetadata
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 
 /**
@@ -64,7 +65,7 @@ class StructureController(val sourceBucket: String, val corsDomain: String = "ht
                 if (obj.key().endsWith(".md")) {
                     println("Extracting metadata from file ${obj.key()} (${obj.size()} bytes)")
                     val markdownSource = s3Service.getObjectAsString(obj.key(), sourceBucket)
-                    val postMetadata = structureService.extractPostMetadata(obj.key(), markdownSource)
+                    val postMetadata = extractPostMetadata(obj.key(),markdownSource)
                     println(postMetadata)
                     val templateKey = templatesKey + postMetadata.template + ".html.hbs"
                     val template = try {

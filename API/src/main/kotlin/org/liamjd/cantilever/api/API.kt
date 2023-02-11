@@ -59,8 +59,13 @@ class LambdaRouter : RequestHandlerWrapper() {
         auth(CognitoJWTAuthorizer) {
             group("/posts") {
                 get("/load/{srcKey}", postController::loadMarkdownSource)
+                get("/preview/{srcKey}") { request: Request<Unit> -> ResponseEntity.ok(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!")  }.supplies(setOf(
+                    MimeType.html))
             }
         }
+
+        get("/showAllRoutes") { _: Request<Unit> -> val routeList = this.listRoutes()
+            ResponseEntity.ok(routeList)}
     }
 
     /* private fun loggingFilter() = Filter { next ->

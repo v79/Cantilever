@@ -100,10 +100,11 @@ class Router internal constructor() {
     /**
      * Utility function to list all the routes which have been declared. Useful for debugging.
      */
-    fun listRoutes() {
+    fun listRoutes(): String {
         routes.forEach { route ->
             println("${route.value.requestPredicate.method} ${route.value.requestPredicate.pathPattern} <consumes: ${route.value.requestPredicate.accepts} -> produces: ${route.value.requestPredicate.supplies}>")
         }
+        return routes.values.joinToString(separator = ";") { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern} <${it.requestPredicate.accepts} -> ${it.requestPredicate.supplies}>" }
     }
 
     companion object {

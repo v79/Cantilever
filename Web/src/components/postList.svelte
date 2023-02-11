@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { postStore, structureStore } from '../stores/postsStore.svelte';
-	import { onDestroy, onMount } from 'svelte';
-	import { userStore } from '../stores/userStore.svelte';
+	import {markdownStore, postStore, structureStore} from '../stores/postsStore.svelte';
+	import {onDestroy, onMount} from 'svelte';
+	import {userStore} from '../stores/userStore.svelte';
 
 	$: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
@@ -31,9 +31,25 @@
 			});
 	}
 
-	function loadMarkdown(srcKey: String) {
+	function loadMarkdown(srcKey: string) {
+		let token = $userStore.token;
 		console.log('Loading markdown file... ' + srcKey);
-		fetch('https://api.cantilevers.org/posts/load/' + encodeURIComponent(srcKey));
+		fetch('https://api.cantilevers.org/posts/load/' + encodeURIComponent(srcKey), {
+			method: 'GET',
+			headers: {
+				Accept: 'application/json',
+				Authorization: 'Bearer ' + token
+			},
+			mode: 'cors'
+		})
+			.then((response) => response.json())
+			.then((data) => {
+				markdownStore.set(data.data);
+				console.log(data);
+			})
+			.catch((error) => {
+				console.log(error);
+			});
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
@@ -50,7 +66,7 @@
 	onDestroy(userStoreUnsubscribe);
 </script>
 
-<h3 class="px-4 py-4 text-2xl font-bold text-slate-900">Posts</h3>
+<h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-900">Posts</h3>
 
 {#if $userStore === undefined}
 	<div class="px-8"><p class="text-warning text-lg">Login to see posts</p></div>
