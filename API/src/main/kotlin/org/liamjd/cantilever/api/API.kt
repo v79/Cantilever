@@ -61,6 +61,8 @@ class LambdaRouter : RequestHandlerWrapper() {
                 get("/load/{srcKey}", postController::loadMarkdownSource)
                 get("/preview/{srcKey}") { request: Request<Unit> -> ResponseEntity.ok(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!")  }.supplies(setOf(
                     MimeType.html))
+                post("/save") { request: Request<Unit> -> ResponseEntity.ok(body = "I would have saved here") }.supplies(setOf(
+                    MimeType.plainText))
             }
         }
 

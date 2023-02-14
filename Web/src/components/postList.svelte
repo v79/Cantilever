@@ -1,9 +1,10 @@
 <script lang="ts">
-	import {markdownStore, postStore, structureStore} from '../stores/postsStore.svelte';
-	import {onDestroy, onMount} from 'svelte';
-	import {userStore} from '../stores/userStore.svelte';
+    import {markdownStore, postStore, structureStore} from '../stores/postsStore.svelte';
+    import {onDestroy, onMount} from 'svelte';
+    import {userStore} from '../stores/userStore.svelte';
+    import type {MarkdownPost} from '../models/structure';
 
-	$: postsSorted = $postStore.sort(
+    $: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
 	);
 
@@ -52,6 +53,25 @@
 			});
 	}
 
+	function createNewPost() {
+		var newMDPost: MarkdownPost = {
+			body: '',
+			post: {
+				title: '',
+				srcKey: '',
+				url: '',
+				date: '',
+				lastUpdated: '',
+				template: {
+					key: 'post',
+					lastUpdated: ''
+				}
+			}
+		};
+		console.log('Creating new post');
+		markdownStore.set(newMDPost);
+	}
+
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
 		if (data) {
 			loadStructure(data.token);
@@ -71,9 +91,7 @@
 {#if $userStore === undefined}
 	<div class="px-8"><p class="text-warning text-lg">Login to see posts</p></div>
 {:else}
-	<div
-		class="flex items-center justify-center shadow-md hover:shadow-lg focus:shadow-lg"
-		role="group">
+	<div class="flex items-center justify-center" role="group">
 		<button
 			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			disabled>Another</button>
@@ -81,6 +99,8 @@
 			class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			disabled>Something</button>
 		<button
+			type="button"
+			on:click={createNewPost}
 			class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			>New Post</button>
 	</div>

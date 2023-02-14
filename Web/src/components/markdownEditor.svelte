@@ -1,13 +1,44 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
-	import { markdownStore } from '../stores/postsStore.svelte';
-	import SvelteMarkdown from 'svelte-markdown';
+    import {onDestroy} from 'svelte';
+    import {markdownStore} from '../stores/postsStore.svelte';
+    import SvelteMarkdown from 'svelte-markdown';
+    import Modal from './modal.svelte';
+    import {userStore} from '../stores/userStore.svelte';
+
+    let newSlug = '';
 
 	const markdownStoreUnsubscribe = markdownStore.subscribe((data) => {
 		if (data) {
-			console.log('Got some markdown data');
+			newSlug = createSlug(data.post.title);
 		}
 	});
+
+	function createSlug(title: string) {
+		// const invalid: RegExp = new RegExp(';/?:@&=+$, ', 'g');
+		const invalid = /[;\/?:@%&=+$, ]/g;
+		return title.replaceAll(invalid, '-');
+	}
+
+	function saveFile() {
+		console.log('Saving file ', $markdownStore.post.srcKey);
+		fetch('https://api.cantilevers.org/posts/save', {
+			method: 'POST',
+			headers: {
+				Accept: 'text/plain',
+				Authorization: 'Bearer ' + $userStore.token
+			},
+			mode: 'cors'
+		})
+			.then((response) => response.text())
+			.then((data) => {
+				console.log(data);
+			})
+			.catch((error) => {
+				console.log(error);
+			});
+	}
+
+	var hasChanged: Boolean = false;
 
 	onDestroy(markdownStoreUnsubscribe);
 </script>
@@ -15,6 +46,20 @@
 <div class="mt-5 md:col-span-2 md:mt-0">
 	<h3 class="px-4 py-4 text-center text-2xl font-bold">Markdown Editor</h3>
 	{#if $markdownStore}
+		<div class="flex items-center justify-end pr-8 focus:shadow-lg" role="group">
+			<button
+				class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+				disabled>Restore</button>
+			<button
+				class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+				disabled>Delete</button>
+			<button
+				type="button"
+				data-bs-toggle="modal"
+				data-bs-target="#save-dialog"
+				class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+				>Save</button>
+		</div>
 		<form action="#" method="POST">
 			<div class="overflow-hidden shadow sm:rounded-md">
 				<div class="px-4 py-5 sm:p-6">
@@ -103,37 +148,33 @@
 <!-- preview modal -->
 {#if $markdownStore}
 	{@const mdSource = $markdownStore.body}
-	<div
-		class="modal fade fixed top-0 left-0 hidden h-full w-full overflow-y-auto overflow-x-hidden outline-none"
-		id="previewModal"
-		tabindex="-1"
-		aria-labelledby="exampleModalLabel"
-		aria-hidden="true">
-		<div class="modal-dialog modal-dialog-scrollable modal-xl pointer-events-none relative w-auto">
-			<div
-				class="modal-content pointer-events-auto relative flex w-full flex-col rounded-md border-none bg-white bg-clip-padding text-current shadow-lg outline-none">
-				<div
-					class="modal-header flex flex-shrink-0 items-center justify-between rounded-t-md border-b border-gray-200 p-4">
-					<h5 class="text-xl font-medium leading-normal text-gray-800" id="exampleModalLabel">
-						{$markdownStore.post.title}
-					</h5>
-					<button
-						type="button"
-						class="btn-close box-content h-4 w-4 rounded-none border-none p-1 text-black opacity-50 hover:text-black hover:no-underline hover:opacity-75 focus:opacity-100 focus:shadow-none focus:outline-none"
-						data-bs-dismiss="modal"
-						aria-label="Close" />
-				</div>
-				<div class="preview modal-body relative space-y-2 p-4 text-sm">
-					<SvelteMarkdown source={mdSource} />
-				</div>
-				<div
-					class="modal-footer flex flex-shrink-0 flex-wrap items-center justify-end rounded-b-md border-t border-gray-200 p-4">
-					<button
-						type="button"
-						class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
-						data-bs-dismiss="modal">Close</button>
-				</div>
-			</div>
-		</div>
-	</div>
+	<Modal modalId="previewModal">
+		<h5 slot="title" class="text-xl font-medium leading-normal text-gray-800" id="markdown-preview">
+			{$markdownStore.post.title}
+		</h5>
+		<SvelteMarkdown slot="body" source={mdSource} />
+	</Modal>
+{/if}
+
+<!-- save dialog -->
+{#if $markdownStore}
+	<Modal modalId="save-dialog" modalSize="sm">
+		<h5 slot="title" class="text-xl font-medium leading-normal text-gray-800">Save file?</h5>
+		<svelte:fragment slot="body">
+			Save changes to file <strong>{$markdownStore.post.title}</strong> (<em
+				>{$markdownStore.post.url}</em
+			>)
+		</svelte:fragment>
+		<svelte:fragment slot="buttons">
+			<button
+				type="button"
+				class="rounded bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+				data-bs-dismiss="modal">Cancel</button>
+			<button
+				type="button"
+				on:click={saveFile}
+				class="inline-block rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+				data-bs-dismiss="modal">Save</button>
+		</svelte:fragment>
+	</Modal>
 {/if}
