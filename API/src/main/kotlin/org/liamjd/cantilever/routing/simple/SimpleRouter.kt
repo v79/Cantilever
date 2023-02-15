@@ -2,6 +2,8 @@ package org.liamjd.cantilever.routing.simple
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 import org.liamjd.cantilever.routing.MimeType
@@ -61,11 +63,10 @@ fun SimpleRouter.auth(thingy: String, block: SimpleRouter.() -> Unit) {
 /**
  * Find a matching route and then execute its [SimpleHandlerFunction]
  */
+@OptIn(ExperimentalSerializationApi::class)
 @Suppress("UNCHECKED_CAST")
 fun SimpleRouter.handleRequest(input: APIGatewayProxyRequestEvent): APIGatewayProxyResponseEvent {
     val inputMethod = input.httpMethod
-    val inputPath = input.path
-
     var matchingRoute: Pair<SimpleRoutePredicate, SimpleRouterFunction<*, *>>? = null
     routes.forEach { route ->
         if ((route.key.method == inputMethod) && (pathMatches(input, route.key.pathPattern))) {
@@ -74,25 +75,33 @@ fun SimpleRouter.handleRequest(input: APIGatewayProxyRequestEvent): APIGatewayPr
         }
     }
 
-    val resp = matchingRoute?.let { route ->
-        val handler = matchingRoute!!.second.handler
-        println("Now to deserialize the body")
-        val bodyObject: Any? = if (input.body != null && input.body.isNotEmpty()) {
-            println("Body: ${input.body}")
-            val hf = handler as SimpleHandlerFunction<*, *>
-            val bodyType = matchingRoute!!.first.kType
-            bodyType?.let { kt ->
-                Json.decodeFromString(serializer(kt), input.body)
+    val response = matchingRoute?.let { route ->
+        val handler = route.second.handler
+        // check the type specified in the request definition
+        val response: SimpleResponse<*> = if (route.first.kType != null) {
+            val kType = route.first.kType!!
+            if (input.body != null && input.body.isNotEmpty()) {
+                // attempt to deserialize the body
+                try {
+                    val bodyObject = Json.decodeFromString(serializer(kType), input.body)
+                    val nRequest = SimpleRequest(input, bodyObject, matchingRoute!!.first.pathPattern)
+                    (handler as SimpleHandlerFunction<*, *>)(nRequest)
+                } catch (mfe: MissingFieldException) {
+                    println("Could not deserialize as the body was incomplete.")
+                    SimpleResponse(400, "Invalid request. Error is ${mfe.message}.")
+                }
+            } else {
+                SimpleResponse(400, "No body supplied for request.")
             }
         } else {
-            null
+            println("No request type was specified, likely Unit. Request has no body.")
+            val nRequest = SimpleRequest(input, null, matchingRoute!!.first.pathPattern)
+            (handler as SimpleHandlerFunction<*, *>)(nRequest)
         }
-        println("BodyObject is : $bodyObject")
-        val nRequest = SimpleRequest(input, bodyObject, matchingRoute!!.first.pathPattern)
-        (handler as SimpleHandlerFunction<*, *>)(nRequest)
+        response
     } ?: SimpleResponse(404, "Route not found")
 
-    return APIGatewayProxyResponseEvent().withStatusCode(resp.statusCode).withBody(resp.body.toString())
+    return APIGatewayProxyResponseEvent().withStatusCode(response.statusCode).withBody(response.body.toString())
 }
 
 /**

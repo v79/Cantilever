@@ -122,6 +122,24 @@ class SimpleRouterTest {
         println("Response is: $response")
         assertEquals("Created person Person(name=Bob, age=43)", response.body)
     }
+
+    @Test
+    fun `returns an error if it cannot deserialize an invalid body string`() {
+        val router = simpleRouter {
+            post("/add/person") { request: SimpleRequest<Person> ->
+                val person = request.body
+                SimpleResponse(200, body = "Created person $person")
+            }
+        }
+        val newPerson = Person("Bob", 43)
+        val invalidPersonJson = """{"name":"Bob"}"""
+        val event = APIGatewayProxyRequestEvent().withPath("/add/person").withBody(invalidPersonJson)
+            .withHttpMethod("POST").withHeaders(mapOf("accept" to "text/plain"))
+        val response = router.handleRequest(event)
+        assertEquals(400, response.statusCode)
+        println("Response is: $response")
+    }
+
 }
 
 @Serializable

@@ -4,11 +4,13 @@ import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
+import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 import org.liamjd.cantilever.routing.Router.Companion.CONTENT_TYPE
 
-abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.cantilevers.org/") : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.cantilevers.org/") :
+    RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
     abstract val router: Router
 
@@ -56,11 +58,11 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         routerFunction: RouterFunction<*, *>
     ): ResponseEntity<out Any> {
         println("Processing route ${routerFunction.requestPredicate.method} ${routerFunction.requestPredicate.pathPattern}, supplying ${routerFunction.requestPredicate.supplies}")
-        routerFunction.authorizer?.let {auth ->
+        routerFunction.authorizer?.let { auth ->
             println("Checking authentication/authorization for ${auth.simpleName}")
             println("BAD - BYPASSING AUTH!")
 
-            if(corsDomain != "http://localhost:5173") {
+            if (corsDomain != "http://localhost:5173") {
                 val authResult = auth.authorize(input)
                 if (!authResult.authorized) {
                     return ResponseEntity.unauthorized("Authorization check failed: ${authResult.message}")
@@ -71,15 +73,27 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         }
 
         val handler: (Nothing) -> ResponseEntity<out Any> = routerFunction.handler
-        val entity: ResponseEntity<out Any> = try {
-            // this is where we'd add authorization checks, which may throw exceptions
-            val requestBodyString = input.body
-            val hf = (handler as HandlerFunction<*,*>)
-            val request = Request(input, requestBodyString, routerFunction.requestPredicate.pathPattern)
-            hf(request)
-        } catch (e: Exception) {
-            ResponseEntity.serverError(e.message)
+        val entity = if (routerFunction.requestPredicate.kType == null) {
+            // no request type specified, likely Unit
+            val request = Request(input, null, routerFunction.requestPredicate.pathPattern)
+            (handler as HandlerFunction<*, *>)(request)
+        } else {
+            val kType = routerFunction.requestPredicate.kType!!
+            if (input.body == null || input.body.isEmpty()) {
+                // no body received but was expected
+                ResponseEntity.badRequest(body = "No body received but $kType was expected.")
+            } else {
+                // body receieved, deserialize it and run the handler function
+                try {
+                    val bodyObject = Json.decodeFromString(serializer(kType), input.body)
+                    val request = Request(input, bodyObject, routerFunction.requestPredicate.pathPattern)
+                    (handler as HandlerFunction<*, *>)(request)
+                } catch (mfe: MissingFieldException) {
+                    ResponseEntity.badRequest(body = "Invalid request. Error is ${mfe.message}")
+                }
+            }
         }
+
         return entity
     }
 
