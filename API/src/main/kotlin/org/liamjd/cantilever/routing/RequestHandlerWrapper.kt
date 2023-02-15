@@ -4,16 +4,27 @@ import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.MissingFieldException
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 import org.liamjd.cantilever.routing.Router.Companion.CONTENT_TYPE
 
+/**
+ * Implementing the AWS API Gateway [RequestHandler] interface, this class looks for a route which matches the incoming request
+ * If a route exists, it generates a response by calling the [HandlerFunction] declared in the route, parsing and deserializing the body
+ * if it exists.
+ * @param corsDomain The website domain name, required for CORS
+ */
 abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.cantilevers.org/") :
     RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
     abstract val router: Router
 
+    /**
+     * Clean up the received headers then pass request to the internal [handleRequest] function
+     */
     override fun handleRequest(input: APIGatewayProxyRequestEvent, context: Context): APIGatewayProxyResponseEvent =
         input.apply {
             headers = headers.mapKeys { it.key.lowercase() }
@@ -21,6 +32,13 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
             .let { handleRequest(input) }
 
 
+    /**
+     * Look for a declared route which matches the input method, path, accept headers and response type headers.
+     * If there is a matching route, check for authorization requirements (implementing [org.liamjd.cantilever.auth.Authorizer]), and then
+     * parse and deserialize the input body if it exists, then pass the request to the [HandlerFunction].
+     * Finally, convert the [ResponseEntity] into the required [APIGatewayProxyResponseEvent].
+     * If there is an error at any point, return an appropriate error response code and text body.
+     */
     @Suppress("UNCHECKED_CAST")
     internal fun handleRequest(input: APIGatewayProxyRequestEvent): APIGatewayProxyResponseEvent {
         println(
@@ -53,6 +71,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
      * @param routerFunction the request predicate, handler and ???
      * @return a [ResponseEntity] object ready to be serialized and returned to the requester
      */
+    @OptIn(ExperimentalSerializationApi::class)
     private fun processRoute(
         input: APIGatewayProxyRequestEvent,
         routerFunction: RouterFunction<*, *>
@@ -90,6 +109,8 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                     (handler as HandlerFunction<*, *>)(request)
                 } catch (mfe: MissingFieldException) {
                     ResponseEntity.badRequest(body = "Invalid request. Error is ${mfe.message}")
+                } catch (se: SerializationException) {
+                    ResponseEntity.badRequest(body = "Could not deserialize body. Error is ${se.message}")
                 }
             }
         }
@@ -155,9 +176,5 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
             .withHeaders(mapOf(CONTENT_TYPE to contentType, "Access-Control-Allow-Origin" to corsDomain))
             .withBody(body)
     }
-
-    private fun <T> createErrorResponse(): APIGatewayProxyResponseEvent =
-        APIGatewayProxyResponseEvent().withStatusCode(500)
-
 }
 

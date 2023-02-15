@@ -263,6 +263,18 @@ class RouterTest {
         assertEquals(400, response.statusCode)
         assertEquals("No body received but org.liamjd.cantilever.routing.PostThis was expected.",response.body)
     }
+
+    @Test
+    fun `throw appropriate error when entirely wrong object type is supplied`() {
+        val testR = TestRouter()
+        val postThing = DontPostThis(year = 1923L, truth = false)
+        val event = APIGatewayProxyRequestEvent().withPath("/postThing").withHttpMethod("POST").withBody(Json.encodeToString(postThing))
+            .withHeaders(acceptText)
+        val response = testR.handleRequest(event)
+
+        assertEquals(400, response.statusCode)
+        assertTrue(response.body.startsWith("Could not deserialize body."))
+    }
 }
 
 class TestRouter : RequestHandlerWrapper() {
@@ -359,6 +371,9 @@ sealed class ServiceResult<out T : Any> {
 
 @Serializable
 data class PostThis(val name: String, val count: Int)
+
+@Serializable
+data class DontPostThis(val year: Long, val truth: Boolean)
 
 object FakeAuthorizer : Authorizer {
     override val simpleName: String

@@ -1,11 +1,11 @@
 <script lang="ts">
-    import {onDestroy} from 'svelte';
-    import {markdownStore} from '../stores/postsStore.svelte';
-    import SvelteMarkdown from 'svelte-markdown';
-    import Modal from './modal.svelte';
-    import {userStore} from '../stores/userStore.svelte';
+	import {onDestroy} from 'svelte';
+	import {markdownStore} from '../stores/postsStore.svelte';
+	import SvelteMarkdown from 'svelte-markdown';
+	import Modal from './modal.svelte';
+	import {userStore} from '../stores/userStore.svelte';
 
-    let newSlug = '';
+	let newSlug = '';
 
 	const markdownStoreUnsubscribe = markdownStore.subscribe((data) => {
 		if (data) {
@@ -162,7 +162,7 @@
 		<h5 slot="title" class="text-xl font-medium leading-normal text-gray-800">Save file?</h5>
 		<svelte:fragment slot="body">
 			Save changes to file <strong>{$markdownStore.post.title}</strong> (<em
-				>{$markdownStore.post.url}</em
+				>{$markdownStore.post.url}?</em
 			>)
 		</svelte:fragment>
 		<svelte:fragment slot="buttons">
