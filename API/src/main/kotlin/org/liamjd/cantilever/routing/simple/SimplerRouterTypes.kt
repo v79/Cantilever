@@ -11,7 +11,9 @@ data class SimpleRouterFunction<I, T : Any>(val handler: SimpleHandlerFunction<I
 data class SimpleRoutePredicate(
     val method: String, var pathPattern: String,
     private var consumes: Set<MimeType>, private var produces: Set<MimeType>
-)
+) {
+    var kType: KType? = null
+}
 
 /**
  * A SimpleRequest is created after a matching route has been found

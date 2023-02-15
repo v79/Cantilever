@@ -1,6 +1,9 @@
 package org.liamjd.cantilever.routing.simple
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
@@ -91,16 +94,35 @@ class SimpleRouterTest {
     @Test
     fun `can match a route with a path parameter and extract its value`() {
         val router = simpleRouter {
-            get("/get/{key}") {
-                req: SimpleRequest<Unit> ->
+            get("/get/{key}") { req: SimpleRequest<Unit> ->
                 val keyVal = req.pathParameters["key"]
                 SimpleResponse(200, body = keyVal?.uppercase())
             }
         }
-        val event = APIGatewayProxyRequestEvent().withPath("/get/special").withHttpMethod("GET").withHeaders(mapOf("accept" to "text/plain"))
+        val event = APIGatewayProxyRequestEvent().withPath("/get/special").withHttpMethod("GET")
+            .withHeaders(mapOf("accept" to "text/plain"))
         val response = router.handleRequest(event)
-        assertEquals(200,response.statusCode)
-        assertEquals("SPECIAL",response.body)
+        assertEquals(200, response.statusCode)
+        assertEquals("SPECIAL", response.body)
+    }
+
+    @Test
+    fun `can deserialize a body on a post event`() {
+        val router = simpleRouter {
+            post("/add/person") { request: SimpleRequest<Person> ->
+                val person = request.body
+                SimpleResponse(200, body = "Created person $person")
+            }
+        }
+        val newPerson = Person("Bob", 43)
+        val event = APIGatewayProxyRequestEvent().withPath("/add/person").withBody(Json.encodeToString(newPerson))
+            .withHttpMethod("POST").withHeaders(mapOf("accept" to "text/plain"))
+        val response = router.handleRequest(event)
+        assertEquals(200, response.statusCode)
+        println("Response is: $response")
+        assertEquals("Created person Person(name=Bob, age=43)", response.body)
     }
 }
 
+@Serializable
+data class Person(val name: String, val age: Int)

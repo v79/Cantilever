@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.routing
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
+import kotlin.reflect.KType
 
 /**
  * A RequestPredicate is descriptor of a route set up in the router
@@ -15,6 +16,7 @@ data class RequestPredicate(
     private var consumes: Set<MimeType>,
     private var produces: Set<MimeType>
 ) {
+    var kType: KType? = null
     val accepts
         get() = consumes
     val supplies

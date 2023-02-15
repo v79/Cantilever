@@ -73,9 +73,10 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         val handler: (Nothing) -> ResponseEntity<out Any> = routerFunction.handler
         val entity: ResponseEntity<out Any> = try {
             // this is where we'd add authorization checks, which may throw exceptions
-            val requestBody = "TODO: deserialize the input request body"
-            val request = Request(input, requestBody, routerFunction.requestPredicate.pathPattern)
-            (handler as HandlerFunction<*, *>)(request)
+            val requestBodyString = input.body
+            val hf = (handler as HandlerFunction<*,*>)
+            val request = Request(input, requestBodyString, routerFunction.requestPredicate.pathPattern)
+            hf(request)
         } catch (e: Exception) {
             ResponseEntity.serverError(e.message)
         }

@@ -232,7 +232,7 @@ class RouterTest {
         val response = testR.handleRequest(event)
 
         assertEquals(200, response.statusCode)
-        assertEquals("""\"Request for /posts/load/123 received\"""", response.body)
+        assertEquals(""""Request for /posts/load/123 received"""", response.body)
     }
 
 }

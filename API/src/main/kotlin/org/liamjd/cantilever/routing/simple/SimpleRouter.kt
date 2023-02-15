@@ -2,6 +2,10 @@ package org.liamjd.cantilever.routing.simple
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
+import org.liamjd.cantilever.routing.MimeType
+import kotlin.reflect.typeOf
 
 /**
  * This is a playground for a better router class
@@ -11,6 +15,13 @@ class SimpleRouter {
 
     inline fun <reified I, T : Any> get(path: String, noinline handlerFunction: SimpleHandlerFunction<I, T>) {
         val r = SimpleRoutePredicate("GET", path, emptySet(), emptySet())
+        val rP = SimpleRouterFunction(handlerFunction)
+        routes[r] = rP
+    }
+
+    inline fun <reified I, T : Any> post(path: String, noinline handlerFunction: SimpleHandlerFunction<I, T>) {
+        val r = SimpleRoutePredicate("POST", path, setOf(MimeType.json), emptySet())
+        r.kType = typeOf<I>()
         val rP = SimpleRouterFunction(handlerFunction)
         routes[r] = rP
     }
@@ -55,7 +66,7 @@ fun SimpleRouter.handleRequest(input: APIGatewayProxyRequestEvent): APIGatewayPr
     val inputMethod = input.httpMethod
     val inputPath = input.path
 
-    var matchingRoute: Pair<SimpleRoutePredicate,SimpleRouterFunction<*, *>>? = null
+    var matchingRoute: Pair<SimpleRoutePredicate, SimpleRouterFunction<*, *>>? = null
     routes.forEach { route ->
         if ((route.key.method == inputMethod) && (pathMatches(input, route.key.pathPattern))) {
             matchingRoute = Pair(route.key, route.value)
@@ -63,9 +74,21 @@ fun SimpleRouter.handleRequest(input: APIGatewayProxyRequestEvent): APIGatewayPr
         }
     }
 
-    val resp = matchingRoute?.let {
+    val resp = matchingRoute?.let { route ->
         val handler = matchingRoute!!.second.handler
-        val nRequest = SimpleRequest(input, null, matchingRoute!!.first.pathPattern)
+        println("Now to deserialize the body")
+        val bodyObject: Any? = if (input.body != null && input.body.isNotEmpty()) {
+            println("Body: ${input.body}")
+            val hf = handler as SimpleHandlerFunction<*, *>
+            val bodyType = matchingRoute!!.first.kType
+            bodyType?.let { kt ->
+                Json.decodeFromString(serializer(kt), input.body)
+            }
+        } else {
+            null
+        }
+        println("BodyObject is : $bodyObject")
+        val nRequest = SimpleRequest(input, bodyObject, matchingRoute!!.first.pathPattern)
         (handler as SimpleHandlerFunction<*, *>)(nRequest)
     } ?: SimpleResponse(404, "Route not found")
 
@@ -96,7 +119,7 @@ fun pathMatches(input: APIGatewayProxyRequestEvent, routePath: String): Boolean 
         return false
     }
     for (i in routeParts.indices) {
-        if(pathParams[i] != null) {
+        if (pathParams[i] != null) {
             matching = true
         } else {
             if (inputParts[i] != routeParts[i]) {
