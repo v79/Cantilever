@@ -1,10 +1,14 @@
 <script lang="ts">
-    import {markdownStore, postStore, structureStore} from '../stores/postsStore.svelte';
-    import {onDestroy, onMount} from 'svelte';
-    import {userStore} from '../stores/userStore.svelte';
-    import type {MarkdownPost} from '../models/structure';
+	import { markdownStore, postStore, structureStore } from '../stores/postsStore.svelte';
+	import { onDestroy, onMount } from 'svelte';
+	import { userStore } from '../stores/userStore.svelte';
+	import type { MarkdownPost } from '../models/structure';
+	import Spinner from './utilities/spinner.svelte';
+	import { notifier } from '@beyonk/svelte-notifications';
+	let spinnerActive = false;
+	let loadedFile = '';
 
-    $: postsSorted = $postStore.sort(
+	$: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
 	);
 
@@ -14,6 +18,7 @@
 		// https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/
 		// https://api.cantilevers.org/structure
 		// TODO: extract this sort of thing into a separate method, and add error handling, auth etc
+		spinnerActive = true;
 		fetch('https://api.cantilevers.org/structure', {
 			method: 'GET',
 			headers: {
@@ -30,11 +35,14 @@
 				console.log(error);
 				return {};
 			});
+		spinnerActive = false;
 	}
 
 	function loadMarkdown(srcKey: string) {
 		let token = $userStore.token;
+		spinnerActive = true;
 		console.log('Loading markdown file... ' + srcKey);
+
 		fetch('https://api.cantilevers.org/posts/load/' + encodeURIComponent(srcKey), {
 			method: 'GET',
 			headers: {
@@ -47,10 +55,13 @@
 			.then((data) => {
 				markdownStore.set(data.data);
 				console.log(data);
+				loadedFile = decodeURIComponent($markdownStore.post.srcKey);
+				notifier.success('Loaded file ' + loadedFile, 0, { showProgress: false });
 			})
 			.catch((error) => {
 				console.log(error);
 			});
+		spinnerActive = false;
 	}
 
 	function createNewPost() {
@@ -68,6 +79,7 @@
 				}
 			}
 		};
+		loadedFile = '';
 		console.log('Creating new post');
 		markdownStore.set(newMDPost);
 	}
@@ -85,6 +97,8 @@
 	onDestroy(structStoreUnsubscribe);
 	onDestroy(userStoreUnsubscribe);
 </script>
+
+<Spinner spinnerId="load-spinner" message="Loading..." shown={spinnerActive} />
 
 <h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-900">Posts</h3>
 
@@ -113,8 +127,14 @@
 				<ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
 					{#each postsSorted as post}
 						{@const postDateString = new Date(post.date).toLocaleDateString('en-GB')}
+
 						<li
-							class="border-grey-400 w-full cursor-pointer border-b px-6 py-2 hover:bg-slate-200"
+							id={post.srcKey}
+							class="border-grey-400 w-full cursor-pointer border-b px-6 py-2 hover:bg-slate-200 {loadedFile ===
+							post.srcKey
+								? 'bg-slate-100'
+								: ''} "
+							on:keyup={() => loadMarkdown(post.srcKey)}
 							on:click={() => loadMarkdown(post.srcKey)}>
 							{post.title}
 						</li>

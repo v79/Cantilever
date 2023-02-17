@@ -1,11 +1,19 @@
 <script lang="ts">
-	import {onDestroy} from 'svelte';
-	import {markdownStore} from '../stores/postsStore.svelte';
+	import { onDestroy } from 'svelte';
+	import { markdownStore } from '../stores/postsStore.svelte';
 	import SvelteMarkdown from 'svelte-markdown';
 	import Modal from './modal.svelte';
-	import {userStore} from '../stores/userStore.svelte';
+	import Spinner from './utilities/spinner.svelte';
+	import { userStore } from '../stores/userStore.svelte';
+	import Alert from './utilities/alert.svelte';
+	import { AlertStatus } from '../models/alertStatus';
+	import { NotificationDisplay, notifier } from '@beyonk/svelte-notifications';
 
 	let newSlug = '';
+	let spinnerActive = false;
+	let alertMessage = '';
+	let alertStatus = 0;
+	let alertHidden = true;
 
 	const markdownStoreUnsubscribe = markdownStore.subscribe((data) => {
 		if (data) {
@@ -20,22 +28,33 @@
 	}
 
 	function saveFile() {
+		spinnerActive = true;
 		console.log('Saving file ', $markdownStore.post.srcKey);
-		fetch('https://api.cantilevers.org/posts/save', {
+		let postJson = JSON.stringify($markdownStore);
+
+		fetch('https://api.cantilevers.org/posts/save2', {
 			method: 'POST',
 			headers: {
 				Accept: 'text/plain',
 				Authorization: 'Bearer ' + $userStore.token
 			},
+			body: postJson,
 			mode: 'cors'
 		})
 			.then((response) => response.text())
 			.then((data) => {
+				notifier.success($markdownStore.post.srcKey + ' saved', 3000);
 				console.log(data);
 			})
 			.catch((error) => {
+				notifier.danger('Error saving: ' + error, { persist: true });
+				// alertStatus = AlertStatus.Error;
+				// alertMessage = 'Error saving: ' + error;
+				// alertHidden = false;
+				// TODO: present errors...
 				console.log(error);
 			});
+		spinnerActive = false;
 	}
 
 	var hasChanged: Boolean = false;
@@ -43,7 +62,13 @@
 	onDestroy(markdownStoreUnsubscribe);
 </script>
 
-<div class="mt-5 md:col-span-2 md:mt-0">
+<Spinner spinnerId="save-spinner" shown={spinnerActive} message="Saving..." />
+
+<div class="relative mt-5 md:col-span-2 md:mt-0">
+	<NotificationDisplay />
+
+	<Alert message={alertMessage} hidden={alertHidden} />
+
 	<h3 class="px-4 py-4 text-center text-2xl font-bold">Markdown Editor</h3>
 	{#if $markdownStore}
 		<div class="flex items-center justify-end pr-8 focus:shadow-lg" role="group">
