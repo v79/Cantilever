@@ -10,7 +10,7 @@
 				Accept: 'text/plain'
 			}
 		});
-		await import('tw-elements/dist/src/js/index.js');
+		await import('tw-elements');
 	});
 </script>
 

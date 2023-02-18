@@ -49,4 +49,15 @@ class PostController(val sourceBucket: String) : KoinComponent {
             ResponseEntity.badRequest(body = APIResult.Error("Invalid request for null source file"))
         }
     }
+
+    fun saveNewMarkdownPost(request: Request<MarkdownPost>): ResponseEntity<APIResult<String>> {
+        val postToSave = request.body
+        println("Saving new file ${postToSave.post.srcKey}")
+
+        if(s3Service.objectExists(postToSave.post.srcKey,sourceBucket)) {
+            println("Cannot save over existing file")
+            return ResponseEntity.badRequest(body = APIResult.Error("Cannot save on top of existing file"))
+        }
+        return ResponseEntity.ok(body = APIResult.OK("Saved (not really!)"))
+    }
 }

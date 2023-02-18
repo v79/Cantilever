@@ -1,5 +1,6 @@
 <script lang="ts">
-	export let modalId: string;
+
+    export let modalId: string;
 	export let modalSize: string = 'xl';
 </script>
 

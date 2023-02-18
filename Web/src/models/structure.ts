@@ -24,5 +24,5 @@ export interface Post {
 
 export interface MarkdownPost {
     post: Post;
-    body: String
+    body: String;
 }

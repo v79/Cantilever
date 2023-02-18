@@ -59,15 +59,23 @@ class LambdaRouter : RequestHandlerWrapper() {
         auth(CognitoJWTAuthorizer) {
             group("/posts") {
                 get("/load/{srcKey}", postController::loadMarkdownSource)
-                get("/preview/{srcKey}") { request: Request<Unit> -> ResponseEntity.ok(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!")  }.supplies(setOf(
-                    MimeType.html))
-                post("/save") { request: Request<Unit> -> ResponseEntity.ok(body = "I would have saved here") }.supplies(setOf(
-                    MimeType.plainText))
+                get("/preview/{srcKey}") { request: Request<Unit> -> ResponseEntity.ok(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!") }.supplies(
+                    setOf(
+                        MimeType.html
+                    )
+                )
+                post("/save", postController::saveNewMarkdownPost).supplies(
+                    setOf(
+                        MimeType.plainText
+                    )
+                )
             }
         }
 
-        get("/showAllRoutes") { _: Request<Unit> -> val routeList = this.listRoutes()
-            ResponseEntity.ok(routeList)}
+        get("/showAllRoutes") { _: Request<Unit> ->
+            val routeList = this.listRoutes()
+            ResponseEntity.ok(routeList)
+        }
     }
 
     /* private fun loggingFilter() = Filter { next ->

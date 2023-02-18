@@ -1,63 +1,41 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
-	import { markdownStore } from '../stores/postsStore.svelte';
+	import { beforeUpdate, afterUpdate, onDestroy } from 'svelte';
+	import { markdownStore } from '../stores/markdownPostStore.svelte';
 	import SvelteMarkdown from 'svelte-markdown';
 	import Modal from './modal.svelte';
 	import Spinner from './utilities/spinner.svelte';
 	import { userStore } from '../stores/userStore.svelte';
-	import Alert from './utilities/alert.svelte';
-	import { AlertStatus } from '../models/alertStatus';
 	import { NotificationDisplay, notifier } from '@beyonk/svelte-notifications';
+	import { activeStore } from '../stores/appStatusStore.svelte';
+	import SaveNewFile from './saveNewFile.svelte';
 
-	let newSlug = '';
+	// import * as te from 'tw-elements';
+
+	// const myModal = new te.Modal(document.getElementById('save-dialog'), {});
+
 	let spinnerActive = false;
-	let alertMessage = '';
-	let alertStatus = 0;
-	let alertHidden = true;
+	let saveNewFileSlug: '';
+	$: formIsValid = $markdownStore?.post.title != '' && $markdownStore?.post.date != '';
+
+	afterUpdate(() => {});
 
 	const markdownStoreUnsubscribe = markdownStore.subscribe((data) => {
-		if (data) {
-			newSlug = createSlug(data.post.title);
+		// if (data) {
+		// 	newSlug = createSlug(data.post.title);
+		// }
+	});
+
+	beforeUpdate(() => {
+		if ($activeStore.isNewFile) {
+			$activeStore.newSlug = createSlug($markdownStore.post.title);
 		}
 	});
 
 	function createSlug(title: string) {
 		// const invalid: RegExp = new RegExp(';/?:@&=+$, ', 'g');
 		const invalid = /[;\/?:@%&=+$, ]/g;
-		return title.replaceAll(invalid, '-');
+		return title.toLowerCase().replaceAll(invalid, '-');
 	}
-
-	function saveFile() {
-		spinnerActive = true;
-		console.log('Saving file ', $markdownStore.post.srcKey);
-		let postJson = JSON.stringify($markdownStore);
-
-		fetch('https://api.cantilevers.org/posts/save2', {
-			method: 'POST',
-			headers: {
-				Accept: 'text/plain',
-				Authorization: 'Bearer ' + $userStore.token
-			},
-			body: postJson,
-			mode: 'cors'
-		})
-			.then((response) => response.text())
-			.then((data) => {
-				notifier.success($markdownStore.post.srcKey + ' saved', 3000);
-				console.log(data);
-			})
-			.catch((error) => {
-				notifier.danger('Error saving: ' + error, { persist: true });
-				// alertStatus = AlertStatus.Error;
-				// alertMessage = 'Error saving: ' + error;
-				// alertHidden = false;
-				// TODO: present errors...
-				console.log(error);
-			});
-		spinnerActive = false;
-	}
-
-	var hasChanged: Boolean = false;
 
 	onDestroy(markdownStoreUnsubscribe);
 </script>
@@ -67,9 +45,7 @@
 <div class="relative mt-5 md:col-span-2 md:mt-0">
 	<NotificationDisplay />
 
-	<Alert message={alertMessage} hidden={alertHidden} />
-
-	<h3 class="px-4 py-4 text-center text-2xl font-bold">Markdown Editor</h3>
+	<h3 class="px-4 py-4 text-center text-2xl font-bold">Markdown Editor {formIsValid}</h3>
 	{#if $markdownStore}
 		<div class="flex items-center justify-end pr-8 focus:shadow-lg" role="group">
 			<button
@@ -78,11 +54,13 @@
 			<button
 				class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 				disabled>Delete</button>
+			<!-- //data-bs-toggle="modal" //data-bs-target="#save-dialog"-->
 			<button
 				type="button"
 				data-bs-toggle="modal"
 				data-bs-target="#save-dialog"
-				class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+				disabled={!formIsValid}
+				class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 disabled:hover:bg-purple-600"
 				>Save</button>
 		</div>
 		<form action="#" method="POST">
@@ -92,8 +70,8 @@
 						<div class="col-span-6 sm:col-span-6 lg:col-span-2">
 							<label for="Slug" class="block text-sm font-medium text-slate-200">Slug</label>
 							<input
-								bind:value={$markdownStore.post.url}
-								disabled
+								bind:value={$activeStore.newSlug}
+								readonly
 								type="text"
 								name="Slug"
 								id="Slug"
@@ -107,7 +85,11 @@
 								type="date"
 								name="date"
 								id="date"
+								required
 								class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+							{#if $markdownStore.post.date === ''}
+								<span class="text-sm text-yellow-200">Date must not be blank</span>
+							{/if}
 						</div>
 
 						<div class="col-span-6 sm:col-span-3 lg:col-span-2">
@@ -115,7 +97,7 @@
 								>Template</label>
 							<input
 								bind:value={$markdownStore.post.template.key}
-								disabled
+								readonly
 								type="text"
 								name="Template"
 								id="Template"
@@ -134,8 +116,12 @@
 								type="text"
 								name="title"
 								id="title"
+								required
 								autocomplete="title"
 								class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+							{#if $markdownStore.post.title === ''}
+								<span class="text-sm text-yellow-200">Title must not be blank</span>
+							{/if}
 						</div>
 						<div class="col-span-6">
 							<label for="markdown" class="text-sm font-medium text-slate-200">Markdown</label>
@@ -181,25 +167,4 @@
 	</Modal>
 {/if}
 
-<!-- save dialog -->
-{#if $markdownStore}
-	<Modal modalId="save-dialog" modalSize="sm">
-		<h5 slot="title" class="text-xl font-medium leading-normal text-gray-800">Save file?</h5>
-		<svelte:fragment slot="body">
-			Save changes to file <strong>{$markdownStore.post.title}</strong> (<em
-				>{$markdownStore.post.url}?</em
-			>)
-		</svelte:fragment>
-		<svelte:fragment slot="buttons">
-			<button
-				type="button"
-				class="rounded bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
-				data-bs-dismiss="modal">Cancel</button>
-			<button
-				type="button"
-				on:click={saveFile}
-				class="inline-block rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
-				data-bs-dismiss="modal">Save</button>
-		</svelte:fragment>
-	</Modal>
-{/if}
+<SaveNewFile modalId="save-dialog" />

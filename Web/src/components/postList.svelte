@@ -1,12 +1,14 @@
 <script lang="ts">
-	import { markdownStore, postStore, structureStore } from '../stores/postsStore.svelte';
-	import { onDestroy, onMount } from 'svelte';
-	import { userStore } from '../stores/userStore.svelte';
-	import type { MarkdownPost } from '../models/structure';
-	import Spinner from './utilities/spinner.svelte';
-	import { notifier } from '@beyonk/svelte-notifications';
-	let spinnerActive = false;
-	let loadedFile = '';
+    import {postStore, structureStore} from '../stores/postsStore.svelte';
+    import {markdownStore} from '../stores/markdownPostStore.svelte';
+    import {onDestroy, onMount} from 'svelte';
+    import {userStore} from '../stores/userStore.svelte';
+    import type {MarkdownPost} from '../models/structure';
+    import Spinner from './utilities/spinner.svelte';
+    import {notifier} from '@beyonk/svelte-notifications';
+    import {activeStore} from '../stores/appStatusStore.svelte';
+
+    let spinnerActive = false;
 
 	$: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
@@ -55,8 +57,14 @@
 			.then((data) => {
 				markdownStore.set(data.data);
 				console.log(data);
-				loadedFile = decodeURIComponent($markdownStore.post.srcKey);
-				notifier.success('Loaded file ' + loadedFile, 0, { showProgress: false });
+				activeStore.set({
+					activeFile: decodeURIComponent($markdownStore.post.srcKey),
+					isNewFile: false,
+					hasChanged: false,
+					isValid: true,
+					newSlug: $markdownStore.post.url
+				});
+				notifier.success('Loaded file ' + $activeStore.activeFile, { showProgress: false });
 			})
 			.catch((error) => {
 				console.log(error);
@@ -79,7 +87,13 @@
 				}
 			}
 		};
-		loadedFile = '';
+		activeStore.set({
+			activeFile: '',
+			isNewFile: true,
+			hasChanged: false,
+			isValid: false,
+			newSlug: ''
+		});
 		console.log('Creating new post');
 		markdownStore.set(newMDPost);
 	}
@@ -130,7 +144,7 @@
 
 						<li
 							id={post.srcKey}
-							class="border-grey-400 w-full cursor-pointer border-b px-6 py-2 hover:bg-slate-200 {loadedFile ===
+							class="border-grey-400 w-full cursor-pointer border-b px-6 py-2 hover:bg-slate-200 {$activeStore.activeFile ===
 							post.srcKey
 								? 'bg-slate-100'
 								: ''} "

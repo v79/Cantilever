@@ -1,5 +1,6 @@
 <script>
-	import LoginButton from './loginButton.svelte';
+    import LoginButton from './loginButton.svelte';
+    import {activeStore} from '../stores/appStatusStore.svelte';
 </script>
 
 <nav
@@ -46,6 +47,15 @@
 			<!-- Left links -->
 		</div>
 		<!-- Collapsible wrapper -->
+
+		<div class="navbar-collapse collapse flex-grow items-center">
+			<p>
+				<strong>Current file:</strong>
+				{$activeStore.activeFile} <strong>Is new:</strong>
+				{$activeStore.isNewFile} <strong>Has changed: </strong>{$activeStore.hasChanged}
+				<strong>Is valid: </strong>{$activeStore.isValid}
+			</p>
+		</div>
 
 		<!-- Right elements -->
 		<div class="relative flex items-center">
