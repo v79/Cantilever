@@ -5,10 +5,13 @@
     import {userStore} from '../stores/userStore.svelte';
     import type {MarkdownPost} from '../models/structure';
     import Spinner from './utilities/spinner.svelte';
-    import {notifier} from '@beyonk/svelte-notifications';
     import {activeStore} from '../stores/appStatusStore.svelte';
+    import {Toast} from 'flowbite-svelte';
+    import {slide} from 'svelte/transition';
 
     let spinnerActive = false;
+	let notificationMessage = '';
+	let notification = false;
 
 	$: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
@@ -64,7 +67,8 @@
 					isValid: true,
 					newSlug: $markdownStore.post.url
 				});
-				notifier.success('Loaded file ' + $activeStore.activeFile, { showProgress: false });
+				notificationMessage = 'Loaded file ' + $activeStore.activeFile;
+				notification = true;
 			})
 			.catch((error) => {
 				console.log(error);
@@ -113,6 +117,9 @@
 </script>
 
 <Spinner spinnerId="load-spinner" message="Loading..." shown={spinnerActive} />
+<Toast transition={slide} bind:open={notification} position="top-right">
+	{notificationMessage}
+</Toast>
 
 <h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-900">Posts</h3>
 

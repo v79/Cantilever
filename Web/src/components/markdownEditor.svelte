@@ -1,20 +1,22 @@
 <script lang="ts">
-	import { beforeUpdate, afterUpdate, onDestroy } from 'svelte';
-	import { markdownStore } from '../stores/markdownPostStore.svelte';
-	import SvelteMarkdown from 'svelte-markdown';
-	import Modal from './modal.svelte';
-	import Spinner from './utilities/spinner.svelte';
-	import { userStore } from '../stores/userStore.svelte';
-	import { NotificationDisplay, notifier } from '@beyonk/svelte-notifications';
-	import { activeStore } from '../stores/appStatusStore.svelte';
-	import SaveNewFile from './saveNewFile.svelte';
+    import {afterUpdate, beforeUpdate, onDestroy} from 'svelte';
+    import {markdownStore} from '../stores/markdownPostStore.svelte';
+    import SvelteMarkdown from 'svelte-markdown';
+    import Spinner from './utilities/spinner.svelte';
+    import {Modal, Toast} from 'flowbite-svelte';
+    import {userStore} from '../stores/userStore.svelte';
+    import {activeStore} from '../stores/appStatusStore.svelte';
+    import {slide} from 'svelte/transition';
+    import CModal from './customized/cModal.svelte';
 
-	// import * as te from 'tw-elements';
-
-	// const myModal = new te.Modal(document.getElementById('save-dialog'), {});
+    let saveExistingModal = false;
+	let saveNewModal = false;
+	let previewModal = false;
 
 	let spinnerActive = false;
-	let saveNewFileSlug: '';
+	let saveNewFileSlug = '';
+	let notificationMessage = '';
+	let notification = false;
 	$: formIsValid = $markdownStore?.post.title != '' && $markdownStore?.post.date != '';
 
 	afterUpdate(() => {});
@@ -34,7 +36,36 @@
 	function createSlug(title: string) {
 		// const invalid: RegExp = new RegExp(';/?:@&=+$, ', 'g');
 		const invalid = /[;\/?:@%&=+$, ]/g;
-		return title.toLowerCase().replaceAll(invalid, '-');
+		return title.trim().toLowerCase().replaceAll(invalid, '-');
+	}
+
+	function saveFile() {
+		spinnerActive = true;
+		console.log('Saving file ', $markdownStore.post.srcKey);
+		let postJson = JSON.stringify($markdownStore);
+		console.log(postJson);
+
+		fetch('https://api.cantilevers.org/posts/save', {
+			method: 'POST',
+			headers: {
+				Accept: 'text/plain',
+				Authorization: 'Bearer ' + $userStore.token
+			},
+			body: postJson,
+			mode: 'cors'
+		})
+			.then((response) => response.text())
+			.then((data) => {
+				notificationMessage = $markdownStore.post.srcKey + ' saved. ' + data;
+				notification = true;
+				console.log(data);
+			})
+			.catch((error) => {
+				notificationMessage = 'Error saving: ' + error;
+				notification = true;
+				console.log(error);
+			});
+		spinnerActive = false;
 	}
 
 	onDestroy(markdownStoreUnsubscribe);
@@ -43,7 +74,9 @@
 <Spinner spinnerId="save-spinner" shown={spinnerActive} message="Saving..." />
 
 <div class="relative mt-5 md:col-span-2 md:mt-0">
-	<NotificationDisplay />
+	<Toast transition={slide} bind:open={notification}>
+		{notificationMessage}
+	</Toast>
 
 	<h3 class="px-4 py-4 text-center text-2xl font-bold">Markdown Editor {formIsValid}</h3>
 	{#if $markdownStore}
@@ -57,8 +90,14 @@
 			<!-- //data-bs-toggle="modal" //data-bs-target="#save-dialog"-->
 			<button
 				type="button"
-				data-bs-toggle="modal"
-				data-bs-target="#save-dialog"
+				on:click={() => {
+					if ($activeStore.isNewFile) {
+						saveNewFileSlug = createSlug($markdownStore.post.title);
+						saveNewModal = true;
+					} else {
+						saveExistingModal = true;
+					}
+				}}
 				disabled={!formIsValid}
 				class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 disabled:hover:bg-purple-600"
 				>Save</button>
@@ -104,11 +143,6 @@
 								class="mt-1 block w-full rounded-md border-gray-300 text-slate-500 shadow-sm sm:text-sm" />
 						</div>
 
-						<!-- <div class="col-span-6 sm:col-span-3 lg:col-span-2">
-				  <label for="postal_code" class="block text-sm font-medium text-gray-700">ZIP / Postal</label>
-				  <input type="text" name="postal_code" id="postal_code" autocomplete="postal-code" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-				</div> -->
-
 						<div class="col-span-6">
 							<label for="title" class="block text-sm font-medium text-slate-200">Title</label>
 							<input
@@ -128,8 +162,9 @@
 							<button
 								type="button"
 								class="float-right text-right text-sm font-medium text-slate-200"
-								data-bs-toggle="modal"
-								data-bs-target="#previewModal">Preview</button>
+								on:click={() => {
+									previewModal = true;
+								}}>Preview</button>
 							<textarea
 								bind:value={$markdownStore.body}
 								name="markdown"
@@ -159,12 +194,89 @@
 <!-- preview modal -->
 {#if $markdownStore}
 	{@const mdSource = $markdownStore.body}
-	<Modal modalId="previewModal">
-		<h5 slot="title" class="text-xl font-medium leading-normal text-gray-800" id="markdown-preview">
-			{$markdownStore.post.title}
-		</h5>
-		<SvelteMarkdown slot="body" source={mdSource} />
+	<Modal title={$markdownStore.post.title} bind:open={previewModal} size="lg">
+		<SvelteMarkdown source={mdSource} />
 	</Modal>
 {/if}
 
-<SaveNewFile modalId="save-dialog" />
+<CModal title="Save file?" bind:open={saveExistingModal} autoclose size="sm">
+	<p>
+		Save changes to file <strong>{$markdownStore.post.title}</strong>?
+	</p>
+	<svelte:fragment slot="footer">
+		<button
+			type="button"
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Cancel</button>
+		<button
+			type="button"
+			on:click={saveFile}
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Save</button>
+	</svelte:fragment>
+</CModal>
+
+<CModal title="Save new file?" bind:open={saveNewModal} autoclose size="sm">
+	<p>
+		Creating new <strong>{$markdownStore.post.template.key}</strong> named
+		<strong>{$markdownStore.post.title}</strong>.
+	</p>
+	<p>The slug (url) will be fixed after saving, so this is your last chance to change it.</p>
+	<form>
+		<label for="new-slug" class="block text-sm font-medium text-slate-600">Slug/url</label>
+		<input
+			type="text"
+			name="new-slug"
+			id="new-slug"
+			value={saveNewFileSlug}
+			required
+			autocomplete="new-slug"
+			class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+		{#if saveNewFileSlug === ''}
+			<span class="text-sm text-yellow-600"
+				>Slug must not be blank and will be set to the default value on save</span>
+		{/if}
+	</form>
+	<svelte:fragment slot="footer">
+		<button
+			type="button"
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Cancel</button>
+		<button
+			type="button"
+			on:click={saveFile}
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Save</button>
+	</svelte:fragment>
+	<!-- <Modal modalId="save-dialog" modalSize="sm">
+			<h5 slot="title" class="text-xl font-medium leading-normal text-gray-800">Save file?</h5>
+			<svelte:fragment slot="body">
+				<p>
+					Creating new <strong>{$markdownStore.post.template.key}</strong> named
+					<strong>{$markdownStore.post.title}</strong>.
+				</p>
+				<p>The slug (url) will be fixed after saving, so this is your last chance to change it.</p>
+				<form>
+					<label for="new-slug" class="block text-sm font-medium text-slate-600">Slug/url</label>
+					<input
+						type="text"
+						name="new-slug"
+						id="new-slug"
+						value={saveNewFileSlug}
+						required
+						autocomplete="new-slug"
+						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+					{#if saveNewFileSlug === ''}
+						<span class="text-sm text-yellow-600"
+							>Slug must not be blank and will be set to the default value on save</span>
+					{/if}
+				</form>
+			</svelte:fragment>
+			<svelte:fragment slot="buttons">
+				<button
+					type="button"
+					class="rounded bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+					data-bs-dismiss="modal">Cancel</button>
+			</svelte:fragment>
+		</Modal> -->
+</CModal>

@@ -1,11 +1,11 @@
 <script lang="ts">
-	import PostList from '../components/postList.svelte';
-	import TopMenu from '../components/topMenu.svelte';
-	import Footer from '../components/footer.svelte';
-	import MarkdownEditor from '../components/markdownEditor.svelte';
+    import PostList from '../components/postList.svelte';
+    import MarkdownEditor from '../components/markdownEditor.svelte';
+    import {Footer, FooterCopyright, FooterLink, FooterLinkGroup} from 'flowbite-svelte';
+    import Navigation from '../components/navigation.svelte';
 </script>
 
-<TopMenu />
+<Navigation />
 
 <div class="flex flex-row">
 	<div class="basis-1/4 bg-slate-400">
@@ -19,7 +19,17 @@
 	</div>
 </div>
 
-<Footer />
+<Footer>
+	<div class="grid md:grid-cols-2 lg:grid-cols-4">
+		<div class="mb-6">
+			<h5 class="mb-2.5 font-bold uppercase text-gray-800">About Cantilever</h5>
+			<FooterLinkGroup>
+				<FooterLink href="https://www.cantilevers.org/">Project History</FooterLink>
+			</FooterLinkGroup>
+		</div>
+	</div>
+	<FooterCopyright href="/app/" by="Liam Davison" year={2023} />
+</Footer>
 
 <style lang="postcss">
 	:global(html) {
