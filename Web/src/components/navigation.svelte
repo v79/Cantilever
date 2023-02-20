@@ -2,10 +2,12 @@
     import LoginButton from './loginButton.svelte';
     import {activeStore} from '../stores/appStatusStore.svelte';
     import {Navbar, NavBrand, NavLi, NavUl} from 'flowbite-svelte';
+    import CToast from './customized/cToast.svelte';
 </script>
 
 <Navbar
-	navClass="bg-slate-800 text-gray-500 shadow-lg py-4 px-4"
+	color="none"
+	navClass="bg-slate-600 text-gray-200 shadow-lg py-4 px-4"
 	fluid={false}
 	navDivClass="mx-auto flex flex-wrap justify-between items-center ">
 	<NavBrand href="/">
@@ -17,10 +19,10 @@
 			Cantilever
 		</span>
 	</NavBrand>
-	<NavUl>
-		<NavLi href="/" active={false}>Home</NavLi>
-		<NavLi href="/" active={false}>Other</NavLi>
-		<NavLi href="/" active={false}>Menu</NavLi>
+	<NavUl nonActiveClass="text-gray-200">
+		<NavLi href="/" active={false} nonActiveClass="text-gray-200">Home</NavLi>
+		<NavLi href="/" active={false} nonActiveClass="text-gray-200">Other</NavLi>
+		<NavLi href="/" active={false} nonActiveClass="text-gray-200">Menu</NavLi>
 	</NavUl>
 	<div class="flex-grow items-center justify-between">
 		<p>
@@ -34,3 +36,5 @@
 		<LoginButton />
 	</div>
 </Navbar>
+
+<CToast />

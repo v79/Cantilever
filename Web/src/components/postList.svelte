@@ -6,12 +6,9 @@
     import type {MarkdownPost} from '../models/structure';
     import Spinner from './utilities/spinner.svelte';
     import {activeStore} from '../stores/appStatusStore.svelte';
-    import {Toast} from 'flowbite-svelte';
-    import {slide} from 'svelte/transition';
+    import {notificationStore} from '../stores/notificationStore.svelte';
 
     let spinnerActive = false;
-	let notificationMessage = '';
-	let notification = false;
 
 	$: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
@@ -19,10 +16,11 @@
 
 	onMount(async () => {});
 
-	function loadStructure(token: String) {
+	function loadStructure() {
 		// https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/
 		// https://api.cantilevers.org/structure
 		// TODO: extract this sort of thing into a separate method, and add error handling, auth etc
+		let token = $userStore.token;
 		spinnerActive = true;
 		fetch('https://api.cantilevers.org/structure', {
 			method: 'GET',
@@ -38,6 +36,11 @@
 			})
 			.catch((error) => {
 				console.log(error);
+				notificationStore.set({
+					message: error,
+					shown: true,
+					type: 'error'
+				});
 				return {};
 			});
 		spinnerActive = false;
@@ -67,13 +70,50 @@
 					isValid: true,
 					newSlug: $markdownStore.post.url
 				});
-				notificationMessage = 'Loaded file ' + $activeStore.activeFile;
-				notification = true;
+				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
+				$notificationStore.shown = true;
 			})
 			.catch((error) => {
 				console.log(error);
+				notificationStore.set({
+					message: error,
+					shown: true,
+					type: 'error'
+				});
 			});
 		spinnerActive = false;
+	}
+
+	function rebuild() {
+		let token = $userStore.token;
+		spinnerActive = true;
+		console.log('Regenerating project structure file...');
+		fetch('https://api.cantilevers.org/structure/rebuild', {
+			method: 'GET',
+			headers: {
+				Accept: 'application/json',
+				Authorization: 'Bearer ' + token
+			},
+			mode: 'cors'
+		})
+			.then((response) => response.text())
+			.then((data) => {
+				console.log(data);
+				notificationStore.set({
+					message: data,
+					shown: true,
+					type: 'success'
+				});
+			})
+			.catch((error) => {
+				console.log(error);
+				notificationStore.set({
+					message: error,
+					shown: true,
+					type: 'error'
+				});
+			});
+		loadStructure();
 	}
 
 	function createNewPost() {
@@ -104,7 +144,7 @@
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
 		if (data) {
-			loadStructure(data.token);
+			loadStructure();
 		}
 	});
 
@@ -117,9 +157,6 @@
 </script>
 
 <Spinner spinnerId="load-spinner" message="Loading..." shown={spinnerActive} />
-<Toast transition={slide} bind:open={notification} position="top-right">
-	{notificationMessage}
-</Toast>
 
 <h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-900">Posts</h3>
 
@@ -129,7 +166,7 @@
 	<div class="flex items-center justify-center" role="group">
 		<button
 			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
-			disabled>Another</button>
+			on:click={rebuild}>Rebuild</button>
 		<button
 			class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			disabled>Something</button>

@@ -3,10 +3,10 @@
     import {markdownStore} from '../stores/markdownPostStore.svelte';
     import SvelteMarkdown from 'svelte-markdown';
     import Spinner from './utilities/spinner.svelte';
-    import {Modal, Toast} from 'flowbite-svelte';
+    import {Modal} from 'flowbite-svelte';
     import {userStore} from '../stores/userStore.svelte';
     import {activeStore} from '../stores/appStatusStore.svelte';
-    import {slide} from 'svelte/transition';
+    import {notificationStore} from '../stores/notificationStore.svelte';
     import CModal from './customized/cModal.svelte';
 
     let saveExistingModal = false;
@@ -15,8 +15,6 @@
 
 	let spinnerActive = false;
 	let saveNewFileSlug = '';
-	let notificationMessage = '';
-	let notification = false;
 	$: formIsValid = $markdownStore?.post.title != '' && $markdownStore?.post.date != '';
 
 	afterUpdate(() => {});
@@ -56,13 +54,15 @@
 		})
 			.then((response) => response.text())
 			.then((data) => {
-				notificationMessage = $markdownStore.post.srcKey + ' saved. ' + data;
-				notification = true;
+				notificationStore.set({
+					message: decodeURI($markdownStore.post.srcKey) + ' saved. ' + data,
+					shown: true,
+					type: 'success'
+				});
 				console.log(data);
 			})
 			.catch((error) => {
-				notificationMessage = 'Error saving: ' + error;
-				notification = true;
+				notificationStore.set({ message: 'Error saving: ' + error, shown: true, type: 'error' });
 				console.log(error);
 			});
 		spinnerActive = false;
@@ -74,11 +74,7 @@
 <Spinner spinnerId="save-spinner" shown={spinnerActive} message="Saving..." />
 
 <div class="relative mt-5 md:col-span-2 md:mt-0">
-	<Toast transition={slide} bind:open={notification}>
-		{notificationMessage}
-	</Toast>
-
-	<h3 class="px-4 py-4 text-center text-2xl font-bold">Markdown Editor {formIsValid}</h3>
+	<h3 class="px-4 py-4 text-center text-2xl font-bold">Markdown Editor</h3>
 	{#if $markdownStore}
 		<div class="flex items-center justify-end pr-8 focus:shadow-lg" role="group">
 			<button
