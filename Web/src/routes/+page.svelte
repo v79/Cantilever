@@ -3,9 +3,11 @@
     import MarkdownEditor from '../components/markdownEditor.svelte';
     import {Footer, FooterCopyright, FooterLink, FooterLinkGroup} from 'flowbite-svelte';
     import Navigation from '../components/navigation.svelte';
+    import SpinnerWrapper from '../components/utilities/spinnerWrapper.svelte';
 </script>
 
 <Navigation />
+<SpinnerWrapper spinnerID="globalSpinner" />
 
 <div class="flex flex-row">
 	<div class="basis-1/4 bg-slate-400">

@@ -50,14 +50,23 @@ class PostController(val sourceBucket: String) : KoinComponent {
         }
     }
 
-    fun saveNewMarkdownPost(request: Request<MarkdownPost>): ResponseEntity<APIResult<String>> {
+    /**
+     * Save a [MarkdownPost] to the sources bucket
+     */
+    fun saveMarkdownPost(request: Request<MarkdownPost>): ResponseEntity<APIResult<String>> {
         val postToSave = request.body
-        println("Saving new file ${postToSave.post.srcKey}")
+        val srcKey = URLDecoder.decode(postToSave.post.srcKey, Charset.defaultCharset())
 
-        if(s3Service.objectExists(postToSave.post.srcKey,sourceBucket)) {
-            println("Cannot save over existing file")
-            return ResponseEntity.badRequest(body = APIResult.Error("Cannot save on top of existing file"))
+        return if(s3Service.objectExists(srcKey,sourceBucket)) {
+            println("Updating existing file '${postToSave.post.srcKey}'")
+            println(postToSave.toString().take(100))
+            val length = s3Service.putObject(srcKey,sourceBucket,postToSave.toString(),"text/markdown")
+            ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
+        } else {
+            println("Creating new file...")
+            println(postToSave.post)
+            val length = s3Service.putObject(srcKey,sourceBucket,postToSave.toString(),"text/markdown")
+            ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
-        return ResponseEntity.ok(body = APIResult.OK("Saved (not really!)"))
     }
 }

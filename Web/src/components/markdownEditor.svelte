@@ -1,19 +1,18 @@
 <script lang="ts">
-    import {afterUpdate, beforeUpdate, onDestroy} from 'svelte';
-    import {markdownStore} from '../stores/markdownPostStore.svelte';
-    import SvelteMarkdown from 'svelte-markdown';
-    import Spinner from './utilities/spinner.svelte';
-    import {Modal} from 'flowbite-svelte';
-    import {userStore} from '../stores/userStore.svelte';
-    import {activeStore} from '../stores/appStatusStore.svelte';
-    import {notificationStore} from '../stores/notificationStore.svelte';
-    import CModal from './customized/cModal.svelte';
+	import {afterUpdate, beforeUpdate, onDestroy} from 'svelte';
+	import {markdownStore} from '../stores/markdownPostStore.svelte';
+	import SvelteMarkdown from 'svelte-markdown';
+	import {Modal} from 'flowbite-svelte';
+	import {userStore} from '../stores/userStore.svelte';
+	import {activeStore} from '../stores/appStatusStore.svelte';
+	import {notificationStore} from '../stores/notificationStore.svelte';
+	import CModal from './customized/cModal.svelte';
+	import {spinnerStore} from '../components/utilities/spinnerWrapper.svelte';
 
-    let saveExistingModal = false;
+	let saveExistingModal = false;
 	let saveNewModal = false;
 	let previewModal = false;
 
-	let spinnerActive = false;
 	let saveNewFileSlug = '';
 	$: formIsValid = $markdownStore?.post.title != '' && $markdownStore?.post.date != '';
 
@@ -38,7 +37,6 @@
 	}
 
 	function saveFile() {
-		spinnerActive = true;
 		console.log('Saving file ', $markdownStore.post.srcKey);
 		let postJson = JSON.stringify($markdownStore);
 		console.log(postJson);
@@ -65,13 +63,11 @@
 				notificationStore.set({ message: 'Error saving: ' + error, shown: true, type: 'error' });
 				console.log(error);
 			});
-		spinnerActive = false;
+		$spinnerStore.shown = false;
 	}
 
 	onDestroy(markdownStoreUnsubscribe);
 </script>
-
-<Spinner spinnerId="save-spinner" shown={spinnerActive} message="Saving..." />
 
 <div class="relative mt-5 md:col-span-2 md:mt-0">
 	<h3 class="px-4 py-4 text-center text-2xl font-bold">Markdown Editor</h3>
@@ -224,7 +220,7 @@
 			type="text"
 			name="new-slug"
 			id="new-slug"
-			value={saveNewFileSlug}
+			bind:value={saveNewFileSlug}
 			required
 			autocomplete="new-slug"
 			class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
@@ -240,7 +236,14 @@
 			>Cancel</button>
 		<button
 			type="button"
-			on:click={saveFile}
+			on:click={(e) => {
+				let srcKey = 'sources/' + saveNewFileSlug + '.md';
+				spinnerStore.set({ message: 'Saving ' + srcKey, shown: true });
+				$markdownStore.post.srcKey = srcKey;
+				$markdownStore.post.url = saveNewFileSlug;
+				$markdownStore.post.lastUpdated = new Date().toISOString();
+				saveFile();
+			}}
 			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
 			>Save</button>
 	</svelte:fragment>

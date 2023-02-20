@@ -1,14 +1,12 @@
 <script lang="ts">
-    import {postStore, structureStore} from '../stores/postsStore.svelte';
-    import {markdownStore} from '../stores/markdownPostStore.svelte';
-    import {onDestroy, onMount} from 'svelte';
-    import {userStore} from '../stores/userStore.svelte';
-    import type {MarkdownPost} from '../models/structure';
-    import Spinner from './utilities/spinner.svelte';
-    import {activeStore} from '../stores/appStatusStore.svelte';
-    import {notificationStore} from '../stores/notificationStore.svelte';
-
-    let spinnerActive = false;
+	import {postStore, structureStore} from '../stores/postsStore.svelte';
+	import {markdownStore} from '../stores/markdownPostStore.svelte';
+	import {onDestroy, onMount} from 'svelte';
+	import {userStore} from '../stores/userStore.svelte';
+	import type {MarkdownPost} from '../models/structure';
+	import {activeStore} from '../stores/appStatusStore.svelte';
+	import {notificationStore} from '../stores/notificationStore.svelte';
+	import {spinnerStore} from './utilities/spinnerWrapper.svelte';
 
 	$: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
@@ -21,7 +19,6 @@
 		// https://api.cantilevers.org/structure
 		// TODO: extract this sort of thing into a separate method, and add error handling, auth etc
 		let token = $userStore.token;
-		spinnerActive = true;
 		fetch('https://api.cantilevers.org/structure', {
 			method: 'GET',
 			headers: {
@@ -43,14 +40,12 @@
 				});
 				return {};
 			});
-		spinnerActive = false;
+		$spinnerStore.shown = false;
 	}
 
 	function loadMarkdown(srcKey: string) {
 		let token = $userStore.token;
-		spinnerActive = true;
 		console.log('Loading markdown file... ' + srcKey);
-
 		fetch('https://api.cantilevers.org/posts/load/' + encodeURIComponent(srcKey), {
 			method: 'GET',
 			headers: {
@@ -62,7 +57,6 @@
 			.then((response) => response.json())
 			.then((data) => {
 				markdownStore.set(data.data);
-				console.log(data);
 				activeStore.set({
 					activeFile: decodeURIComponent($markdownStore.post.srcKey),
 					isNewFile: false,
@@ -81,12 +75,12 @@
 					type: 'error'
 				});
 			});
-		spinnerActive = false;
+		$spinnerStore.shown = false;
 	}
 
 	function rebuild() {
 		let token = $userStore.token;
-		spinnerActive = true;
+		$spinnerStore.shown = true;
 		console.log('Regenerating project structure file...');
 		fetch('https://api.cantilevers.org/structure/rebuild', {
 			method: 'GET',
@@ -113,6 +107,7 @@
 					type: 'error'
 				});
 			});
+		$spinnerStore.shown = false;
 		loadStructure();
 	}
 
@@ -156,8 +151,6 @@
 	onDestroy(userStoreUnsubscribe);
 </script>
 
-<Spinner spinnerId="load-spinner" message="Loading..." shown={spinnerActive} />
-
 <h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-900">Posts</h3>
 
 {#if $userStore === undefined}
@@ -166,10 +159,18 @@
 	<div class="flex items-center justify-center" role="group">
 		<button
 			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
-			on:click={rebuild}>Rebuild</button>
+			on:click={(e) => {
+				$spinnerStore.shown = true;
+				$spinnerStore.message = 'Rebuilding project...';
+				rebuild;
+			}}>Rebuild</button>
 		<button
 			class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
-			disabled>Something</button>
+			on:click={(e) => {
+				$spinnerStore.shown = true;
+				$spinnerStore.message = 'Reloading project...';
+				loadStructure;
+			}}>Reload</button>
 		<button
 			type="button"
 			on:click={createNewPost}

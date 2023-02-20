@@ -64,7 +64,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                         MimeType.html
                     )
                 )
-                post("/save", postController::saveNewMarkdownPost).supplies(
+                post("/save", postController::saveMarkdownPost).supplies(
                     setOf(
                         MimeType.plainText
                     )
