@@ -18,6 +18,7 @@
 		// https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/
 		// https://api.cantilevers.org/structure
 		// TODO: extract this sort of thing into a separate method, and add error handling, auth etc
+		console.log('Loading structure json...');
 		let token = $userStore.token;
 		fetch('https://api.cantilevers.org/structure', {
 			method: 'GET',
@@ -80,7 +81,6 @@
 
 	function rebuild() {
 		let token = $userStore.token;
-		$spinnerStore.shown = true;
 		console.log('Regenerating project structure file...');
 		fetch('https://api.cantilevers.org/structure/rebuild', {
 			method: 'GET',
@@ -120,10 +120,7 @@
 				url: '',
 				date: '',
 				lastUpdated: '',
-				template: {
-					key: 'post',
-					lastUpdated: ''
-				}
+				templateKey: 'post'
 			}
 		};
 		activeStore.set({
@@ -162,14 +159,14 @@
 			on:click={(e) => {
 				$spinnerStore.shown = true;
 				$spinnerStore.message = 'Rebuilding project...';
-				rebuild;
+				rebuild();
 			}}>Rebuild</button>
 		<button
 			class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {
 				$spinnerStore.shown = true;
 				$spinnerStore.message = 'Reloading project...';
-				loadStructure;
+				loadStructure();
 			}}>Reload</button>
 		<button
 			type="button"

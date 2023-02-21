@@ -1,8 +1,8 @@
 package org.liamjd.cantilever.services.impl
 
 import com.charleskorn.kaml.Yaml
+import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.SerializationException
 import org.liamjd.cantilever.common.now
 import org.liamjd.cantilever.common.toSlug
@@ -28,6 +28,6 @@ fun extractPostMetadata(filename: String, source: String): PostMetadata {
         template = "post",
         slug = filename.removeSuffix(".md").removePrefix("sources").toSlug(),
         date = LocalDate.now(),
-        lastModified = LocalDateTime.now()
+        lastModified = Clock.System.now()
     )
 }

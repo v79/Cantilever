@@ -1,13 +1,10 @@
 package org.liamjd.cantilever.api.controllers
 
-import kotlinx.datetime.LocalDateTime
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.common.now
 import org.liamjd.cantilever.models.MarkdownPost
 import org.liamjd.cantilever.models.Post
-import org.liamjd.cantilever.models.Template
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.S3Service
@@ -34,7 +31,7 @@ class PostController(val sourceBucket: String) : KoinComponent {
                         title = metadata.title,
                         srcKey = markdownSource,
                         url = metadata.slug,
-                        template = Template(key = metadata.template, lastUpdated = LocalDateTime.now()),
+                        templateKey = metadata.template,
                         date = metadata.date,
                         lastUpdated = metadata.lastModified
                     )

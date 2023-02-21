@@ -69,6 +69,9 @@ class LambdaRouter : RequestHandlerWrapper() {
                         MimeType.plainText
                     )
                 )
+                delete("/{srcKey}") {
+                    request: Request<Unit> -> ResponseEntity.ok(body = "I might have deleted ${request.pathParameters["srcKey"]} but I didn't, not yet")
+                }.supplies(setOf(MimeType.plainText))
             }
         }
 

@@ -1,17 +1,19 @@
 <script lang="ts">
-	import {afterUpdate, beforeUpdate, onDestroy} from 'svelte';
-	import {markdownStore} from '../stores/markdownPostStore.svelte';
-	import SvelteMarkdown from 'svelte-markdown';
-	import {Modal} from 'flowbite-svelte';
-	import {userStore} from '../stores/userStore.svelte';
-	import {activeStore} from '../stores/appStatusStore.svelte';
-	import {notificationStore} from '../stores/notificationStore.svelte';
-	import CModal from './customized/cModal.svelte';
-	import {spinnerStore} from '../components/utilities/spinnerWrapper.svelte';
+    import {afterUpdate, beforeUpdate, onDestroy} from 'svelte';
+    import {markdownStore} from '../stores/markdownPostStore.svelte';
+    import SvelteMarkdown from 'svelte-markdown';
+    import {Modal} from 'flowbite-svelte';
+    import {userStore} from '../stores/userStore.svelte';
+    import {activeStore} from '../stores/appStatusStore.svelte';
+    import {notificationStore} from '../stores/notificationStore.svelte';
+    import CModal from './customized/cModal.svelte';
+    import {spinnerStore} from '../components/utilities/spinnerWrapper.svelte';
+    import {structureStore} from '../stores/postsStore.svelte';
 
-	let saveExistingModal = false;
+    let saveExistingModal = false;
 	let saveNewModal = false;
 	let previewModal = false;
+	let deleteFileModal = false;
 
 	let saveNewFileSlug = '';
 	$: formIsValid = $markdownStore?.post.title != '' && $markdownStore?.post.date != '';
@@ -57,10 +59,48 @@
 					shown: true,
 					type: 'success'
 				});
+				let existing = $structureStore.posts.find(
+					(post) => post.srcKey === $markdownStore.post.srcKey
+				);
+				if (!existing) {
+					console.log('Added brand new file to structure');
+					$structureStore.postCount = $structureStore.posts.push($markdownStore.post);
+				}
 				console.log(data);
 			})
 			.catch((error) => {
 				notificationStore.set({ message: 'Error saving: ' + error, shown: true, type: 'error' });
+				console.log(error);
+			});
+		$spinnerStore.shown = false;
+	}
+
+	function deleteFile() {
+		let srcKey = decodeURIComponent($markdownStore.post.srcKey);
+		console.log('Deleting file ', srcKey);
+		fetch('https://api.cantilevers.org/posts/' + $markdownStore.post.srcKey, {
+			method: 'DELETE',
+			headers: {
+				Accept: 'text/plain',
+				Authorization: 'Bearer ' + $userStore.token
+			},
+			mode: 'cors'
+		})
+			.then((response) => response.text())
+			.then((data) => {
+				notificationStore.set({
+					message: decodeURI($markdownStore.post.srcKey) + ' deleted. ' + data,
+					shown: true,
+					type: 'success'
+				});
+				$structureStore.postCount--;
+				let toDelete = $structureStore.posts.findIndex(
+					(post) => post.srcKey === $markdownStore.post.srcKey
+				);
+				$structureStore.posts.splice(toDelete, 1);
+			})
+			.catch((error) => {
+				notificationStore.set({ message: 'Error deleting: ' + error, shown: true, type: 'error' });
 				console.log(error);
 			});
 		$spinnerStore.shown = false;
@@ -75,10 +115,12 @@
 		<div class="flex items-center justify-end pr-8 focus:shadow-lg" role="group">
 			<button
 				class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
-				disabled>Restore</button>
+				disabled>Reset Changes</button>
 			<button
-				class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
-				disabled>Delete</button>
+				class="inline-block bg-red-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+				on:click={() => {
+					deleteFileModal = true;
+				}}>Delete</button>
 			<!-- //data-bs-toggle="modal" //data-bs-target="#save-dialog"-->
 			<button
 				type="button"
@@ -127,7 +169,7 @@
 							<label for="Template" class="block text-sm font-medium text-slate-200"
 								>Template</label>
 							<input
-								bind:value={$markdownStore.post.template.key}
+								bind:value={$markdownStore.post.templateKey}
 								readonly
 								type="text"
 								name="Template"
@@ -210,7 +252,7 @@
 
 <CModal title="Save new file?" bind:open={saveNewModal} autoclose size="sm">
 	<p>
-		Creating new <strong>{$markdownStore.post.template.key}</strong> named
+		Creating new <strong>{$markdownStore.post.templateKey}</strong> named
 		<strong>{$markdownStore.post.title}</strong>.
 	</p>
 	<p>The slug (url) will be fixed after saving, so this is your last chance to change it.</p>
@@ -247,35 +289,26 @@
 			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
 			>Save</button>
 	</svelte:fragment>
-	<!-- <Modal modalId="save-dialog" modalSize="sm">
-			<h5 slot="title" class="text-xl font-medium leading-normal text-gray-800">Save file?</h5>
-			<svelte:fragment slot="body">
-				<p>
-					Creating new <strong>{$markdownStore.post.template.key}</strong> named
-					<strong>{$markdownStore.post.title}</strong>.
-				</p>
-				<p>The slug (url) will be fixed after saving, so this is your last chance to change it.</p>
-				<form>
-					<label for="new-slug" class="block text-sm font-medium text-slate-600">Slug/url</label>
-					<input
-						type="text"
-						name="new-slug"
-						id="new-slug"
-						value={saveNewFileSlug}
-						required
-						autocomplete="new-slug"
-						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-					{#if saveNewFileSlug === ''}
-						<span class="text-sm text-yellow-600"
-							>Slug must not be blank and will be set to the default value on save</span>
-					{/if}
-				</form>
-			</svelte:fragment>
-			<svelte:fragment slot="buttons">
-				<button
-					type="button"
-					class="rounded bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
-					data-bs-dismiss="modal">Cancel</button>
-			</svelte:fragment>
-		</Modal> -->
+</CModal>
+
+<CModal title="Delete file?" bind:open={deleteFileModal} autoclose size="sm">
+	<p>
+		Delete source file <strong>{$markdownStore.post.title}</strong> ({$markdownStore.post.srcKey})?
+		Are you sure?
+	</p>
+	<p class="text-red-600">This cannot be undone!</p>
+	<svelte:fragment slot="footer">
+		<button
+			type="button"
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Cancel</button>
+		<button
+			type="button"
+			on:click={(e) => {
+				spinnerStore.set({ message: 'Deleting... ' + $markdownStore.post.srcKey, shown: true });
+				deleteFile();
+			}}
+			class="rounded bg-red-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Delete</button>
+	</svelte:fragment>
 </CModal>

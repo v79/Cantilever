@@ -126,11 +126,11 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         path: String?,
         acceptedMediaTypes: List<MimeType>
     ): APIGatewayProxyResponseEvent {
-        println("Not route match found for $httpMethod $path")
+        println("No route match found for $httpMethod $path")
         return APIGatewayProxyResponseEvent()
             .withStatusCode(404)
             .withHeaders(mapOf("Content-Type" to "text/plain"))
-            .withBody("No match found for route '$httpMethod' '$path';  accepts $acceptedMediaTypes")
+            .withBody("No match found for route '$httpMethod' '$path' which accepts $acceptedMediaTypes")
     }
 
     /**

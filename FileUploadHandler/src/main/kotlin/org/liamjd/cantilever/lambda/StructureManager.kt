@@ -2,9 +2,9 @@ package org.liamjd.cantilever.lambda
 
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.LambdaLogger
+import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import org.liamjd.cantilever.common.toLocalDateTime
 import org.liamjd.cantilever.models.Layouts
 import org.liamjd.cantilever.models.Post
 import org.liamjd.cantilever.models.Structure
@@ -32,8 +32,8 @@ class StructureManager {
         val templateKey = templatesKey + markdown.metadata.template + ".html.hbs"
         val template = try {
             val obj = s3Client.getObject(GetObjectRequest.builder().key(templateKey).bucket(sourceBucket).build())
-            val lastModified = obj.response().lastModified().toLocalDateTime()
-            Template(templateKey, lastModified)
+            val lastModified = obj.response().lastModified()
+            Template(templateKey, lastModified.toKotlinInstant())
         } catch (nske: NoSuchKeyException) {
             log("Cannot find template file $templateKey; aborting")
             return
@@ -44,7 +44,7 @@ class StructureManager {
             title = markdown.metadata.title,
             srcKey = srcKey,
             url = markdown.metadata.slug,
-            template = template,
+            templateKey = template.key,
             date = markdown.metadata.date,
             lastUpdated = markdown.metadata.lastModified
         )

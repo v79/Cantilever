@@ -17,7 +17,7 @@ export interface Post {
     title: string;
     srcKey: string;
     url: string,
-    template: Template;
+    templateKey: string,
     date: string,
     lastUpdated: string;
 }

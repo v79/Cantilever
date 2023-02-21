@@ -1,5 +1,6 @@
 package org.liamjd.cantilever.api.controllers
 
+import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -7,7 +8,6 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.api.services.StructureService
-import org.liamjd.cantilever.common.toLocalDateTime
 import org.liamjd.cantilever.models.Layouts
 import org.liamjd.cantilever.models.Post
 import org.liamjd.cantilever.models.Structure
@@ -69,7 +69,7 @@ class StructureController(val sourceBucket: String, val corsDomain: String = "ht
                     println(postMetadata)
                     val templateKey = templatesKey + postMetadata.template + ".html.hbs"
                     val template = try {
-                        val lastModified = obj.lastModified().toLocalDateTime()
+                        val lastModified = obj.lastModified().toKotlinInstant()
                         Template(templateKey, lastModified)
                     } catch (nske: NoSuchKeyException) {
                         println("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
@@ -80,7 +80,7 @@ class StructureController(val sourceBucket: String, val corsDomain: String = "ht
                         title = postMetadata.title,
                         srcKey = obj.key(),
                         url = postMetadata.slug,
-                        template = template,
+                        templateKey = template.key,
                         date = postMetadata.date,
                         lastUpdated = postMetadata.lastModified
                     ))

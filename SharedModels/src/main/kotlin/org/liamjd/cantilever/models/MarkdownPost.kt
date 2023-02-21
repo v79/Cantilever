@@ -10,7 +10,7 @@ class MarkdownPost(val post: Post) {
         val sBuilder = StringBuilder()
         sBuilder.appendLine(separator)
         sBuilder.appendLine("title: ${post.title}")
-        sBuilder.appendLine("template: ${post.template.key}")
+        sBuilder.appendLine("template: ${post.templateKey}")
         sBuilder.appendLine("date: ${post.date}") // TODO: format date
         sBuilder.appendLine("slug: ${post.url}")
         sBuilder.appendLine(separator)
