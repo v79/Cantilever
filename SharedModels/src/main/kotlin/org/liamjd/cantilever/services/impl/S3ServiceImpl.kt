@@ -56,4 +56,12 @@ class S3ServiceImpl(region: Region) : S3Service {
     override fun listObjects(prefix: String, bucket: String): ListObjectsV2Response {
         return s3Client.listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).build())
     }
+
+    override fun deleteObject(key: String, bucket: String): DeleteObjectResponse? {
+        val request = DeleteObjectRequest.builder()
+            .key(key)
+            .bucket(bucket)
+            .build()
+        return s3Client.deleteObject(request)
+    }
 }

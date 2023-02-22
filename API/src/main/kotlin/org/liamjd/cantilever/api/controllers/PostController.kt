@@ -12,7 +12,7 @@ import org.liamjd.cantilever.services.impl.extractPostMetadata
 import java.net.URLDecoder
 import java.nio.charset.Charset
 
-class PostController(val sourceBucket: String) : KoinComponent {
+class PostController(val sourceBucket: String, val destinationBucket: String) : KoinComponent {
     private val s3Service: S3Service by inject()
 
     fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<MarkdownPost>> {
@@ -21,22 +21,7 @@ class PostController(val sourceBucket: String) : KoinComponent {
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
             println("PostsController loading Markdown file $decoded")
             return if (s3Service.objectExists(decoded, sourceBucket)) {
-
-                val markdown = s3Service.getObjectAsString(decoded,sourceBucket)
-                val metadata = extractPostMetadata(filename = decoded, source = markdown)
-
-               println("Returning MarkdownPost from $metadata")
-                val mdPost = MarkdownPost(
-                    Post(
-                        title = metadata.title,
-                        srcKey = markdownSource,
-                        url = metadata.slug,
-                        templateKey = metadata.template,
-                        date = metadata.date,
-                        lastUpdated = metadata.lastModified
-                    )
-                )
-                mdPost.body = markdown.substringAfterLast("---").trim()
+                val mdPost = getMarkdownPost(decoded)
                 ResponseEntity.ok(body = APIResult.Success(mdPost))
             } else {
                 println("PostController: File '$decoded' not found")
@@ -45,6 +30,27 @@ class PostController(val sourceBucket: String) : KoinComponent {
         } else {
             ResponseEntity.badRequest(body = APIResult.Error("Invalid request for null source file"))
         }
+    }
+
+    private fun getMarkdownPost(
+        srcKey: String
+    ): MarkdownPost {
+        val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
+        val metadata = extractPostMetadata(filename = srcKey, source = markdown)
+
+        println("Returning MarkdownPost from $metadata")
+        val mdPost = MarkdownPost(
+            Post(
+                title = metadata.title,
+                srcKey = srcKey,
+                url = metadata.slug,
+                templateKey = metadata.template,
+                date = metadata.date,
+                lastUpdated = metadata.lastModified
+            )
+        )
+        mdPost.body = markdown.substringAfterLast("---").trim()
+        return mdPost
     }
 
     /**
@@ -64,6 +70,27 @@ class PostController(val sourceBucket: String) : KoinComponent {
             println(postToSave.post)
             val length = s3Service.putObject(srcKey,sourceBucket,postToSave.toString(),"text/markdown")
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
+        }
+    }
+
+    /**
+     * Delete the markdown post... and it's corresponding html? Um....
+     */
+    fun deleteMarkdownPost(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val markdownSource = request.pathParameters["srcKey"]
+
+        return if (markdownSource != null) {
+            val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
+            println("PostsController deleting Markdown file $decoded")
+            return if (s3Service.objectExists(decoded, sourceBucket)) {
+                println("Deleting file $decoded")
+                s3Service.deleteObject(decoded,sourceBucket)
+                ResponseEntity.ok(body = APIResult.OK("Source $decoded deleted"))
+            } else {
+                ResponseEntity.ok(body = APIResult.Error("Could not delete $decoded; object not found"))
+            }
+        } else {
+            ResponseEntity.ok(body = APIResult.Error("Could not delete null markdownSource"))
         }
     }
 }

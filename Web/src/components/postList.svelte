@@ -57,6 +57,9 @@
 		})
 			.then((response) => response.json())
 			.then((data) => {
+				if (data.data === undefined) {
+					throw new Error(data.message);
+				}
 				markdownStore.set(data.data);
 				activeStore.set({
 					activeFile: decodeURIComponent($markdownStore.post.srcKey),
@@ -135,6 +138,7 @@
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
+		spinnerStore.set({ message: 'Loading project structure', shown: true });
 		if (data) {
 			loadStructure();
 		}

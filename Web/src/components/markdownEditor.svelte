@@ -1,16 +1,17 @@
 <script lang="ts">
-    import {afterUpdate, beforeUpdate, onDestroy} from 'svelte';
-    import {markdownStore} from '../stores/markdownPostStore.svelte';
-    import SvelteMarkdown from 'svelte-markdown';
-    import {Modal} from 'flowbite-svelte';
-    import {userStore} from '../stores/userStore.svelte';
-    import {activeStore} from '../stores/appStatusStore.svelte';
-    import {notificationStore} from '../stores/notificationStore.svelte';
-    import CModal from './customized/cModal.svelte';
-    import {spinnerStore} from '../components/utilities/spinnerWrapper.svelte';
-    import {structureStore} from '../stores/postsStore.svelte';
+	import {Modal} from 'flowbite-svelte';
+	import {afterUpdate, beforeUpdate, onDestroy} from 'svelte';
+	import SvelteMarkdown from 'svelte-markdown';
+	import {spinnerStore} from '../components/utilities/spinnerWrapper.svelte';
+	import {activeStore} from '../stores/appStatusStore.svelte';
+	import {markdownStore} from '../stores/markdownPostStore.svelte';
+	import {notificationStore} from '../stores/notificationStore.svelte';
+	import {structureStore} from '../stores/postsStore.svelte';
+	import {userStore} from '../stores/userStore.svelte';
+	import CModal from './customized/cModal.svelte';
+	import ModalDeleteFile from './MarkdownEditor/modal-delete-file.svelte';
 
-    let saveExistingModal = false;
+	let saveExistingModal = false;
 	let saveNewModal = false;
 	let previewModal = false;
 	let deleteFileModal = false;
@@ -70,37 +71,6 @@
 			})
 			.catch((error) => {
 				notificationStore.set({ message: 'Error saving: ' + error, shown: true, type: 'error' });
-				console.log(error);
-			});
-		$spinnerStore.shown = false;
-	}
-
-	function deleteFile() {
-		let srcKey = decodeURIComponent($markdownStore.post.srcKey);
-		console.log('Deleting file ', srcKey);
-		fetch('https://api.cantilevers.org/posts/' + $markdownStore.post.srcKey, {
-			method: 'DELETE',
-			headers: {
-				Accept: 'text/plain',
-				Authorization: 'Bearer ' + $userStore.token
-			},
-			mode: 'cors'
-		})
-			.then((response) => response.text())
-			.then((data) => {
-				notificationStore.set({
-					message: decodeURI($markdownStore.post.srcKey) + ' deleted. ' + data,
-					shown: true,
-					type: 'success'
-				});
-				$structureStore.postCount--;
-				let toDelete = $structureStore.posts.findIndex(
-					(post) => post.srcKey === $markdownStore.post.srcKey
-				);
-				$structureStore.posts.splice(toDelete, 1);
-			})
-			.catch((error) => {
-				notificationStore.set({ message: 'Error deleting: ' + error, shown: true, type: 'error' });
 				console.log(error);
 			});
 		$spinnerStore.shown = false;
@@ -291,24 +261,8 @@
 	</svelte:fragment>
 </CModal>
 
-<CModal title="Delete file?" bind:open={deleteFileModal} autoclose size="sm">
-	<p>
-		Delete source file <strong>{$markdownStore.post.title}</strong> ({$markdownStore.post.srcKey})?
-		Are you sure?
-	</p>
-	<p class="text-red-600">This cannot be undone!</p>
-	<svelte:fragment slot="footer">
-		<button
-			type="button"
-			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
-			>Cancel</button>
-		<button
-			type="button"
-			on:click={(e) => {
-				spinnerStore.set({ message: 'Deleting... ' + $markdownStore.post.srcKey, shown: true });
-				deleteFile();
-			}}
-			class="rounded bg-red-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
-			>Delete</button>
-	</svelte:fragment>
-</CModal>
+<ModalDeleteFile
+	shown={deleteFileModal}
+	on:closeModal={(e) => {
+		deleteFileModal = false;
+	}} />

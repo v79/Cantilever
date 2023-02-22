@@ -30,7 +30,6 @@ class LambdaRouter : RequestHandlerWrapper() {
     override val corsDomain: String = System.getenv("cors_domain") ?: "https://www.cantilevers.org/"
 
     init {
-        println("Router init: source bucket: $sourceBucket")
         startKoin {
             modules(appModule)
         }
@@ -38,7 +37,7 @@ class LambdaRouter : RequestHandlerWrapper() {
 
     // May need some DI here once I start needing to add services for S3 etc
     private val structureController = StructureController(sourceBucket = sourceBucket, corsDomain = corsDomain)
-    private val postController = PostController(sourceBucket = sourceBucket)
+    private val postController = PostController(sourceBucket = sourceBucket, destinationBucket = destinationBucket)
 
     override val router = lambdaRouter {
 //        filter = loggingFilter()
@@ -69,9 +68,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                         MimeType.plainText
                     )
                 )
-                delete("/{srcKey}") {
-                    request: Request<Unit> -> ResponseEntity.ok(body = "I might have deleted ${request.pathParameters["srcKey"]} but I didn't, not yet")
-                }.supplies(setOf(MimeType.plainText))
+                delete("/{srcKey}", postController::deleteMarkdownPost).supplies(setOf(MimeType.plainText))
             }
         }
 
