@@ -1,9 +1,9 @@
 <script lang="ts">
-    import PostList from '../components/postList.svelte';
-    import MarkdownEditor from '../components/markdownEditor.svelte';
-    import {Footer, FooterCopyright, FooterLink, FooterLinkGroup} from 'flowbite-svelte';
-    import Navigation from '../components/navigation.svelte';
-    import SpinnerWrapper from '../components/utilities/spinnerWrapper.svelte';
+	import PostList from '../components/postList.svelte';
+	import MarkdownEditor from '../components/markdownEditor.svelte';
+	import {Footer, FooterCopyright, FooterLink, FooterLinkGroup} from 'flowbite-svelte';
+	import Navigation from '../components/navigation.svelte';
+	import SpinnerWrapper from '../components/utilities/spinnerWrapper.svelte';
 </script>
 
 <Navigation />
@@ -30,7 +30,7 @@
 			</FooterLinkGroup>
 		</div>
 	</div>
-	<FooterCopyright href="/app/" by="Liam Davison" year={2023} />
+	<FooterCopyright href="#" by="Liam Davison" year={2023} />
 </Footer>
 
 <style lang="postcss">
