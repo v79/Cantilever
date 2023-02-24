@@ -9,4 +9,9 @@
 		const invalid = /[;\/?:@%&=+$, ]/g;
 		return title.toLowerCase().replaceAll(invalid, '-');
 	}
+
+	export const CLEAR_POST = {
+		body: '',
+		post: { title: '', srcKey: '', url: '', templateKey: '', date: '', lastUpdated: '' }
+	};
 </script>

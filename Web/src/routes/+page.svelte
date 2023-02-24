@@ -30,7 +30,7 @@
 			</FooterLinkGroup>
 		</div>
 	</div>
-	<FooterCopyright href="#" by="Liam Davison" year={2023} />
+	<FooterCopyright href="https://www.cantilevers.org/app/" by="Liam Davison" year={2023} />
 </Footer>
 
 <style lang="postcss">

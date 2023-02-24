@@ -1,11 +1,11 @@
 <script lang="ts">
-	import {postStore, structureStore} from '../stores/postsStore.svelte';
-	import {markdownStore} from '../stores/markdownPostStore.svelte';
 	import {onDestroy, onMount} from 'svelte';
-	import {userStore} from '../stores/userStore.svelte';
 	import type {MarkdownPost} from '../models/structure';
 	import {activeStore} from '../stores/appStatusStore.svelte';
+	import {markdownStore} from '../stores/markdownPostStore.svelte';
 	import {notificationStore} from '../stores/notificationStore.svelte';
+	import {postStore, structureStore} from '../stores/postsStore.svelte';
+	import {userStore} from '../stores/userStore.svelte';
 	import {spinnerStore} from './utilities/spinnerWrapper.svelte';
 
 	$: postsSorted = $postStore.sort(
@@ -18,6 +18,7 @@
 		// https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/
 		// https://api.cantilevers.org/structure
 		// TODO: extract this sort of thing into a separate method, and add error handling, auth etc
+		spinnerStore.set({ message: 'Loading project structure', shown: true });
 		console.log('Loading structure json...');
 		let token = $userStore.token;
 		fetch('https://api.cantilevers.org/structure', {
@@ -85,6 +86,7 @@
 	function rebuild() {
 		let token = $userStore.token;
 		console.log('Regenerating project structure file...');
+		spinnerStore.set({ message: 'Rebuilding project...', shown: true });
 		fetch('https://api.cantilevers.org/structure/rebuild', {
 			method: 'GET',
 			headers: {
@@ -138,7 +140,6 @@
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
-		spinnerStore.set({ message: 'Loading project structure', shown: true });
 		if (data) {
 			loadStructure();
 		}
@@ -161,8 +162,6 @@
 		<button
 			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {
-				$spinnerStore.shown = true;
-				$spinnerStore.message = 'Rebuilding project...';
 				rebuild();
 			}}>Rebuild</button>
 		<button
