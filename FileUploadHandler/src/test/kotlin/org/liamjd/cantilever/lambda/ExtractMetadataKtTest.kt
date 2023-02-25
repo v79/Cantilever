@@ -9,6 +9,7 @@ import kotlinx.datetime.LocalDate
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.liamjd.cantilever.common.now
+import org.liamjd.cantilever.services.impl.extractPostMetadata
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 

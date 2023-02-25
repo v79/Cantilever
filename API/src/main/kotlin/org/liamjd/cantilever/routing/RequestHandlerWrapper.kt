@@ -4,14 +4,27 @@ import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.MissingFieldException
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 import org.liamjd.cantilever.routing.Router.Companion.CONTENT_TYPE
 
-abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.cantilevers.org/") : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+/**
+ * Implementing the AWS API Gateway [RequestHandler] interface, this class looks for a route which matches the incoming request
+ * If a route exists, it generates a response by calling the [HandlerFunction] declared in the route, parsing and deserializing the body
+ * if it exists.
+ * @param corsDomain The website domain name, required for CORS
+ */
+abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.cantilevers.org/") :
+    RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
     abstract val router: Router
 
+    /**
+     * Clean up the received headers then pass request to the internal [handleRequest] function
+     */
     override fun handleRequest(input: APIGatewayProxyRequestEvent, context: Context): APIGatewayProxyResponseEvent =
         input.apply {
             headers = headers.mapKeys { it.key.lowercase() }
@@ -19,6 +32,13 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
             .let { handleRequest(input) }
 
 
+    /**
+     * Look for a declared route which matches the input method, path, accept headers and response type headers.
+     * If there is a matching route, check for authorization requirements (implementing [org.liamjd.cantilever.auth.Authorizer]), and then
+     * parse and deserialize the input body if it exists, then pass the request to the [HandlerFunction].
+     * Finally, convert the [ResponseEntity] into the required [APIGatewayProxyResponseEvent].
+     * If there is an error at any point, return an appropriate error response code and text body.
+     */
     @Suppress("UNCHECKED_CAST")
     internal fun handleRequest(input: APIGatewayProxyRequestEvent): APIGatewayProxyResponseEvent {
         println(
@@ -51,16 +71,17 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
      * @param routerFunction the request predicate, handler and ???
      * @return a [ResponseEntity] object ready to be serialized and returned to the requester
      */
+    @OptIn(ExperimentalSerializationApi::class)
     private fun processRoute(
         input: APIGatewayProxyRequestEvent,
         routerFunction: RouterFunction<*, *>
     ): ResponseEntity<out Any> {
         println("Processing route ${routerFunction.requestPredicate.method} ${routerFunction.requestPredicate.pathPattern}, supplying ${routerFunction.requestPredicate.supplies}")
-        routerFunction.authorizer?.let {auth ->
+        routerFunction.authorizer?.let { auth ->
             println("Checking authentication/authorization for ${auth.simpleName}")
             println("BAD - BYPASSING AUTH!")
 
-            if(corsDomain != "http://localhost:5173") {
+            if (corsDomain != "http://localhost:5173") {
                 val authResult = auth.authorize(input)
                 if (!authResult.authorized) {
                     return ResponseEntity.unauthorized("Authorization check failed: ${authResult.message}")
@@ -71,14 +92,29 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         }
 
         val handler: (Nothing) -> ResponseEntity<out Any> = routerFunction.handler
-        val entity: ResponseEntity<out Any> = try {
-            // this is where we'd add authorization checks, which may throw exceptions
-            val requestBody = "TODO: deserialize the input request body"
-            val request = Request(input, requestBody, routerFunction.requestPredicate.pathPattern)
+        val entity = if (routerFunction.requestPredicate.kType == null) {
+            // no request type specified, likely Unit
+            val request = Request(input, null, routerFunction.requestPredicate.pathPattern)
             (handler as HandlerFunction<*, *>)(request)
-        } catch (e: Exception) {
-            ResponseEntity.serverError(e.message)
+        } else {
+            val kType = routerFunction.requestPredicate.kType!!
+            if (input.body == null || input.body.isEmpty()) {
+                // no body received but was expected
+                ResponseEntity.badRequest(body = "No body received but $kType was expected.")
+            } else {
+                // body receieved, deserialize it and run the handler function
+                try {
+                    val bodyObject = Json.decodeFromString(serializer(kType), input.body)
+                    val request = Request(input, bodyObject, routerFunction.requestPredicate.pathPattern)
+                    (handler as HandlerFunction<*, *>)(request)
+                } catch (mfe: MissingFieldException) {
+                    ResponseEntity.badRequest(body = "Invalid request. Error is ${mfe.message}")
+                } catch (se: SerializationException) {
+                    ResponseEntity.badRequest(body = "Could not deserialize body. Error is ${se.message}")
+                }
+            }
         }
+
         return entity
     }
 
@@ -90,11 +126,11 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         path: String?,
         acceptedMediaTypes: List<MimeType>
     ): APIGatewayProxyResponseEvent {
-        println("Not route match found for $httpMethod $path")
+        println("No route match found for $httpMethod $path")
         return APIGatewayProxyResponseEvent()
             .withStatusCode(404)
             .withHeaders(mapOf("Content-Type" to "text/plain"))
-            .withBody("No match found for route '$httpMethod' '$path';  accepts $acceptedMediaTypes")
+            .withBody("No match found for route '$httpMethod' '$path' which accepts $acceptedMediaTypes")
     }
 
     /**
@@ -140,9 +176,5 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
             .withHeaders(mapOf(CONTENT_TYPE to contentType, "Access-Control-Allow-Origin" to corsDomain))
             .withBody(body)
     }
-
-    private fun <T> createErrorResponse(): APIGatewayProxyResponseEvent =
-        APIGatewayProxyResponseEvent().withStatusCode(500)
-
 }
 

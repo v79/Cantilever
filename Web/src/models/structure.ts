@@ -17,7 +17,12 @@ export interface Post {
     title: string;
     srcKey: string;
     url: string,
-    template: Template;
+    templateKey: string,
     date: string,
     lastUpdated: string;
+}
+
+export interface MarkdownPost {
+    post: Post;
+    body: String;
 }

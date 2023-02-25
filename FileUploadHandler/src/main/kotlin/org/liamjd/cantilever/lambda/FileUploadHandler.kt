@@ -9,6 +9,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.toLocalDateTime
 import org.liamjd.cantilever.models.sqs.MarkdownUploadMsg
+import org.liamjd.cantilever.services.impl.extractPostMetadata
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest

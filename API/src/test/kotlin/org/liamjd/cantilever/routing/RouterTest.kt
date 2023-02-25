@@ -5,6 +5,7 @@ import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.liamjd.cantilever.api.models.RawJsonString
@@ -14,6 +15,7 @@ import org.liamjd.cantilever.auth.Authorizer
 class RouterTest {
 
     private val acceptJson = mapOf("accept" to "application/json")
+    private val acceptText = mapOf("accept" to "text/plain")
 
     @Test
     fun `can get a basic route`() {
@@ -41,16 +43,6 @@ class RouterTest {
         val testR = TestRouter()
         val event = APIGatewayProxyRequestEvent().withPath("/returnHtml").withHttpMethod("GET")
             .withHeaders(mapOf("accept" to "text/html"))
-        val response = testR.handleRequest(event)
-
-        assertEquals(200, response.statusCode)
-    }
-
-    @Test
-    fun `matches POST route when consumes is overridden with img jpg`() {
-        val testR = TestRouter()
-        val event = APIGatewayProxyRequestEvent().withPath("/postImage").withHttpMethod("POST").withHeaders(acceptJson)
-            .withHeaders(mapOf("Content-Type" to "img/jpeg"))
         val response = testR.handleRequest(event)
 
         assertEquals(200, response.statusCode)
@@ -224,6 +216,65 @@ class RouterTest {
         assertEquals("Customer 'xy123' made order #2523", response.body)
     }
 
+    @Test
+    fun `can match a nested path parameter route`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/posts/load/123").withHttpMethod("GET")
+            .withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertEquals(""""Request for /posts/load/123 received"""", response.body)
+    }
+
+    @Test
+    fun `match a post route and deserialize a valid object`() {
+        val testR = TestRouter()
+        val postThing = PostThis(name = "Apple", count = 23)
+        val event = APIGatewayProxyRequestEvent().withPath("/postThing").withHttpMethod("POST").withBody(Json.encodeToString(postThing))
+            .withHeaders(acceptText)
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertTrue(response.body.contains("Apple"))
+        assertTrue(response.body.contains("23"))
+    }
+
+    @Test
+    fun `bad request when supplied body does not contain all required fields`() {
+        val testR = TestRouter()
+        val postThing = """{ "name": "Apple" }"""
+        val event = APIGatewayProxyRequestEvent().withPath("/postThing").withHttpMethod("POST").withBody(postThing)
+            .withHeaders(acceptText)
+        val response = testR.handleRequest(event)
+
+        assertEquals(400, response.statusCode)
+        assertFalse(response.body.contains("Apple"))
+        assertTrue(response.body.startsWith("Invalid request."))
+    }
+
+    @Test
+    fun `bad request when no body supplied but was expected for POST`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/postThing").withHttpMethod("POST")
+            .withHeaders(acceptText)
+        val response = testR.handleRequest(event)
+
+        assertEquals(400, response.statusCode)
+        assertEquals("No body received but org.liamjd.cantilever.routing.PostThis was expected.",response.body)
+    }
+
+    @Test
+    fun `throw appropriate error when entirely wrong object type is supplied`() {
+        val testR = TestRouter()
+        val postThing = DontPostThis(year = 1923L, truth = false)
+        val event = APIGatewayProxyRequestEvent().withPath("/postThing").withHttpMethod("POST").withBody(Json.encodeToString(postThing))
+            .withHeaders(acceptText)
+        val response = testR.handleRequest(event)
+
+        assertEquals(400, response.statusCode)
+        assertTrue(response.body.startsWith("Could not deserialize body."))
+    }
 }
 
 class TestRouter : RequestHandlerWrapper() {
@@ -238,10 +289,7 @@ class TestRouter : RequestHandlerWrapper() {
             .expects(
                 emptySet()
             )
-        post("/postImage") { _: Request<Unit> -> ResponseEntity.ok("image bytes here") }.expects(setOf(MimeType.parse("img/jpeg")))
-            .supplies(
-                emptySet()
-            )
+
         get("/getSimple") { _: Request<Unit> -> ResponseEntity.ok(body = SimpleClass("hello from simpleClass")) }
         get("/controller", testController::doSomething)
         get("/sealedNo") { _: Request<Unit> -> ResponseEntity.ok(ServiceResult.Error(exceptionMessage = "No here")) }
@@ -275,6 +323,18 @@ class TestRouter : RequestHandlerWrapper() {
         get("/customer/{id}/purchaseOrder/{po}") { request: Request<Unit> ->
             ResponseEntity.ok(body = "Customer '${request.pathParameters["id"]}' made order #${request.pathParameters["po"]}")
         }.supplies(setOf(MimeType("text", "plain")))
+
+        group("/posts") {
+            get("/load/{key}") { request: Request<Unit> -> ResponseEntity.ok("Request for /posts/load/${request.pathParameters["key"]} received") }
+        }
+
+        /**
+         * Post and serialization of input body
+         */
+        post("/postThing") { request: Request<PostThis> ->
+            val obj = request.body
+            ResponseEntity.ok("Received post for object name=${obj.name}, count=${obj.count}")  }.supplies(setOf(
+            MimeType.plainText))
     }
 }
 
@@ -308,6 +368,12 @@ sealed class ServiceResult<out T : Any> {
     @Serializable
     data class Error(val exceptionMessage: String?) : ServiceResult<Nothing>()
 }
+
+@Serializable
+data class PostThis(val name: String, val count: Int)
+
+@Serializable
+data class DontPostThis(val year: Long, val truth: Boolean)
 
 object FakeAuthorizer : Authorizer {
     override val simpleName: String

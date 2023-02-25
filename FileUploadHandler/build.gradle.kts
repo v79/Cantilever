@@ -5,6 +5,7 @@ plugins {
     kotlin("jvm") version "1.8.0"
     kotlin("plugin.serialization") version "1.6.21"
     id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("org.jetbrains.kotlinx.kover") version "0.6.1"
 }
 
 group = "org.liamjd.cantilever.lambda"
@@ -22,7 +23,6 @@ dependencies {
 
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
-    implementation("com.charleskorn.kaml:kaml:0.49.0")
 
     // sdk v2
     implementation(platform("software.amazon.awssdk:bom:2.19.8"))

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.liamjd.cantilever.common.now
+import org.liamjd.cantilever.services.impl.extractPostMetadata
 
 internal class ExtractMetadataKtTest {
 
@@ -32,7 +33,7 @@ internal class ExtractMetadataKtTest {
         """.trimIndent()
 
         // execute
-        val metadata = service.extractPostMetadata("simple.md", source)
+        val metadata = extractPostMetadata("simple.md", source)
         //verify
         assertNotNull(metadata)
         val expectedDate = LocalDate(2023, 1, 3)
@@ -62,7 +63,7 @@ internal class ExtractMetadataKtTest {
         val expectedDate = LocalDate(2023, 1, 3)
 
         // execute
-        val metadata = service.extractPostMetadata("simple.md", source)
+        val metadata = extractPostMetadata("simple.md", source)
         //verify
         assertNotNull(metadata)
         metadata.also { result ->
@@ -88,7 +89,7 @@ internal class ExtractMetadataKtTest {
         val expectedDate = LocalDate.now()
 
         // execute
-        val metadata = service.extractPostMetadata(filename, source)
+        val metadata = extractPostMetadata(filename, source)
         metadata.also { result ->
             assertEquals(expectedTitle, result.title)
             assertEquals("post", result.template)
@@ -110,7 +111,7 @@ internal class ExtractMetadataKtTest {
         val expectedDate = LocalDate(2023, 1, 3)
 
         // execute
-        val metadata = service.extractPostMetadata("simple.md", source)
+        val metadata = extractPostMetadata("simple.md", source)
         //verify
         assertNotNull(metadata)
         metadata.also { result ->
@@ -144,7 +145,7 @@ internal class ExtractMetadataKtTest {
         val expectedTitle = "This is a file"
 
         // execute
-        val metadata = service.extractPostMetadata(filename, source)
+        val metadata = extractPostMetadata(filename, source)
         metadata.also { result ->
             assertEquals(expectedTitle, result.title)
             assertEquals("post", result.template)

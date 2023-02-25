@@ -1,11 +1,11 @@
 package org.liamjd.cantilever.models
 
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
-import org.liamjd.cantilever.common.now
 import org.liamjd.cantilever.common.toSlug
 
 /**
@@ -20,7 +20,7 @@ data class PostMetadata(
     @EncodeDefault val template: String = "post",
     @EncodeDefault val slug: String = title.toSlug(),
     val date: LocalDate,
-    @EncodeDefault val lastModified: LocalDateTime = LocalDateTime.now()
+    @EncodeDefault val lastModified: Instant = Clock.System.now()
 )
 
 /**

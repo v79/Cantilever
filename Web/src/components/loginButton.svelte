@@ -4,7 +4,7 @@
 	import jwt_decode from 'jwt-decode';
 	import {onMount} from 'svelte';
 	import {User} from '../models/authUser';
-	import {userStore} from '../stores/userStore.svelte';
+	import {CLEAR_USER, userStore} from '../stores/userStore.svelte';
 
 	let authToken: any;
 	let tokenPayload: JwtPayload;
@@ -18,6 +18,13 @@
 		'&redirect_uri=' +
 		PUBLIC_COGNITO_CALLBACK_URL +
 		'&scope=openid+profile';
+
+	const logoutUrl =
+		cognitoDomain +
+		'/logout?client_id=' +
+		appClientId +
+		'&logout_uri=' +
+		PUBLIC_COGNITO_CALLBACK_URL;
 
 	onMount(async () => {
 		authToken = extractIdToken();
@@ -40,6 +47,11 @@
 			return;
 		}
 		window.location.assign(loginUrl);
+	}
+
+	function logout() {
+		userStore.set(CLEAR_USER);
+		window.location.assign(logoutUrl);
 	}
 
 	function extractIdToken() {
@@ -65,9 +77,7 @@
 		class="w-8 rounded-full"
 		alt="Avatar" />
 	<span class="pr-2">{$userStore.name}</span>
-	<a
-		href="{cognitoDomain}/logout?client_id={appClientId}&logout_uri={PUBLIC_COGNITO_CALLBACK_URL}"
-		title="Logout">
+	<button type="button" title="Logout" on:click={logout}>
 		<svg
 			version="1.1"
 			id="Capa_1"
@@ -95,7 +105,7 @@
 				</g>
 			</g>
 		</svg>
-	</a>
+	</button>
 {/if}
 
 <style>

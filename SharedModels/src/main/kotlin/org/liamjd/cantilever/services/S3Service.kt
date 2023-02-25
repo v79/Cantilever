@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.services
 
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.DeleteObjectResponse
 import software.amazon.awssdk.services.s3.model.GetObjectResponse
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response
 
@@ -34,7 +35,7 @@ interface S3Service {
      * @param contents the string of characters to write to the object
      * @param contentType the mime type of the file; optional
      */
-    fun putObject(key: String, bucket: String, contents: String, contentType: String?)
+    fun putObject(key: String, bucket: String, contents: String, contentType: String?): Int
 
     /**
      * Check to see if the object with the given key exists
@@ -51,4 +52,12 @@ interface S3Service {
      * @return a [ListObjectsV2Response] object which can be iterated over to get individual items
      */
     fun listObjects(prefix: String, bucket: String): ListObjectsV2Response
+
+    /**
+     * Delete the given object from S3
+     * @param key the object to delete
+     * @param bucket the s3 bucket name
+     * @return the [DeleteObjectResponse], or null if there has been an exception
+     */
+    fun deleteObject(key: String, bucket: String): DeleteObjectResponse?
 }

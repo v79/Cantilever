@@ -1,11 +1,12 @@
 <script lang="ts">
-	import PostList from '../components/postList.svelte';
-	import TopMenu from '../components/topMenu.svelte';
-	import Footer from '../components/footer.svelte';
-	import MarkdownEditor from '../components/markdownEditor.svelte';
+    import PostList from '../components/postList.svelte';
+    import MarkdownEditor from '../components/markdownEditor.svelte';
+    import {Footer, FooterCopyright, FooterLink, FooterLinkGroup} from 'flowbite-svelte';
+    import Navigation from '../components/navigation.svelte';
+    import SpinnerWrapper from '../components/utilities/spinnerWrapper.svelte';
 </script>
 
-<TopMenu />
+<Navigation />
 
 <div class="flex flex-row">
 	<div class="basis-1/4 bg-slate-400">
@@ -15,11 +16,22 @@
 		<MarkdownEditor />
 	</div>
 	<div class="invisible basis-1/4 bg-slate-800 lg:visible">
-		<h3 class="px-4 py-4 text-2xl font-bold text-slate-200">Assets</h3>
+		<h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-200">Messages</h3>
+		<SpinnerWrapper spinnerID="globalSpinner" />
 	</div>
 </div>
 
-<Footer />
+<Footer>
+	<div class="grid md:grid-cols-2 lg:grid-cols-4">
+		<div class="mb-6">
+			<h5 class="mb-2.5 font-bold uppercase text-gray-800">About Cantilever</h5>
+			<FooterLinkGroup>
+				<FooterLink href="https://www.cantilevers.org/">Project History</FooterLink>
+			</FooterLinkGroup>
+		</div>
+	</div>
+	<FooterCopyright href="https://www.cantilevers.org/app/" by="Liam Davison" year={2023} />
+</Footer>
 
 <style lang="postcss">
 	:global(html) {

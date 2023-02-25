@@ -2,6 +2,7 @@ package org.liamjd.cantilever.routing
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import org.liamjd.cantilever.auth.Authorizer
+import kotlin.reflect.typeOf
 
 /**
  * The Router class is the core of the routing mechanism
@@ -34,6 +35,7 @@ class Router internal constructor() {
         val requestPredicate = defaultRequestPredicate(
             pattern = pattern, method = "POST", consuming = emptySet(), handlerFunction = handlerFunction
         ).also {
+            it.kType = typeOf<I>()
             routes[it] = RouterFunction(it, handlerFunction)
         }
         return requestPredicate
@@ -45,6 +47,7 @@ class Router internal constructor() {
         val requestPredicate = defaultRequestPredicate(
             pattern = pattern, method = "PUT", consuming = emptySet(), handlerFunction = handlerFunction
         ).also {
+            it.kType = typeOf<I>()
             routes[it] = RouterFunction(it, handlerFunction)
         }
         return requestPredicate
@@ -56,6 +59,7 @@ class Router internal constructor() {
         val requestPredicate = defaultRequestPredicate(
             pattern = pattern, method = "PATCH", consuming = emptySet(), handlerFunction = handlerFunction
         ).also {
+            it.kType = typeOf<I>()
             routes[it] = RouterFunction(it, handlerFunction)
         }
         return requestPredicate
@@ -100,10 +104,11 @@ class Router internal constructor() {
     /**
      * Utility function to list all the routes which have been declared. Useful for debugging.
      */
-    fun listRoutes() {
+    fun listRoutes(): String {
         routes.forEach { route ->
             println("${route.value.requestPredicate.method} ${route.value.requestPredicate.pathPattern} <consumes: ${route.value.requestPredicate.accepts} -> produces: ${route.value.requestPredicate.supplies}>")
         }
+        return routes.values.joinToString(separator = ";") { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern} <${it.requestPredicate.accepts} -> ${it.requestPredicate.supplies}>" }
     }
 
     companion object {
