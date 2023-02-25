@@ -1,13 +1,13 @@
 <script lang="ts">
-    import CModal from '../customized/cModal.svelte';
-    import {CLEAR_POST, markdownStore} from '../../stores/markdownPostStore.svelte';
-    import {spinnerStore} from '../utilities/spinnerWrapper.svelte';
-    import {userStore} from '../../stores/userStore.svelte';
-    import {structureStore} from '../../stores/postsStore.svelte';
-    import {notificationStore} from '../../stores/notificationStore.svelte';
-    import {createEventDispatcher} from 'svelte';
+	import CModal from '../customized/cModal.svelte';
+	import {CLEAR_POST, markdownStore} from '../../stores/markdownPostStore.svelte';
+	import {spinnerStore} from '../utilities/spinnerWrapper.svelte';
+	import {userStore} from '../../stores/userStore.svelte';
+	import {structureStore} from '../../stores/postsStore.svelte';
+	import {notificationStore} from '../../stores/notificationStore.svelte';
+	import {createEventDispatcher} from 'svelte';
 
-    export let shown = false;
+	export let shown = false;
 
 	const closeDispatch = createEventDispatcher();
 	function callDispatcher(e: MouseEvent) {
@@ -65,8 +65,6 @@
 	</p>
 	<p class="text-red-600">This cannot be undone!</p>
 	<form>
-		<label for="delete-confirm" class="block text-sm font-medium text-slate-800"
-			>Type 'delete' to confirm</label>
 		<input
 			type="text"
 			bind:value={confirmInput}

@@ -18,7 +18,9 @@
 		// https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/
 		// https://api.cantilevers.org/structure
 		// TODO: extract this sort of thing into a separate method, and add error handling, auth etc
-		spinnerStore.set({ message: 'Loading project structure', shown: true });
+		// spinnerStore.set({ message: 'Loading project structure', shown: true });
+		$spinnerStore.message = 'Loading project structure';
+		$spinnerStore.shown = true;
 		console.log('Loading structure json...');
 		let token = $userStore.token;
 		fetch('https://api.cantilevers.org/structure', {
@@ -31,7 +33,12 @@
 		})
 			.then((response) => response.json())
 			.then((data) => {
+				if (data.data === undefined) {
+					throw new Error(data.message);
+				}
 				structureStore.set(data.data);
+				$notificationStore.message = 'Loaded project structure ' + $activeStore.activeFile;
+				$notificationStore.shown = true;
 			})
 			.catch((error) => {
 				console.log(error);
@@ -86,7 +93,6 @@
 	function rebuild() {
 		let token = $userStore.token;
 		console.log('Regenerating project structure file...');
-		spinnerStore.set({ message: 'Rebuilding project...', shown: true });
 		fetch('https://api.cantilevers.org/structure/rebuild', {
 			method: 'GET',
 			headers: {
@@ -95,11 +101,11 @@
 			},
 			mode: 'cors'
 		})
-			.then((response) => response.text())
+			.then((response) => response.json())
 			.then((data) => {
 				console.log(data);
 				notificationStore.set({
-					message: data,
+					message: data.data,
 					shown: true,
 					type: 'success'
 				});
@@ -159,16 +165,28 @@
 	<div class="px-8"><p class="text-warning text-lg">Login to see posts</p></div>
 {:else}
 	<div class="flex items-center justify-center" role="group">
+		<button type="button" on:click={(e) => ($spinnerStore.shown = !$spinnerStore.shown)}
+			>Toggle Spinner</button>
 		<button
 			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {
+				console.log('Show spinner');
+				spinnerStore.update((m) => {
+					m.message = 'Rebuilding project...';
+					m.shown = true;
+					return m;
+				});
+				spinnerStore.set({ shown: true, message: 'Rebuilding project...' });
+				// $spinnerStore.message = 'Rebuilding project...';
+				// $spinnerStore.shown = true;
+
 				rebuild();
 			}}>Rebuild</button>
 		<button
 			class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {
-				$spinnerStore.shown = true;
 				$spinnerStore.message = 'Reloading project...';
+				$spinnerStore.shown = true;
 				loadStructure();
 			}}>Reload</button>
 		<button

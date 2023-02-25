@@ -2,7 +2,17 @@
     import {writable} from 'svelte/store';
     import type {MarkdownPost} from '../models/structure';
 
-    export const markdownStore = writable<MarkdownPost>();
+    function createMarkdownStore() {
+		const { subscribe, set, update } = writable<MarkdownPost>();
+		return {
+			subscribe,
+			set,
+			update,
+			clear: () => set(CLEAR_POST)
+		};
+	}
+
+	export const markdownStore = createMarkdownStore();
 
 	export function createSlug(title: string) {
 		// const invalid: RegExp = new RegExp(';/?:@&=+$, ', 'g');

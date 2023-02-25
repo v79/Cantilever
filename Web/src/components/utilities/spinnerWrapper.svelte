@@ -1,5 +1,16 @@
 <script lang="ts" context="module">
-	export const spinnerStore = writable({ shown: false, message: '' });
+	// export const spinnerStore = writable({ shown: false, message: '' });
+	function createSpinnerStore() {
+		const { subscribe, set, update } = writable({ shown: false, message: '' });
+		return {
+			subscribe,
+			set,
+			update,
+			clear: () => set({ shown: false, message: '' })
+		};
+	}
+
+	export const spinnerStore = createSpinnerStore();
 </script>
 
 <script lang="ts">
@@ -20,6 +31,8 @@
 			{#if $spinnerStore.message}{$spinnerStore.message}{:else}Processing...{/if}
 		</p>
 	</div>
+{:else}
+	<p>spinnerStore.shown: {$spinnerStore.shown}</p>
 {/if}
 
 <!--	<div

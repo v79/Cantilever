@@ -9,6 +9,8 @@
 	import {structureStore} from '../stores/postsStore.svelte';
 	import {userStore} from '../stores/userStore.svelte';
 	import CModal from './customized/cModal.svelte';
+	import DatePicker from './forms/datePicker.svelte';
+	import TextInput from './forms/textInput.svelte';
 	import ModalDeleteFile from './MarkdownEditor/modal-delete-file.svelte';
 
 	let saveExistingModal = false;
@@ -80,7 +82,9 @@
 </script>
 
 <div class="relative mt-5 md:col-span-2 md:mt-0">
-	<h3 class="px-4 py-4 text-center text-2xl font-bold">Markdown Editor</h3>
+	<h3 class="px-4 py-4 text-center text-2xl font-bold">
+		{#if $markdownStore?.post.title}{$markdownStore.post.title}{:else}Markdown Editor {/if}
+	</h3>
 	{#if $markdownStore}
 		<div class="flex items-center justify-end pr-8 focus:shadow-lg" role="group">
 			<button
@@ -91,7 +95,6 @@
 				on:click={() => {
 					deleteFileModal = true;
 				}}>Delete</button>
-			<!-- //data-bs-toggle="modal" //data-bs-target="#save-dialog"-->
 			<button
 				type="button"
 				on:click={() => {
@@ -111,55 +114,28 @@
 				<div class="px-4 py-5 sm:p-6">
 					<div class="grid grid-cols-6 gap-6">
 						<div class="col-span-6 sm:col-span-6 lg:col-span-2">
-							<label for="Slug" class="block text-sm font-medium text-slate-200">Slug</label>
-							<input
-								bind:value={$activeStore.newSlug}
-								readonly
-								type="text"
-								name="Slug"
-								id="Slug"
-								class="mt-1 block w-full rounded-md border-gray-300 text-slate-500 shadow-sm sm:text-sm" />
+							<TextInput bind:value={$activeStore.newSlug} readonly name="slug" label="Slug/URL" />
 						</div>
 
 						<div class="col-span-6 sm:col-span-3 lg:col-span-2">
-							<label for="date" class="block text-sm font-medium text-slate-200">Date</label>
-							<input
-								bind:value={$markdownStore.post.date}
-								type="date"
-								name="date"
-								id="date"
-								required
-								class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-							{#if $markdownStore.post.date === ''}
-								<span class="text-sm text-yellow-200">Date must not be blank</span>
-							{/if}
+							<DatePicker label="Date" name="date" required bind:value={$markdownStore.post.date} />
 						</div>
 
 						<div class="col-span-6 sm:col-span-3 lg:col-span-2">
-							<label for="Template" class="block text-sm font-medium text-slate-200"
-								>Template</label>
-							<input
+							<TextInput
 								bind:value={$markdownStore.post.templateKey}
-								readonly
-								type="text"
-								name="Template"
-								id="Template"
-								class="mt-1 block w-full rounded-md border-gray-300 text-slate-500 shadow-sm sm:text-sm" />
+								name="template"
+								label="Template"
+								required
+								readonly />
 						</div>
 
 						<div class="col-span-6">
-							<label for="title" class="block text-sm font-medium text-slate-200">Title</label>
-							<input
+							<TextInput
 								bind:value={$markdownStore.post.title}
-								type="text"
-								name="title"
-								id="title"
 								required
-								autocomplete="title"
-								class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-							{#if $markdownStore.post.title === ''}
-								<span class="text-sm text-yellow-200">Title must not be blank</span>
-							{/if}
+								name="Title"
+								label="Title" />
 						</div>
 						<div class="col-span-6">
 							<label for="markdown" class="text-sm font-medium text-slate-200">Markdown</label>
@@ -178,14 +154,6 @@
 						</div>
 					</div>
 				</div>
-				<!-- <div class="px-4 py-3 text-right sm:px-6">
-				<button
-					type="submit"
-					class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-				>
-					Save
-				</button>
-			</div> -->
 			</div>
 		</form>
 	{:else}
@@ -249,7 +217,7 @@
 		<button
 			type="button"
 			on:click={(e) => {
-				let srcKey = 'sources/' + saveNewFileSlug + '.md';
+				let srcKey = 'sources/posts/' + saveNewFileSlug + '.md';
 				spinnerStore.set({ message: 'Saving ' + srcKey, shown: true });
 				$markdownStore.post.srcKey = srcKey;
 				$markdownStore.post.url = saveNewFileSlug;
