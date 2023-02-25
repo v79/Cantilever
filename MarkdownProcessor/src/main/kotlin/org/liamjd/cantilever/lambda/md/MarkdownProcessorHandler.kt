@@ -10,7 +10,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.s3Keys.fragmentsKey
 import org.liamjd.cantilever.models.sqs.HTMLFragmentReadyMsg
-import org.liamjd.cantilever.models.sqs.MarkdownUploadMsg
+import org.liamjd.cantilever.models.sqs.MarkdownPostUploadMsg
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
@@ -34,48 +34,71 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         var response = "200 OK"
 
         val eventRecord = event.records[0]
-        logger.info("RECORD.BODY=${eventRecord.body}")
+        logger.info("EventRecord: $eventRecord")
 
-        val markdownUploadMsg = Json.decodeFromString<MarkdownUploadMsg>(eventRecord.body)
-        logger.info("metadata=${markdownUploadMsg.metadata}")
+        val sourceType = eventRecord.messageAttributes["sourceType"]?.stringValue ?: "posts"
+        logger.info("SourceType: $sourceType")
 
-        val html = convertMDToHTML(log = logger, mdSource = markdownUploadMsg.markdownText)
-        logger.info("HTML OUTPUT=${html.take(150)}...")
 
-        val s3Client = S3Client.builder()
-            .region(Region.EU_WEST_2)
-            .build()
 
-        val outputStream = ByteArrayOutputStream()
-        outputStream.bufferedWriter().write(html)
+        when(sourceType) {
+            "posts" -> {
+                val markdownPostUploadMsg = Json.decodeFromString<MarkdownPostUploadMsg>(eventRecord.body)
+                logger.info("Metadata: ${markdownPostUploadMsg.metadata}")
+                logger.info("Processing post")
+                val html = convertMDToHTML(mdSource = markdownPostUploadMsg.markdownText)
+                logger.info("HTML Output: ${html.take(150)}...")
 
-        val handlebarQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
-
-        try {
-            val htmlKey = fragmentsKey + markdownUploadMsg.metadata.slug
-            s3Client.putObject(
-                PutObjectRequest.builder().contentLength(html.length.toLong()).contentType("text/html")
-                    .bucket(sourceBucket).key(htmlKey).build(),
-                RequestBody.fromBytes(html.toByteArray())
-            )
-            logger.info("Wrote HTML file '$htmlKey'")
-            logger.info("Sending message to handlebars handler")
-            val message = HTMLFragmentReadyMsg(fragmentKey = htmlKey, metadata = markdownUploadMsg.metadata)
-            logger.info("Prepared message: $message")
-            val msgResponse = handlebarQueue.sendMessage(
-                SendMessageRequest.builder()
-                    .queueUrl(handlebarQueueUrl)
-                    .messageBody(Json.encodeToString(message))
+                val s3Client = S3Client.builder()
+                    .region(Region.EU_WEST_2)
                     .build()
-            )
-            logger.info("Message '${Json.encodeToString(message)}' sent, message ID is ${msgResponse.messageId()}")
-        } catch (qdne: QueueDoesNotExistException) {
-            logger.error("queue '$handlebarQueueUrl' does not exist; ${qdne.message}")
-        } catch (se: SerializationException) {
-            logger.error("Failed to parse metadata string; ${se.message}")
-        } catch (e: Exception) {
-            logger.error("${e.message}")
+
+                val outputStream = ByteArrayOutputStream()
+                outputStream.bufferedWriter().write(html)
+
+                val handlebarQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
+
+                try {
+                    val htmlKey = fragmentsKey + markdownPostUploadMsg.metadata.slug
+                    s3Client.putObject(
+                        PutObjectRequest.builder().contentLength(html.length.toLong()).contentType("text/html")
+                            .bucket(sourceBucket).key(htmlKey).build(),
+                        RequestBody.fromBytes(html.toByteArray())
+                    )
+                    logger.info("Wrote HTML file '$htmlKey'")
+                    logger.info("Sending message to handlebars handler")
+                    val message = HTMLFragmentReadyMsg(fragmentKey = htmlKey, metadata = markdownPostUploadMsg.metadata)
+                    logger.info("Prepared message: $message")
+                    val msgResponse = handlebarQueue.sendMessage(
+                        SendMessageRequest.builder()
+                            .queueUrl(handlebarQueueUrl)
+                            .messageBody(Json.encodeToString(message))
+                            .build()
+                    )
+                    logger.info("Message '${Json.encodeToString(message)}' sent, message ID is ${msgResponse.messageId()}")
+                } catch (qdne: QueueDoesNotExistException) {
+                    logger.error("queue '$handlebarQueueUrl' does not exist; ${qdne.message}")
+                } catch (se: SerializationException) {
+                    logger.error("Failed to parse metadata string; ${se.message}")
+                } catch (e: Exception) {
+                    logger.error("${e.message}")
+                }
+            }
+            "pages" -> {
+                logger.info("Processing page (not written yet)")
+                /**
+                 * A page is different from a post. It has a different set of metadata.
+                 * It may need access to the structure.json file to populate.
+                 * It may contain multiple 'content slots'.
+                 */
+
+            }
+            else -> {
+                logger.info("Cannot process unknown sourceType $sourceType")
+            }
         }
+
+
 
         return response
     }

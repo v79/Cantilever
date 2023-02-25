@@ -8,13 +8,14 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.toLocalDateTime
-import org.liamjd.cantilever.models.sqs.MarkdownUploadMsg
+import org.liamjd.cantilever.models.sqs.MarkdownPostUploadMsg
 import org.liamjd.cantilever.services.impl.extractPostMetadata
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.sqs.SqsClient
+import software.amazon.awssdk.services.sqs.model.MessageAttributeValue
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 
@@ -33,73 +34,64 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val eventRecord = event.records[0]
             val srcKey = eventRecord.s3.`object`.urlDecodedKey
             val srcBucket = eventRecord.s3.bucket.name
-            val structureManager = StructureManager()
+            val sourceType = srcKey.substringAfter('/').substringBefore('/')
+            val queueUrl = System.getenv("markdown_processing_queue")
 
-            logger.info("RECORD=${eventRecord.eventName} SOURCEKEY=$srcKey")
+            logger.info("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
+            logger.info("MarkdownQueue: $queueUrl")
 
             val s3Client = S3Client.builder()
                 .region(Region.EU_WEST_2)
                 .build()
 
             try {
-                val queueUrl = System.getenv("markdown_processing_queue")
                 val request = GetObjectRequest.builder()
                     .key(srcKey)
                     .bucket(srcBucket)
                     .build()
 
                 val fileType = srcKey.substringAfterLast('.').lowercase()
-                logger.info("FileUpload handler: file type is $fileType")
-                when (fileType) {
-                    "md" -> {
-                        // send to markdown processing queue
-                        val markdownQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
-                        try {
-                            val mdObject = s3Client.getObject(request).response()
-                            val srcLastModified = mdObject.lastModified().toLocalDateTime()
-                            val sourceString = String(s3Client.getObjectAsBytes(request).asByteArray())
-                            // extract metadata
+                logger.info("FileUpload handler: source type is '$sourceType'; file type is '$fileType'")
 
-                            with(logger) {
+                when(sourceType) {
+                    POSTS -> {
+                        if(fileType == "md") {
+                            logger.info("Sending post $srcKey to markdown processor queue")
+                            // send to markdown processing queue
+                            val markdownQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
+                            try {
+                                val mdObject = s3Client.getObject(request).response()
+                                val srcLastModified = mdObject.lastModified().toLocalDateTime()
+                                val sourceString = String(s3Client.getObjectAsBytes(request).asByteArray())
+
+                                // extract metadata
                                 val metadata = extractPostMetadata(filename = srcKey, source = sourceString)
                                 logger.info("Extracted metadata: $metadata")
                                 // extract body
                                 val markdownBody = sourceString.substringAfterLast("---")
-                                val message = MarkdownUploadMsg(metadata, markdownBody)
+                                val message = MarkdownPostUploadMsg(metadata, markdownBody)
 
+                                val sqsMessageRequest = SendMessageRequest.builder()
+                                    .queueUrl(queueUrl)
+                                    .messageAttributes(mapOf("sourceType" to MessageAttributeValue.builder().dataType("String").stringValue(sourceType).build()))
+                                    .messageBody(Json.encodeToString(message))
+                                    .build()
+                                logger.info("SQSMessage to send: $sqsMessageRequest")
                                 val msgResponse = markdownQueue.sendMessage(
-                                    SendMessageRequest.builder()
-                                        .queueUrl(queueUrl)
-                                        .messageBody(Json.encodeToString(message))
-                                        .build()
+                                    sqsMessageRequest
                                 )
 
                                 logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
-/*
-                                with(logger) {
-                                    structureManager.updateStructure(
-                                        context = context,
-                                        s3Client = s3Client,
-                                        sourceBucket = srcBucket,
-                                        markdown = message,
-                                        srcKey = srcKey
-                                    )
-                                }
-                                */
-
+                            } catch (qdne: QueueDoesNotExistException) {
+                                logger.error("queue '$queueUrl' does not exist; ${qdne.message}")
+                            } catch (se: SerializationException) {
+                                logger.error("Failed to parse metadata string; ${se.message}")
                             }
-                        } catch (qdne: QueueDoesNotExistException) {
-                            logger.error("queue '$queueUrl' does not exist; ${qdne.message}")
-                        } catch (se: SerializationException) {
-                            logger.error("Failed to parse metadata string; ${se.message}")
                         }
                     }
-
-                    "jpg", "jpeg", "png", "gif", "webp" -> {
-                        // send to image processing queue
-                        logger.warn("FileUpload handler: Processing JPG image: NOT YET IMPLEMENTED")
+                    PAGES -> {
+                        logger.info("Received page file $srcKey but not ready to process it")
                     }
-                    // etc
                 }
 
             } catch (nske: NoSuchKeyException) {
@@ -112,6 +104,12 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         }
 
         return response
+    }
+
+    companion object {
+        const val POSTS = "posts"
+        const val PAGES = "pages"
+        const val STATICS = "statics"
     }
 }
 
