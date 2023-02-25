@@ -18,6 +18,7 @@ import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.extractPostMetadata
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 
+
 /**
  * Handle functions relating to the structure.json file
  */
@@ -25,8 +26,7 @@ class StructureController(val sourceBucket: String, val corsDomain: String = "ht
 
     private val s3Service: S3Service by inject()
     private val structureService: StructureService by inject()
-    private val structureKey = "generated/structure.json"
-    private val templatesKey = "templates/"
+
 
     /**
      * Return the Json file 'structure.json' from the generated file bucket
@@ -53,8 +53,8 @@ class StructureController(val sourceBucket: String, val corsDomain: String = "ht
      * Rebuild the entire structure file from scratch, processing each markdown file in the source bucket
      */
     fun rebuildStructureFile(request: Request<Unit>): ResponseEntity<APIResult<String>> {
-        println("StructureController: Rebuilding structure file")
-        val listResponse = s3Service.listObjects(prefix = "sources/", bucket = sourceBucket)
+        println("StructureController: Rebuilding structure file from $POSTS_PREFIX")
+        val listResponse = s3Service.listObjects(prefix = Companion.POSTS_PREFIX, bucket = sourceBucket)
         println("Sources exist in '${sourceBucket}': ${listResponse.hasContents()} (up to ${listResponse.keyCount()} files)")
         var filesProcessed = 0
         if (listResponse.hasContents()) {
@@ -108,5 +108,11 @@ class StructureController(val sourceBucket: String, val corsDomain: String = "ht
 
     fun removeFileFromStructure(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         return ResponseEntity.ok(body = APIResult.Success("Haven't actually removed the file from the structure"))
+    }
+
+    companion object {
+        private const val POSTS_PREFIX = "sources/posts/"
+        private const val structureKey = "generated/structure.json"
+        private const val templatesKey = "templates/"
     }
 }
