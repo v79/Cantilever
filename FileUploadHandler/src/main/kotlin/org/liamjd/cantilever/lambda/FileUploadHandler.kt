@@ -7,24 +7,34 @@ import com.amazonaws.services.lambda.runtime.events.S3Event
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.liamjd.cantilever.common.toLocalDateTime
+import org.liamjd.cantilever.common.createStringAttribute
 import org.liamjd.cantilever.models.sqs.MarkdownPostUploadMsg
+import org.liamjd.cantilever.services.S3Service
+import org.liamjd.cantilever.services.impl.S3ServiceImpl
+import org.liamjd.cantilever.services.impl.extractPageModel
 import org.liamjd.cantilever.services.impl.extractPostMetadata
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.sqs.SqsClient
-import software.amazon.awssdk.services.sqs.model.MessageAttributeValue
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 
 /**
- * Responds to a file upload event (PUT or PUSH)
- * In this test implementation, it merely wraps the source text in an HTML file
- * and writes it to the destination bucket, as specified in an environment variable
+ * Responds to a file upload event (PUT or PUSH).
+ * It analyses the file and determines where to send it.
+ * `source_type` is determined by from the S3 object key:
+ * - /sources/<source_type>/<filename>
+ * - Supports "posts" and "pages" for now.
+ *
+ * "Posts" must be markdown files (.md). The source type is added to the SQS message queue so the receiver knows how to process it.
  */
 class FileUploadHandler : RequestHandler<S3Event, String> {
+
+    private val s3Service: S3Service
+
+    init {
+        s3Service = S3ServiceImpl(Region.EU_WEST_2)
+    }
 
     override fun handleRequest(event: S3Event, context: Context): String {
         val logger = context.logger
@@ -40,29 +50,21 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             logger.info("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
             logger.info("MarkdownQueue: $queueUrl")
 
-            val s3Client = S3Client.builder()
-                .region(Region.EU_WEST_2)
-                .build()
 
             try {
-                val request = GetObjectRequest.builder()
-                    .key(srcKey)
-                    .bucket(srcBucket)
-                    .build()
 
                 val fileType = srcKey.substringAfterLast('.').lowercase()
                 logger.info("FileUpload handler: source type is '$sourceType'; file type is '$fileType'")
 
-                when(sourceType) {
+                val markdownQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
+
+                when (sourceType) {
                     POSTS -> {
-                        if(fileType == "md") {
+                        if (fileType == "md") {
                             logger.info("Sending post $srcKey to markdown processor queue")
                             // send to markdown processing queue
-                            val markdownQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
                             try {
-                                val mdObject = s3Client.getObject(request).response()
-                                val srcLastModified = mdObject.lastModified().toLocalDateTime()
-                                val sourceString = String(s3Client.getObjectAsBytes(request).asByteArray())
+                                val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
 
                                 // extract metadata
                                 val metadata = extractPostMetadata(filename = srcKey, source = sourceString)
@@ -73,7 +75,9 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
                                 val sqsMessageRequest = SendMessageRequest.builder()
                                     .queueUrl(queueUrl)
-                                    .messageAttributes(mapOf("sourceType" to MessageAttributeValue.builder().dataType("String").stringValue(sourceType).build()))
+                                    .messageAttributes(
+                                        createStringAttribute("sourceType", sourceType)
+                                    )
                                     .messageBody(Json.encodeToString(message))
                                     .build()
                                 logger.info("SQSMessage to send: $sqsMessageRequest")
@@ -89,8 +93,24 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                             }
                         }
                     }
+
                     PAGES -> {
-                        logger.info("Received page file $srcKey but not ready to process it")
+                        logger.info("Received page file $srcKey and sending it to Markdown processor queue")
+                        val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
+                        val pageSrcKey = srcKey.removePrefix("sources/$sourceType/") // just want the actual file name
+                        // extract page model
+                        val pageModel = extractPageModel(pageSrcKey,sourceString)
+                        logger.info("Built page model: $pageModel")
+
+                        val sqsMessageRequest = SendMessageRequest.builder()
+                            .queueUrl(queueUrl)
+                            .messageAttributes(createStringAttribute("sourceType", sourceType))
+                            .messageBody(Json.encodeToString(pageModel))
+                            .build()
+                        logger.info("SQSMessage to send: $sqsMessageRequest")
+                        val msgResponse = markdownQueue.sendMessage(
+                            sqsMessageRequest
+                        )
                     }
                 }
 

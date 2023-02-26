@@ -69,6 +69,9 @@ class LambdaRouter : RequestHandlerWrapper() {
                     )
                 )
                 delete("/{srcKey}", postController::deleteMarkdownPost).supplies(setOf(MimeType.plainText))
+                get("/generate") {
+                    _: Request<Unit> -> ResponseEntity.ok(body = "This route should trigger a regenerate of existing file")
+                }
             }
         }
 

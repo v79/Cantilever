@@ -1,10 +1,6 @@
 package org.liamjd.cantilever.services.impl
 
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
-import kotlinx.serialization.EncodeDefault
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.Serializable
+import org.liamjd.cantilever.models.sqs.PageModelMsg
 
 /**
  * A page model is different from a Post, in that it can have multiple named markdown sections.
@@ -21,7 +17,7 @@ import kotlinx.serialization.Serializable
  * More section content
  * ---
  */
-fun extractPageModel(source: String): PageModel {
+fun extractPageModel(filename: String, source: String): PageModelMsg {
 
     val metadata = source.substringAfter("---").substringBefore("---").trim()
 
@@ -29,7 +25,7 @@ fun extractPageModel(source: String): PageModel {
         source.substringAfter("---").substringAfter("---").split("---").filter { it.isNotEmpty() }.map { it.trim() }
             .associate {
                 val sectionName = if (it.startsWith("#")) {
-                    it.substringAfter("#").substringBefore("\n")
+                    it.substringAfter("#").substringBefore("\n").trim()
                 } else {
                     ""
                 }
@@ -50,15 +46,5 @@ fun extractPageModel(source: String): PageModel {
         ""
     }
 
-    return PageModel(template = template, attributes = customAttributes.toMap(), sections = customSections)
+    return PageModelMsg(key = filename, template = template, attributes = customAttributes.toMap(), sections = customSections)
 }
-typealias MarkdownSection = String
-
-@OptIn(ExperimentalSerializationApi::class)
-@Serializable
-data class PageModel(
-    val template: String,
-    @EncodeDefault val lastModified: Instant = Clock.System.now(),
-    val attributes: Map<String, String>,
-    val sections: Map<String, MarkdownSection>
-)

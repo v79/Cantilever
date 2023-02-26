@@ -8,13 +8,15 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.liamjd.cantilever.common.createStringAttribute
 import org.liamjd.cantilever.common.s3Keys.fragmentsKey
 import org.liamjd.cantilever.models.sqs.HTMLFragmentReadyMsg
 import org.liamjd.cantilever.models.sqs.MarkdownPostUploadMsg
-import software.amazon.awssdk.core.sync.RequestBody
+import org.liamjd.cantilever.models.sqs.PageHandlebarsModelMsg
+import org.liamjd.cantilever.models.sqs.PageModelMsg
+import org.liamjd.cantilever.services.S3Service
+import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest
@@ -26,6 +28,12 @@ import java.io.ByteArrayOutputStream
  * Then write the resultant file to the destination bucket
  */
 class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
+
+    private val s3Service: S3Service
+
+    init {
+        s3Service = S3ServiceImpl(Region.EU_WEST_2)
+    }
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
         val sourceBucket = System.getenv("source_bucket")
@@ -39,9 +47,9 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         val sourceType = eventRecord.messageAttributes["sourceType"]?.stringValue ?: "posts"
         logger.info("SourceType: $sourceType")
 
+        val handlebarQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
 
-
-        when(sourceType) {
+        when (sourceType) {
             "posts" -> {
                 val markdownPostUploadMsg = Json.decodeFromString<MarkdownPostUploadMsg>(eventRecord.body)
                 logger.info("Metadata: ${markdownPostUploadMsg.metadata}")
@@ -49,23 +57,13 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                 val html = convertMDToHTML(mdSource = markdownPostUploadMsg.markdownText)
                 logger.info("HTML Output: ${html.take(150)}...")
 
-                val s3Client = S3Client.builder()
-                    .region(Region.EU_WEST_2)
-                    .build()
-
                 val outputStream = ByteArrayOutputStream()
                 outputStream.bufferedWriter().write(html)
 
-                val handlebarQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
-
                 try {
                     val htmlKey = fragmentsKey + markdownPostUploadMsg.metadata.slug
-                    s3Client.putObject(
-                        PutObjectRequest.builder().contentLength(html.length.toLong()).contentType("text/html")
-                            .bucket(sourceBucket).key(htmlKey).build(),
-                        RequestBody.fromBytes(html.toByteArray())
-                    )
-                    logger.info("Wrote HTML file '$htmlKey'")
+                    s3Service.putObject(htmlKey,sourceBucket,html,"text/html")
+                       logger.info("Wrote HTML file '$htmlKey'")
                     logger.info("Sending message to handlebars handler")
                     val message = HTMLFragmentReadyMsg(fragmentKey = htmlKey, metadata = markdownPostUploadMsg.metadata)
                     logger.info("Prepared message: $message")
@@ -84,22 +82,45 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                     logger.error("${e.message}")
                 }
             }
+
             "pages" -> {
                 logger.info("Processing page (not written yet)")
+                logger.info(eventRecord.body)
                 /**
                  * A page is different from a post. It has a different set of metadata.
                  * It may need access to the structure.json file to populate.
                  * It may contain multiple 'content slots'.
                  */
+                val pageModel = Json.decodeFromString<PageModelMsg>(eventRecord.body)
+                // transform each of the sections from Markdown to HTML and save them as fragments.
+                // then build a message model which contains references to each of the fragments
+                // which will be passed to the handlebars template
+                val fragmentPrefix = fragmentsKey + pageModel.key + "/"
+                val sectionMap = mutableMapOf<String,String>()
+                pageModel.sections.forEach {
+                    logger.info("Writing ${it.key} to ${fragmentPrefix}${it.key}")
+                    val html = convertMDToHTML(it.value)
+                    logger.info(html)
+                    s3Service.putObject(fragmentPrefix + it.key,sourceBucket,html,"text/html")
+                    sectionMap[it.key] = fragmentPrefix + it.key
+                }
 
+                val message = PageHandlebarsModelMsg(key = pageModel.key, template = pageModel.template, attributes = pageModel.attributes, sectionKeys = sectionMap.toMap())
+                logger.info("Prepared message: $message")
+                val msgResponse = handlebarQueue.sendMessage(
+                    SendMessageRequest.builder()
+                        .queueUrl(handlebarQueueUrl)
+                        .messageAttributes(createStringAttribute("sourceType",sourceType))
+                        .messageBody(Json.encodeToString(message))
+                        .build()
+                )
+                logger.info("Message '${Json.encodeToString(message)}' sent, message ID is ${msgResponse.messageId()}")
             }
+
             else -> {
                 logger.info("Cannot process unknown sourceType $sourceType")
             }
         }
-
-
-
         return response
     }
 }
