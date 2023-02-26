@@ -4,33 +4,25 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="author" content="{{author}}">
+    <meta name="author" content="Liam Davison">
     <meta name="generator" content="cantilevers">
-    <title>{{ siteName }}</title>
+    <title>Cantilever</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <section id="banner" class="">
     <div class="">
-        <h1 class=""><span class="">{{upper siteName}}</span></h1>
+        <h1 class=""><span class="">CANTILEVER</span></h1>
     </div>
 </section>
 <section id="body">
-    {{{body}}}
-
-    <div class="posts">
-        <ul>
-        {{#each posts}}
-            <li><a href="/{{this.url}}">{{this.title}}</a></li>
-        {{/each}}
-        </ul>
-    </div>
+    
 </section>
 <aside>
-    {{{blockA}}}
+    
 </aside>
 <aside>
-    {{{blockB}}}
+    
 </aside>
 </body>
 </html>
