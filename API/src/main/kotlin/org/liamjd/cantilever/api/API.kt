@@ -74,14 +74,14 @@ class LambdaRouter : RequestHandlerWrapper() {
 
         auth(CognitoJWTAuthorizer) {
             group("/generate") {
-                put("/post") {
-                        _: Request<Unit> -> ResponseEntity.ok(body = "This route should trigger a regenerate of an existing markdown post")
+                put("/post") { _: Request<Unit> ->
+                    ResponseEntity.ok(body = "This route should trigger a regenerate of an existing markdown post")
                 }
-                put("/page") {
-                        _: Request<Unit> -> ResponseEntity.ok(body = "This route should trigger a regenerate of an existing static page")
-                }
-                put("/template") {
-                        _: Request<Unit> -> ResponseEntity.ok(body = "This route should trigger a regenerate of all static pages which use the given template")
+                put("/page/{srcKey}") { request: Request<Unit> ->
+                    ResponseEntity.ok(body = "This route should trigger a regenerate of an existing static page defined in params ${request.pathParameters["srcKey"]}")
+                }.supplies(setOf(MimeType.plainText))
+                put("/template") { _: Request<Unit> ->
+                    ResponseEntity.ok(body = "This route should trigger a regenerate of all static pages which use the given template")
                 }
             }
         }

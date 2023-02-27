@@ -14,6 +14,7 @@ import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.*
 
+@Deprecated(message = "Should be handled in the StructureController now")
 class StructureManager {
 
     private val structureKey = "generated/structure.json"

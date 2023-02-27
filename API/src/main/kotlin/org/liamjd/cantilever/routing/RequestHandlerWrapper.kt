@@ -98,21 +98,22 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
             (handler as HandlerFunction<*, *>)(request)
         } else {
             val kType = routerFunction.requestPredicate.kType!!
-            if (input.body == null || input.body.isEmpty()) {
-                // no body received but was expected
-                ResponseEntity.badRequest(body = "No body received but $kType was expected.")
-            } else {
-                // body receieved, deserialize it and run the handler function
-                try {
-                    val bodyObject = Json.decodeFromString(serializer(kType), input.body)
-                    val request = Request(input, bodyObject, routerFunction.requestPredicate.pathPattern)
-                    (handler as HandlerFunction<*, *>)(request)
-                } catch (mfe: MissingFieldException) {
-                    ResponseEntity.badRequest(body = "Invalid request. Error is ${mfe.message}")
-                } catch (se: SerializationException) {
-                    ResponseEntity.badRequest(body = "Could not deserialize body. Error is ${se.message}")
-                }
+              if (input.body == null || input.body.isEmpty()) {
+                      // TODO: it may be legitimate to send a POST or GET with no body
+                      ResponseEntity.badRequest(body = "No body received but $kType was expected.")
+
+              } else {
+            // body received, deserialize it and run the handler function
+            try {
+                val bodyObject = Json.decodeFromString(serializer(kType), input.body)
+                val request = Request(input, bodyObject, routerFunction.requestPredicate.pathPattern)
+                (handler as HandlerFunction<*, *>)(request)
+            } catch (mfe: MissingFieldException) {
+                ResponseEntity.badRequest(body = "Invalid request. Error is ${mfe.message}")
+            } catch (se: SerializationException) {
+                ResponseEntity.badRequest(body = "Could not deserialize body. Error is ${se.message}")
             }
+        }
         }
 
         return entity

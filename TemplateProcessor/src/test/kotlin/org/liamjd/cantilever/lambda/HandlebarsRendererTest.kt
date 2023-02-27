@@ -5,9 +5,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
+import kotlin.test.*
 
 internal class HandlebarsRendererTest {
 
@@ -29,11 +27,11 @@ internal class HandlebarsRendererTest {
         with(mockLogger) {
             val renderer = HandlebarsRenderer()
 
-        // execute
-        val result = renderer.render(model, templateString)
+            // execute
+            val result = renderer.render(model, templateString)
 
-        // verify
-        assertEquals(expectedResult, result)
+            // verify
+            assertEquals(expectedResult, result)
         }
     }
 
@@ -55,4 +53,23 @@ internal class HandlebarsRendererTest {
             assertEquals(expectedResult, result)
         }
     }
+
+    @Test
+    fun `take helper takes first of a two-element list`() {
+        // setup
+        val templateString = """<ul>{{#take posts "1" }}<li>{{ this.title }}</li>{{/take}}</ul>"""
+        val posts = listOf(TestPost("First"), TestPost("Second"))
+        val model = mapOf<String, Any?>("posts" to posts)
+
+        with(mockLogger) {
+            val renderer = HandlebarsRenderer()
+
+            val result = renderer.render(model, templateString)
+            println(result)
+            assertTrue(result.contains("First"))
+            assertFalse(result.contains("Second"))
+        }
+    }
 }
+
+class TestPost(val title: String)

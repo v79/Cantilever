@@ -25,6 +25,12 @@
         {{/each}}
         </ul>
     </div>
+    <h3>Or maybe just the first five? (take "5")</h3>
+    <ul>
+        {{#take posts "5"}}
+            <li>{{localDate this.date}} <a href="/{{this.url}}">{{this.title}}</a></li>
+        {{/take}}
+    </ul>
 </section>
 <aside>
     {{{blockA}}}

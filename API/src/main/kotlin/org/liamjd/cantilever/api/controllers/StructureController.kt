@@ -90,6 +90,7 @@ class StructureController(val sourceBucket: String, val corsDomain: String = "ht
                     println("Skipping non-markdown file '${obj.key()}'")
                 }
             }
+            structure.posts.sortByDescending { it.date }
             structure.postCount = filesProcessed
             val structureToSave = Json.encodeToString(Structure.serializer(),structure)
             println("Saving new structure json file (${structureToSave.length} bytes)")
