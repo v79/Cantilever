@@ -21,7 +21,7 @@
     <div class="posts">
         <ul>
         {{#each posts}}
-            <li><a href="/{{this.url}}">{{this.title}}</a></li>
+            <li>{{localDate this.date}} <a href="/{{this.url}}">{{this.title}}</a></li>
         {{/each}}
         </ul>
     </div>

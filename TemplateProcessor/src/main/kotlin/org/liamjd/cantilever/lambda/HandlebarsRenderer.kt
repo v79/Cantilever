@@ -3,13 +3,15 @@ package org.liamjd.cantilever.lambda
 import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.github.jknack.handlebars.Handlebars
 import com.github.jknack.handlebars.helper.StringHelpers
+import org.liamjd.cantilever.lambda.handlebars.LocalDateFormatter
 
-/**
- * Render the specified template with the given object map
- * @param model a map of string keys and any entities
- * @param template the full string of the template file
- */
+
 interface TemplateRender {
+    /**
+     * Render the specified template with the given object map
+     * @param model a map of string keys and any entities
+     * @param template the full string of the template file
+     */
     fun render(model: Map<String, Any?>, template: String): String
 }
 
@@ -21,8 +23,8 @@ class HandlebarsRenderer : TemplateRender {
     init {
         handlebars.registerHelper("upper", StringHelpers.upper)
 /*        handlebars.registerHelper("forEach", ForEachHelper())
-        handlebars.registerHelper("paginate", Paginate())
-        handlebars.registerHelper("localDate", LocalDateFormatter(dateFormat))*/
+        handlebars.registerHelper("paginate", Paginate())*/
+        handlebars.registerHelper("localDate", LocalDateFormatter("dd/MM/yyyy"))
         handlebars.registerHelper("capitalize",StringHelpers.capitalize)
         handlebars.registerHelper("slugify", StringHelpers.slugify)
     }
