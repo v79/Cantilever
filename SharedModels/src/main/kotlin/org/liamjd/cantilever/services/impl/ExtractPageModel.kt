@@ -1,6 +1,6 @@
 package org.liamjd.cantilever.services.impl
 
-import org.liamjd.cantilever.models.sqs.PageModelMsg
+import org.liamjd.cantilever.services.SqsMsgBody
 
 /**
  * A page model is different from a Post, in that it can have multiple named markdown sections.
@@ -17,7 +17,7 @@ import org.liamjd.cantilever.models.sqs.PageModelMsg
  * More section content
  * ---
  */
-fun extractPageModel(filename: String, source: String): PageModelMsg {
+fun extractPageModel(filename: String, source: String): SqsMsgBody.PageModelMsg {
 
     val metadata = source.substringAfter("---").substringBefore("---").trim()
 
@@ -46,5 +46,5 @@ fun extractPageModel(filename: String, source: String): PageModelMsg {
         ""
     }
 
-    return PageModelMsg(key = filename, template = template, attributes = customAttributes.toMap(), sections = customSections)
+    return SqsMsgBody.PageModelMsg(key = filename, template = template, attributes = customAttributes.toMap(), sections = customSections)
 }

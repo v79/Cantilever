@@ -11,10 +11,9 @@ import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.createStringAttribute
 import org.liamjd.cantilever.common.s3Keys.fragmentsKey
 import org.liamjd.cantilever.models.sqs.HTMLFragmentReadyMsg
-import org.liamjd.cantilever.models.sqs.MarkdownPostUploadMsg
 import org.liamjd.cantilever.models.sqs.PageHandlebarsModelMsg
-import org.liamjd.cantilever.models.sqs.PageModelMsg
 import org.liamjd.cantilever.services.S3Service
+import org.liamjd.cantilever.services.SqsMsgBody
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsClient
@@ -51,7 +50,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 
         when (sourceType) {
             "posts" -> {
-                val markdownPostUploadMsg = Json.decodeFromString<MarkdownPostUploadMsg>(eventRecord.body)
+                val markdownPostUploadMsg = Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.MarkdownPostUploadMsg
                 logger.info("Metadata: ${markdownPostUploadMsg.metadata}")
                 logger.info("Processing post")
                 val html = convertMDToHTML(mdSource = markdownPostUploadMsg.markdownText)
@@ -91,7 +90,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                  * It may need access to the structure.json file to populate.
                  * It may contain multiple 'content slots'.
                  */
-                val pageModel = Json.decodeFromString<PageModelMsg>(eventRecord.body)
+                val pageModel = Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.PageModelMsg
                 // transform each of the sections from Markdown to HTML and save them as fragments.
                 // then build a message model which contains references to each of the fragments
                 // which will be passed to the handlebars template

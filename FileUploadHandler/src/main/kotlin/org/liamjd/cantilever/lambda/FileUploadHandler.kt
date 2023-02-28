@@ -5,19 +5,18 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.S3Event
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.createStringAttribute
-import org.liamjd.cantilever.models.sqs.MarkdownPostUploadMsg
 import org.liamjd.cantilever.services.S3Service
+import org.liamjd.cantilever.services.SQSService
+import org.liamjd.cantilever.services.SqsMsgBody
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
+import org.liamjd.cantilever.services.impl.SQSServiceImpl
 import org.liamjd.cantilever.services.impl.extractPageModel
 import org.liamjd.cantilever.services.impl.extractPostMetadata
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
-import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 
 /**
  * Responds to a file upload event (PUT or PUSH).
@@ -31,9 +30,11 @@ import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 class FileUploadHandler : RequestHandler<S3Event, String> {
 
     private val s3Service: S3Service
+    private val sqsService: SQSService
 
     init {
         s3Service = S3ServiceImpl(Region.EU_WEST_2)
+        sqsService = SQSServiceImpl(Region.EU_WEST_2)
     }
 
     override fun handleRequest(event: S3Event, context: Context): String {
@@ -71,21 +72,19 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                                 logger.info("Extracted metadata: $metadata")
                                 // extract body
                                 val markdownBody = sourceString.substringAfterLast("---")
-                                val message = MarkdownPostUploadMsg(metadata, markdownBody)
 
-                                val sqsMessageRequest = SendMessageRequest.builder()
-                                    .queueUrl(queueUrl)
-                                    .messageAttributes(
-                                        createStringAttribute("sourceType", sourceType)
-                                    )
-                                    .messageBody(Json.encodeToString(message))
-                                    .build()
-                                logger.info("SQSMessage to send: $sqsMessageRequest")
-                                val msgResponse = markdownQueue.sendMessage(
-                                    sqsMessageRequest
+                                val message = SqsMsgBody.MarkdownPostUploadMsg(metadata, markdownBody)
+                                val msgResponse = sqsService.sendMessage(
+                                    toQueue = queueUrl,
+                                    body = message,
+                                    messageAttributes = createStringAttribute("sourceType", sourceType)
                                 )
 
-                                logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                                if (msgResponse != null) {
+                                    logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                                } else {
+                                    logger.warn("No response received for message")
+                                }
                             } catch (qdne: QueueDoesNotExistException) {
                                 logger.error("queue '$queueUrl' does not exist; ${qdne.message}")
                             } catch (se: SerializationException) {
@@ -99,18 +98,10 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                         val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
                         val pageSrcKey = srcKey.removePrefix("sources/$sourceType/") // just want the actual file name
                         // extract page model
-                        val pageModel = extractPageModel(pageSrcKey,sourceString)
+                        val pageModel = extractPageModel(pageSrcKey, sourceString)
                         logger.info("Built page model: $pageModel")
 
-                        val sqsMessageRequest = SendMessageRequest.builder()
-                            .queueUrl(queueUrl)
-                            .messageAttributes(createStringAttribute("sourceType", sourceType))
-                            .messageBody(Json.encodeToString(pageModel))
-                            .build()
-                        logger.info("SQSMessage to send: $sqsMessageRequest")
-                        val msgResponse = markdownQueue.sendMessage(
-                            sqsMessageRequest
-                        )
+                        val msgResponse = sqsService.sendMessage(toQueue = queueUrl, body = pageModel, messageAttributes = createStringAttribute("sourceType",sourceType))
                     }
                 }
 

@@ -5,9 +5,11 @@ import org.junit.jupiter.api.Test
 
 internal class ExtractPageModelKtTest {
 
+    private val filename = "AFile"
+
     @Test
     fun `extract model for core metadata only`() {
-        val result = extractPageModel(coreOnly)
+        val result = extractPageModel(filename,coreOnly)
 
         assertEquals("index",result.template)
         assertEquals(0,result.attributes.size)
@@ -17,7 +19,7 @@ internal class ExtractPageModelKtTest {
 
     @Test
     fun `extract model with one named section not closed`() {
-        val result = extractPageModel(singleNamedSection)
+        val result = extractPageModel(filename,singleNamedSection)
 
         assertEquals("index",result.template)
         assertEquals(0,result.attributes.size)
@@ -28,7 +30,7 @@ internal class ExtractPageModelKtTest {
 
     @Test
     fun `extract model with one named section is closed`() {
-        val result = extractPageModel(sectionIsClosed)
+        val result = extractPageModel(filename,sectionIsClosed)
 
         assertEquals("index",result.template)
         assertEquals(0,result.attributes.size)
@@ -39,7 +41,7 @@ internal class ExtractPageModelKtTest {
 
     @Test
     fun `extract model with multiple sections not closed`() {
-        val result = extractPageModel(multipleNamedSections)
+        val result = extractPageModel(filename,multipleNamedSections)
 
         assertEquals("index",result.template)
         assertEquals(0,result.attributes.size)
@@ -50,7 +52,7 @@ internal class ExtractPageModelKtTest {
 
     @Test
     fun `extract model with custom attributes in metadata`() {
-        val result = extractPageModel(customMetadata)
+        val result = extractPageModel(filename,customMetadata)
 
         assertEquals("index",result.template)
         assertEquals(1,result.attributes.size)
@@ -62,14 +64,14 @@ internal class ExtractPageModelKtTest {
 
     @Test
     fun `if template is blank it parses but no template is set`() {
-        val result = extractPageModel(templateMissing)
+        val result = extractPageModel(filename,templateMissing)
 
         assertEquals("",result.template)
     }
 
     @Test
     fun `sections without names are skipped`() {
-        val result = extractPageModel(unnamedSections)
+        val result = extractPageModel(filename,unnamedSections)
 
         println(result)
 
@@ -81,7 +83,7 @@ internal class ExtractPageModelKtTest {
 
     @Test
     fun `extract a complex model`() {
-        val result = extractPageModel(complexContent)
+        val result = extractPageModel(filename,complexContent)
         assertEquals("index",result.template)
         assertEquals(3,result.attributes.size)
         assertEquals(3,result.sections.size)

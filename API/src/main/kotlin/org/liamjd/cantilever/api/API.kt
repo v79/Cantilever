@@ -3,6 +3,7 @@ package org.liamjd.cantilever.api
 import kotlinx.serialization.Serializable
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
+import org.liamjd.cantilever.api.controllers.GeneratorController
 import org.liamjd.cantilever.api.controllers.PostController
 import org.liamjd.cantilever.api.controllers.StructureController
 import org.liamjd.cantilever.api.services.StructureService
@@ -25,8 +26,8 @@ val appModule = module {
  */
 class LambdaRouter : RequestHandlerWrapper() {
 
-    val sourceBucket = System.getenv("source_bucket")
-    val destinationBucket = System.getenv("destination_bucket")
+    private val sourceBucket: String = System.getenv("source_bucket")
+    private val destinationBucket: String = System.getenv("destination_bucket")
     override val corsDomain: String = System.getenv("cors_domain") ?: "https://www.cantilevers.org/"
 
     init {
@@ -38,6 +39,7 @@ class LambdaRouter : RequestHandlerWrapper() {
     // May need some DI here once I start needing to add services for S3 etc
     private val structureController = StructureController(sourceBucket = sourceBucket, corsDomain = corsDomain)
     private val postController = PostController(sourceBucket = sourceBucket, destinationBucket = destinationBucket)
+    private val generatorController = GeneratorController(sourceBucket = sourceBucket, destinationBucket = destinationBucket)
 
     override val router = lambdaRouter {
 //        filter = loggingFilter()
@@ -74,14 +76,12 @@ class LambdaRouter : RequestHandlerWrapper() {
 
         auth(CognitoJWTAuthorizer) {
             group("/generate") {
-                put("/post") { _: Request<Unit> ->
-                    ResponseEntity.ok(body = "This route should trigger a regenerate of an existing markdown post")
+                put("/post/{srcKey}") { request: Request<Unit> ->
+                    ResponseEntity.ok(body = "This route should trigger a regenerate of an existing markdown post ${request.pathParameters["srcKey"]}")
                 }
-                put("/page/{srcKey}") { request: Request<Unit> ->
-                    ResponseEntity.ok(body = "This route should trigger a regenerate of an existing static page defined in params ${request.pathParameters["srcKey"]}")
-                }.supplies(setOf(MimeType.plainText))
-                put("/template") { _: Request<Unit> ->
-                    ResponseEntity.ok(body = "This route should trigger a regenerate of all static pages which use the given template")
+                put("/page/{srcKey}", generatorController::generatePage).supplies(setOf(MimeType.plainText))
+                put("/template/{templateKey}") { request: Request<Unit> ->
+                    ResponseEntity.ok(body = "This route should trigger a regenerate of all static pages which use the given template ${request.pathParameters["templateKey"]}")
                 }
             }
         }
