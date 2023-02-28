@@ -79,6 +79,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         println("Processing route ${routerFunction.requestPredicate.method} ${routerFunction.requestPredicate.pathPattern}, supplying ${routerFunction.requestPredicate.supplies}")
         routerFunction.authorizer?.let { auth ->
             println("Checking authentication/authorization for ${auth.simpleName}")
+
             println("BAD - BYPASSING AUTH!")
 
             if (corsDomain != "http://localhost:5173") {
@@ -92,30 +93,33 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         }
 
         val handler: (Nothing) -> ResponseEntity<out Any> = routerFunction.handler
+
         val entity = if (routerFunction.requestPredicate.kType == null) {
-            // no request type specified, likely Unit
+            // this must be a GET request
             val request = Request(input, null, routerFunction.requestPredicate.pathPattern)
             (handler as HandlerFunction<*, *>)(request)
         } else {
-            val kType = routerFunction.requestPredicate.kType!!
-              if (input.body == null || input.body.isEmpty()) {
-                      // TODO: it may be legitimate to send a POST or GET with no body
-                      ResponseEntity.badRequest(body = "No body received but $kType was expected.")
-
-              } else {
-            // body received, deserialize it and run the handler function
-            try {
-                val bodyObject = Json.decodeFromString(serializer(kType), input.body)
-                val request = Request(input, bodyObject, routerFunction.requestPredicate.pathPattern)
+            if (input.contentLengthHeader() == "0") {
+                // body can be null in this case
+                val request = Request(input, null, routerFunction.requestPredicate.pathPattern)
                 (handler as HandlerFunction<*, *>)(request)
-            } catch (mfe: MissingFieldException) {
-                ResponseEntity.badRequest(body = "Invalid request. Error is ${mfe.message}")
-            } catch (se: SerializationException) {
-                ResponseEntity.badRequest(body = "Could not deserialize body. Error is ${se.message}")
+            } else {
+                val kType = routerFunction.requestPredicate.kType!!
+                if (input.body == null) {
+                    ResponseEntity.badRequest(body = "No body received but $kType was expected. If there is legitimately no body, add a Content-Length header with value '0'.")
+                } else {
+                    try {
+                        val bodyObject = Json.decodeFromString(serializer(kType), input.body)
+                        val request = Request(input, bodyObject, routerFunction.requestPredicate.pathPattern)
+                        (handler as HandlerFunction<*, *>)(request)
+                    } catch (mfe: MissingFieldException) {
+                        ResponseEntity.badRequest(body = "Invalid request. Error is ${mfe.message}")
+                    } catch (se: SerializationException) {
+                        ResponseEntity.badRequest(body = "Could not deserialize body. Error is ${se.message}")
+                    }
+                }
             }
         }
-        }
-
         return entity
     }
 
