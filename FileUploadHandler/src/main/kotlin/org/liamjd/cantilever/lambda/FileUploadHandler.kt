@@ -6,16 +6,15 @@ import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.S3Event
 import kotlinx.serialization.SerializationException
 import org.liamjd.cantilever.common.createStringAttribute
+import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
-import org.liamjd.cantilever.services.SqsMsgBody
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import org.liamjd.cantilever.services.impl.SQSServiceImpl
 import org.liamjd.cantilever.services.impl.extractPageModel
 import org.liamjd.cantilever.services.impl.extractPostMetadata
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
-import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
 
 /**
@@ -51,13 +50,9 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             logger.info("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
             logger.info("MarkdownQueue: $queueUrl")
 
-
             try {
-
                 val fileType = srcKey.substringAfterLast('.').lowercase()
                 logger.info("FileUpload handler: source type is '$sourceType'; file type is '$fileType'")
-
-                val markdownQueue = SqsClient.builder().region(Region.EU_WEST_2).build()
 
                 when (sourceType) {
                     POSTS -> {

@@ -49,7 +49,7 @@ class PostController(val sourceBucket: String, val destinationBucket: String) : 
                 lastUpdated = metadata.lastModified
             )
         )
-        mdPost.body = markdown.substringAfterLast("---").trim()
+        mdPost.body = markdown.substringAfter("---").substringAfter("---").trim()
         return mdPost
     }
 

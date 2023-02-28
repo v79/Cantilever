@@ -14,6 +14,5 @@ fun convertMDToHTML(mdSource: String): String {
     val renderer: HtmlRenderer = HtmlRenderer.builder(options).build()
 
     val document: Node = parser.parse(mdSource)
-    val html: String = renderer.render(document)
-    return html
+    return renderer.render(document)
 }

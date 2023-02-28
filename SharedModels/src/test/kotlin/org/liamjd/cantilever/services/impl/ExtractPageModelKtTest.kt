@@ -106,6 +106,18 @@ internal class ExtractPageModelKtTest {
             assertTrue(b.startsWith("#"))
         }
     }
+
+    @Test
+    fun `extract metadata when embedded raw markdown contains block separators`() {
+        val result = extractPageModel(filename, embeddedMarkdownDashes)
+
+        assertEquals("index",result.template)
+        assertEquals(1,result.attributes.size)
+        assertEquals(1,result.sections.size)
+        assertNotNull(result.lastModified)
+        assertEquals("author",result.attributes.keys.first())
+        assertEquals("Bob",result.attributes.values.first())
+    }
 }
 
 val templateMissing = """
@@ -176,4 +188,18 @@ val complexContent = """
     Etiam ligula risus, suscipit at justo ut, cursus dignissim nulla. Aliquam erat volutpat. Maecenas eget rutrum eros. Phasellus efficitur vestibulum erat,
     --- #Bottom
     #Nothing special about this anchor here.
+""".trimIndent()
+
+val embeddedMarkdownDashes = """
+    ---
+    template: index
+    #author: Bob
+    --- #markdown
+    Here is a complex piece of markdown, which contains a raw markdown block, which contains the triple-dash character!
+    ```markdown
+    Here it comes...
+    ---
+    That triple shouldn't confuse the metadata extractor.
+    ```
+    The end.
 """.trimIndent()

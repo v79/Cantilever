@@ -12,9 +12,11 @@ import org.liamjd.cantilever.models.PostMetadata
  * Extract [PostMetadata] object from the markdown file.
  * It should be deliminated between a pair of '---' lines.
  * If this couldn't be extracted, it will attempt to construct a generic but valid object based on some assumptions.
+ * @param filename the leaf file name, which should end in '.md'
+ * @param source the entire contents of the markdown file
  */
 fun extractPostMetadata(filename: String, source: String): PostMetadata {
-    val metadataString = source.substringAfter("---").substringBeforeLast("---")
+    val metadataString = source.substringAfter("---").substringBefore("---")
     if (metadataString.isNotEmpty()) {
         try {
             return Yaml.default.decodeFromString(PostMetadata.serializer(), metadataString)

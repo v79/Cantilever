@@ -2,8 +2,8 @@ package org.liamjd.cantilever.services.impl
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.SQSService
-import org.liamjd.cantilever.services.SqsMsgBody
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue

@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.services.impl
 
-import org.liamjd.cantilever.services.SqsMsgBody
+import org.liamjd.cantilever.models.sqs.SqsMsgBody
+
 
 /**
  * A page model is different from a Post, in that it can have multiple named markdown sections.

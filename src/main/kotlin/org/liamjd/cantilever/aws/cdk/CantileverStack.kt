@@ -17,8 +17,6 @@ import software.amazon.awscdk.services.logs.RetentionDays
 import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.EventType
 import software.amazon.awscdk.services.s3.NotificationKeyFilter
-import software.amazon.awscdk.services.s3.deployment.BucketDeployment
-import software.amazon.awscdk.services.s3.deployment.Source
 import software.amazon.awscdk.services.sqs.Queue
 import software.constructs.Construct
 
@@ -52,12 +50,6 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
 
         println("Creating destination bucket")
         val destinationBucket = createDestinationBucket()
-
-        println("Adding temporary index.html")
-        val indexHtml = BucketDeployment.Builder.create(this, "cantilever-website-index")
-            .sources(listOf(Source.asset("src/main/resources/staticBucket")))
-            .destinationBucket(destinationBucket)
-            .build()
 
         // SQS for inter-lambda communication. The visibility timeout should be > the max processing time of the lambdas, so setting to 3
         println("Creating markdown processing queue")
@@ -124,6 +116,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.destination_bucket.name to destinationBucket.bucketName,
+                ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
+                ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl,
                 ENV.cors_domain.name to deploymentDomain
             )
         )
@@ -134,10 +128,11 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
 
         // I suspect this isn't the most secure way to do this. Better a new IAM role?
-        println("Granting lambda permissions to buckets")
+        println("Granting lambda permissions to buckets and queues")
         fileUploadLambda.apply {
             sourceBucket.grantRead(this)
             sourceBucket.grantWrite(this)
+
         }
         markdownProcessorLambda.apply {
             sourceBucket.grantRead(this)
@@ -150,6 +145,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         apiRoutingLambda.apply {
             sourceBucket.grantRead(this)
             sourceBucket.grantWrite(this)
+            markdownProcessingQueue.queue.grantSendMessages(this)
+            handlebarProcessingQueue.queue.grantSendMessages(this)
         }
 
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
@@ -168,7 +165,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             SqsEventSource.Builder.create(handlebarProcessingQueue.queue).build()
         )
 
-        println("Granting queue permissions")
+        println("Granting queue-to-queue permissions")
         markdownProcessingQueue.queue.grantSendMessages(fileUploadLambda)
         markdownProcessingQueue.queue.grantConsumeMessages(markdownProcessorLambda)
         handlebarProcessingQueue.queue.grantSendMessages(markdownProcessorLambda)

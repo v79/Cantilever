@@ -10,7 +10,9 @@ import org.liamjd.cantilever.api.services.StructureService
 import org.liamjd.cantilever.auth.CognitoJWTAuthorizer
 import org.liamjd.cantilever.routing.*
 import org.liamjd.cantilever.services.S3Service
+import org.liamjd.cantilever.services.SQSService
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
+import org.liamjd.cantilever.services.impl.SQSServiceImpl
 import software.amazon.awssdk.regions.Region
 
 /**
@@ -18,6 +20,7 @@ import software.amazon.awssdk.regions.Region
  */
 val appModule = module {
     single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
+    single<SQSService> { SQSServiceImpl(Region.EU_WEST_2)}
     single { StructureService() }
 }
 
@@ -82,6 +85,15 @@ class LambdaRouter : RequestHandlerWrapper() {
                 put("/page/{srcKey}", generatorController::generatePage).supplies(setOf(MimeType.plainText))
                 put("/template/{templateKey}") { request: Request<Unit> ->
                     ResponseEntity.ok(body = "This route should trigger a regenerate of all static pages which use the given template ${request.pathParameters["templateKey"]}")
+                }
+            }
+        }
+
+        auth(CognitoJWTAuthorizer) {
+            group("/get") {
+                get("/post/{srcKey}") {
+                    request: Request<Unit> ->
+                    ResponseEntity.ok(body = "Received request to return the HTML form of ${request.pathParameters["srcKey"]}")
                 }
             }
         }

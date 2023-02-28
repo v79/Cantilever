@@ -11,8 +11,7 @@ import org.liamjd.cantilever.common.fileTypes.HTML_HBS
 import org.liamjd.cantilever.common.s3Keys.fragmentsKey
 import org.liamjd.cantilever.common.s3Keys.templatesKey
 import org.liamjd.cantilever.models.Structure
-import org.liamjd.cantilever.models.sqs.HTMLFragmentReadyMsg
-import org.liamjd.cantilever.models.sqs.PageHandlebarsModelMsg
+import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
@@ -42,7 +41,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
             when(eventRecord.messageAttributes["sourceType"]?.stringValue ?: "posts") {
                 "posts" -> {
-                    val message: HTMLFragmentReadyMsg = Json.decodeFromString(eventRecord.body)
+                    val message = Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.HTMLFragmentReadyMsg
                     logger.info("Processing message: $message")
 
                     val body = s3Service.getObjectAsString(message.fragmentKey, sourceBucket)
@@ -72,7 +71,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                 "pages" -> {
                     val structureFile = s3Service.getObjectAsString("generated/structure.json",sourceBucket)
                     val projectStructure = Json.decodeFromString<Structure>(structureFile)
-                    val message = Json.decodeFromString<PageHandlebarsModelMsg>(eventRecord.body)
+                    val message = Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.PageHandlebarsModelMsg
                     val pageTemplateKey = templatesKey + message.template + HTML_HBS
                     logger.info("Extracted page model: $message")
 

@@ -9,7 +9,7 @@ import org.liamjd.cantilever.models.Layouts
 import org.liamjd.cantilever.models.Post
 import org.liamjd.cantilever.models.Structure
 import org.liamjd.cantilever.models.Template
-import org.liamjd.cantilever.models.sqs.MarkdownPostUploadMsg
+import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.*
@@ -25,7 +25,7 @@ class StructureManager {
         context: Context,
         s3Client: S3Client,
         sourceBucket: String,
-        markdown: MarkdownPostUploadMsg,
+        markdown: SqsMsgBody.MarkdownPostUploadMsg,
         srcKey: String,
     ) {
         info("Looking for and updating $structureKey from $sourceBucket")
