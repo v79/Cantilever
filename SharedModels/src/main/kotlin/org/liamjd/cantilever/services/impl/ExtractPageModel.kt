@@ -1,5 +1,7 @@
 package org.liamjd.cantilever.services.impl
 
+import org.liamjd.cantilever.common.getFrontMatter
+import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 
 
@@ -20,10 +22,10 @@ import org.liamjd.cantilever.models.sqs.SqsMsgBody
  */
 fun extractPageModel(filename: String, source: String): SqsMsgBody.PageModelMsg {
 
-    val metadata = source.substringAfter("---").substringBefore("---").trim()
+    val metadata = source.getFrontMatter().trim()
 
     val customSections =
-        source.substringAfter("---").substringAfter("---").split("---").filter { it.isNotEmpty() }.map { it.trim() }
+        source.stripFrontMatter().split("---").filter { it.isNotEmpty() }.map { it.trim() }
             .associate {
                 val sectionName = if (it.startsWith("#")) {
                     it.substringAfter("#").substringBefore("\n").trim()

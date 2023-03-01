@@ -3,6 +3,8 @@ package org.liamjd.cantilever.api.controllers
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.S3_KEY
+import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.common.createStringAttribute
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
@@ -17,7 +19,7 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 class GeneratorController(val sourceBucket: String, val destinationBucket: String) : KoinComponent {
 
     companion object {
-        const val PAGES_DIR = "sources/pages/"
+        const val PAGES_DIR = S3_KEY.sources + "pages/"
     }
     private val s3Service: S3Service by inject()
     private val sqsService: SQSService by inject()
@@ -30,11 +32,14 @@ class GeneratorController(val sourceBucket: String, val destinationBucket: Strin
      * This method will send a message to the markdown processing queue in SQS.
      */
     fun generatePage(request: Request<Unit>): ResponseEntity<APIResult<String>> {
-        val sourceType = "pages"
-
         val requestKey = request.pathParameters["srcKey"]
         if(requestKey == "*") {
             println("Wow, that's a big request")
+
+            // get every page in the pages folder
+            val pageListResponse = s3Service.listObjects(PAGES_DIR,sourceBucket)
+            println("There are ${pageListResponse.keyCount()} pages to process")
+
         } else {
 
             val srcKey = PAGES_DIR + request.pathParameters["srcKey"]
@@ -42,7 +47,7 @@ class GeneratorController(val sourceBucket: String, val destinationBucket: Strin
             try {
                 println("Received page file $srcKey and sending it to Markdown processor queue")
                 val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
-                val pageSrcKey = srcKey.removePrefix("sources/$sourceType/") // just want the actual file name
+                val pageSrcKey = srcKey.removePrefix("sources/${SOURCE_TYPE.PAGES}/") // just want the actual file name
                 // extract page model
                 val pageModel = extractPageModel(pageSrcKey, sourceString)
                 println("Built page model: $pageModel")
@@ -50,7 +55,7 @@ class GeneratorController(val sourceBucket: String, val destinationBucket: Strin
                 val msgResponse = sqsService.sendMessage(
                     toQueue = queueUrl,
                     body = pageModel,
-                    messageAttributes = createStringAttribute("sourceType", sourceType)
+                    messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.PAGES)
                 )
 
                 if (msgResponse != null) {

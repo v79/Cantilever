@@ -7,9 +7,11 @@ import com.amazonaws.services.lambda.runtime.events.SQSEvent
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import org.liamjd.cantilever.common.fileTypes.HTML_HBS
-import org.liamjd.cantilever.common.s3Keys.fragmentsKey
-import org.liamjd.cantilever.common.s3Keys.templatesKey
+import org.liamjd.cantilever.common.FILE_TYPE
+import org.liamjd.cantilever.common.FILE_TYPE.HTML_HBS
+import org.liamjd.cantilever.common.S3_KEY.fragments
+import org.liamjd.cantilever.common.S3_KEY.templates
+import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.Structure
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.S3Service
@@ -40,15 +42,15 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             logger.info("RAW message: ${eventRecord.body}")
 
             when(eventRecord.messageAttributes["sourceType"]?.stringValue ?: "posts") {
-                "posts" -> {
+                SOURCE_TYPE.POSTS -> {
                     val message = Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.HTMLFragmentReadyMsg
                     logger.info("Processing message: $message")
 
                     val body = s3Service.getObjectAsString(message.fragmentKey, sourceBucket)
-                    logger.info("Loaded body fragment from '${fragmentsKey + message.fragmentKey}: ${body.take(100)}'")
+                    logger.info("Loaded body fragment from '${fragments + message.fragmentKey}: ${body.take(100)}'")
 
                     // load template file as specified by metadata
-                    val template = templatesKey + message.metadata.template + HTML_HBS
+                    val template = templates + message.metadata.template + HTML_HBS
                     logger.info("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
                     val templateString = s3Service.getObjectAsString(template, sourceBucket)
                     logger.info("Got templateString: ${templateString.take(100)}")
@@ -68,11 +70,11 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                     s3Service.putObject(message.metadata.slug,destinationBucket,html,"text/html")
                     logger.info("Written final HTML file to '${message.metadata.slug}'")
                 }
-                "pages" -> {
+                SOURCE_TYPE.PAGES -> {
                     val structureFile = s3Service.getObjectAsString("generated/structure.json",sourceBucket)
                     val projectStructure = Json.decodeFromString<Structure>(structureFile)
                     val message = Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.PageHandlebarsModelMsg
-                    val pageTemplateKey = templatesKey + message.template + HTML_HBS
+                    val pageTemplateKey = templates + message.template + HTML_HBS
                     logger.info("Extracted page model: $message")
 
                     // load the page.html.hbs template
@@ -97,7 +99,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                     }
                     logger.info("Rendered HTML: ${html.take(100)}")
 
-                    val outputFilename = message.key.substringBefore('.') + ".html"
+                    val outputFilename = message.key.substringBefore('.') + FILE_TYPE.HTML
                     s3Service.putObject(outputFilename,destinationBucket,html,"text/html")
                     logger.info("Written final HTML file to '$outputFilename'")
                 }

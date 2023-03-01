@@ -6,6 +6,7 @@ import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.S3Event
 import kotlinx.serialization.SerializationException
 import org.liamjd.cantilever.common.createStringAttribute
+import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
@@ -66,7 +67,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                                 val metadata = extractPostMetadata(filename = srcKey, source = sourceString)
                                 logger.info("Extracted metadata: $metadata")
                                 // extract body
-                                val markdownBody = sourceString.substringAfterLast("---")
+                                val markdownBody = sourceString.stripFrontMatter()
 
                                 val message = SqsMsgBody.MarkdownPostUploadMsg(metadata, markdownBody)
                                 val msgResponse = sqsService.sendMessage(

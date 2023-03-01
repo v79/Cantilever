@@ -1,25 +1,28 @@
 package org.liamjd.cantilever.common
 
-object s3Keys {
-    const val sourcesKey = "sources/"
-    const val fragmentsKey = "generated/htmlFragments/"
-    const val templatesKey = "templates/"
+/**
+ * Represents the standard folders within S3 bucket
+ */
+object S3_KEY {
+    const val sources = "sources/"
+    const val fragments = "generated/htmlFragments/"
+    const val templates = "templates/"
 }
 
-object fileTypes {
+/**
+ * Standard input file types
+ */
+object FILE_TYPE {
+    const val MD = ".md"
     const val HTML_HBS = ".html.hbs"
+    const val HTML = ".html"
 }
 
-/*
-
-CLI:
-s3://cantileverstack-cantileversources123976ca-u9xp6zshycpg/templates/post.hbs
-
-WEB:
-s3://cantileverstack-cantileversources123976ca-u9xp6zshycpg/templates/post.hbs
-
-JDK:
-     cantileverstack-cantileversources123976ca-u9xp6zshycpg templates/post.hbs
-
-
-*/
+/**
+ * The core types of object that Cantilever can process
+ */
+object SOURCE_TYPE {
+    const val PAGES = "pages"
+    const val POSTS = "posts"
+    const val STATICS = "statics"
+}

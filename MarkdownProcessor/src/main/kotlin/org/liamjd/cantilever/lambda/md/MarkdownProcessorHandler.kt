@@ -8,8 +8,9 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.liamjd.cantilever.common.S3_KEY.fragments
+import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.common.createStringAttribute
-import org.liamjd.cantilever.common.s3Keys.fragmentsKey
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
@@ -47,7 +48,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         logger.info("SourceType: $sourceType")
 
         when (sourceType) {
-            "posts" -> {
+            SOURCE_TYPE.POSTS -> {
                 val markdownPostUploadMsg =
                     Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.MarkdownPostUploadMsg
                 logger.info("Metadata: ${markdownPostUploadMsg.metadata}")
@@ -58,7 +59,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                 outputStream.bufferedWriter().write(html)
 
                 try {
-                    val htmlKey = fragmentsKey + markdownPostUploadMsg.metadata.slug
+                    val htmlKey = fragments + markdownPostUploadMsg.metadata.slug
                     s3Service.putObject(htmlKey, sourceBucket, html, "text/html")
                     logger.info("Wrote HTML file '$htmlKey'")
                     logger.info("Sending message to handlebars handler")
@@ -79,7 +80,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                 }
             }
 
-            "pages" -> {
+           SOURCE_TYPE.PAGES -> {
                 logger.info(eventRecord.body)
                 /**
                  * A page is different from a post. It has a different set of metadata.
@@ -90,7 +91,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                 // transform each of the sections from Markdown to HTML and save them as fragments.
                 // then build a message model which contains references to each of the fragments
                 // which will be passed to the handlebars template
-                val fragmentPrefix = fragmentsKey + pageModel.key + "/"
+                val fragmentPrefix = fragments + pageModel.key + "/"
                 val sectionMap = mutableMapOf<String, String>()
                 pageModel.sections.forEach {
                     logger.info("Writing ${it.key} to ${fragmentPrefix}${it.key}")
