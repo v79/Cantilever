@@ -8,6 +8,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.liamjd.cantilever.common.QUEUE
 import org.liamjd.cantilever.common.S3_KEY.fragments
 import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.common.createStringAttribute
@@ -37,7 +38,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
         val sourceBucket = System.getenv("source_bucket")
-        val handlebarQueueUrl = System.getenv("handlebar_template_queue")
+        val handlebarQueueUrl = System.getenv(QUEUE.HANDLEBARS)
         val logger = context.logger
         val response = "200 OK"
 

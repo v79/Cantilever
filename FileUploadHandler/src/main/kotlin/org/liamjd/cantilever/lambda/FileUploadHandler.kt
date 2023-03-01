@@ -5,6 +5,7 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.S3Event
 import kotlinx.serialization.SerializationException
+import org.liamjd.cantilever.common.QUEUE
 import org.liamjd.cantilever.common.createStringAttribute
 import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
@@ -46,7 +47,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val srcKey = eventRecord.s3.`object`.urlDecodedKey
             val srcBucket = eventRecord.s3.bucket.name
             val sourceType = srcKey.substringAfter('/').substringBefore('/')
-            val queueUrl = System.getenv("markdown_processing_queue")
+            val queueUrl = System.getenv(QUEUE.MARKDOWN)
 
             logger.info("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
             logger.info("MarkdownQueue: $queueUrl")

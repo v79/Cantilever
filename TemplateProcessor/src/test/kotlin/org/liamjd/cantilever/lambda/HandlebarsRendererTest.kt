@@ -70,6 +70,26 @@ internal class HandlebarsRendererTest {
             assertFalse(result.contains("Second"))
         }
     }
+
+    @Test
+    fun `does not mangle emoji in model`() {
+        // setup
+        val templateString = "<html><title>{{title}}</title></html>"
+        val title = "▶️🐈"
+        val expectedResult = "<html><title>▶️🐈</title></html>"
+        val model = mapOf<String, Any?>("title" to title)
+        println("model=$model")
+
+        with(mockLogger) {
+            val renderer = HandlebarsRenderer()
+
+            // execute
+            val result = renderer.render(model, templateString)
+
+            // verify
+            assertEquals(expectedResult, result)
+        }
+    }
 }
 
 class TestPost(val title: String)

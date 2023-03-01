@@ -3,9 +3,7 @@ package org.liamjd.cantilever.api.controllers
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.common.S3_KEY
-import org.liamjd.cantilever.common.SOURCE_TYPE
-import org.liamjd.cantilever.common.createStringAttribute
+import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.S3Service
@@ -21,25 +19,47 @@ class GeneratorController(val sourceBucket: String, val destinationBucket: Strin
     companion object {
         const val PAGES_DIR = S3_KEY.sources + "pages/"
     }
+
     private val s3Service: S3Service by inject()
     private val sqsService: SQSService by inject()
 
-    private val queueUrl: String = System.getenv("markdown_processing_queue")
+    private val queueUrl: String = System.getenv(QUEUE.MARKDOWN)
 
     /**
      * Generate the HTML version of the page specified by the path parameter 'srcKey'.
      * The actual path searched for will be `/sources/pages/<srcKey>'.
      * This method will send a message to the markdown processing queue in SQS.
+     * If <srcKey> is '*' it will trigger regeneration of all source markdown pages
      */
     fun generatePage(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val requestKey = request.pathParameters["srcKey"]
-        if(requestKey == "*") {
+        if (requestKey == "*") {
             println("Wow, that's a big request")
 
             // get every page in the pages folder
-            val pageListResponse = s3Service.listObjects(PAGES_DIR,sourceBucket)
-            println("There are ${pageListResponse.keyCount()} pages to process")
+            val pageListResponse = s3Service.listObjects(PAGES_DIR, sourceBucket)
+            println("There are ${pageListResponse.keyCount()} potential pages to process")
+            pageListResponse.contents().filter { it.key().endsWith(FILE_TYPE.MD) }.forEach { obj ->
+                println(obj.key())
+                val sourceString = s3Service.getObjectAsString(obj.key(), sourceBucket)
+                val pageSrcKey =
+                    obj.key().removePrefix("sources/${SOURCE_TYPE.PAGES}/") // just want the actual file name
+                // extract page model
+                val pageModel = extractPageModel(pageSrcKey, sourceString)
+                val msgResponse = sqsService.sendMessage(
+                    toQueue = queueUrl,
+                    body = pageModel,
+                    messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.PAGES)
+                )
 
+                if (msgResponse != null) {
+                    println("Message '${obj.key()}' sent to '$queueUrl', message ID is ${msgResponse.messageId()}'")
+                } else {
+                    println("No response received for message")
+                }
+            }
+
+            return ResponseEntity.notImplemented(body = APIResult.OK("Mass page generation not yet implemented."))
         } else {
 
             val srcKey = PAGES_DIR + request.pathParameters["srcKey"]
@@ -59,7 +79,7 @@ class GeneratorController(val sourceBucket: String, val destinationBucket: Strin
                 )
 
                 if (msgResponse != null) {
-                    println("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                    println("Message '$srcKey' sent to '$queueUrl', message ID is ${msgResponse.messageId()}'")
                 } else {
                     println("No response received for message")
                 }
@@ -69,6 +89,6 @@ class GeneratorController(val sourceBucket: String, val destinationBucket: Strin
                 return ResponseEntity.notFound(body = APIResult.Error(message = "Could not find page with key $srcKey"))
             }
         }
-        return ResponseEntity.ok(body = APIResult.Success(value =  "Regenerated file $requestKey"))
+        return ResponseEntity.ok(body = APIResult.Success(value = "Regenerated file $requestKey"))
     }
 }

@@ -26,3 +26,8 @@ object SOURCE_TYPE {
     const val POSTS = "posts"
     const val STATICS = "statics"
 }
+
+object QUEUE {
+    const val MARKDOWN = "markdown_processing_queue"
+    const val HANDLEBARS = "handlebar_template_queue"
+}

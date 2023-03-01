@@ -63,7 +63,7 @@ class LambdaRouter : RequestHandlerWrapper() {
         auth(CognitoJWTAuthorizer) {
             group("/posts") {
                 get("/load/{srcKey}", postController::loadMarkdownSource)
-                get("/preview/{srcKey}") { request: Request<Unit> -> ResponseEntity.ok(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!") }.supplies(
+                get("/preview/{srcKey}") { request: Request<Unit> -> ResponseEntity.notImplemented(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!") }.supplies(
                     setOf(
                         MimeType.html
                     )
@@ -80,11 +80,11 @@ class LambdaRouter : RequestHandlerWrapper() {
         auth(CognitoJWTAuthorizer) {
             group("/generate") {
                 put("/post/{srcKey}") { request: Request<Unit> ->
-                    ResponseEntity.ok(body = "This route should trigger a regenerate of an existing markdown post ${request.pathParameters["srcKey"]}")
+                    ResponseEntity.notImplemented(body = "This route should trigger a regenerate of an existing markdown post ${request.pathParameters["srcKey"]}")
                 }
                 put("/page/{srcKey}", generatorController::generatePage).supplies(setOf(MimeType.plainText))
                 put("/template/{templateKey}") { request: Request<Unit> ->
-                    ResponseEntity.ok(body = "This route should trigger a regenerate of all static pages which use the given template ${request.pathParameters["templateKey"]}")
+                    ResponseEntity.notImplemented(body = "This route should trigger a regenerate of all static pages which use the given template ${request.pathParameters["templateKey"]}")
                 }
             }
         }
@@ -93,7 +93,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             group("/get") {
                 get("/post/{srcKey}") {
                     request: Request<Unit> ->
-                    ResponseEntity.ok(body = "Received request to return the HTML form of ${request.pathParameters["srcKey"]}")
+                    ResponseEntity.notImplemented(body = "Received request to return the HTML form of ${request.pathParameters["srcKey"]}")
                 }
             }
         }
