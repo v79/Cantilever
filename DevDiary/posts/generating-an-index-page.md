@@ -20,7 +20,7 @@ This is the body of the page, the main section if you well.
 This could be an aside, or a list of links, or any other valid HTML block.
 ```
 
-I've used the `---` marker to split the page into sections, and each section must have a name (`#section-one`) for to be rendered. A page (or a post, or any other file) must have a _template_ in the first, unnamed section. After which you can add custom attributes, idenfied with the '#' marker, which will be sent directly to the Handlebars model.
+I've used the `---` marker to split the page into sections, and each section must have a name (`#section-one`) for to be rendered. A page (or a post, or any other file) must have a _template_ in the first, unnamed section. After which you can add custom attributes, identified with the '#' marker, which will be sent directly to the Handlebars model.
 
 With in place, the application will apply the Handlebars renderer to the template file, plugging in all the values. A simplified template might look like this:
 
@@ -37,3 +37,7 @@ _ head stuff here_
 This is now working - and indeed the [Cantilevers homepage](https://www.cantilevers.org/) has been built using this approach. It is generic, and not specific to index.html - well, almost.
 
 In order to display the home page list of posts, the `index.html.hbs` template needs to have access to the `structure.json` file, which contains a complete list of all the posts on the website. This is different from how _bascule_ did it, which would essentially recompile the project model in memory to generate the index page. Further work on this is required, but for now, it works.
+
+## And the terribly wrong thing...?
+
+All those triple-dash separators inside the sample markdown block where playing havoc with my metadata parser. I may need to consider a different separator. Something weird. Maybe â–¶ï
