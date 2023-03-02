@@ -7,7 +7,6 @@ import com.amazonaws.services.lambda.runtime.events.SQSEvent
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import org.liamjd.cantilever.common.FILE_TYPE
 import org.liamjd.cantilever.common.FILE_TYPE.HTML_HBS
 import org.liamjd.cantilever.common.S3_KEY.fragments
 import org.liamjd.cantilever.common.S3_KEY.templates
@@ -99,7 +98,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                     }
                     logger.info("Rendered HTML: ${html.take(100)}")
 
-                    val outputFilename = message.key.substringBefore('.') + FILE_TYPE.HTML
+                    val outputFilename = message.key.substringBefore('.')
                     s3Service.putObject(outputFilename,destinationBucket,html,"text/html")
                     logger.info("Written final HTML file to '$outputFilename'")
                 }

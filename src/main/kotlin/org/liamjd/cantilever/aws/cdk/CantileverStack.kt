@@ -229,7 +229,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         .removalPolicy(RemovalPolicy.DESTROY)
         .autoDeleteObjects(true)
         .publicReadAccess(true)
-        .websiteIndexDocument("index.html")
+        .websiteIndexDocument("index")
         .build()
 
     private fun createBucket(name: String): Bucket = Bucket.Builder.create(this, name)

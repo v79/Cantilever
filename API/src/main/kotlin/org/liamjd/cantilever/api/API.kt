@@ -87,6 +87,10 @@ class LambdaRouter : RequestHandlerWrapper() {
                     ResponseEntity.notImplemented(body = "This route should trigger a regenerate of all static pages which use the given template ${request.pathParameters["templateKey"]}")
                 }
             }
+            group("/cache") {
+                delete("/posts") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Call to delete cache for posts")}
+                delete("/pages") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Call to delete cache for pages")}
+            }
         }
 
         auth(CognitoJWTAuthorizer) {
