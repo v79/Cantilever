@@ -99,6 +99,14 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                         logger.info("Built page model: $pageModel")
 
                         val msgResponse = sqsService.sendMessage(toQueue = queueUrl, body = pageModel, messageAttributes = createStringAttribute("sourceType",sourceType))
+                        if (msgResponse != null) {
+                            logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                        } else {
+                            logger.warn("No response received for message")
+                        }
+                    }
+                    else -> {
+                        logger.info("No action defined for source type '$sourceType'")
                     }
                 }
 

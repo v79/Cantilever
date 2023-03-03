@@ -54,8 +54,6 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                     Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.MarkdownPostUploadMsg
                 logger.info("Metadata: ${markdownPostUploadMsg.metadata}")
                 val html = convertMDToHTML(mdSource = markdownPostUploadMsg.markdownText)
-                logger.info("HTML Output: ${html.take(150)}...")
-
                 val outputStream = ByteArrayOutputStream()
                 outputStream.bufferedWriter().write(html)
 

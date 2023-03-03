@@ -38,7 +38,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
         try {
             val eventRecord = event.records[0]
-            logger.info("RAW message: ${eventRecord.body}")
+            logger.info("EventRecord: ${eventRecord.body}")
 
             when(eventRecord.messageAttributes["sourceType"]?.stringValue ?: "posts") {
                 SOURCE_TYPE.POSTS -> {

@@ -74,6 +74,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             description = "Lambda function which responds to file upload events",
             codePath = "./FileUploadHandler/build/libs/FileUploadHandler.jar",
             handler = "org.liamjd.cantilever.lambda.FileUploadHandler",
+            memory = 256,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl
@@ -87,6 +88,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             description = "Lambda function which converts a markdown file to an HTML file or fragment",
             codePath = "./MarkdownProcessor/build/libs/MarkdownProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.md.MarkdownProcessorHandler",
+            memory = 320,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl
@@ -251,11 +253,12 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         description: String?,
         codePath: String,
         handler: String,
+        memory: Int = 320,
         environment: Map<String, String>?
     ): Function = Function.Builder.create(stack, id)
         .description(description ?: "")
         .runtime(Runtime.JAVA_11)
-        .memorySize(320)
+        .memorySize(memory)
         .timeout(Duration.minutes(2))
         .code(Code.fromAsset(codePath))
         .handler(handler)
