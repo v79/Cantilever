@@ -11,7 +11,7 @@ const config = {
 		adapter: adapter({
 			pages: 'build',
 			assets: 'build',
-			fallback: 'app.html',
+			fallback: 'index',
 			precompress: false,
 			strict: true
 		})
