@@ -8,7 +8,7 @@ Cantilevers is an AWS-lambda based static-site generator. This page was generate
 --- #blockA
 There's a web interface to the project at [Cantilevers.org](https://www.cantilevers.org). You need to be registered to use it.
 --- #links
-- [About Cantilevers](/about.html)
+- [About Cantilevers](/about)
 
 #### Libraries used
  

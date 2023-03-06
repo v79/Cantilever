@@ -81,6 +81,8 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                     val templateString = s3Service.getObjectAsString(pageTemplateKey, sourceBucket)
 
                     val model = mutableMapOf<String,Any?>()
+                    model["key"] = message.key
+                    model["url"] = message.url
                     model.putAll(message.attributes)
 
                     message.sectionKeys.forEach { (name, objectKey) ->
@@ -98,7 +100,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                     }
                     logger.info("Rendered HTML: ${html.take(100)}")
 
-                    val outputFilename = message.key.substringBefore('.')
+                    val outputFilename = message.url
                     s3Service.putObject(outputFilename,destinationBucket,html,"text/html")
                     logger.info("Written final HTML file to '$outputFilename'")
                 }

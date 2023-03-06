@@ -104,7 +104,8 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                     key = pageModel.key,
                     template = pageModel.template,
                     attributes = pageModel.attributes,
-                    sectionKeys = sectionMap.toMap()
+                    sectionKeys = sectionMap.toMap(),
+                    url = pageModel.url?: pageModel.key.substringBeforeLast(".")
                 )
                 logger.info("Prepared message: $message")
 

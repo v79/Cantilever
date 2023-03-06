@@ -25,7 +25,8 @@ sealed class SqsMsgBody {
         val key: String,
         val template: String,
         val attributes: Map<String, String>,
-        val sectionKeys: Map<String, String>
+        val sectionKeys: Map<String, String>,
+        val url: String
     ) : SqsMsgBody()
 
     @OptIn(ExperimentalSerializationApi::class)
