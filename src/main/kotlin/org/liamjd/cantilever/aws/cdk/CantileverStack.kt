@@ -126,8 +126,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
 
         println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
         val cloudfrontSubstack = CloudFrontSubstack()
-        val cloudFrontDistribution =
-            cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
+        cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
 
         // I suspect this isn't the most secure way to do this. Better a new IAM role?
         println("Granting lambda permissions to buckets and queues")
@@ -179,7 +178,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             "cantilever-api-edge-certificate",
             "arn:aws:acm:us-east-1:086949310404:certificate/9b8f27c6-87be-4c14-a368-e6ad3ac4fb68"
         )
-        val gateway = LambdaRestApi.Builder.create(this, "cantilever-rest-api")
+        // The API Gateway
+        LambdaRestApi.Builder.create(this, "cantilever-rest-api")
             .restApiName("Cantilever REST API")
             .description("Gateway function to Cantilever services, handling routing")
             .domainName(
@@ -206,23 +206,19 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             .email(UserPoolEmail.withCognito())
             .build()
 
-        val cognitoPoolDomain = pool.addDomain(
+        pool.addDomain(
             "cantilever-api",
             UserPoolDomainOptions.builder()
                 .cognitoDomain(CognitoDomainOptions.builder().domainPrefix("cantilever").build()).build()
         )
         val appUrls = listOf("https://www.cantilevers.org/app/", "http://localhost:5173/")
-        val appClient = pool.addClient(
+        pool.addClient(
             "cantilever-app",
             UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
                 OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(true).build())
                     .callbackUrls(appUrls).logoutUrls(appUrls).build()
             ).build()
         )
-        /* println("Adding Cognito authentication to API Gateway")
-          val authorizer = CognitoUserPoolsAuthorizer.Builder.create(this,"CantileverCognitoAuth").authorizerName("CantileverCognitoAuth").cognitoUserPools(
-              listOf(pool)).build()*/
-
 
     }
 
@@ -231,7 +227,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         .removalPolicy(RemovalPolicy.DESTROY)
         .autoDeleteObjects(true)
         .publicReadAccess(true)
-        .websiteIndexDocument("index")
+        .websiteIndexDocument("index.html")
         .build()
 
     private fun createBucket(name: String): Bucket = Bucket.Builder.create(this, name)

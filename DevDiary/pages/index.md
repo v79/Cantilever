@@ -1,5 +1,6 @@
 ---
 template: index
+slug: index.html
 #siteName: Cantilever
 #author: Liam Davison
 --- #body

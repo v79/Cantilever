@@ -18,6 +18,17 @@ internal class ExtractPageModelKtTest {
     }
 
     @Test
+    fun `extract model with optional slug specified`() {
+        val result = extractPageModel(filename, coreWithSlug)
+
+        assertEquals("index",result.template)
+        assertEquals("index.html",result.url)
+        assertEquals(0,result.attributes.size)
+        assertEquals(0,result.sections.size)
+        assertNotNull(result.lastModified)
+    }
+
+    @Test
     fun `extract model with one named section not closed`() {
         val result = extractPageModel(filename,singleNamedSection)
 
@@ -129,6 +140,13 @@ val templateMissing = """
 val coreOnly = """
     ---
     template: index
+    ---
+""".trimIndent()
+
+val coreWithSlug = """
+    ---
+    template: index
+    slug: index.html
     ---
 """.trimIndent()
 

@@ -33,6 +33,7 @@ sealed class SqsMsgBody {
     data class PageModelMsg(
         val key: String,
         val template: String,
+        val url: String? = null,
         @EncodeDefault val lastModified: Instant = Clock.System.now(),
         val attributes: Map<String, String>,
         val sections: Map<String, MarkdownSection>

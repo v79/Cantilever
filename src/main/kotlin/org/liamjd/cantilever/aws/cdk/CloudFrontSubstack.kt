@@ -38,7 +38,7 @@ class CloudFrontSubstack {
 
         return CloudFrontWebDistribution.Builder.create(stack, "cantilever-CloudFrontWebDistribution")
             .comment(String.format("CloudFront distribution for cantilever"))
-            .defaultRootObject("index")
+            .defaultRootObject("index.html")
             .originConfigs(
                 listOf(
                     SourceConfiguration.builder()
