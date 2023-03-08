@@ -28,7 +28,7 @@ dependencies {
     implementation("com.charleskorn.kaml:kaml:0.49.0")
 
      // DI
-    implementation("io.insert-koin:koin-core:3.3.2")
+    implementation("io.insert-koin:koin-core:3.3.3")
 
     // sdk v2
     implementation(platform("software.amazon.awssdk:bom:2.19.8"))
@@ -50,7 +50,7 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
     testImplementation("com.amazonaws:aws-lambda-java-tests:1.1.1")
     testImplementation("io.mockk:mockk:1.13.3")
-    testImplementation("io.insert-koin:koin-test:3.3.2")
+    testImplementation("io.insert-koin:koin-test:3.3.3")
 }
 
 tasks.getByName<Test>("test") {
