@@ -1,6 +1,5 @@
 package org.liamjd.cantilever.api
 
-import kotlinx.serialization.Serializable
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 import org.liamjd.cantilever.api.controllers.GeneratorController
@@ -105,17 +104,15 @@ class LambdaRouter : RequestHandlerWrapper() {
             ResponseEntity.ok(routeList)
         }
     }
+ }
 
-    /* private fun loggingFilter() = Filter { next ->
-         { request ->
-             println("Handling request ${request.httpMethod} ${request.path}")
-             next(request)
-         }
-     }*/
-}
-
-@Serializable
-data class MyResponse(val text: String)
-
-@Serializable
-data class MyRequest(val message: String)
+/**
+ * Possible extension: custom Filters, like a logging filter, which intercepts a route, performs an action, then passes it on to the correct handler.
+ * Something like:
+ * `private fun loggingFilter() = Filter { next ->
+ *          { request ->
+ *              println("Handling request ${request.httpMethod} ${request.path}")
+ *              next(request)
+ *          }
+ *      }`
+ */
