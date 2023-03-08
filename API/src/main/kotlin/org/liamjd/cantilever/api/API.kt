@@ -19,7 +19,7 @@ import software.amazon.awssdk.regions.Region
  */
 val appModule = module {
     single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
-    single<SQSService> { SQSServiceImpl(Region.EU_WEST_2)}
+    single<SQSService> { SQSServiceImpl(Region.EU_WEST_2) }
     single { StructureService() }
 }
 
@@ -41,7 +41,8 @@ class LambdaRouter : RequestHandlerWrapper() {
     // May need some DI here once I start needing to add services for S3 etc
     private val structureController = StructureController(sourceBucket = sourceBucket, corsDomain = corsDomain)
     private val postController = PostController(sourceBucket = sourceBucket, destinationBucket = destinationBucket)
-    private val generatorController = GeneratorController(sourceBucket = sourceBucket, destinationBucket = destinationBucket)
+    private val generatorController =
+        GeneratorController(sourceBucket = sourceBucket, destinationBucket = destinationBucket)
 
     override val router = lambdaRouter {
 //        filter = loggingFilter()
@@ -80,20 +81,17 @@ class LambdaRouter : RequestHandlerWrapper() {
             group("/generate") {
                 put("/post/{srcKey}", generatorController::generatePost).supplies(setOf(MimeType.plainText))
                 put("/page/{srcKey}", generatorController::generatePage).supplies(setOf(MimeType.plainText))
-                put("/template/{templateKey}") { request: Request<Unit> ->
-                    ResponseEntity.notImplemented(body = "This route should trigger a regenerate of all static pages which use the given template ${request.pathParameters["templateKey"]}")
-                }
+                put("/template/{templateKey}", generatorController::generateTemplate).supplies(setOf(MimeType.plainText))
             }
             group("/cache") {
-                delete("/posts") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Call to delete cache for posts")}
-                delete("/pages") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Call to delete cache for pages")}
+                delete("/posts") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Call to delete cache for posts") }
+                delete("/pages") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Call to delete cache for pages") }
             }
         }
 
         auth(CognitoJWTAuthorizer) {
             group("/get") {
-                get("/post/{srcKey}") {
-                    request: Request<Unit> ->
+                get("/post/{srcKey}") { request: Request<Unit> ->
                     ResponseEntity.notImplemented(body = "Received request to return the HTML form of ${request.pathParameters["srcKey"]}")
                 }
             }
@@ -104,7 +102,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             ResponseEntity.ok(routeList)
         }
     }
- }
+}
 
 /**
  * Possible extension: custom Filters, like a logging filter, which intercepts a route, performs an action, then passes it on to the correct handler.

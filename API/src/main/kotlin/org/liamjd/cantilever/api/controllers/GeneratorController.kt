@@ -21,6 +21,7 @@ class GeneratorController(val sourceBucket: String, val destinationBucket: Strin
     companion object {
         const val PAGES_DIR = S3_KEY.sources + SOURCE_TYPE.PAGES + "/"
         const val POSTS_DIR = S3_KEY.sources + SOURCE_TYPE.POSTS + "/"
+        const val TEMPLATES_DIR = S3_KEY.templates + "/"
         const val error_NO_RESPONSE = "No response received for message"
     }
 
@@ -134,5 +135,22 @@ class GeneratorController(val sourceBucket: String, val destinationBucket: Strin
             return ResponseEntity.notFound(body = APIResult.Error(message = "Could not find post with key $srcKey"))
         }
         return ResponseEntity.ok(body = APIResult.Success(value = "Regenerated post $requestKey"))
+    }
+
+    /**
+     * NOT IMPLEMENTED
+     */
+    fun generateTemplate(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val requestKey = request.pathParameters["templateKey"]
+        if (requestKey == "*") {
+            return ResponseEntity.notImplemented(body = APIResult.Error("Regeneration of all templates is not supported."))
+        }
+        val templateKey = TEMPLATES_DIR + requestKey
+        println("GeneratorController received request to regenerate pages based on template $templateKey")
+        // first, get the pages structure file - WHICH DOESN'T EXIST YET
+        // then, get the pageSrcKeys for each page which uses this template
+        // then send the markdown message to each of these pages
+
+        return ResponseEntity.notImplemented(body =APIResult.Error(message = "Page template regeneration not yet supported as pages.structure does not exist."))
     }
 }

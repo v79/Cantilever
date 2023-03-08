@@ -57,7 +57,16 @@ class RouterTest {
         val response = testR.handleRequest(event)
 
         assertEquals(200, response.statusCode)
+    }
 
+    @Test
+    fun `does not match when accept header contains wrong values`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/").withHttpMethod("GET")
+            .withHeaders(mapOf("accept" to "image/webp"))
+        val response = testR.handleRequest(event)
+
+        assertEquals(404, response.statusCode)
     }
 
     @Test
