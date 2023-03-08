@@ -9,7 +9,7 @@ template: about
   - ✔️ Creating index.html and general support for static pages
   - ✔️ API routes to regenerate named pages
   - API routes to regenerate pages based on templates
-  - API routes to regenerate posts
+  - ✔️ API routes to regenerate posts
 
 ## Priority Features
 
