@@ -122,6 +122,8 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         return response
     }
 
+
+
     companion object {
         const val POSTS = "posts"
         const val PAGES = "pages"

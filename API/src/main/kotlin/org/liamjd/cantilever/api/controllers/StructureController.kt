@@ -22,10 +22,12 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 /**
  * Handle functions relating to the structure.json file
  */
+@Deprecated("Functionality moving to ProjectController")
 class StructureController(val sourceBucket: String, val corsDomain: String = "https://www.cantilevers.org") : KoinComponent {
 
     private val s3Service: S3Service by inject()
     private val structureService: StructureService by inject()
+
 
 
     /**
@@ -51,17 +53,18 @@ class StructureController(val sourceBucket: String, val corsDomain: String = "ht
 
     /**
      * Rebuild the entire structure file from scratch, processing each markdown file in the source bucket
+     * TODO: should this be a separate lambda with its own queue?
      */
     fun rebuildStructureFile(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         println("StructureController: Rebuilding structure file from $POSTS_PREFIX")
-        val listResponse = s3Service.listObjects(prefix = Companion.POSTS_PREFIX, bucket = sourceBucket)
-        println("Sources exist in '${sourceBucket}': ${listResponse.hasContents()} (up to ${listResponse.keyCount()} files)")
+        val posts = s3Service.listObjects(prefix = Companion.POSTS_PREFIX, bucket = sourceBucket)
+        println("Sources exist in '${sourceBucket}': ${posts.hasContents()} (up to ${posts.keyCount()} files)")
         var filesProcessed = 0
-        if (listResponse.hasContents()) {
+        if (posts.hasContents()) {
             val layouts = Layouts(mutableMapOf())
             val structure = Structure(layouts, mutableListOf(), 0)
 
-            listResponse.contents().forEach { obj ->
+            posts.contents().forEach { obj ->
                 if (obj.key().endsWith(".md")) {
                     println("Extracting metadata from file ${obj.key()} (${obj.size()} bytes)")
                     val markdownSource = s3Service.getObjectAsString(obj.key(), sourceBucket)

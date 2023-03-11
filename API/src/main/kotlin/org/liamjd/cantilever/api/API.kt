@@ -4,6 +4,7 @@ import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 import org.liamjd.cantilever.api.controllers.GeneratorController
 import org.liamjd.cantilever.api.controllers.PostController
+import org.liamjd.cantilever.api.controllers.ProjectController
 import org.liamjd.cantilever.api.controllers.StructureController
 import org.liamjd.cantilever.api.services.StructureService
 import org.liamjd.cantilever.auth.CognitoJWTAuthorizer
@@ -43,6 +44,7 @@ class LambdaRouter : RequestHandlerWrapper() {
     private val postController = PostController(sourceBucket = sourceBucket, destinationBucket = destinationBucket)
     private val generatorController =
         GeneratorController(sourceBucket = sourceBucket, destinationBucket = destinationBucket)
+    private val projectController = ProjectController(sourceBucket = sourceBucket)
 
     override val router = lambdaRouter {
 //        filter = loggingFilter()
@@ -57,6 +59,27 @@ class LambdaRouter : RequestHandlerWrapper() {
             group("/structure") {
                 get("/rebuild", structureController::rebuildStructureFile)
                 post("/addSource", structureController::addFileToStructure)
+            }
+        }
+
+        auth(CognitoJWTAuthorizer) {
+            group("/project") {
+                get("/posts", projectController::getPosts)
+                put(
+                    "/posts/rebuild", projectController::rebuildPostList
+                )
+                get("/pages") { _: Request<Unit> ->
+                    ResponseEntity.notImplemented(body = "route /project/pages not implemented")
+                }
+                put("/pages/rebuild") { _: Request<Unit> ->
+                    ResponseEntity.notImplemented(body = "route /project/pages/rebuild not implemented")
+                }
+                get("/templates") { _: Request<Unit> ->
+                    ResponseEntity.notImplemented(body = "route /project/templates not implemented")
+                }
+                put("/templates/rebuild") { _: Request<Unit> ->
+                    ResponseEntity.notImplemented(body = "route /project/templates/rebuild not implemented")
+                }
             }
         }
 
@@ -81,7 +104,9 @@ class LambdaRouter : RequestHandlerWrapper() {
             group("/generate") {
                 put("/post/{srcKey}", generatorController::generatePost).supplies(setOf(MimeType.plainText))
                 put("/page/{srcKey}", generatorController::generatePage).supplies(setOf(MimeType.plainText))
-                put("/template/{templateKey}", generatorController::generateTemplate).supplies(setOf(MimeType.plainText))
+                put(
+                    "/template/{templateKey}", generatorController::generateTemplate
+                ).supplies(setOf(MimeType.plainText))
             }
             group("/cache") {
                 delete("/posts") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Call to delete cache for posts") }
