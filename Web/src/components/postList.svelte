@@ -1,12 +1,13 @@
 <script lang="ts">
-	import {onDestroy, onMount} from 'svelte';
-	import type {MarkdownPost} from '../models/structure';
-	import {activeStore} from '../stores/appStatusStore.svelte';
-	import {markdownStore} from '../stores/markdownPostStore.svelte';
-	import {notificationStore} from '../stores/notificationStore.svelte';
-	import {postStore, structureStore} from '../stores/postsStore.svelte';
-	import {userStore} from '../stores/userStore.svelte';
-	import {spinnerStore} from './utilities/spinnerWrapper.svelte';
+	import { onDestroy, onMount } from 'svelte';
+	import type { MarkdownPost } from '../models/structure';
+	import { activeStore } from '../stores/appStatusStore.svelte';
+	import { markdownStore } from '../stores/markdownPostStore.svelte';
+	import { notificationStore } from '../stores/notificationStore.svelte';
+	import { postStore, structureStore } from '../stores/postsStore.svelte';
+	import { userStore } from '../stores/userStore.svelte';
+	import PostListItem from './postListItem.svelte';
+	import { spinnerStore } from './utilities/spinnerWrapper.svelte';
 
 	$: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
@@ -203,18 +204,7 @@
 			<div class="justify-left flex py-2">
 				<ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
 					{#each postsSorted as post}
-						{@const postDateString = new Date(post.date).toLocaleDateString('en-GB')}
-
-						<li
-							id={post.srcKey}
-							class="border-grey-400 w-full cursor-pointer border-b px-6 py-2 hover:bg-slate-200 {$activeStore.activeFile ===
-							post.srcKey
-								? 'bg-slate-100'
-								: ''} "
-							on:keyup={() => loadMarkdown(post.srcKey)}
-							on:click={() => loadMarkdown(post.srcKey)}>
-							{post.title}
-						</li>
+						<PostListItem {post} onClickFn={loadMarkdown} />
 					{/each}
 				</ul>
 			</div>
