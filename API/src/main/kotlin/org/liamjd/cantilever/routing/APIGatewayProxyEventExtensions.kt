@@ -4,12 +4,14 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 
 data class Header(val name: String, val value: String)
 
-fun APIGatewayProxyRequestEvent.acceptHeader() = getHeader("accept")
-fun APIGatewayProxyRequestEvent.contentLengthHeader() = getHeader("Content-Length")
-
-
+/**
+ * General helper function to get a named header
+ */
 fun APIGatewayProxyRequestEvent.getHeader(httpHeader: String): String? =
     this.headers?.entries?.firstOrNull { httpHeader.equals(it.key, ignoreCase = true) }?.value
+
+fun APIGatewayProxyRequestEvent.acceptHeader() = getHeader("accept")
+fun APIGatewayProxyRequestEvent.xContentLengthHeader() = getHeader("X-Content-Length")
 fun APIGatewayProxyRequestEvent.contentType() = getHeader("content-type")
 
 /**

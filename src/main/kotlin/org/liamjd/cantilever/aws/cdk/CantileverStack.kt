@@ -182,16 +182,16 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         LambdaRestApi.Builder.create(this, "cantilever-rest-api")
             .restApiName("Cantilever REST API")
             .description("Gateway function to Cantilever services, handling routing")
+            .disableExecuteApiEndpoint(true)
             .domainName(
                 DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName("api.cantilevers.org")
                     .certificate(certificate).build()
             )
             .defaultCorsPreflightOptions(
                 CorsOptions.builder()
-                    .allowHeaders(listOf("'Content-Type,Content-Length,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Content-Length'"))
+                    .allowHeaders(listOf("Content-Type","Content-Length","X-Amz-Date","Authorization","X-Api-Key","X-Amz-Security-Token","X-Content-Length"))
                     .allowMethods(listOf("GET", "PUT","OPTIONS","DELETE")).allowOrigins(listOf(deploymentDomain)).build()
             )
-
             .handler(apiRoutingLambda)
             .proxy(true)
             .build()

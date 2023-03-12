@@ -99,16 +99,14 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
             val request = Request(input, null, routerFunction.requestPredicate.pathPattern)
             (handler as HandlerFunction<*, *>)(request)
         } else {
-            println("Headers: ${input.headers}")
-            println("Content-Length: ${input.contentLengthHeader()}")
-            if (input.contentLengthHeader() == "0") {
+            if (input.xContentLengthHeader() == "0") {
                 // body can be null in this case
                 val request = Request(input, null, routerFunction.requestPredicate.pathPattern)
                 (handler as HandlerFunction<*, *>)(request)
             } else {
                 val kType = routerFunction.requestPredicate.kType!!
                 if (input.body == null) {
-                    ResponseEntity.badRequest(body = "No body received but $kType was expected. If there is legitimately no body, add a Content-Length header with value '0'.")
+                    ResponseEntity.badRequest(body = "No body received but $kType was expected. If there is legitimately no body, add a X-Content-Length header with value '0'.")
                 } else {
                     try {
                         val bodyObject = Json.decodeFromString(serializer(kType), input.body)
