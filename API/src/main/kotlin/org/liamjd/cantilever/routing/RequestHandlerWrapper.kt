@@ -99,6 +99,8 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
             val request = Request(input, null, routerFunction.requestPredicate.pathPattern)
             (handler as HandlerFunction<*, *>)(request)
         } else {
+            println("Headers: ${input.headers}")
+            println("Content-Length: ${input.contentLengthHeader()}")
             if (input.contentLengthHeader() == "0") {
                 // body can be null in this case
                 val request = Request(input, null, routerFunction.requestPredicate.pathPattern)

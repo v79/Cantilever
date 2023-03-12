@@ -13,6 +13,11 @@ export interface Template {
     lastUpdated: string;
 }
 
+export interface AllPosts {
+    count: number,
+    posts: Array<Post>
+}
+
 export interface Post {
     title: string;
     srcKey: string;

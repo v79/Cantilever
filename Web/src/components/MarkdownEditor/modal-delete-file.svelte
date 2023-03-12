@@ -1,13 +1,13 @@
 <script lang="ts">
-	import CModal from '../customized/cModal.svelte';
-	import {CLEAR_POST, markdownStore} from '../../stores/markdownPostStore.svelte';
-	import {spinnerStore} from '../utilities/spinnerWrapper.svelte';
-	import {userStore} from '../../stores/userStore.svelte';
-	import {structureStore} from '../../stores/postsStore.svelte';
-	import {notificationStore} from '../../stores/notificationStore.svelte';
-	import {createEventDispatcher} from 'svelte';
+    import CModal from '../customized/cModal.svelte';
+    import {CLEAR_POST, markdownStore} from '../../stores/markdownPostStore.svelte';
+    import {spinnerStore} from '../utilities/spinnerWrapper.svelte';
+    import {userStore} from '../../stores/userStore.svelte';
+    import {allPostsStore} from '../../stores/postsStore.svelte';
+    import {notificationStore} from '../../stores/notificationStore.svelte';
+    import {createEventDispatcher} from 'svelte';
 
-	export let shown = false;
+    export let shown = false;
 
 	const closeDispatch = createEventDispatcher();
 	function callDispatcher(e: MouseEvent) {
@@ -38,9 +38,9 @@
 					shown: true,
 					type: 'success'
 				});
-				$structureStore.postCount--;
-				let toDelete = $structureStore.posts.findIndex((post) => post.srcKey === srcKey);
-				$structureStore.posts.splice(toDelete, 1);
+				$allPostsStore.count--;
+				let toDelete = $allPostsStore.posts.findIndex((post) => post.srcKey === srcKey);
+				$allPostsStore.posts.splice(toDelete, 1);
 				markdownStore.set(CLEAR_POST);
 			})
 			.catch((error) => {

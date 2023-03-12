@@ -1,30 +1,30 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
-	import type { MarkdownPost } from '../models/structure';
-	import { activeStore } from '../stores/appStatusStore.svelte';
-	import { markdownStore } from '../stores/markdownPostStore.svelte';
-	import { notificationStore } from '../stores/notificationStore.svelte';
-	import { postStore, structureStore } from '../stores/postsStore.svelte';
-	import { userStore } from '../stores/userStore.svelte';
-	import PostListItem from './postListItem.svelte';
-	import { spinnerStore } from './utilities/spinnerWrapper.svelte';
+    import {onDestroy, onMount} from 'svelte';
+    import type {MarkdownPost} from '../models/structure';
+    import {activeStore} from '../stores/appStatusStore.svelte';
+    import {markdownStore} from '../stores/markdownPostStore.svelte';
+    import {notificationStore} from '../stores/notificationStore.svelte';
+    import {allPostsStore, postStore} from '../stores/postsStore.svelte';
+    import {userStore} from '../stores/userStore.svelte';
+    import PostListItem from './postListItem.svelte';
+    import {spinnerStore} from './utilities/spinnerWrapper.svelte';
 
-	$: postsSorted = $postStore.sort(
+    $: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
 	);
 
 	onMount(async () => {});
 
-	function loadStructure() {
+	function loadAllPosts() {
 		// https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/
 		// https://api.cantilevers.org/structure
 		// TODO: extract this sort of thing into a separate method, and add error handling, auth etc
 		// spinnerStore.set({ message: 'Loading project structure', shown: true });
 		$spinnerStore.message = 'Loading project structure';
 		$spinnerStore.shown = true;
-		console.log('Loading structure json...');
+		console.log('Loading all posts json...');
 		let token = $userStore.token;
-		fetch('https://api.cantilevers.org/structure', {
+		fetch('https://api.cantilevers.org/project/posts', {
 			method: 'GET',
 			headers: {
 				Accept: 'application/json',
@@ -37,8 +37,8 @@
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
-				structureStore.set(data.data);
-				$notificationStore.message = 'Loaded project structure ' + $activeStore.activeFile;
+				allPostsStore.set(data.data);
+				$notificationStore.message = 'Loaded all posts ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 			})
 			.catch((error) => {
@@ -93,13 +93,15 @@
 
 	function rebuild() {
 		let token = $userStore.token;
-		console.log('Regenerating project structure file...');
-		fetch('https://api.cantilevers.org/structure/rebuild', {
-			method: 'GET',
+		console.log('Regenerating project posts file...');
+		fetch('https://api.cantilevers.org/project/posts/rebuild', {
+			method: 'PUT',
 			headers: {
 				Accept: 'application/json',
-				Authorization: 'Bearer ' + token
+				Authorization: 'Bearer ' + token,
+				'Content-Length': '0'
 			},
+			body: '1',
 			mode: 'cors'
 		})
 			.then((response) => response.json())
@@ -120,7 +122,7 @@
 				});
 			});
 		$spinnerStore.shown = false;
-		loadStructure();
+		loadAllPosts();
 	}
 
 	function createNewPost() {
@@ -148,11 +150,11 @@
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
 		if (data) {
-			loadStructure();
+			loadAllPosts();
 		}
 	});
 
-	const structStoreUnsubscribe = structureStore.subscribe((data) => {
+	const structStoreUnsubscribe = allPostsStore.subscribe((data) => {
 		postStore.set(data.posts);
 	});
 
@@ -188,7 +190,7 @@
 			on:click={(e) => {
 				$spinnerStore.message = 'Reloading project...';
 				$spinnerStore.shown = true;
-				loadStructure();
+				loadAllPosts();
 			}}>Reload</button>
 		<button
 			type="button"
@@ -197,8 +199,8 @@
 			>New Post</button>
 	</div>
 	<div class="px-8">
-		{#if $structureStore}
-			<h4 class="text-right text-sm text-slate-900">{$structureStore.postCount} posts</h4>
+		{#if $allPostsStore}
+			<h4 class="text-right text-sm text-slate-900">{$allPostsStore.count} posts</h4>
 		{/if}
 		{#if postsSorted.length > 0}
 			<div class="justify-left flex py-2">

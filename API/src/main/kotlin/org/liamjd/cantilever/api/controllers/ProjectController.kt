@@ -5,7 +5,6 @@ import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.api.models.RawJsonString
 import org.liamjd.cantilever.models.Post
 import org.liamjd.cantilever.models.PostList
 import org.liamjd.cantilever.models.Template
@@ -19,11 +18,12 @@ class ProjectController(val sourceBucket: String,) : KoinComponent {
 
     private val s3Service: S3Service by inject()
 
-    fun getPosts(request: Request<Unit>) : ResponseEntity<APIResult<RawJsonString>> {
+    fun getPosts(request: Request<Unit>) : ResponseEntity<APIResult<PostList>> {
         println("ProjectController: Retrieving all posts")
         return if(s3Service.objectExists(postsKey,sourceBucket)) {
             val postListJson = s3Service.getObjectAsString(postsKey,sourceBucket)
-            ResponseEntity.ok(body = APIResult.JsonSuccess(jsonString = RawJsonString(postListJson)))
+            val postList = Json.decodeFromString(PostList.serializer(),postListJson)
+            ResponseEntity.ok(body = APIResult.Success(value = postList ))
         } else {
             ResponseEntity.serverError(body = APIResult.Error(message = "Cannot find file '$postsKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/posts/rebuild"))
         }
@@ -70,7 +70,7 @@ class ProjectController(val sourceBucket: String,) : KoinComponent {
                 }
             }
             list.sortByDescending { it.date }
-            val postList = PostList(list,filesProcessed)
+            val postList = PostList(posts = list, count = filesProcessed)
             val listJson = Json.encodeToString(PostList.serializer(),postList)
             println("Saving PostList JSON file (${listJson.length} bytes)")
             s3Service.putObject(postsKey,sourceBucket,listJson,"application/json")

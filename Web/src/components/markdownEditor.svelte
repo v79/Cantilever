@@ -1,19 +1,19 @@
 <script lang="ts">
-	import {Modal} from 'flowbite-svelte';
-	import {afterUpdate, beforeUpdate, onDestroy} from 'svelte';
-	import SvelteMarkdown from 'svelte-markdown';
-	import {spinnerStore} from '../components/utilities/spinnerWrapper.svelte';
-	import {activeStore} from '../stores/appStatusStore.svelte';
-	import {markdownStore} from '../stores/markdownPostStore.svelte';
-	import {notificationStore} from '../stores/notificationStore.svelte';
-	import {structureStore} from '../stores/postsStore.svelte';
-	import {userStore} from '../stores/userStore.svelte';
-	import CModal from './customized/cModal.svelte';
-	import DatePicker from './forms/datePicker.svelte';
-	import TextInput from './forms/textInput.svelte';
-	import ModalDeleteFile from './MarkdownEditor/modal-delete-file.svelte';
+    import {Modal} from 'flowbite-svelte';
+    import {afterUpdate, beforeUpdate, onDestroy} from 'svelte';
+    import SvelteMarkdown from 'svelte-markdown';
+    import {spinnerStore} from '../components/utilities/spinnerWrapper.svelte';
+    import {activeStore} from '../stores/appStatusStore.svelte';
+    import {markdownStore} from '../stores/markdownPostStore.svelte';
+    import {notificationStore} from '../stores/notificationStore.svelte';
+    import {allPostsStore} from '../stores/postsStore.svelte';
+    import {userStore} from '../stores/userStore.svelte';
+    import CModal from './customized/cModal.svelte';
+    import DatePicker from './forms/datePicker.svelte';
+    import TextInput from './forms/textInput.svelte';
+    import ModalDeleteFile from './MarkdownEditor/modal-delete-file.svelte';
 
-	let saveExistingModal = false;
+    let saveExistingModal = false;
 	let saveNewModal = false;
 	let previewModal = false;
 	let deleteFileModal = false;
@@ -62,12 +62,12 @@
 					shown: true,
 					type: 'success'
 				});
-				let existing = $structureStore.posts.find(
+				let existing = $allPostsStore.posts.find(
 					(post) => post.srcKey === $markdownStore.post.srcKey
 				);
 				if (!existing) {
 					console.log('Added brand new file to structure');
-					$structureStore.postCount = $structureStore.posts.push($markdownStore.post);
+					$allPostsStore.count = $allPostsStore.posts.push($markdownStore.post);
 				}
 				console.log(data);
 			})

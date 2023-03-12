@@ -1,7 +1,7 @@
 <script context="module" lang="ts">
     import {writable} from 'svelte/store';
-    import type {Post, Structure} from '../models/structure';
+    import type {AllPosts, Post} from '../models/structure';
 
-    export const structureStore = writable<Structure>({ layouts: [], posts: [], postCount: 0 });
+    export const allPostsStore = writable<AllPosts>({ count: 0, posts: [] });
 	export const postStore = writable<Post[]>();
 </script>
