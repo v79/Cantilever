@@ -15,8 +15,9 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 
 /**
  * Manages all the project-wide configuration and json models
+ * TODO: there is a lot of duplication in this class
  */
-class ProjectController(val sourceBucket: String) : KoinComponent {
+class ProjectController(val sourceBucket: String) : KoinComponent, APIController {
 
     private val s3Service: S3Service by inject()
 
@@ -48,8 +49,18 @@ class ProjectController(val sourceBucket: String) : KoinComponent {
         }
     }
 
-    fun getTemplates() {
-
+    /**
+     * Return a list of all the [Template]s
+     */
+    fun getTemplates(request: Request<Unit>): ResponseEntity<APIResult<TemplateList>> {
+        println("ProjectController: Retrieving templates pages")
+        return if (s3Service.objectExists(templatesKey, sourceBucket)) {
+            val templateListJson = s3Service.getObjectAsString(templatesKey, sourceBucket)
+            val templateList = Json.decodeFromString(TemplateList.serializer(), templateListJson)
+            ResponseEntity.ok(body = APIResult.Success(value = templateList))
+        } else {
+            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '$templatesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/templates/rebuild"))
+        }
     }
 
     /**
@@ -66,7 +77,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent {
                     println("Extracting metadata from file '${obj.key()}'")
                     val markdownSource = s3Service.getObjectAsString(obj.key(), sourceBucket)
                     val postMetadata = extractPostMetadata(obj.key(), markdownSource)
-                    val templateKey = templateSourcesKey + postMetadata.template + ".html.hbs"
+                    val templateKey = templatesPrefix + postMetadata.template + ".html.hbs"
                     val template = try {
                         val lastModified = obj.lastModified().toKotlinInstant()
                         Template(templateKey, lastModified)
@@ -115,7 +126,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent {
                     println("Extracting metadata from file '${obj.key()}'")
                     val markdownSource = s3Service.getObjectAsString(obj.key(), sourceBucket)
                     val pageModel = extractPageModel(obj.key(), markdownSource)
-                    val templateKey = templateSourcesKey + pageModel.templateKey + ".html.hbs"
+                    val templateKey = templatesPrefix + pageModel.templateKey + ".html.hbs"
                     val template = try {
                         val lastModified = obj.lastModified().toKotlinInstant()
                         Template(templateKey, lastModified)
@@ -124,7 +135,13 @@ class ProjectController(val sourceBucket: String) : KoinComponent {
                         return@forEach
                     }
                     list.add(
-                        Page(srcKey = pageModel.srcKey, templateKey = pageModel.templateKey, url = pageModel.url, sectionKeys = pageModel.sections.keys, attributeKeys = pageModel.attributes.keys)
+                        Page(
+                            srcKey = pageModel.srcKey,
+                            templateKey = pageModel.templateKey,
+                            url = pageModel.url,
+                            sectionKeys = pageModel.sections.keys,
+                            attributeKeys = pageModel.attributes.keys
+                        )
                     )
                     filesProcessed++
                 } else {
@@ -142,9 +159,35 @@ class ProjectController(val sourceBucket: String) : KoinComponent {
         return ResponseEntity.ok(body = APIResult.Success("Written new '$postsKey' with $filesProcessed markdown files processed"))
     }
 
-
-    fun rebuildTemplateList() {
-
+    /**
+     * Rebuild the generated/templates.json file which contains the metadata for all the [Templates]s in the project.
+     */
+    fun rebuildTemplateList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val templates = s3Service.listObjects(templatesPrefix, sourceBucket)
+        println("ProjectController: Rebuilding all templates from sources in '$pagesPrefix'. ${templates.keyCount()} templates found.")
+        var filesProcessed = 0
+        if (templates.hasContents()) {
+            val list = mutableListOf<Template>()
+            templates.contents().forEach { obj ->
+                if (obj.key().endsWith(".hbs")) {
+                    val lastModified = obj.lastModified().toKotlinInstant()
+                    list.add(
+                        Template(obj.key(), lastModified)
+                    )
+                    filesProcessed++
+                } else {
+                    println("Skipping non-hbs file '${obj.key()}'")
+                }
+            }
+            list.sortByDescending { it.lastUpdated }
+            val templateList = TemplateList(templates = list.toList(), count = filesProcessed)
+            val listJson = Json.encodeToString(TemplateList.serializer(), templateList)
+            println("Saving PageList JSON file (${listJson.length} bytes)")
+            s3Service.putObject(templatesKey, sourceBucket, listJson, "application/json")
+        } else {
+            return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a $templatesKey file."))
+        }
+        return ResponseEntity.ok(body = APIResult.Success("Written new '$templatesKey' with $filesProcessed markdown files processed"))
     }
 
     companion object {
@@ -153,6 +196,6 @@ class ProjectController(val sourceBucket: String) : KoinComponent {
         const val templatesKey = "generated/templates.json"
         const val postsPrefix = "sources/posts/"
         const val pagesPrefix = "sources/pages/"
-        const val templateSourcesKey = "templates/"
+        const val templatesPrefix = "templates/"
     }
 }

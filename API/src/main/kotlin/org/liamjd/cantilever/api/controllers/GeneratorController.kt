@@ -16,7 +16,7 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 /**
  * Handle routes relating to document generation. Mostly this will be done by sending messages to the appropriate queues.
  */
-class GeneratorController(val sourceBucket: String, val destinationBucket: String) : KoinComponent {
+class GeneratorController(val sourceBucket: String, val destinationBucket: String) : KoinComponent, APIController {
 
     companion object {
         const val PAGES_DIR = S3_KEY.sources + SOURCE_TYPE.PAGES + "/"

@@ -12,7 +12,7 @@ import org.liamjd.cantilever.services.impl.extractPostMetadata
 import java.net.URLDecoder
 import java.nio.charset.Charset
 
-class PostController(val sourceBucket: String, val destinationBucket: String) : KoinComponent {
+class PostController(val sourceBucket: String, val destinationBucket: String) : KoinComponent, APIController {
     private val s3Service: S3Service by inject()
 
     fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<MarkdownPost>> {

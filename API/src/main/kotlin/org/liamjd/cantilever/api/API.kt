@@ -70,12 +70,8 @@ class LambdaRouter : RequestHandlerWrapper() {
                 )
                 get("/pages", projectController::getPages)
                 put("/pages/rebuild", projectController::rebuildPageList)
-                get("/templates") { _: Request<Unit> ->
-                    ResponseEntity.notImplemented(body = "route /project/templates not implemented")
-                }
-                put("/templates/rebuild") { _: Request<Unit> ->
-                    ResponseEntity.notImplemented(body = "route /project/templates/rebuild not implemented")
-                }
+                get("/templates", projectController::getTemplates)
+                put("/templates/rebuild", projectController::rebuildTemplateList)
             }
         }
 
