@@ -9,7 +9,7 @@ template: about
   - ✔️ Creating index.html and general support for static pages
   - ✔️ API routes to regenerate named pages
   - API routes to regenerate pages based on templates
-    - This is missing a "page structure" file, the overall project map for pages.
+    - ✔️ This is missing a "page structure" file, the overall project map for pages.
   - ✔️ API routes to regenerate posts
 
 ## Priority Features

@@ -270,7 +270,7 @@ class RouterTest {
         val response = testR.handleRequest(event)
 
         assertEquals(400, response.statusCode)
-        assertEquals("No body received but org.liamjd.cantilever.routing.PostThis was expected. If there is legitimately no body, add a Content-Length header with value '0'.",response.body)
+        assertEquals("No body received but org.liamjd.cantilever.routing.PostThis was expected. If there is legitimately no body, add a X-Content-Length header with value '0'.",response.body)
     }
 
     @Test

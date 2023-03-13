@@ -1,15 +1,15 @@
 <script lang="ts">
-	import {onDestroy, onMount} from 'svelte';
-	import type {MarkdownPost} from '../models/structure';
-	import {activeStore} from '../stores/appStatusStore.svelte';
-	import {markdownStore} from '../stores/markdownPostStore.svelte';
-	import {notificationStore} from '../stores/notificationStore.svelte';
-	import {allPostsStore, postStore} from '../stores/postsStore.svelte';
-	import {userStore} from '../stores/userStore.svelte';
-	import PostListItem from './postListItem.svelte';
-	import {spinnerStore} from './utilities/spinnerWrapper.svelte';
+    import {onDestroy, onMount} from 'svelte';
+    import type {MarkdownPost} from '../models/structure';
+    import {activeStore} from '../stores/appStatusStore.svelte';
+    import {markdownStore} from '../stores/markdownPostStore.svelte';
+    import {notificationStore} from '../stores/notificationStore.svelte';
+    import {allPostsStore, postStore} from '../stores/postsStore.svelte';
+    import {userStore} from '../stores/userStore.svelte';
+    import PostListItem from './postListItem.svelte';
+    import {spinnerStore} from './utilities/spinnerWrapper.svelte';
 
-	$: postsSorted = $postStore.sort(
+    $: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
 	);
 
@@ -111,6 +111,7 @@
 					shown: true,
 					type: 'success'
 				});
+				loadAllPosts();
 			})
 			.catch((error) => {
 				console.log(error);
@@ -121,7 +122,6 @@
 				});
 			});
 		$spinnerStore.shown = false;
-		loadAllPosts();
 	}
 
 	function createNewPost() {

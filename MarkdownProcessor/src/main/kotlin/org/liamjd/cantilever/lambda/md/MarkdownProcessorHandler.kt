@@ -90,7 +90,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                 // transform each of the sections from Markdown to HTML and save them as fragments.
                 // then build a message model which contains references to each of the fragments
                 // which will be passed to the handlebars template
-                val fragmentPrefix = fragments + pageModel.key + "/"
+                val fragmentPrefix = fragments + pageModel.srcKey + "/"
                 val sectionMap = mutableMapOf<String, String>()
                 pageModel.sections.forEach {
                     logger.info("Writing ${it.key} to ${fragmentPrefix}${it.key}")
@@ -101,11 +101,11 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                 }
 
                 val message = SqsMsgBody.PageHandlebarsModelMsg(
-                    key = pageModel.key,
-                    template = pageModel.template,
+                    key = pageModel.srcKey,
+                    template = pageModel.templateKey,
                     attributes = pageModel.attributes,
                     sectionKeys = sectionMap.toMap(),
-                    url = pageModel.url?: pageModel.key.substringBeforeLast(".")
+                    url = pageModel.url?: pageModel.srcKey.substringBeforeLast(".")
                 )
                 logger.info("Prepared message: $message")
 

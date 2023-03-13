@@ -12,7 +12,27 @@ data class Structure(val layouts: Layouts, val posts: MutableList<Post>, var pos
 data class PostList(val count: Int = 0, val posts: List<Post>)
 
 @Serializable
-data class Post(val title: String, val srcKey: String, val url: String, val date: LocalDate, val lastUpdated: Instant = Clock.System.now(), val templateKey: String)
+data class PageList(val count: Int = 0, val pages: List<Page>)
+
+@Serializable
+data class Post(
+    val title: String,
+    val srcKey: String,
+    val url: String,
+    val date: LocalDate,
+    val lastUpdated: Instant = Clock.System.now(),
+    val templateKey: String
+)
+
+@Serializable
+data class Page(
+    val srcKey: String,
+    val templateKey: String,
+    val url: String,
+    val attributeKeys: Set<String>,
+    val sectionKeys:Set<String>,
+    val lastUpdated: Instant = Clock.System.now()
+)
 
 @Serializable
 data class Template(val key: String, val lastUpdated: Instant = Clock.System.now())

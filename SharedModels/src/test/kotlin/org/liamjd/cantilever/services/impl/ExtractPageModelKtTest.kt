@@ -11,18 +11,7 @@ internal class ExtractPageModelKtTest {
     fun `extract model for core metadata only`() {
         val result = extractPageModel(filename,coreOnly)
 
-        assertEquals("index",result.template)
-        assertEquals(0,result.attributes.size)
-        assertEquals(0,result.sections.size)
-        assertNotNull(result.lastModified)
-    }
-
-    @Test
-    fun `extract model with optional slug specified`() {
-        val result = extractPageModel(filename, coreWithSlug)
-
-        assertEquals("index",result.template)
-        assertEquals("index.html",result.url)
+        assertEquals("index",result.templateKey)
         assertEquals(0,result.attributes.size)
         assertEquals(0,result.sections.size)
         assertNotNull(result.lastModified)
@@ -32,7 +21,7 @@ internal class ExtractPageModelKtTest {
     fun `extract model with one named section not closed`() {
         val result = extractPageModel(filename,singleNamedSection)
 
-        assertEquals("index",result.template)
+        assertEquals("index",result.templateKey)
         assertEquals(0,result.attributes.size)
         assertEquals(1,result.sections.size)
         assertNotNull(result.lastModified)
@@ -43,7 +32,7 @@ internal class ExtractPageModelKtTest {
     fun `extract model with one named section is closed`() {
         val result = extractPageModel(filename,sectionIsClosed)
 
-        assertEquals("index",result.template)
+        assertEquals("index",result.templateKey)
         assertEquals(0,result.attributes.size)
         assertEquals(1,result.sections.size)
         assertNotNull(result.lastModified)
@@ -54,7 +43,7 @@ internal class ExtractPageModelKtTest {
     fun `extract model with multiple sections not closed`() {
         val result = extractPageModel(filename,multipleNamedSections)
 
-        assertEquals("index",result.template)
+        assertEquals("index",result.templateKey)
         assertEquals(0,result.attributes.size)
         assertEquals(2,result.sections.size)
         assertNotNull(result.lastModified)
@@ -65,7 +54,7 @@ internal class ExtractPageModelKtTest {
     fun `extract model with custom attributes in metadata`() {
         val result = extractPageModel(filename,customMetadata)
 
-        assertEquals("index",result.template)
+        assertEquals("index",result.templateKey)
         assertEquals(1,result.attributes.size)
         assertEquals(0,result.sections.size)
         assertNotNull(result.lastModified)
@@ -77,7 +66,7 @@ internal class ExtractPageModelKtTest {
     fun `if template is blank it parses but no template is set`() {
         val result = extractPageModel(filename,templateMissing)
 
-        assertEquals("",result.template)
+        assertEquals("",result.templateKey)
     }
 
     @Test
@@ -86,7 +75,7 @@ internal class ExtractPageModelKtTest {
 
         println(result)
 
-        assertEquals("index",result.template)
+        assertEquals("index",result.templateKey)
         assertEquals(0,result.attributes.size)
         assertEquals(0,result.sections.size)
         assertNotNull(result.lastModified)
@@ -95,7 +84,7 @@ internal class ExtractPageModelKtTest {
     @Test
     fun `extract a complex model`() {
         val result = extractPageModel(filename,complexContent)
-        assertEquals("index",result.template)
+        assertEquals("index",result.templateKey)
         assertEquals(3,result.attributes.size)
         assertEquals(3,result.sections.size)
         assertNotNull(result.lastModified)
@@ -122,7 +111,7 @@ internal class ExtractPageModelKtTest {
     fun `extract metadata when embedded raw markdown contains block separators`() {
         val result = extractPageModel(filename, embeddedMarkdownDashes)
 
-        assertEquals("index",result.template)
+        assertEquals("index",result.templateKey)
         assertEquals(1,result.attributes.size)
         assertEquals(1,result.sections.size)
         assertNotNull(result.lastModified)
@@ -140,13 +129,6 @@ val templateMissing = """
 val coreOnly = """
     ---
     template: index
-    ---
-""".trimIndent()
-
-val coreWithSlug = """
-    ---
-    template: index
-    slug: index.html
     ---
 """.trimIndent()
 

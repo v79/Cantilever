@@ -32,18 +32,18 @@ sealed class SqsMsgBody {
     @OptIn(ExperimentalSerializationApi::class)
     @Serializable
     data class PageModelMsg(
-        val key: String,
-        val template: String,
-        val url: String? = null,
+        val srcKey: String,
+        val templateKey: String,
+        val url: String,
         @EncodeDefault val lastModified: Instant = Clock.System.now(),
         val attributes: Map<String, String>,
         val sections: Map<String, MarkdownSection>
     ) : SqsMsgBody()
 
-    /**
-     * Once markdown processing is complete, it sends this message to the handlebars template engine
-     * so that the complete web page can be generated
-     */
-    @Serializable
-    data class HTMLFragmentReadyMsg(val fragmentKey: String, val metadata: PostMetadata): SqsMsgBody()
+/**
+ * Once markdown processing is complete, it sends this message to the handlebars template engine
+ * so that the complete web page can be generated
+ */
+@Serializable
+data class HTMLFragmentReadyMsg(val fragmentKey: String, val metadata: PostMetadata) : SqsMsgBody()
 }

@@ -2,6 +2,7 @@ package org.liamjd.cantilever.services.impl
 
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.common.stripFrontMatter
+import org.liamjd.cantilever.common.toSlug
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 
 
@@ -51,12 +52,12 @@ fun extractPageModel(filename: String, source: String): SqsMsgBody.PageModelMsg 
     val url = if (metadata.contains("slug:")) {
         metadata.substringAfter("slug:").substringBefore("\n").trim()
     } else {
-        null
+        filename.toSlug()
     }
 
     return SqsMsgBody.PageModelMsg(
-        key = filename,
-        template = template,
+        srcKey = filename,
+        templateKey = template,
         url = url,
         attributes = customAttributes.toMap(),
         sections = customSections

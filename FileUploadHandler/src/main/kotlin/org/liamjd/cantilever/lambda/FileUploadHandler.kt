@@ -95,10 +95,10 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                         val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
                         val pageSrcKey = srcKey.removePrefix("sources/$sourceType/") // just want the actual file name
                         // extract page model
-                        val pageModel = extractPageModel(pageSrcKey, sourceString)
-                        logger.info("Built page model: $pageModel")
+                        val pageModelMsg = extractPageModel(pageSrcKey, sourceString)
+                        logger.info("Built page model: $pageModelMsg")
 
-                        val msgResponse = sqsService.sendMessage(toQueue = queueUrl, body = pageModel, messageAttributes = createStringAttribute("sourceType",sourceType))
+                        val msgResponse = sqsService.sendMessage(toQueue = queueUrl, body = pageModelMsg, messageAttributes = createStringAttribute("sourceType",sourceType))
                         if (msgResponse != null) {
                             logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
                         } else {
