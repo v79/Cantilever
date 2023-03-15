@@ -95,7 +95,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                 pageModel.sections.forEach {
                     logger.info("Writing ${it.key} to ${fragmentPrefix}${it.key}")
                     val html = convertMDToHTML(it.value)
-                    logger.info(html)
+                    logger.info(html.take(100))
                     s3Service.putObject(fragmentPrefix + it.key, sourceBucket, html, "text/html")
                     sectionMap[it.key] = fragmentPrefix + it.key
                 }
@@ -105,7 +105,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                     template = pageModel.templateKey,
                     attributes = pageModel.attributes,
                     sectionKeys = sectionMap.toMap(),
-                    url = pageModel.url?: pageModel.srcKey.substringBeforeLast(".")
+                    url = pageModel.url.removeSuffix(".md")
                 )
                 logger.info("Prepared message: $message")
 

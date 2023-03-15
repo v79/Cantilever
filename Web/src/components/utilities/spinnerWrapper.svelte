@@ -1,6 +1,6 @@
 <script lang="ts" context="module">
-	// export const spinnerStore = writable({ shown: false, message: '' });
-	function createSpinnerStore() {
+	export const spinnerStore = writable({ shown: false, message: '' });
+	/* 	function createSpinnerStore() {
 		const { subscribe, set, update } = writable({ shown: false, message: '' });
 		return {
 			subscribe,
@@ -10,7 +10,7 @@
 		};
 	}
 
-	export const spinnerStore = createSpinnerStore();
+	export const spinnerStore = createSpinnerStore(); */
 </script>
 
 <script lang="ts">
@@ -22,17 +22,15 @@
 
 {#if $spinnerStore.shown}
 	<div
-		out:fade={{ duration: 1000 }}
+		out:fade={{ duration: 500 }}
 		id={spinnerID}
 		aria-hidden="true"
-		class="absolute top-[50%] left-0 z-50 flex h-40 w-full items-center justify-center overflow-y-auto overflow-x-hidden bg-white bg-opacity-70">
+		class="absolute left-1/3 top-[50%] z-50 flex h-40 w-1/3 items-center justify-center overflow-y-auto overflow-x-hidden rounded-md bg-white bg-opacity-90">
 		<Spinner />
 		<p class="px-2 text-lg font-bold">
 			{#if $spinnerStore.message}{$spinnerStore.message}{:else}Processing...{/if}
 		</p>
 	</div>
-{:else}
-	<p>spinnerStore.shown: {$spinnerStore.shown}</p>
 {/if}
 
 <!--	<div
