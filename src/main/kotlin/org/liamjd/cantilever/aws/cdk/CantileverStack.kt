@@ -51,6 +51,9 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         println("Creating destination bucket")
         val destinationBucket = createDestinationBucket()
 
+        println("Creating editor bucket")
+        val editorBucket = createEditorBucket()
+
         // SQS for inter-lambda communication. The visibility timeout should be > the max processing time of the lambdas, so setting to 3
         println("Creating markdown processing queue")
         val markdownProcessingQueue =
@@ -212,7 +215,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             UserPoolDomainOptions.builder()
                 .cognitoDomain(CognitoDomainOptions.builder().domainPrefix("cantilever").build()).build()
         )
-        val appUrls = listOf("https://www.cantilevers.org/app/", "http://localhost:5173/")
+        val appUrls = listOf("https://app.cantilevers.org/", "http://localhost:5173/")
         pool.addClient(
             "cantilever-app",
             UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
@@ -231,10 +234,19 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         .websiteIndexDocument("index.html")
         .build()
 
-    private fun createBucket(name: String): Bucket = Bucket.Builder.create(this, name)
+    private fun createBucket(name: String, public: Boolean = false): Bucket = Bucket.Builder.create(this, name)
         .versioned(false)
         .removalPolicy(RemovalPolicy.DESTROY)
         .autoDeleteObjects(true)
+        .publicReadAccess(public)
+        .build()
+
+    private fun createEditorBucket(): Bucket = Bucket.Builder.create(this, "cantilever-editor")
+        .versioned(false)
+        .removalPolicy(RemovalPolicy.DESTROY)
+        .autoDeleteObjects(true)
+        .publicReadAccess(true)
+        .websiteIndexDocument("index.html")
         .build()
 
     /**

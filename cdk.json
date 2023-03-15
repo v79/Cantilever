@@ -19,7 +19,7 @@
       "domainName" : "http://localhost:5173"
     },
     "prod": {
-      "domainName" : "https://www.cantilevers.org"
+      "domainName" : "https://app.cantilevers.org"
     }
   }
 }
