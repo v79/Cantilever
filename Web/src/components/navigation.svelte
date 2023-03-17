@@ -1,10 +1,9 @@
 <script>
     import LoginButton from './loginButton.svelte';
-    import {activeStore} from '../stores/appStatusStore.svelte';
     import {spinnerStore} from './utilities/spinnerWrapper.svelte';
     import {userStore} from '../stores/userStore.svelte';
     import {allPostsStore} from '../stores/postsStore.svelte';
-    import {Button, Chevron, Dropdown, DropdownItem, Navbar, NavBrand, NavUl} from 'flowbite-svelte';
+    import {Chevron, Dropdown, DropdownItem, Navbar, NavBrand, NavLi, NavUl} from 'flowbite-svelte';
     import CModal from './customized/cModal.svelte';
     import CToast from './customized/cToast.svelte';
     import {notificationStore} from '../stores/notificationStore.svelte';
@@ -63,7 +62,7 @@
 
 <Navbar
 	color="none"
-	navClass="bg-slate-600 text-gray-200 shadow-lg py-4 px-4"
+	navClass="bg-slate-600 text-gray-200 shadow-lg  py-4 px-4"
 	fluid={false}
 	navDivClass="mx-auto flex flex-wrap justify-between items-center shadow-md ">
 	<NavBrand href="/">
@@ -78,24 +77,21 @@
 
 	<NavUl nonActiveClass="text-gray-200">
 		{#if $userStore !== undefined}
-			<Button size="sm"><Chevron>Generate</Chevron></Button>
-			<Dropdown>
+			<NavLi id="generate-menu" nonActiveClass="text-grey-200" class="cursor-pointer"
+				><Chevron aligned>Generate</Chevron></NavLi>
+		{/if}
+		<NavLi nonActiveClass="text-grey-200" href="/">Posts</NavLi>
+		<NavLi nonActiveClass="text-grey-200" href="/">Pages</NavLi>
+		<NavLi nonActiveClass="text-grey-200" href="/">Templates</NavLi>
+
+		{#if $userStore !== undefined}
+			<Dropdown triggeredBy="#generate-menu">
 				<DropdownItem on:click={(e) => (regenAllPostsModal = true)}>Rebuild all posts</DropdownItem>
 				<DropdownItem on:click={(e) => (regenAllPagesModal = true)}>Rebuild all pages</DropdownItem>
 			</Dropdown>
 		{/if}
-		<button type="button" class="uppercase">Pages</button>
-		<button type="button" class="uppercase">Posts</button>
-		<button type="button" class="uppercase">Templates</button>
 	</NavUl>
-	<div class="flex-grow items-center justify-between">
-		<p>
-			<strong>Current file:</strong>
-			{$activeStore.activeFile} <strong>Is new:</strong>
-			{$activeStore.isNewFile} <strong>Has changed: </strong>{$activeStore.hasChanged}
-			<strong>Is valid: </strong>{$activeStore.isValid}
-		</p>
-	</div>
+	<div class="flex-grow items-center justify-between" />
 	<div class="flex flex-wrap items-center justify-end">
 		<LoginButton />
 	</div>
