@@ -79,7 +79,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                 }
             }
 
-           SOURCE_TYPE.PAGES -> {
+            SOURCE_TYPE.PAGES -> {
                 logger.info(eventRecord.body)
                 /**
                  * A page is different from a post. It has a different set of metadata.
@@ -92,11 +92,12 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                 // which will be passed to the handlebars template
                 val fragmentPrefix = fragments + pageModel.srcKey + "/"
                 val sectionMap = mutableMapOf<String, String>()
+                var bytesWritten = 0
                 pageModel.sections.forEach {
                     logger.info("Writing ${it.key} to ${fragmentPrefix}${it.key}")
                     val html = convertMDToHTML(it.value)
-                    logger.info(html.take(100))
-                    s3Service.putObject(fragmentPrefix + it.key, sourceBucket, html, "text/html")
+                    logger.info("HTML output is ${html.length} characters long.")
+                    bytesWritten += s3Service.putObject(fragmentPrefix + it.key, sourceBucket, html, "text/html")
                     sectionMap[it.key] = fragmentPrefix + it.key
                 }
 
@@ -107,6 +108,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                     sectionKeys = sectionMap.toMap(),
                     url = pageModel.url.removeSuffix(".md")
                 )
+                logger.info("${pageModel.sections.size} sections written, totalling $bytesWritten bytes")
                 logger.info("Prepared message: $message")
 
                 val msgResponse = sqsService.sendMessage(

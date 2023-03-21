@@ -5,7 +5,6 @@ import software.amazon.awscdk.Stack
 import software.amazon.awscdk.Tags
 import software.amazon.awscdk.services.cloudfront.*
 import software.amazon.awscdk.services.s3.IBucket
-import java.lang.String
 
 class CloudFrontSubstack {
 
