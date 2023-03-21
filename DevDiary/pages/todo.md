@@ -26,6 +26,4 @@ template: about
 
 ### Ideas and nice-to-haves
 
-- Work out why this is rendering `nice-to-haves` as `nice-to-hav`
-
 Ultimately, I would like to be able to separate the 'cantilever' application (front-and-backend) with this cantilevers.org blogging website.
