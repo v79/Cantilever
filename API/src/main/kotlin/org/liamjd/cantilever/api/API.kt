@@ -43,7 +43,7 @@ class LambdaRouter : RequestHandlerWrapper() {
     private val structureController = StructureController(sourceBucket = sourceBucket, corsDomain = corsDomain)
     private val postController = PostController(sourceBucket = sourceBucket, destinationBucket = destinationBucket)
     private val generatorController =
-        GeneratorController(sourceBucket = sourceBucket, destinationBucket = destinationBucket)
+        GeneratorController(sourceBucket = sourceBucket)
     private val projectController = ProjectController(sourceBucket = sourceBucket)
 
     override val router = lambdaRouter {
