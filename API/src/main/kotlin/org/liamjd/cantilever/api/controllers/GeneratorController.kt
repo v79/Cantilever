@@ -32,7 +32,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
     private val s3Service: S3Service by inject()
     private val sqsService: SQSService by inject()
 
-    private val markdownQueue: String = System.getenv(QUEUE.MARKDOWN)
+    private val markdownQueue: String = System.getenv(QUEUE.MARKDOWN) ?: "markdown_processing_queue"
 
     /**
      * Generate the HTML version of the page specified by the path parameter 'srcKey'.

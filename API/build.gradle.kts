@@ -49,8 +49,9 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
     testImplementation("com.amazonaws:aws-lambda-java-tests:1.1.1")
-    testImplementation("io.mockk:mockk:1.13.3")
+    testImplementation("io.mockk:mockk:1.13.4")
     testImplementation("io.insert-koin:koin-test:3.3.3")
+    testImplementation("io.insert-koin:koin-test-junit5:3.3.3")
 }
 
 tasks.getByName<Test>("test") {
