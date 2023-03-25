@@ -48,6 +48,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
             // get every page in the pages folder
             val pageListResponse = s3Service.listObjects(PAGES_DIR, sourceBucket)
             println("There are ${pageListResponse.keyCount()} potential pages to process")
+            var count = 0
             pageListResponse.contents().filter { it.key().endsWith(FILE_TYPE.MD) }.forEach { obj ->
                 println(obj.key())
                 val sourceString = s3Service.getObjectAsString(obj.key(), sourceBucket)
@@ -62,13 +63,14 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
                 )
 
                 if (msgResponse != null) {
+                    count++
                     println("Message '${obj.key()}' sent to '$markdownQueue', message ID is ${msgResponse.messageId()}'")
                 } else {
                     println(error_NO_RESPONSE)
                 }
             }
 
-            return ResponseEntity.notImplemented(body = APIResult.OK("Mass page generation not yet implemented."))
+            return ResponseEntity.ok(body = APIResult.Success(value = "$count pages have been regenerated"))
         } else {
             val srcKey = PAGES_DIR + requestKey
             println("GeneratorController: Received request to regenerate page $srcKey")
