@@ -1,17 +1,16 @@
 # LAMBDA FileUploadHandler S3 PUT s3Put.json for file sourceWithFrontmatter.md
+sam local invoke -t .\cdk.out\CantileverStack.template.json cantileverfileuploadlambda54E3EA9D -e .\testEvents\s3Put.json --env-vars ./testEvents/template-env.json
 
-sam local invoke -t .\cdk.out\CantileverStack.template.json cantileverfileuploadlambda54E3EA9D -e .\testEvents\s3Put.json
+# FileUploadHandler S3 PUT page.json
+sam local invoke -t .\cdk.out\CantileverStack.template.json cantileverfileuploadlambda54E3EA9D -e .\testEvents\s3PutPage.json --env-vars ./testEvents/template-env.json
 
 # LAMBDA Markdown Processor SQS
-
-sam local invoke -t .\cdk.out\CantileverStack.template.json cantilevermarkdownprocessorlambda0411F890 -e .\testEvents\sqs-receive-message.json
+sam local invoke -t .\cdk.out\CantileverStack.template.json cantilevermarkdownprocessorlambda0411F890 -e .\testEvents\sqs-receive-message.json --env-vars ./testEvents/template-env.json
 
 # Handlebars Processor
-
 sam local invoke -t .\cdk.out\CantileverStack.template.json cantileverhandlebarprocessorlambda57BEC134 -e .\testEvents\sqs-receive-template-message.json  --env-vars .\testEvents\template-env.json
 
 # API Gateway GET /structure
-
 sam local invoke -t ./cdk.out/CantileverStack.template.json cantilever-api-router-lambda -e ./API/src/test/resources/getStructure.event.json --env-vars ./testEvents/template-env.json
 
 

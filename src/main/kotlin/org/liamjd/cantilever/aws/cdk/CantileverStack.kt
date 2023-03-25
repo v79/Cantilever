@@ -17,8 +17,6 @@ import software.amazon.awscdk.services.logs.RetentionDays
 import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.EventType
 import software.amazon.awscdk.services.s3.NotificationKeyFilter
-import software.amazon.awscdk.services.s3.deployment.BucketDeployment
-import software.amazon.awscdk.services.s3.deployment.Source
 import software.amazon.awscdk.services.sqs.Queue
 import software.constructs.Construct
 
@@ -53,11 +51,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         println("Creating destination bucket")
         val destinationBucket = createDestinationBucket()
 
-        println("Adding temporary index.html")
-        val indexHtml = BucketDeployment.Builder.create(this, "cantilever-website-index")
-            .sources(listOf(Source.asset("src/main/resources/staticBucket")))
-            .destinationBucket(destinationBucket)
-            .build()
+        println("Creating editor bucket")
+        val editorBucket = createEditorBucket()
 
         // SQS for inter-lambda communication. The visibility timeout should be > the max processing time of the lambdas, so setting to 3
         println("Creating markdown processing queue")
@@ -82,6 +77,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             description = "Lambda function which responds to file upload events",
             codePath = "./FileUploadHandler/build/libs/FileUploadHandler.jar",
             handler = "org.liamjd.cantilever.lambda.FileUploadHandler",
+            memory = 256,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl
@@ -95,6 +91,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             description = "Lambda function which converts a markdown file to an HTML file or fragment",
             codePath = "./MarkdownProcessor/build/libs/MarkdownProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.md.MarkdownProcessorHandler",
+            memory = 320,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl
@@ -124,20 +121,22 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.destination_bucket.name to destinationBucket.bucketName,
+                ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
+                ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl,
                 ENV.cors_domain.name to deploymentDomain
             )
         )
 
         println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
         val cloudfrontSubstack = CloudFrontSubstack()
-        val cloudFrontDistribution =
-            cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
+        cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
 
         // I suspect this isn't the most secure way to do this. Better a new IAM role?
-        println("Granting lambda permissions to buckets")
+        println("Granting lambda permissions to buckets and queues")
         fileUploadLambda.apply {
             sourceBucket.grantRead(this)
             sourceBucket.grantWrite(this)
+
         }
         markdownProcessorLambda.apply {
             sourceBucket.grantRead(this)
@@ -150,6 +149,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         apiRoutingLambda.apply {
             sourceBucket.grantRead(this)
             sourceBucket.grantWrite(this)
+            markdownProcessingQueue.queue.grantSendMessages(this)
+            handlebarProcessingQueue.queue.grantSendMessages(this)
         }
 
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
@@ -168,7 +169,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             SqsEventSource.Builder.create(handlebarProcessingQueue.queue).build()
         )
 
-        println("Granting queue permissions")
+        println("Granting queue-to-queue permissions")
         markdownProcessingQueue.queue.grantSendMessages(fileUploadLambda)
         markdownProcessingQueue.queue.grantConsumeMessages(markdownProcessorLambda)
         handlebarProcessingQueue.queue.grantSendMessages(markdownProcessorLambda)
@@ -180,17 +181,19 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             "cantilever-api-edge-certificate",
             "arn:aws:acm:us-east-1:086949310404:certificate/9b8f27c6-87be-4c14-a368-e6ad3ac4fb68"
         )
-        val gateway = LambdaRestApi.Builder.create(this, "cantilever-rest-api")
+        // The API Gateway
+        LambdaRestApi.Builder.create(this, "cantilever-rest-api")
             .restApiName("Cantilever REST API")
             .description("Gateway function to Cantilever services, handling routing")
+            .disableExecuteApiEndpoint(true)
             .domainName(
                 DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName("api.cantilevers.org")
                     .certificate(certificate).build()
             )
             .defaultCorsPreflightOptions(
                 CorsOptions.builder()
-                    .allowHeaders(listOf("'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"))
-                    .allowMethods(listOf("GET", "OPTIONS","DELETE")).allowOrigins(listOf(deploymentDomain)).build()
+                    .allowHeaders(listOf("Content-Type","Content-Length","X-Amz-Date","Authorization","X-Api-Key","X-Amz-Security-Token","X-Content-Length"))
+                    .allowMethods(listOf("GET", "PUT","OPTIONS","DELETE")).allowOrigins(listOf(deploymentDomain)).build()
             )
             .handler(apiRoutingLambda)
             .proxy(true)
@@ -207,23 +210,19 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             .email(UserPoolEmail.withCognito())
             .build()
 
-        val cognitoPoolDomain = pool.addDomain(
+        pool.addDomain(
             "cantilever-api",
             UserPoolDomainOptions.builder()
                 .cognitoDomain(CognitoDomainOptions.builder().domainPrefix("cantilever").build()).build()
         )
-        val appUrls = listOf("https://www.cantilevers.org/app/", "http://localhost:5173/")
-        val appClient = pool.addClient(
+        val appUrls = listOf("https://app.cantilevers.org/", "http://localhost:5173/")
+        pool.addClient(
             "cantilever-app",
             UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
                 OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(true).build())
                     .callbackUrls(appUrls).logoutUrls(appUrls).build()
             ).build()
         )
-        /* println("Adding Cognito authentication to API Gateway")
-          val authorizer = CognitoUserPoolsAuthorizer.Builder.create(this,"CantileverCognitoAuth").authorizerName("CantileverCognitoAuth").cognitoUserPools(
-              listOf(pool)).build()*/
-
 
     }
 
@@ -235,10 +234,19 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         .websiteIndexDocument("index.html")
         .build()
 
-    private fun createBucket(name: String): Bucket = Bucket.Builder.create(this, name)
+    private fun createBucket(name: String, public: Boolean = false): Bucket = Bucket.Builder.create(this, name)
         .versioned(false)
         .removalPolicy(RemovalPolicy.DESTROY)
         .autoDeleteObjects(true)
+        .publicReadAccess(public)
+        .build()
+
+    private fun createEditorBucket(): Bucket = Bucket.Builder.create(this, "cantilever-editor")
+        .versioned(false)
+        .removalPolicy(RemovalPolicy.DESTROY)
+        .autoDeleteObjects(true)
+        .publicReadAccess(true)
+        .websiteIndexDocument("index.html")
         .build()
 
     /**
@@ -254,11 +262,12 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         description: String?,
         codePath: String,
         handler: String,
+        memory: Int = 320,
         environment: Map<String, String>?
     ): Function = Function.Builder.create(stack, id)
         .description(description ?: "")
         .runtime(Runtime.JAVA_11)
-        .memorySize(320)
+        .memorySize(memory)
         .timeout(Duration.minutes(2))
         .code(Code.fromAsset(codePath))
         .handler(handler)

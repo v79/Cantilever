@@ -53,5 +53,10 @@ data class ResponseEntity<T : Any>(
             val tt: KType = typeOf<T>()
             return ResponseEntity<T>(HttpCodes.BAD_REQUEST.code, body, headers).apply { kType = tt }
         }
+
+        inline fun <reified T : Any> notImplemented(body: T? = null, headers: Map<String, String> = emptyMap()): ResponseEntity<T> {
+            val tt: KType = typeOf<T>()
+            return ResponseEntity<T>(HttpCodes.NOT_IMPLEMENTED.code, body, headers).apply { kType = tt }
+        }
     }
 }

@@ -5,7 +5,6 @@ import software.amazon.awscdk.Stack
 import software.amazon.awscdk.Tags
 import software.amazon.awscdk.services.cloudfront.*
 import software.amazon.awscdk.services.s3.IBucket
-import java.lang.String
 
 class CloudFrontSubstack {
 
@@ -20,6 +19,11 @@ class CloudFrontSubstack {
                     .build()
             )*/
 
+    /**
+     * This isn't complete, there are extra steps I need to do at the AWS console:
+     * - Attach the SSL certificate
+     * - Add the alternate domain name (www...)
+     */
     fun createCloudfrontDistribution(
         stack: Stack,
         sourceBucket: IBucket,
@@ -33,6 +37,7 @@ class CloudFrontSubstack {
 
         return CloudFrontWebDistribution.Builder.create(stack, "cantilever-CloudFrontWebDistribution")
             .comment(String.format("CloudFront distribution for cantilever"))
+            .defaultRootObject("index.html")
             .originConfigs(
                 listOf(
                     SourceConfiguration.builder()

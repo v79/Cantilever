@@ -20,16 +20,19 @@ class S3ServiceImpl(region: Region) : S3Service {
     }
 
     override fun putObject(key: String, bucket: String, contents: String, contentType: String?): Int {
+        val bytes = contents.toByteArray(Charsets.UTF_8)
+        println("S3Service: putObject: key: $key, ${bytes.size} bytes")
+
         val requestBuilder = PutObjectRequest.builder()
-            .contentLength(contents.length.toLong())
+            .contentLength(bytes.size.toLong())
             .key(key)
             .bucket(bucket)
         contentType?.let {
             requestBuilder.contentType(it)
         }
         val request = requestBuilder.build()
-        s3Client.putObject(request, RequestBody.fromBytes(contents.toByteArray()))
-        return contents.length
+        s3Client.putObject(request, RequestBody.fromBytes(bytes))
+        return bytes.size
     }
 
     override fun getObject(key: String, bucket: String): GetObjectResponse? {

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="author" content="{{author}}">
+    <meta name="generator" content="cantilevers">
+    <title>{{ siteName }}</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<section id="banner" class="">
+    <div class="">
+        <h1 class=""><span class="">{{upper siteName}}</span></h1>
+    </div>
+</section>
+<section id="body">
+    <h3>Body</h3>
+    {{{body}}}
+
+    <div class="posts">
+        <ul>
+        {{#each posts}}
+            <li>{{localDate this.date}} <a href="/{{this.url}}">{{this.title}}</a></li>
+        {{/each}}
+        </ul>
+    </div>
+    <h3>Or maybe just the first five? (take "5")</h3>
+    <ul>
+        {{#take posts "5"}}
+            <li>{{localDate this.date}} <a href="/{{this.url}}">{{this.title}}</a></li>
+        {{/take}}
+    </ul>
+</section>
+<aside>
+    <h3>Block A</h3>
+    {{{blockA}}}
+</aside>
+<aside>
+    <h3>Useful Links</h3>
+    {{{links}}}
+</aside>
+</body>
+</html>

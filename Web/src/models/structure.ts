@@ -13,6 +13,21 @@ export interface Template {
     lastUpdated: string;
 }
 
+export interface AllPosts {
+    count: number,
+    posts: Array<Post>
+}
+
+export interface AllPages {
+    count: number,
+    pages: Array<Page>
+}
+
+export interface AllTemplates {
+    count: number,
+    templates: Array<Template>
+}
+
 export interface Post {
     title: string;
     srcKey: string;
@@ -20,6 +35,15 @@ export interface Post {
     templateKey: string,
     date: string,
     lastUpdated: string;
+}
+
+export interface Page {
+    srcKey: string,
+    templateKey: string,
+    url: string,
+    lastUpdated: string,
+    attributeKeys: Set<string>,
+    sectionKeys: Set<string>
 }
 
 export interface MarkdownPost {

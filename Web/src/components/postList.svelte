@@ -1,29 +1,29 @@
 <script lang="ts">
-	import {onDestroy, onMount} from 'svelte';
-	import type {MarkdownPost} from '../models/structure';
-	import {activeStore} from '../stores/appStatusStore.svelte';
-	import {markdownStore} from '../stores/markdownPostStore.svelte';
-	import {notificationStore} from '../stores/notificationStore.svelte';
-	import {postStore, structureStore} from '../stores/postsStore.svelte';
-	import {userStore} from '../stores/userStore.svelte';
-	import {spinnerStore} from './utilities/spinnerWrapper.svelte';
+    import {onDestroy, onMount, tick} from 'svelte';
+    import type {MarkdownPost} from '../models/structure';
+    import {activeStore} from '../stores/appStatusStore.svelte';
+    import {markdownStore} from '../stores/markdownPostStore.svelte';
+    import {notificationStore} from '../stores/notificationStore.svelte';
+    import {allPostsStore, postStore} from '../stores/postsStore.svelte';
+    import {userStore} from '../stores/userStore.svelte';
+    import PostListItem from './postListItem.svelte';
+    import {spinnerStore} from './utilities/spinnerWrapper.svelte';
 
-	$: postsSorted = $postStore.sort(
+    $: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
 	);
 
 	onMount(async () => {});
 
-	function loadStructure() {
+	function loadAllPosts() {
 		// https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/
 		// https://api.cantilevers.org/structure
 		// TODO: extract this sort of thing into a separate method, and add error handling, auth etc
 		// spinnerStore.set({ message: 'Loading project structure', shown: true });
-		$spinnerStore.message = 'Loading project structure';
-		$spinnerStore.shown = true;
-		console.log('Loading structure json...');
+		console.log('Loading all posts json...');
 		let token = $userStore.token;
-		fetch('https://api.cantilevers.org/structure', {
+		notificationStore.set({ shown: false, message: '', type: 'info' });
+		fetch('https://api.cantilevers.org/project/posts', {
 			method: 'GET',
 			headers: {
 				Accept: 'application/json',
@@ -36,9 +36,10 @@
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
-				structureStore.set(data.data);
-				$notificationStore.message = 'Loaded project structure ' + $activeStore.activeFile;
+				allPostsStore.set(data.data);
+				$notificationStore.message = 'Loaded all posts ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
+				$spinnerStore.shown = false;
 			})
 			.catch((error) => {
 				console.log(error);
@@ -47,14 +48,17 @@
 					shown: true,
 					type: 'error'
 				});
+				$spinnerStore.shown = false;
 				return {};
 			});
-		$spinnerStore.shown = false;
 	}
 
 	function loadMarkdown(srcKey: string) {
 		let token = $userStore.token;
 		console.log('Loading markdown file... ' + srcKey);
+		spinnerStore.set({ shown: true, message: 'Loading markdown file... ' + srcKey });
+		notificationStore.set({ shown: false, message: '', type: 'info' });
+		tick();
 		fetch('https://api.cantilevers.org/posts/load/' + encodeURIComponent(srcKey), {
 			method: 'GET',
 			headers: {
@@ -78,6 +82,7 @@
 				});
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
+				$spinnerStore.shown = false;
 			})
 			.catch((error) => {
 				console.log(error);
@@ -86,18 +91,19 @@
 					shown: true,
 					type: 'error'
 				});
+				$spinnerStore.shown = false;
 			});
-		$spinnerStore.shown = false;
 	}
 
-	function rebuild() {
+	async function rebuild() {
 		let token = $userStore.token;
-		console.log('Regenerating project structure file...');
-		fetch('https://api.cantilevers.org/structure/rebuild', {
-			method: 'GET',
+		console.log('Regenerating project posts file...');
+		fetch('https://api.cantilevers.org/project/posts/rebuild', {
+			method: 'PUT',
 			headers: {
 				Accept: 'application/json',
-				Authorization: 'Bearer ' + token
+				Authorization: 'Bearer ' + token,
+				'X-Content-Length': '0'
 			},
 			mode: 'cors'
 		})
@@ -109,6 +115,7 @@
 					shown: true,
 					type: 'success'
 				});
+				loadAllPosts();
 			})
 			.catch((error) => {
 				console.log(error);
@@ -117,9 +124,8 @@
 					shown: true,
 					type: 'error'
 				});
+				$spinnerStore.shown = false;
 			});
-		$spinnerStore.shown = false;
-		loadStructure();
 	}
 
 	function createNewPost() {
@@ -147,11 +153,11 @@
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
 		if (data) {
-			loadStructure();
+			loadAllPosts();
 		}
 	});
 
-	const structStoreUnsubscribe = structureStore.subscribe((data) => {
+	const structStoreUnsubscribe = allPostsStore.subscribe((data) => {
 		postStore.set(data.posts);
 	});
 
@@ -165,29 +171,19 @@
 	<div class="px-8"><p class="text-warning text-lg">Login to see posts</p></div>
 {:else}
 	<div class="flex items-center justify-center" role="group">
-		<button type="button" on:click={(e) => ($spinnerStore.shown = !$spinnerStore.shown)}
-			>Toggle Spinner</button>
 		<button
 			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {
 				console.log('Show spinner');
-				spinnerStore.update((m) => {
-					m.message = 'Rebuilding project...';
-					m.shown = true;
-					return m;
-				});
 				spinnerStore.set({ shown: true, message: 'Rebuilding project...' });
-				// $spinnerStore.message = 'Rebuilding project...';
-				// $spinnerStore.shown = true;
-
-				rebuild();
+				tick().then(() => rebuild());
 			}}>Rebuild</button>
 		<button
 			class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {
-				$spinnerStore.message = 'Reloading project...';
-				$spinnerStore.shown = true;
-				loadStructure();
+				console.log('Show spinner');
+				spinnerStore.set({ shown: true, message: 'Reloading project...' });
+				tick().then(() => loadAllPosts());
 			}}>Reload</button>
 		<button
 			type="button"
@@ -196,25 +192,14 @@
 			>New Post</button>
 	</div>
 	<div class="px-8">
-		{#if $structureStore}
-			<h4 class="text-right text-sm text-slate-900">{$structureStore.postCount} posts</h4>
+		{#if $allPostsStore}
+			<h4 class="text-right text-sm text-slate-900">{$allPostsStore.count} posts</h4>
 		{/if}
 		{#if postsSorted.length > 0}
 			<div class="justify-left flex py-2">
 				<ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
 					{#each postsSorted as post}
-						{@const postDateString = new Date(post.date).toLocaleDateString('en-GB')}
-
-						<li
-							id={post.srcKey}
-							class="border-grey-400 w-full cursor-pointer border-b px-6 py-2 hover:bg-slate-200 {$activeStore.activeFile ===
-							post.srcKey
-								? 'bg-slate-100'
-								: ''} "
-							on:keyup={() => loadMarkdown(post.srcKey)}
-							on:click={() => loadMarkdown(post.srcKey)}>
-							{post.title}
-						</li>
+						<PostListItem {post} onClickFn={loadMarkdown} />
 					{/each}
 				</ul>
 			</div>

@@ -54,6 +54,7 @@ tasks.getByName<Test>("test") {
 // Crazy experiment with context receivers!
 tasks.withType<KotlinCompile> {
     kotlinOptions {
+        jvmTarget = "11"
         freeCompilerArgs += "-Xcontext-receivers"
     }
 }

@@ -13,11 +13,14 @@ import kotlin.reflect.typeOf
 class Router internal constructor() {
 
     val routes: MutableMap<RequestPredicate, RouterFunction<*, *>> =
-        mutableMapOf<RequestPredicate, RouterFunction<*, *>>()
+        mutableMapOf()
 
     val consumeByDefault = setOf(MimeType.json)
     val produceByDefault = setOf(MimeType.json)
 
+    /**
+     * HTTP GET
+     */
     inline fun <reified I, T : Any> get(
         pattern: String, noinline handlerFunction: HandlerFunction<I, T>
     ): RequestPredicate {
@@ -29,6 +32,9 @@ class Router internal constructor() {
         return requestPredicate
     }
 
+    /**
+     * HTTP POST
+     */
     inline fun <reified I, T : Any> post(
         pattern: String, noinline handlerFunction: HandlerFunction<I, T>
     ): RequestPredicate {
@@ -41,6 +47,9 @@ class Router internal constructor() {
         return requestPredicate
     }
 
+    /**
+     * HTTP PUT, untested
+     */
     inline fun <reified I, T : Any> put(
         pattern: String, noinline handlerFunction: HandlerFunction<I, T>
     ): RequestPredicate {
@@ -53,6 +62,9 @@ class Router internal constructor() {
         return requestPredicate
     }
 
+    /**
+     * HTTP PATCH, untested
+     */
     inline fun <reified I, T : Any> patch(
         pattern: String, noinline handlerFunction: HandlerFunction<I, T>
     ): RequestPredicate {
@@ -65,6 +77,9 @@ class Router internal constructor() {
         return requestPredicate
     }
 
+    /**
+     * HTTP DELETE
+     */
     inline fun <reified I, T : Any> delete(
         pattern: String, noinline handlerFunction: HandlerFunction<I, T>
     ): RequestPredicate {
@@ -75,20 +90,6 @@ class Router internal constructor() {
         }
         return requestPredicate
     }
-
-    /*inline fun <reified I, T : Any> authorizedRequestPredicate(
-        permissionString: String,
-        noinline handlerFunction: HandlerFunction<I, T>,
-        function: () -> RequestPredicate
-    ): RequestPredicate {
-
-        val rp = function.invoke()
-
-        rp.also { predicate ->
-            routes[path] = RouterFunction(predicate, handlerFunction, permissionString)
-        }
-        return rp
-    }*/
 
     inline fun <reified I, T : Any> defaultRequestPredicate(
         pattern: String,
@@ -108,7 +109,7 @@ class Router internal constructor() {
         routes.forEach { route ->
             println("${route.value.requestPredicate.method} ${route.value.requestPredicate.pathPattern} <consumes: ${route.value.requestPredicate.accepts} -> produces: ${route.value.requestPredicate.supplies}>")
         }
-        return routes.values.joinToString(separator = ";") { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern} <${it.requestPredicate.accepts} -> ${it.requestPredicate.supplies}>" }
+        return routes.values.joinToString(separator = " ;") { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern} <${it.requestPredicate.accepts} -> ${it.requestPredicate.supplies}>" }
     }
 
     companion object {

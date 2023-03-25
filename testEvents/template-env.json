@@ -1,5 +1,7 @@
 {
   "Parameters": {
-    "source_bucket": "cantileverstack-cantileversources123976ca-e5z9unipouy0"
+    "source_bucket": "cantileverstack-cantileversources123976ca-dmtpnmdmbx59",
+    "destination_bucket" : "cantileverstack-cantileverwebsitea46551a2-jfq7mzrgggj9",
+    "handlebar_template_queue" : "https://sqs.eu-west-2.amazonaws.com/086949310404/CantileverStack-cantileverhtmlhandlebarqueue7CEC45FA-s79IaIkP8Wz6"
   }
 }

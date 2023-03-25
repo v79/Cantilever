@@ -47,6 +47,12 @@ tasks.withType<JavaExec> {
     dependsOn(":API:shadowJar")
 }
 
+tasks {
+    getByName<Delete>("clean") {
+        delete.add("cdk.out/asset*/") // add accepts argument with Any type
+    }
+}
+
 koverMerged {
     enable()
 }
