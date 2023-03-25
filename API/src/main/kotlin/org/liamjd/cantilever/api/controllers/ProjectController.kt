@@ -1,5 +1,6 @@
 package org.liamjd.cantilever.api.controllers
 
+import kotlinx.datetime.Clock
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
@@ -29,7 +30,8 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
         return if (s3Service.objectExists(postsKey, sourceBucket)) {
             val postListJson = s3Service.getObjectAsString(postsKey, sourceBucket)
             val postList = Json.decodeFromString(PostList.serializer(), postListJson)
-            ResponseEntity.ok(body = APIResult.Success(value = postList))
+            val sorted = postList.posts.sortedBy { it.date }
+            ResponseEntity.ok(body = APIResult.Success(value = PostList(count = sorted.size,posts = sorted, lastUpdated = postList.lastUpdated)))
         } else {
             ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '$postsKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/posts/rebuild"))
         }
@@ -100,8 +102,9 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     println("Skipping non-markdown file '${obj.key()}'")
                 }
             }
+            println("Sorting output")
             list.sortByDescending { it.date }
-            val postList = PostList(posts = list, count = filesProcessed)
+            val postList = PostList(posts = list, count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(PostList.serializer(), postList)
             println("Saving PostList JSON file (${listJson.length} bytes)")
             s3Service.putObject(postsKey, sourceBucket, listJson, "application/json")
@@ -149,7 +152,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                 }
             }
             list.sortByDescending { it.lastUpdated }
-            val pageList = PageList(pages = list.toList(), count = filesProcessed)
+            val pageList = PageList(pages = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(PageList.serializer(), pageList)
             println("Saving PageList JSON file (${listJson.length} bytes)")
             s3Service.putObject(pagesKey, sourceBucket, listJson, "application/json")
@@ -180,7 +183,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                 }
             }
             list.sortByDescending { it.lastUpdated }
-            val templateList = TemplateList(templates = list.toList(), count = filesProcessed)
+            val templateList = TemplateList(templates = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(TemplateList.serializer(), templateList)
             println("Saving PageList JSON file (${listJson.length} bytes)")
             s3Service.putObject(templatesKey, sourceBucket, listJson, "application/json")

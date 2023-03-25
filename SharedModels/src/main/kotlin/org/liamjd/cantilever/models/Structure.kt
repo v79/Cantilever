@@ -10,13 +10,13 @@ import kotlinx.serialization.Serializable
 data class Structure(val layouts: Layouts, val posts: MutableList<Post>, var postCount: Int)
 
 @Serializable
-data class PostList(val count: Int = 0, val posts: List<Post>)
+data class PostList(val count: Int = 0, val lastUpdated: Instant, val posts: List<Post>)
 
 @Serializable
-data class PageList(val count: Int = 0, val pages: List<Page>)
+data class PageList(val count: Int = 0, val lastUpdated: Instant, val pages: List<Page>)
 
 @Serializable
-data class TemplateList(val count: Int = 0, val templates: List<Template>)
+data class TemplateList(val count: Int = 0, val lastUpdated: Instant, val templates: List<Template>)
 
 @Serializable
 data class Post(

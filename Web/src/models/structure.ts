@@ -10,21 +10,24 @@ export interface Layout {
 
 export interface Template {
     key: string;
-    lastUpdated: string;
+    lastUpdated: Date;
 }
 
 export interface AllPosts {
     count: number,
+    lastUpdated: Date,
     posts: Array<Post>
 }
 
 export interface AllPages {
     count: number,
+    lastUpdated: Date,
     pages: Array<Page>
 }
 
 export interface AllTemplates {
     count: number,
+    lastUpdated: Date,
     templates: Array<Template>
 }
 
@@ -33,15 +36,15 @@ export interface Post {
     srcKey: string;
     url: string,
     templateKey: string,
-    date: string,
-    lastUpdated: string;
+    date: Date,
+    lastUpdated: Date;
 }
 
 export interface Page {
     srcKey: string,
     templateKey: string,
     url: string,
-    lastUpdated: string,
+    lastUpdated: Date,
     attributeKeys: Set<string>,
     sectionKeys: Set<string>
 }

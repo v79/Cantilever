@@ -102,6 +102,7 @@ class GeneratorControllerTest : KoinTest {
         val mockPageJson = """
             {
             "count": 1,
+            "lastUpdated": "2023-03-13T20:46:36.647517Z"
               "pages": [
     {
       "srcKey": "sources/pages/todo.md",
