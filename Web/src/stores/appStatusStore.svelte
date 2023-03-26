@@ -7,6 +7,7 @@
 		isNewFile: false,
 		hasChanged: false,
 		isValid: false,
+		currentPage: 'Posts',
 		newSlug: ''
 	});
 </script>

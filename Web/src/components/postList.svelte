@@ -10,7 +10,7 @@
     import {spinnerStore} from './utilities/spinnerWrapper.svelte';
 
     $: postsSorted = $postStore.sort(
-		(a, b) => new Date(b.lastUpdated).valueOf() - new Date(a.lastUpdated).valueOf()
+		(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
 	);
 
 	onMount(async () => {});
@@ -73,13 +73,11 @@
 					throw new Error(data.message);
 				}
 				markdownStore.set(data.data);
-				activeStore.set({
-					activeFile: decodeURIComponent($markdownStore.post.srcKey),
-					isNewFile: false,
-					hasChanged: false,
-					isValid: true,
-					newSlug: $markdownStore.post.url
-				});
+				$activeStore.activeFile = decodeURIComponent($markdownStore.post.srcKey);
+				$activeStore.isNewFile = false;
+				$activeStore.hasChanged = false;
+				$activeStore.isValid = true;
+				$activeStore.newSlug = $markdownStore.post.url;
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
@@ -136,17 +134,17 @@
 				srcKey: '',
 				url: '',
 				date: '',
-				lastUpdated: '',
+				lastUpdated: new Date(),
 				templateKey: 'post'
 			}
 		};
-		activeStore.set({
-			activeFile: '',
-			isNewFile: true,
-			hasChanged: false,
-			isValid: false,
-			newSlug: ''
-		});
+
+		$activeStore.activeFile = '';
+		$activeStore.isNewFile = true;
+		$activeStore.isValid = false;
+		$activeStore.newSlug = '';
+		$activeStore.hasChanged = false;
+
 		console.log('Creating new post');
 		markdownStore.set(newMDPost);
 	}

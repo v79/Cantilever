@@ -5,5 +5,6 @@ export interface AppStatus {
     isNewFile: boolean,
     hasChanged: boolean,
     isValid: boolean,
+    currentPage: string,
     newSlug: string;
 }
