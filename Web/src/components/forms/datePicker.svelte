@@ -1,7 +1,7 @@
 <script lang="ts">
 	export let name: string;
 	export let required: boolean = false;
-	export let value: string;
+	export let value: Date;
 	export let label: string;
 
 	export let onChange = (e: Event) => {};
@@ -20,7 +20,7 @@
 	{required}
 	class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
 {#if required}
-	{#if value === ''}
+	{#if !value}
 		<span class="text-sm text-yellow-200">{label} must not be blank</span>
 	{/if}
 {/if}

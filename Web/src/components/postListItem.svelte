@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { Post } from '../models/structure';
-	import { activeStore } from '../stores/appStatusStore.svelte';
+	import type {Post} from '../models/structure';
+	import {activeStore} from '../stores/appStatusStore.svelte';
+
 	export let post: Post;
 	export let onClickFn: (srcKey: string) => void;
-
 	let hovering = false;
 	let postDateString = new Date(post.date).toLocaleDateString('en-GB');
 </script>

@@ -1,15 +1,15 @@
 <script lang="ts">
-    import {onDestroy, onMount, tick} from 'svelte';
-    import type {MarkdownPost} from '../models/structure';
-    import {activeStore} from '../stores/appStatusStore.svelte';
-    import {markdownStore} from '../stores/markdownPostStore.svelte';
-    import {notificationStore} from '../stores/notificationStore.svelte';
-    import {allPostsStore, postStore} from '../stores/postsStore.svelte';
-    import {userStore} from '../stores/userStore.svelte';
-    import PostListItem from './postListItem.svelte';
-    import {spinnerStore} from './utilities/spinnerWrapper.svelte';
+	import {onDestroy, onMount, tick} from 'svelte';
+	import type {MarkdownPost} from '../models/structure';
+	import {activeStore} from '../stores/appStatusStore.svelte';
+	import {markdownStore} from '../stores/markdownPostStore.svelte';
+	import {notificationStore} from '../stores/notificationStore.svelte';
+	import {allPostsStore, postStore} from '../stores/postsStore.svelte';
+	import {userStore} from '../stores/userStore.svelte';
+	import {spinnerStore} from './utilities/spinnerWrapper.svelte';
+	import PostListItem from './postListItem.svelte';
 
-    $: postsSorted = $postStore.sort(
+	$: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
 	);
 

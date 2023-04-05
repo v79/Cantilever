@@ -1,55 +1,54 @@
 export interface Structure {
-    layouts: Layout[];
-    posts: Post[];
-    postCount: number;
+	layouts: Layout[];
+	posts: Post[];
+	postCount: number;
 }
 
 export interface Layout {
-    template: Template;
+	template: Template;
 }
 
 export interface Template {
-    key: string;
-    lastUpdated: Date;
+	key: string;
+	lastUpdated: Date;
 }
 
 export interface AllPosts {
-    count: number,
-    lastUpdated: Date,
-    posts: Array<Post>
+	count: number;
+	lastUpdated: Date;
+	posts: Array<Post>;
 }
 
 export interface AllPages {
-    count: number,
-    lastUpdated: Date,
-    pages: Array<Page>
+	count: number;
+	lastUpdated: Date;
+	pages: Array<Page>;
 }
 
 export interface AllTemplates {
-    count: number,
-    lastUpdated: Date,
-    templates: Array<Template>
+	count: number;
+	lastUpdated: Date;
+	templates: Array<Template>;
 }
 
-export interface Post {
-    title: string;
-    srcKey: string;
-    url: string,
-    templateKey: string,
-    date: Date,
-    lastUpdated: Date;
+export interface MarkdownItem {
+	title: string;
+	srcKey: string;
+	templateKey: string;
+	url: string;
+	lastUpdated: Date;
 }
 
-export interface Page {
-    srcKey: string,
-    templateKey: string,
-    url: string,
-    lastUpdated: Date,
-    attributeKeys: Set<string>,
-    sectionKeys: Set<string>
+export interface Post extends MarkdownItem {
+	date: Date;
+}
+
+export interface Page extends MarkdownItem {
+	attributeKeys: Set<string>;
+	sectionKeys: Set<string>;
 }
 
 export interface MarkdownPost {
-    post: Post;
-    body: String;
+	post: Post;
+	body: String;
 }
