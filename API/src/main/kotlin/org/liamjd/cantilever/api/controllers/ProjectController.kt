@@ -139,6 +139,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     }
                     list.add(
                         Page(
+                            title = pageModel.title,
                             srcKey = pageModel.srcKey,
                             templateKey = pageModel.templateKey,
                             url = pageModel.url,

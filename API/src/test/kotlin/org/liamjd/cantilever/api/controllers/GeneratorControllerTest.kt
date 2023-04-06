@@ -40,11 +40,10 @@ class GeneratorControllerTest : KoinTest {
     @JvmField
     @RegisterExtension
     val koinTestExtension = KoinTestExtension.create {
-        modules(
-            module {
-                single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
-                single<SQSService> { SQSServiceImpl(Region.EU_WEST_2) }
-            })
+        modules(module {
+            single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
+            single<SQSService> { SQSServiceImpl(Region.EU_WEST_2) }
+        })
     }
 
     @JvmField
@@ -105,6 +104,7 @@ class GeneratorControllerTest : KoinTest {
             "lastUpdated": "2023-03-13T20:46:36.647517Z"
               "pages": [
     {
+    "title": "Todo title",
       "srcKey": "sources/pages/todo.md",
       "templateKey": "about",
       "url": "sources-pages-todo.md",
@@ -124,7 +124,7 @@ class GeneratorControllerTest : KoinTest {
         declareMock<S3Service> {
             every { mockS3.objectExists(any(), sourceBucket) } returns true
             every { mockS3.getObjectAsString("generated/pages.json", sourceBucket) } returns mockPageJson
-            every { mockS3.getObjectAsString("sources/pages/todo.md",sourceBucket)} returns mockTodoPage
+            every { mockS3.getObjectAsString("sources/pages/todo.md", sourceBucket) } returns mockTodoPage
         }
         declareMock<SQSService> {
             every { mockSQS.sendMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
@@ -137,7 +137,7 @@ class GeneratorControllerTest : KoinTest {
 
         assertNotNull(response)
         assertEquals(200, response.statusCode)
-        verify(exactly = 1) { mockSQS.sendMessage(any(),any(),any())}
+        verify(exactly = 1) { mockSQS.sendMessage(any(), any(), any()) }
     }
 
     @Test
@@ -145,11 +145,11 @@ class GeneratorControllerTest : KoinTest {
         val mockSqsResponse = mockk<SendMessageResponse>()
         val mockPageListResponse = mockk<ListObjectsV2Response>()
         val mockS3Obj = mockk<S3Object>()
-        every { mockPageListResponse.contents()} returns listOf(mockS3Obj)
-        every { mockPageListResponse.keyCount()} returns 1
-        every { mockS3Obj.key()} returns "sources/pages/about.md"
+        every { mockPageListResponse.contents() } returns listOf(mockS3Obj)
+        every { mockPageListResponse.keyCount() } returns 1
+        every { mockS3Obj.key() } returns "sources/pages/about.md"
         declareMock<S3Service> {
-            every { mockS3.listObjects("sources/pages/",sourceBucket)} returns mockPageListResponse
+            every { mockS3.listObjects("sources/pages/", sourceBucket) } returns mockPageListResponse
             every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns ""
         }
         declareMock<SQSService> {
@@ -164,7 +164,7 @@ class GeneratorControllerTest : KoinTest {
         assertNotNull(response)
         assertEquals(200, response.statusCode)
         val result = response.body as APIResult.Success
-        assertEquals("1 pages have been regenerated",result.value)
+        assertEquals("1 pages have been regenerated", result.value)
     }
 
     /**

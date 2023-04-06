@@ -55,7 +55,14 @@ fun extractPageModel(filename: String, source: String): SqsMsgBody.PageModelMsg 
         filename.toSlug()
     }
 
+    val title = if(metadata.contains("title:")) {
+        metadata.substringAfter("title:").substringBefore("\n").trim()
+    } else {
+        filename
+    }
+
     return SqsMsgBody.PageModelMsg(
+        title = title,
         srcKey = filename,
         templateKey = template,
         url = url,

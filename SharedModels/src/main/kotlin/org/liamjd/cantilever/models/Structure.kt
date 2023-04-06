@@ -30,6 +30,7 @@ data class Post(
 
 @Serializable
 data class Page(
+    val title: String,
     val srcKey: String,
     val templateKey: String,
     val url: String,
