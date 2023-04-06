@@ -63,7 +63,7 @@
 		Delete source file <strong>{$markdownStore.post.title}</strong>
 		({decodeURIComponent($markdownStore.post.srcKey)})? Are you sure?
 	</p>
-	<p class="text-red-600">This cannot be undone!</p>
+	<p class="text-red-600">This cannot be undone! Type '{CONFIRM_DELETE}' to confirm.</p>
 	<form>
 		<input
 			type="text"

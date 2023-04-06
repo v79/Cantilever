@@ -1,6 +1,6 @@
 <script context="module" lang="ts">
     import {writable} from 'svelte/store';
-    import type {MarkdownPost} from '../models/structure';
+    import {type MarkdownPost, Post} from '../models/structure';
 
     function createMarkdownStore() {
 		const { subscribe, set, update } = writable<MarkdownPost>();
@@ -21,7 +21,7 @@
 	}
 
 	export const CLEAR_POST = {
-		body: '',
-		post: { title: '', srcKey: '', url: '', templateKey: '', date: '', lastUpdated: '' }
+		post: new Post('', '', 'post', '', new Date(), new Date()),
+		body: ''
 	};
 </script>
