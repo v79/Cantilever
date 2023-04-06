@@ -19,3 +19,4 @@ FileUploadHandler/.gradle/
 FileUploadHandler/build/
 SharedModels/build/
 TemplateProcessor/build/
+/htmlReport/
