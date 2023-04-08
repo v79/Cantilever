@@ -144,7 +144,8 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                             templateKey = pageModel.templateKey,
                             url = pageModel.url,
                             sectionKeys = pageModel.sections.keys,
-                            attributeKeys = pageModel.attributes.keys
+                            attributeKeys = pageModel.attributes.keys,
+                            lastUpdated = obj.lastModified().toKotlinInstant()
                         )
                     )
                     filesProcessed++

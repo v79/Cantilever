@@ -31,22 +31,25 @@ export interface AllTemplates {
 	templates: Array<Template>;
 }
 
-export interface MarkdownItem {
+export abstract class MarkdownItem {
 	title: string;
 	srcKey: string;
 	templateKey: string;
 	url: string;
 	lastUpdated: Date;
 
-	getDateString(): string;
+	constructor(title: string, srcKey: string, templateKey: string, url: string, lastUpdated: Date) {
+		this.title = title;
+		this.srcKey = srcKey;
+		this.templateKey = templateKey;
+		this.url = url;
+		this.lastUpdated = lastUpdated;
+	}
+
+	abstract getDateString(): string;
 }
 
-export class Post implements MarkdownItem {
-	title: string;
-	srcKey: string;
-	templateKey: string;
-	url: string;
-	lastUpdated: Date;
+export class Post extends MarkdownItem {
 	date: Date;
 
 	constructor(
@@ -57,17 +60,25 @@ export class Post implements MarkdownItem {
 		lastUpdated: Date,
 		date: Date
 	) {
-		this.title = title;
-		this.srcKey = srcKey;
-		this.templateKey = templateKey;
-		this.url = url;
-		this.lastUpdated = lastUpdated;
+		super(title, srcKey, templateKey, url, lastUpdated);
+
 		this.date = date;
 	}
 
 	getDateString(): string {
 		return this.date.toLocaleDateString('en-GB');
 	}
+}
+
+export function getDateString(item: MarkdownItem) {
+	console.log('Called getDateString function for item');
+	console.dir(item);
+	if (item instanceof Post) {
+		console.log('Returning date string for Post');
+		return (item as Post).getDateString();
+	}
+	console.log('Markdown item wasnt a Post');
+	return '';
 }
 
 export class Page implements MarkdownItem {

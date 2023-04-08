@@ -1,6 +1,6 @@
 <script lang="ts">
-    import {onDestroy, onMount, tick} from 'svelte';
-    import type {MarkdownPost} from '../models/structure';
+    import {onDestroy, tick} from 'svelte';
+
     import {activeStore} from '../stores/appStatusStore.svelte';
     import {markdownStore} from '../stores/markdownPostStore.svelte';
     import {notificationStore} from '../stores/notificationStore.svelte';
@@ -8,12 +8,13 @@
     import {userStore} from '../stores/userStore.svelte';
     import {spinnerStore} from './utilities/spinnerWrapper.svelte';
     import MarkdownListItem from './markdownListItem.svelte';
+    import {type MarkdownPost, Post} from '../models/structure';
 
     $: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
 	);
 
-	onMount(async () => {});
+	// onMount(async () => {});
 
 	function loadAllPosts() {
 		// https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/
@@ -36,7 +37,25 @@
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
-				allPostsStore.set(data.data);
+				var tempPosts = new Array<Post>();
+				for (const p of data.data.posts) {
+					tempPosts.push(
+						new Post(
+							p.title,
+							p.srcKey,
+							p.templateKey,
+							p.url,
+							new Date(p.lastUpdated),
+							new Date(p.date)
+						)
+					);
+				}
+				// allPostsStore.set(data.data);
+				allPostsStore.set({
+					count: tempPosts.length,
+					lastUpdated: data.lastUpdated,
+					posts: tempPosts
+				});
 				$notificationStore.message = 'Loaded all posts ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
