@@ -1,45 +1,57 @@
-# API Requirements
+# API Requirement
 
-## Basic Operations
+Work-in progress for the defined API routes
+
+`/warm`
+- GET - trigger a dummy request to keep the AWS Lambda function warmed up
+
+`/showAllRoutes`
+- GET - show a list of all the declared API routes
 
 `/structure`
-- GET - _get current project structure json_
-- PUT - _update project structure json file_
+- GET - get the structure.json file
+- `/rebuild`
+  - GET - rebuild the structure.json file
+- `/addSource`
+  - POST - _not implemented_
 
-`/structure/rebuild`
-- GET - _force a rebuild of the entire structure json file by rescanning all source md files_
+`/project`
+- `/posts`
+  - GET - get a list of all the Posts
+  - `/rebuild`
+    - POST - rebuild the list of all the Posts
+- `/pages`
+- GET - get a list of all the Pages
+  - `/rebuild`
+  - POST - rebuild the list of all the Pages
+  - `/load/{srcKey}`
+  - GET - _not implemented_
+  - `/save`
+  - POST - _not implemented_
+- `/templates`
+    - GET - get a list of all the Templates
+    - `/rebuild`
+        - POST - rebuild the list of all the Templates
 
-`/structure/update`
-- PATCH (or PUT) - _modify part of the structure json file_ **to what end?**
+`/posts`
+- `/load/{srcKey}`
+- GET - load the specified Post
+- `/preview/{srcKey}`
+- GET - _not implemented_
+- `/save`
+- POST - save the Post file
+- `/{srcKey}`
+- DELETE - delete the Post file
 
-`/post`
-- PUT - _create a markdown source file_
-
-`/post/{key}`
-- GET - _load the source markdown file given by the key_
-- DELETE - _delete source file from the project_
-- PUT (or PATCH) - _update the markdown file with the given key_
-
-`/post/preview/{key}`
-- GET - _generate and load an HTML preview of the given markdown file_
-
-`/templates`
-- GET - _get a list of all handlebars templates_
-- PUT - _create a handlebar template_
-
-`/templates/{key}`
-- GET - _load the handlebar template file given by the key_
-- DELETE - _delete the handlebar file given by the key_
-
-`/publish`
-- POST - _force a regeneration of all content_
+`/generate`
+- `/post/{srcKey}`
+- PUT - regenerate the HTML for the given post
+- `/page/{srcKey}`
+- PUT - regenerate the HTML for the given Page
+- `/template/{srcKey}`
+- PUT - regenerate the HTML for all Pages with the given template
 
 
-## Media operations
+## Possible others
 
-`/media`
-- GET - _get complete list of media files_
-- PUT - _upload a new media file_
-
-`/post/{key}/media`
-- GET - _get list of media associated with this source file_ **maybe structure just provides this**
+- `/cache` - DELETE fragments and temp files for posts, pages, etc

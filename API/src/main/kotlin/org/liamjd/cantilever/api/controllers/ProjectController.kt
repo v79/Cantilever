@@ -14,6 +14,8 @@ import org.liamjd.cantilever.services.impl.extractPageModel
 import org.liamjd.cantilever.services.impl.extractPostMetadata
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 
+private const val APP_JSON = "application/json"
+
 /**
  * Manages all the project-wide configuration and json models
  * TODO: there is a lot of duplication in this class
@@ -107,7 +109,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
             val postList = PostList(posts = list, count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(PostList.serializer(), postList)
             println("Saving PostList JSON file (${listJson.length} bytes)")
-            s3Service.putObject(postsKey, sourceBucket, listJson, "application/json")
+            s3Service.putObject(postsKey, sourceBucket, listJson, APP_JSON)
         } else {
             return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a $postsKey file."))
         }
@@ -157,7 +159,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
             val pageList = PageList(pages = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(PageList.serializer(), pageList)
             println("Saving PageList JSON file (${listJson.length} bytes)")
-            s3Service.putObject(pagesKey, sourceBucket, listJson, "application/json")
+            s3Service.putObject(pagesKey, sourceBucket, listJson, APP_JSON)
         } else {
             return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a $postsKey file."))
         }
@@ -188,7 +190,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
             val templateList = TemplateList(templates = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(TemplateList.serializer(), templateList)
             println("Saving PageList JSON file (${listJson.length} bytes)")
-            s3Service.putObject(templatesKey, sourceBucket, listJson, "application/json")
+            s3Service.putObject(templatesKey, sourceBucket, listJson, APP_JSON)
         } else {
             return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a $templatesKey file."))
         }
