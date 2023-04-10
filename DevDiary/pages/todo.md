@@ -33,3 +33,7 @@ Ultimately, I would like to be able to separate the 'cantilever' application (fr
   - ✔️ API routes to regenerate pages based on templates
     - ✔️ This is missing a "page structure" file, the overall project map for pages.
   - ✔️ API routes to regenerate posts
+
+## Bugs/Known Issues
+
+- The short form of API routing does not include the necessary CORS domain headers. Need to find a way to inject that into the root of the API.

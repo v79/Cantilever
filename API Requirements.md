@@ -8,10 +8,11 @@ Work-in progress for the defined API routes
 `/showAllRoutes`
 - GET - show a list of all the declared API routes
 
+
 `/structure`
-- GET - get the structure.json file
+- GET - get the structure.json file - _DEPRECATED_
 - `/rebuild`
-  - GET - rebuild the structure.json file
+  - GET - rebuild the structure.json file - _DEPRECATED_
 - `/addSource`
   - POST - _not implemented_
 
@@ -22,26 +23,25 @@ Work-in progress for the defined API routes
     - POST - rebuild the list of all the Posts
 - `/pages`
 - GET - get a list of all the Pages
+  - `/`
+  - POST - _not implemented_
+  - `/{srcKey}`
+  - GET - _not implemented_
   - `/rebuild`
   - POST - rebuild the list of all the Pages
-  - `/load/{srcKey}`
-  - GET - _not implemented_
-  - `/save`
-  - POST - _not implemented_
 - `/templates`
     - GET - get a list of all the Templates
     - `/rebuild`
         - POST - rebuild the list of all the Templates
 
 `/posts`
-- `/load/{srcKey}`
-- GET - load the specified Post
-- `/preview/{srcKey}`
-- GET - _not implemented_
-- `/save`
-- POST - save the Post file
+- `/`
+  - POST - save the Post file
 - `/{srcKey}`
-- DELETE - delete the Post file
+  - GET - load the specified Post
+  - DELETE - delete the Post file
+- `/preview/{srcKey}`
+  - GET - _not implemented_
 
 `/generate`
 - `/post/{srcKey}`

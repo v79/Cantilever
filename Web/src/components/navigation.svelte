@@ -1,16 +1,18 @@
 <script lang="ts">
-    import LoginButton from './loginButton.svelte';
-    import {spinnerStore} from './utilities/spinnerWrapper.svelte';
-    import {userStore} from '../stores/userStore.svelte';
-    import {activeStore} from '../stores/appStatusStore.svelte';
-    import {allPostsStore} from '../stores/postsStore.svelte';
-    import {Chevron, Dropdown, DropdownItem, Navbar, NavBrand, NavLi, NavUl} from 'flowbite-svelte';
-    import CModal from './customized/cModal.svelte';
-    import CToast from './customized/cToast.svelte';
-    import {notificationStore} from '../stores/notificationStore.svelte';
-    import {afterUpdate, onMount} from 'svelte';
+	import LoginButton from './loginButton.svelte';
+	import { spinnerStore } from './utilities/spinnerWrapper.svelte';
+	import { userStore } from '../stores/userStore.svelte';
+	import { activeStore } from '../stores/appStatusStore.svelte';
+	import { allPostsStore } from '../stores/postsStore.svelte';
+	import { markdownStore } from '../stores/markdownContentStore.svelte';
+	import { Chevron, Dropdown, DropdownItem, Navbar, NavBrand, NavLi, NavUl } from 'flowbite-svelte';
+	import CModal from './customized/cModal.svelte';
+	import CToast from './customized/cToast.svelte';
+	import { notificationStore } from '../stores/notificationStore.svelte';
+	import { afterUpdate, onMount } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 
-    let regenAllPostsModal = false;
+	let regenAllPostsModal = false;
 	let regenAllPagesModal = false;
 
 	var activePage = $activeStore.currentPage;
@@ -46,6 +48,10 @@
 			default:
 				break;
 		}
+	});
+
+	afterNavigate(() => {
+		markdownStore.clear();
 	});
 
 	function regenerateAllPosts() {
