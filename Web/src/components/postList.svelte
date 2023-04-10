@@ -1,16 +1,15 @@
 <script lang="ts">
-    import {onDestroy, tick} from 'svelte';
+	import {onDestroy, tick} from 'svelte';
+	import {activeStore} from '../stores/appStatusStore.svelte';
+	import {markdownStore} from '../stores/markdownContentStore.svelte';
+	import {notificationStore} from '../stores/notificationStore.svelte';
+	import {allPostsStore, postStore} from '../stores/postsStore.svelte';
+	import {userStore} from '../stores/userStore.svelte';
+	import {spinnerStore} from './utilities/spinnerWrapper.svelte';
+	import MarkdownListItem from './markdownListItem.svelte';
+	import {MarkdownContent, Post} from '../models/structure';
 
-    import {activeStore} from '../stores/appStatusStore.svelte';
-    import {markdownStore} from '../stores/markdownPostStore.svelte';
-    import {notificationStore} from '../stores/notificationStore.svelte';
-    import {allPostsStore, postStore} from '../stores/postsStore.svelte';
-    import {userStore} from '../stores/userStore.svelte';
-    import {spinnerStore} from './utilities/spinnerWrapper.svelte';
-    import MarkdownListItem from './markdownListItem.svelte';
-    import {type MarkdownPost, Post} from '../models/structure';
-
-    $: postsSorted = $postStore.sort(
+	$: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
 	);
 
@@ -91,12 +90,23 @@
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
-				markdownStore.set(data.data);
-				$activeStore.activeFile = decodeURIComponent($markdownStore.post.srcKey);
+				var tmpPost = new MarkdownContent(
+					new Post(
+						data.data.metadata.title,
+						data.data.metadata.srcKey,
+						data.data.metadata.templateKey,
+						data.data.metadata.url,
+						data.data.metadata.lastUpdated,
+						data.data.metadata.date
+					),
+					data.data.body
+				);
+				markdownStore.set(tmpPost);
+				$activeStore.activeFile = decodeURIComponent(tmpPost.metadata?.srcKey ?? '');
 				$activeStore.isNewFile = false;
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
-				$activeStore.newSlug = $markdownStore.post.url;
+				$activeStore.newSlug = $markdownStore.metadata?.url ?? '';
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
@@ -146,16 +156,16 @@
 	}
 
 	function createNewPost() {
-		var newMDPost: MarkdownPost = {
+		var newMDPost: MarkdownContent = {
 			body: '',
-			post: {
-				title: '',
-				srcKey: '',
-				url: '',
-				date: '',
-				lastUpdated: new Date(),
-				templateKey: 'post'
-			}
+			metadata: new Post(
+				'',
+				'',
+				'post',
+				'',
+				'', // I know this is invalid, but I want a 'null' date here
+				new Date()
+			)
 		};
 
 		$activeStore.activeFile = '';

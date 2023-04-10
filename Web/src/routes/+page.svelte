@@ -1,11 +1,11 @@
 <script lang="ts">
-	import PostList from '../components/postList.svelte';
-	import MarkdownEditor from '../components/MarkdownEditor/markdownEditor.svelte';
-	import SpinnerWrapper from '../components/utilities/spinnerWrapper.svelte';
-	import {activeStore} from '../stores/appStatusStore.svelte';
-	import {afterNavigate} from '$app/navigation';
+    import PostList from '../components/postList.svelte';
+    import MarkdownEditor from '../components/MarkdownEditor/markdownEditor.svelte';
+    import SpinnerWrapper from '../components/utilities/spinnerWrapper.svelte';
+    import {activeStore} from '../stores/appStatusStore.svelte';
+    import {afterNavigate} from '$app/navigation';
 
-	afterNavigate(() => {
+    afterNavigate(() => {
 		$activeStore.currentPage = 'Posts';
 	});
 </script>

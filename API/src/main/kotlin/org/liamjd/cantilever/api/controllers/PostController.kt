@@ -58,16 +58,16 @@ class PostController(val sourceBucket: String, val destinationBucket: String) : 
      */
     fun saveMarkdownPost(request: Request<MarkdownPost>): ResponseEntity<APIResult<String>> {
         val postToSave = request.body
-        val srcKey = URLDecoder.decode(postToSave.post.srcKey, Charset.defaultCharset())
+        val srcKey = URLDecoder.decode(postToSave.metadata.srcKey, Charset.defaultCharset())
 
         return if(s3Service.objectExists(srcKey,sourceBucket)) {
-            println("Updating existing file '${postToSave.post.srcKey}'")
+            println("Updating existing file '${postToSave.metadata.srcKey}'")
             println(postToSave.toString().take(100))
             val length = s3Service.putObject(srcKey,sourceBucket,postToSave.toString(),"text/markdown")
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             println("Creating new file...")
-            println(postToSave.post)
+            println(postToSave.metadata)
             val length = s3Service.putObject(srcKey,sourceBucket,postToSave.toString(),"text/markdown")
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
