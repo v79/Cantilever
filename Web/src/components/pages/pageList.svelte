@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
-	import { Post, type MarkdownContent, Page } from '../../models/structure';
+	import { Post, MarkdownContent, Page } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import { markdownStore } from '../../stores/markdownContentStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
@@ -75,7 +75,7 @@
 		spinnerStore.set({ shown: true, message: 'Loading markdown file... ' + srcKey });
 		notificationStore.set({ shown: false, message: '', type: 'info' });
 		tick();
-		fetch('https://api.cantilevers.org/pages/' + encodeURIComponent(srcKey), {
+		fetch('https://api.cantilevers.org/project/pages/' + encodeURIComponent(srcKey), {
 			method: 'GET',
 			headers: {
 				Accept: 'application/json',
@@ -88,12 +88,26 @@
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
-				markdownStore.set(data.data);
-				$activeStore.activeFile = decodeURIComponent($markdownStore.body.srcKey);
+				console.dir(data.data);
+				var tmpPage = new MarkdownContent(
+					new Page(
+						data.data.metadata.title,
+						data.data.metadata.srcKey,
+						data.data.metadata.templateKey,
+						data.data.metadata.url,
+						data.data.metadata.lastUpdated,
+						data.data.metadata.attributes,
+						new Map<string, string>(Object.entries(data.data.sections))
+					),
+					''
+				);
+				markdownStore.set(tmpPage);
+				console.dir($markdownStore.metadata);
+				$activeStore.activeFile = decodeURIComponent($markdownStore.metadata!!.srcKey);
 				$activeStore.isNewFile = false;
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
-				$activeStore.newSlug = $markdownStore.body.url;
+				$activeStore.newSlug = $markdownStore.metadata!!.url;
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
@@ -145,7 +159,15 @@
 	function createNewPage() {
 		var newMDPost: MarkdownContent = {
 			body: '',
-			metadata: new Page('', '', '', '', new Date(), new Set<string>(), new Set<string>())
+			metadata: new Page(
+				'',
+				'',
+				'',
+				'',
+				new Date(),
+				new Map<string, string>(),
+				new Map<string, string>()
+			)
 		};
 
 		$activeStore.activeFile = '';

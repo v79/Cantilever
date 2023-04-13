@@ -108,8 +108,8 @@ export class Page implements MetadataItem {
 	templateKey: string;
 	url: string;
 	lastUpdated: Date;
-	attributeKeys: Set<string>;
-	sectionKeys: Set<string>;
+	attributes: Map<string, string>;
+	sections: Map<string, string>;
 
 	constructor(
 		title: string,
@@ -117,16 +117,16 @@ export class Page implements MetadataItem {
 		templateKey: string,
 		url: string,
 		lastUpdated: Date,
-		attributeKeys: Set<string>,
-		sectionKeys: Set<string>
+		attributes: Map<string, string>,
+		sections: Map<string, string>
 	) {
 		this.title = title;
 		this.srcKey = srcKey;
 		this.templateKey = templateKey;
 		this.url = url;
 		this.lastUpdated = lastUpdated;
-		this.attributeKeys = attributeKeys;
-		this.sectionKeys = sectionKeys;
+		this.attributes = attributes;
+		this.sections = sections;
 	}
 
 	getDateString(): string {

@@ -86,7 +86,7 @@
 	<h3 class="px-4 py-4 text-center text-2xl font-bold">
 		{#if $markdownStore?.metadata?.title}{$markdownStore.metadata.title}{:else}Markdown Editor {/if}
 	</h3>
-	{#if $markdownStore}
+	{#if $markdownStore?.metadata}
 		<div class="flex items-center justify-end pr-8 focus:shadow-lg" role="group">
 			<button
 				class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
@@ -134,7 +134,7 @@
 
 <CModal title="Save file?" bind:open={saveExistingModal} autoclose size="sm">
 	<p>
-		Save changes to file <strong>{$markdownStore.metadata.title}</strong>?
+		Save changes to file <strong>{$markdownStore.metadata?.title}</strong>?
 	</p>
 	<svelte:fragment slot="footer">
 		<button
@@ -151,8 +151,8 @@
 
 <CModal title="Save new file?" bind:open={saveNewModal} autoclose size="sm">
 	<p>
-		Creating new <strong>{$markdownStore.metadata.templateKey}</strong> named
-		<strong>{$markdownStore.metadata.title}</strong>.
+		Creating new <strong>{$markdownStore.metadata?.templateKey}</strong> named
+		<strong>{$markdownStore.metadata?.title}</strong>.
 	</p>
 	<p>The slug (url) will be fixed after saving, so this is your last chance to change it.</p>
 	<form>
