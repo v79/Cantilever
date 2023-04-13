@@ -108,10 +108,10 @@ class GeneratorControllerTest : KoinTest {
       "srcKey": "sources/pages/todo.md",
       "templateKey": "about",
       "url": "sources-pages-todo.md",
-      "attributeKeys": [
-        "siteName",
-        "author"
-      ],
+      "attributes": {
+        "siteName" : "a name",
+        "author" : "writer mcwriterface"
+      },
       "sectionKeys": [
         "body"
       ],

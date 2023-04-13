@@ -8,11 +8,12 @@ import org.liamjd.cantilever.models.sqs.SqsMsgBody
 
 /**
  * A page model is different from a Post, in that it can have multiple named markdown sections.
- * It will start with basic metadata though, and the 'template' property is required.
+ * It will start with basic metadata though, and the 'template' and 'title' properties are required.
  * Sections must be named, and the name must start with '#'
  * The basic format is:
  * ```
  * ---
+ * title: <title>
  * template: <templateName>
  * #customProperty: customValue
  * --- #namedSection

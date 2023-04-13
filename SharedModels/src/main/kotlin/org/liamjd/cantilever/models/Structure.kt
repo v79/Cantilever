@@ -7,10 +7,10 @@ import kotlinx.serialization.Serializable
 
 @Deprecated(message = "Use separate Post, Page, Template list classes")
 @Serializable
-data class Structure(val layouts: Layouts, val posts: MutableList<Post>, var postCount: Int)
+data class Structure(val layouts: Layouts, val posts: MutableList<PostMeta>, var postCount: Int)
 
 @Serializable
-data class PostList(val count: Int = 0, val lastUpdated: Instant, val posts: List<Post>)
+data class PostList(val count: Int = 0, val lastUpdated: Instant, val posts: List<PostMeta>)
 
 @Serializable
 data class PageList(val count: Int = 0, val lastUpdated: Instant, val pages: List<Page>)
@@ -19,7 +19,7 @@ data class PageList(val count: Int = 0, val lastUpdated: Instant, val pages: Lis
 data class TemplateList(val count: Int = 0, val lastUpdated: Instant, val templates: List<Template>)
 
 @Serializable
-data class Post(
+data class PostMeta(
     val title: String,
     val srcKey: String,
     val url: String,
@@ -34,8 +34,8 @@ data class Page(
     val srcKey: String,
     val templateKey: String,
     val url: String,
-    val attributeKeys: Set<String>,
-    val sectionKeys:Set<String>,
+    val attributes: Map<String,String>,
+    val sectionKeys: Set<String>,
     val lastUpdated: Instant = Clock.System.now()
 )
 

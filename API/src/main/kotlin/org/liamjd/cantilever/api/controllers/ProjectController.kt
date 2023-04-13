@@ -25,7 +25,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     private val s3Service: S3Service by inject()
 
     /**
-     * Return a list of all the [Post]s
+     * Return a list of all the [PostMeta]s
      */
     fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostList>> {
         println("ProjectController: Retrieving all posts")
@@ -68,14 +68,14 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     }
 
     /**
-     * Rebuild the generated/posts.json file which contains the metadata for all the [Post]s in the project.
+     * Rebuild the generated/posts.json file which contains the metadata for all the [PostMeta]s in the project.
      */
     fun rebuildPostList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val posts = s3Service.listObjects(postsPrefix, sourceBucket)
         println("ProjectController: Rebuilding all posts from sources in '$postsPrefix'. ${posts.keyCount()} posts found.")
         var filesProcessed = 0
         if (posts.hasContents()) {
-            val list = mutableListOf<Post>()
+            val list = mutableListOf<PostMeta>()
             posts.contents().forEach { obj ->
                 if (obj.key().endsWith(".md")) {
                     println("Extracting metadata from file '${obj.key()}'")
@@ -90,7 +90,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                         return@forEach
                     }
                     list.add(
-                        Post(
+                        PostMeta(
                             title = postMetadata.title,
                             srcKey = obj.key(),
                             url = postMetadata.slug,
@@ -146,7 +146,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                             templateKey = pageModel.templateKey,
                             url = pageModel.url,
                             sectionKeys = pageModel.sections.keys,
-                            attributeKeys = pageModel.attributes.keys,
+                            attributes = pageModel.attributes,
                             lastUpdated = obj.lastModified().toKotlinInstant()
                         )
                     )

@@ -2,10 +2,7 @@ package org.liamjd.cantilever.api
 
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
-import org.liamjd.cantilever.api.controllers.GeneratorController
-import org.liamjd.cantilever.api.controllers.PostController
-import org.liamjd.cantilever.api.controllers.ProjectController
-import org.liamjd.cantilever.api.controllers.StructureController
+import org.liamjd.cantilever.api.controllers.*
 import org.liamjd.cantilever.api.services.StructureService
 import org.liamjd.cantilever.auth.CognitoJWTAuthorizer
 import org.liamjd.cantilever.routing.*
@@ -41,7 +38,8 @@ class LambdaRouter : RequestHandlerWrapper() {
 
     // May need some DI here once I start needing to add services for S3 etc
     private val structureController = StructureController(sourceBucket = sourceBucket, corsDomain = corsDomain)
-    private val postController = PostController(sourceBucket = sourceBucket, destinationBucket = destinationBucket)
+    private val postController = PostController(sourceBucket = sourceBucket)
+    private val pageController = PageController(sourceBucket = sourceBucket)
     private val generatorController =
         GeneratorController(sourceBucket = sourceBucket)
     private val projectController = ProjectController(sourceBucket = sourceBucket)
@@ -79,12 +77,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                     get("", projectController::getPages)
                     post("/") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Route POST /pages is not implemented") }
                     put("/rebuild", projectController::rebuildPageList)
-                    get("/$SRCKEY") { request: Request<Unit> ->
-                        ResponseEntity.notImplemented(
-                            body = "Route /pages/$SRCKEY is not implemented for key " + request.pathParameters["srcKey"],
-                            headers = mapOf("Access-Control-Allow-Origin" to "http://localhost:5173")
-                        )
-                    }
+                    get("/$SRCKEY", pageController::loadMarkdownSource)
                 }
                 get("/templates", projectController::getTemplates)
                 put("/templates/rebuild", projectController::rebuildTemplateList)

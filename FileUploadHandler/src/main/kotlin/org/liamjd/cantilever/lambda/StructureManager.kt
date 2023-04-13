@@ -6,7 +6,7 @@ import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.models.Layouts
-import org.liamjd.cantilever.models.Post
+import org.liamjd.cantilever.models.PostMeta
 import org.liamjd.cantilever.models.Structure
 import org.liamjd.cantilever.models.Template
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
@@ -41,7 +41,7 @@ class StructureManager {
         }
 
         // construct the Post object from markdown file
-        val post = Post(
+        val postMeta = PostMeta(
             title = markdown.metadata.title,
             srcKey = srcKey,
             url = markdown.metadata.slug,
@@ -55,7 +55,7 @@ class StructureManager {
 
         // look for existing structure file
         val structure = if (!s3Client.objectExists(structureKey, sourceBucket)) {
-            error("Structure file does not exist; creating it from template: $template and post: $post")
+            error("Structure file does not exist; creating it from template: $template and post: $postMeta")
             val layouts = Layouts(mutableMapOf(templateKey to template))
             Structure(layouts, mutableListOf(), 0)
         } else {
@@ -67,7 +67,7 @@ class StructureManager {
             loadStructureFromFile(json)
         }
         info("Adding post $srcKey, template ${template.key} to Structure (had ${structure.posts.size} posts)")
-        structure.posts.add(post)
+        structure.posts.add(postMeta)
         structure.layouts.templates[templateKey] = template
 
 

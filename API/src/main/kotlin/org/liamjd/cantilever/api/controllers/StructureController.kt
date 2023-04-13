@@ -9,7 +9,7 @@ import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.api.services.StructureService
 import org.liamjd.cantilever.models.Layouts
-import org.liamjd.cantilever.models.Post
+import org.liamjd.cantilever.models.PostMeta
 import org.liamjd.cantilever.models.Structure
 import org.liamjd.cantilever.models.Template
 import org.liamjd.cantilever.routing.Request
@@ -79,7 +79,7 @@ class StructureController(val sourceBucket: String, val corsDomain: String = "ht
                         return@forEach
                     }
 
-                    structure.posts.add(Post(
+                    structure.posts.add(PostMeta(
                         title = postMetadata.title,
                         srcKey = obj.key(),
                         url = postMetadata.slug,

@@ -1,9 +1,13 @@
-package org.liamjd.cantilever.models
+package org.liamjd.cantilever.models.rest
 
 import kotlinx.serialization.Serializable
+import org.liamjd.cantilever.models.PostMeta
 
+/**
+ * REST API model wrapping a [PostMeta] metadata object and the source string
+ */
 @Serializable
-class MarkdownPost(val metadata: Post) {
+class MarkdownPost(val metadata: PostMeta) {
     var body: String = ""
 
     override fun toString(): String {
