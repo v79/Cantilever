@@ -1,7 +1,7 @@
 <script lang="ts">
-    import {onMount} from 'svelte';
+	import { onMount } from 'svelte';
 
-    export let disabled: boolean = false;
+	export let disabled: boolean = false;
 	export let name: string;
 	export let value: string;
 	export let label: string;
@@ -10,7 +10,7 @@
 	export let onChange = (e: Event) => {};
 	export let classes = 'mt-1 block w-full rounded-md border-gray-300 sm:text-sm';
 
-	const onInput = (e: Event) => (value = e.target.value);
+	export let onInput: (e: Event) => void = (e: Event) => (value = e.target.value);
 	onMount(() => {
 		if (readonly) {
 			classes += ' text-slate-500 shadow-sm focus:border-gray-300';

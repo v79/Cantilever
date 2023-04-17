@@ -75,7 +75,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                 }
                 group("/pages") {
                     get("", projectController::getPages)
-                    post("/") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Route POST /pages is not implemented") }
+                    post("/", pageController::saveMarkdownPageSource).supplies(setOf(MimeType.plainText))
                     put("/rebuild", projectController::rebuildPageList)
                     get("/$SRCKEY", pageController::loadMarkdownSource)
                 }

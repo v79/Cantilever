@@ -9,6 +9,7 @@
 	import { spinnerStore } from '../utilities/spinnerWrapper.svelte';
 	import MarkdownListItem from '../markdownListItem.svelte';
 
+	// TODO : This might be better grouped by template
 	$: pagesSorted = $pageStore.sort((a, b) => {
 		if (a.srcKey < b.srcKey) return -1;
 		if (a.srcKey > b.srcKey) return 1;
@@ -43,8 +44,8 @@
 							p.templateKey,
 							p.url,
 							new Date(p.lastUpdated),
-							new Set<string>(),
-							new Set<string>()
+							new Map<string, string>(),
+							new Map<string, string>()
 						)
 					);
 				}
@@ -88,7 +89,6 @@
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
-				console.dir(data.data);
 				var tmpPage = new MarkdownContent(
 					new Page(
 						data.data.metadata.title,
@@ -96,13 +96,12 @@
 						data.data.metadata.templateKey,
 						data.data.metadata.url,
 						data.data.metadata.lastUpdated,
-						data.data.metadata.attributes,
+						new Map<string, string>(Object.entries(data.data.metadata.attributes)),
 						new Map<string, string>(Object.entries(data.data.sections))
 					),
 					''
 				);
 				markdownStore.set(tmpPage);
-				console.dir($markdownStore.metadata);
 				$activeStore.activeFile = decodeURIComponent($markdownStore.metadata!!.srcKey);
 				$activeStore.isNewFile = false;
 				$activeStore.hasChanged = false;

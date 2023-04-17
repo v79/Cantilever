@@ -18,6 +18,9 @@ import java.nio.charset.Charset
 class PostController(val sourceBucket: String) : KoinComponent, APIController {
     private val s3Service: S3Service by inject()
 
+    /**
+     * Load a markdown file with the specified `srcKey` and return it as [MarkdownPost] response
+     */
     fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<MarkdownPost>> {
         val markdownSource = request.pathParameters["srcKey"]
         return if (markdownSource != null) {
@@ -35,6 +38,9 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
         }
     }
 
+    /**
+     * Build a [MarkdownPost] object from the source specified
+     */
     private fun buildMarkdownPost(
         srcKey: String
     ): MarkdownPost {

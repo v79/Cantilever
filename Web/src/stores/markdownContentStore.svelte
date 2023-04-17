@@ -1,6 +1,6 @@
 <script context="module" lang="ts">
 	import { writable } from 'svelte/store';
-	import { MarkdownContent, Post } from '../models/structure';
+	import { MarkdownContent } from '../models/structure';
 
 	function createMarkdownStore() {
 		const { subscribe, set, update } = writable<MarkdownContent>();

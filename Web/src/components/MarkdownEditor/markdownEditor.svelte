@@ -12,6 +12,7 @@
 	import { spinnerStore } from '../utilities/spinnerWrapper.svelte';
 	import ModalDeleteFile from './modal-delete-file.svelte';
 	import PostEditorForm from './postEditorForm.svelte';
+	import { createSlug } from '../../functions/createSlug';
 
 	let saveExistingModal = false;
 	let saveNewModal = false;
@@ -33,12 +34,6 @@
 			$activeStore.newSlug = createSlug($markdownStore.metadata?.title ?? '');
 		}
 	});
-
-	function createSlug(title: string) {
-		// const invalid: RegExp = new RegExp(';/?:@&=+$, ', 'g');
-		const invalid = /[;\/?:@%&=+$,\(\) ]/g;
-		return title.trim().toLowerCase().replaceAll(invalid, '-').replaceAll('--', '-');
-	}
 
 	function saveFile() {
 		// TODO: This needs to change
@@ -81,7 +76,6 @@
 	onDestroy(markdownStoreUnsubscribe);
 </script>
 
-<!-- TODO: split this into handling Pages and Posts -->
 <div class="relative mt-5 md:col-span-2 md:mt-0">
 	<h3 class="px-4 py-4 text-center text-2xl font-bold">
 		{#if $markdownStore?.metadata?.title}{$markdownStore.metadata.title}{:else}Markdown Editor {/if}
