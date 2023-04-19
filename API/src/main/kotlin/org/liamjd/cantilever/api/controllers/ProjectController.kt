@@ -139,13 +139,14 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                         println("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
                         return@forEach
                     }
+                    // we don't need to store the full contents of the sections in this file (just as we don't store the body in posts.json)
                     list.add(
                         Page(
                             title = pageModel.title,
                             srcKey = pageModel.srcKey,
                             templateKey = pageModel.templateKey,
                             url = pageModel.url,
-                            sectionKeys = pageModel.sections.keys,
+                            sections = buildMap { pageModel.sections.keys.forEach {  key -> put(key,"") }},
                             attributes = pageModel.attributes,
                             lastUpdated = obj.lastModified().toKotlinInstant()
                         )

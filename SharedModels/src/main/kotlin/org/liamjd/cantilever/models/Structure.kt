@@ -35,7 +35,7 @@ data class Page(
     val templateKey: String,
     val url: String,
     val attributes: Map<String,String>,
-    val sectionKeys: Set<String>,
+    val sections: Map<String,String>,
     val lastUpdated: Instant = Clock.System.now()
 )
 

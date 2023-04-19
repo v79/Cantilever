@@ -5,7 +5,6 @@ import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.models.Page
 import org.liamjd.cantilever.models.rest.MarkdownPage
-import org.liamjd.cantilever.models.rest.MarkdownPost
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.S3Service
@@ -46,36 +45,34 @@ class PageController(val sourceBucket: String) : KoinComponent, APIController {
     private fun buildMarkdownPage(srcKey: String): MarkdownPage {
         val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
         val metadata = extractPageModel(filename = srcKey, source = markdown)
-
-        println("Returning page from $metadata")
         val page = Page(
             title = metadata.title,
             templateKey = metadata.templateKey,
             srcKey = srcKey,
             url = metadata.url,
             attributes = metadata.attributes,
-            sectionKeys = metadata.sections.keys
+            sections = metadata.sections
         )
-        val mdPage = MarkdownPage(page)
-        mdPage.sections = metadata.sections
 
-        return mdPage
+        return MarkdownPage(page)
     }
 
     /**
      * Save a [MarkdownPage] to the sources bucket
      */
     fun saveMarkdownPageSource(request: Request<MarkdownPage>): ResponseEntity<APIResult<String>> {
+        println("PageController: saveMarkdownPageSource")
         val pageToSave = request.body
+        pageToSave.also {
+            println("PageToSave: ${it.metadata.title} has ${it.metadata.attributes.keys.size} attributes and ${it.metadata.sections.keys.size} sections")
+        }
         val srcKey = URLDecoder.decode(pageToSave.metadata.srcKey, Charset.defaultCharset())
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             println("Updating existing file '${pageToSave.metadata.srcKey}'")
-            println(pageToSave.toString().take(100))
             val length = s3Service.putObject(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             println("Creating new file...")
-            println(pageToSave.metadata)
             val length = s3Service.putObject(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }

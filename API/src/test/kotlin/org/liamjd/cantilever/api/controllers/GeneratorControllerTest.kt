@@ -112,9 +112,9 @@ class GeneratorControllerTest : KoinTest {
         "siteName" : "a name",
         "author" : "writer mcwriterface"
       },
-      "sectionKeys": [
-        "body"
-      ],
+      "sections": {
+        "body": "empty body"
+      },
       "lastUpdated": "2023-03-13T20:46:36.647517Z"
     }
     ]
@@ -136,6 +136,7 @@ class GeneratorControllerTest : KoinTest {
         val response = controller.generateTemplate(request)
 
         assertNotNull(response)
+        println(response)
         assertEquals(200, response.statusCode)
         verify(exactly = 1) { mockSQS.sendMessage(any(), any(), any()) }
     }

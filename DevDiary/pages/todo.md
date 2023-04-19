@@ -37,3 +37,4 @@ Ultimately, I would like to be able to separate the 'cantilever' application (fr
 ## Bugs/Known Issues
 
 - The short form of API routing does not include the necessary CORS domain headers. Need to find a way to inject that into the root of the API.
+- The URL for a page seems to include the .md file extension - it should not

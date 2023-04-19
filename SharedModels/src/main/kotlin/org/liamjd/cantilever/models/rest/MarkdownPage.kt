@@ -1,14 +1,18 @@
 package org.liamjd.cantilever.models.rest
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import org.liamjd.cantilever.models.Page
 
 /**
  * REST API model wrapping a [Page] metadata object and the sources of each named section
  */
 @Serializable
-class MarkdownPage(val metadata: Page) {
-    var sections :Map<String,String> = emptyMap()
+class MarkdownPage(
+    val metadata: Page,
+    val body: String = ""
+) {
+    // the front-end sends a body in its MarkdownContent class, but is not needed for a Page
 
     override fun toString(): String {
         val sBuilder = StringBuilder()
@@ -19,7 +23,7 @@ class MarkdownPage(val metadata: Page) {
             metadata.attributes.forEach {
                 appendLine("#${it.key}: ${it.value}")
             }
-            sections.forEach {
+            metadata.sections.forEach {
                 appendLine("$separator #${it.key}")
                 appendLine(it.value)
             }

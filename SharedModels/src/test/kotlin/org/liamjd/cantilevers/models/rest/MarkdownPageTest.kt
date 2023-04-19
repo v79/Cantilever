@@ -12,7 +12,7 @@ class MarkdownPageTest {
 
     @Test
     fun `should create simplest page with no custom parts`() {
-        val page = Page(title = "Page", srcKey = "page.md", templateKey = "templateKey",url = "", attributes = emptyMap(), sectionKeys = emptySet())
+        val page = Page(title = "Page", srcKey = "page.md", templateKey = "templateKey",url = "", attributes = emptyMap(), sections = emptyMap())
 
         val markdownPage = MarkdownPage(metadata = page)
 
@@ -28,7 +28,7 @@ class MarkdownPageTest {
     @Test
     fun `should create simplest page with custom attributes`() {
         val attributes = mapOf("name" to "Bob", "Age" to "43")
-        val page = Page(title = "Page", srcKey = "page.md", templateKey = "templateKey",url = "", attributes = attributes, sectionKeys = emptySet())
+        val page = Page(title = "Page", srcKey = "page.md", templateKey = "templateKey",url = "", attributes = attributes, sections = emptyMap())
 
         val markdownPage = MarkdownPage(metadata = page)
 
@@ -44,10 +44,9 @@ class MarkdownPageTest {
     @Test
     fun `should create simplest page with custom sections`() {
         val sections = mapOf("apples" to "Green and red", "Berries" to "Blue and straw")
-        val page = Page(title = "Page", srcKey = "page.md", templateKey = "templateKey",url = "", attributes = emptyMap(), sectionKeys = sections.keys)
+        val page = Page(title = "Page", srcKey = "page.md", templateKey = "templateKey",url = "", attributes = emptyMap(),sections = sections)
 
         val markdownPage = MarkdownPage(metadata = page)
-        markdownPage.sections = sections
 
         val result = markdownPage.toString()
         println(result)

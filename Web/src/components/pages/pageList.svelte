@@ -97,7 +97,7 @@
 						data.data.metadata.url,
 						data.data.metadata.lastUpdated,
 						new Map<string, string>(Object.entries(data.data.metadata.attributes)),
-						new Map<string, string>(Object.entries(data.data.sections))
+						new Map<string, string>(Object.entries(data.data.metadata.sections))
 					),
 					''
 				);

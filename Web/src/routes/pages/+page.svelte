@@ -38,7 +38,7 @@
 		let pageJson = JSON.stringify($markdownStore, mapReplacer);
 		console.log(pageJson);
 
-		/* fetch('https://api.cantilevers.org/project/pages/', {
+		fetch('https://api.cantilevers.org/project/pages/', {
 			method: 'POST',
 			headers: {
 				Accept: 'text/plain',
@@ -54,7 +54,7 @@
 					shown: true,
 					type: 'success'
 				});
-			}); */
+			});
 	}
 </script>
 

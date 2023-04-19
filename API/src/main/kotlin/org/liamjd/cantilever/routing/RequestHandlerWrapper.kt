@@ -80,16 +80,12 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         routerFunction.authorizer?.let { auth ->
             println("Checking authentication/authorization for ${auth.simpleName}")
 
-            println("BAD - BYPASSING AUTH!")
 
-            if (corsDomain != "http://localhost:5173") {
                 val authResult = auth.authorize(input)
                 if (!authResult.authorized) {
                     return ResponseEntity.unauthorized("Authorization check failed: ${authResult.message}")
                 }
-            }
 
-            println("END BAD!")
         }
 
         val handler: (Nothing) -> ResponseEntity<out Any> = routerFunction.handler
@@ -109,13 +105,14 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                     ResponseEntity.badRequest(body = "No body received but $kType was expected. If there is legitimately no body, add a X-Content-Length header with value '0'.")
                 } else {
                     try {
+                        // Deserialize the input string with the serializer declared for the kType specified in the API definition
                         val bodyObject = Json.decodeFromString(serializer(kType), input.body)
                         val request = Request(input, bodyObject, routerFunction.requestPredicate.pathPattern)
                         (handler as HandlerFunction<*, *>)(request)
                     } catch (mfe: MissingFieldException) {
-                        ResponseEntity.badRequest(body = "Invalid request. Error is ${mfe.message}")
+                        ResponseEntity.badRequest(body = "Invalid request. Error is: ${mfe.message}")
                     } catch (se: SerializationException) {
-                        ResponseEntity.badRequest(body = "Could not deserialize body. Error is ${se.message}")
+                        ResponseEntity.badRequest(body = "Could not deserialize body. Error is: ${se.message}")
                     }
                 }
             }

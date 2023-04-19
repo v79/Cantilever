@@ -25,10 +25,10 @@ dependencies {
 
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0-RC")
-    implementation("com.charleskorn.kaml:kaml:0.49.0")
+    implementation("com.charleskorn.kaml:kaml:0.53.0")
 
      // DI
-    implementation("io.insert-koin:koin-core:3.3.3")
+    implementation("io.insert-koin:koin-core:3.4.0")
 
     // sdk v2
     implementation(platform("software.amazon.awssdk:bom:2.19.8"))

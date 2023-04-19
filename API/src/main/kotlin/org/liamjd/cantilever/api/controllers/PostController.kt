@@ -66,6 +66,7 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
      * Save a [MarkdownPost] to the sources bucket
      */
     fun saveMarkdownPost(request: Request<MarkdownPost>): ResponseEntity<APIResult<String>> {
+        println("PostController: saveMarkdownPost $request")
         val postToSave = request.body
         val srcKey = URLDecoder.decode(postToSave.metadata.srcKey, Charset.defaultCharset())
 
