@@ -1,25 +1,25 @@
 <script lang="ts">
-    import {Modal} from 'flowbite-svelte';
-    import {afterUpdate, beforeUpdate, onDestroy} from 'svelte';
-    import SvelteMarkdown from 'svelte-markdown';
-    import {spinnerStore} from '../components/utilities/spinnerWrapper.svelte';
-    import {activeStore} from '../stores/appStatusStore.svelte';
-    import {markdownStore} from '../stores/markdownPostStore.svelte';
-    import {notificationStore} from '../stores/notificationStore.svelte';
-    import {allPostsStore} from '../stores/postsStore.svelte';
-    import {userStore} from '../stores/userStore.svelte';
-    import CModal from './customized/cModal.svelte';
-    import DatePicker from './forms/datePicker.svelte';
-    import TextInput from './forms/textInput.svelte';
-    import ModalDeleteFile from './MarkdownEditor/modal-delete-file.svelte';
+	import { Modal } from 'flowbite-svelte';
+	import { afterUpdate, beforeUpdate, onDestroy } from 'svelte';
+	import SvelteMarkdown from 'svelte-markdown';
+	import { Post } from '../../models/structure';
+	import { activeStore } from '../../stores/appStatusStore.svelte';
+	import { markdownStore } from '../../stores/markdownContentStore.svelte';
+	import { notificationStore } from '../../stores/notificationStore.svelte';
+	import { allPostsStore } from '../../stores/postsStore.svelte';
+	import { userStore } from '../../stores/userStore.svelte';
+	import CModal from '../customized/cModal.svelte';
+	import { spinnerStore } from '../utilities/spinnerWrapper.svelte';
+	import ModalDeleteFile from './modal-delete-file.svelte';
+	import PostEditorForm from './postEditorForm.svelte';
+	import { createSlug } from '../../functions/createSlug';
 
-    let saveExistingModal = false;
+	let saveExistingModal = false;
 	let saveNewModal = false;
 	let previewModal = false;
 	let deleteFileModal = false;
 
 	let saveNewFileSlug = '';
-	$: formIsValid = $markdownStore?.post.title != '' && $markdownStore?.post.date != '';
 
 	afterUpdate(() => {});
 
@@ -31,22 +31,17 @@
 
 	beforeUpdate(() => {
 		if ($activeStore.isNewFile) {
-			$activeStore.newSlug = createSlug($markdownStore.post.title);
+			$activeStore.newSlug = createSlug($markdownStore.metadata?.title ?? '');
 		}
 	});
 
-	function createSlug(title: string) {
-		// const invalid: RegExp = new RegExp(';/?:@&=+$, ', 'g');
-		const invalid = /[;\/?:@%&=+$,\(\) ]/g;
-		return title.trim().toLowerCase().replaceAll(invalid, '-').replaceAll('--', '-');
-	}
-
 	function saveFile() {
-		console.log('Saving file ', $markdownStore.post.srcKey);
+		// TODO: This needs to change
+		console.log('Saving file ', $markdownStore.metadata?.srcKey);
 		let postJson = JSON.stringify($markdownStore);
 		console.log(postJson);
 
-		fetch('https://api.cantilevers.org/posts/save', {
+		fetch('https://api.cantilevers.org/posts/', {
 			method: 'POST',
 			headers: {
 				Accept: 'text/plain',
@@ -58,16 +53,16 @@
 			.then((response) => response.text())
 			.then((data) => {
 				notificationStore.set({
-					message: decodeURI($markdownStore.post.srcKey) + ' saved. ' + data,
+					message: decodeURI($markdownStore.metadata?.srcKey ?? '') + ' saved. ' + data,
 					shown: true,
 					type: 'success'
 				});
 				let existing = $allPostsStore.posts.find(
-					(post) => post.srcKey === $markdownStore.post.srcKey
+					(post) => post.srcKey === $markdownStore.metadata?.srcKey ?? ''
 				);
 				if (!existing) {
 					console.log('Added brand new file to structure');
-					$allPostsStore.count = $allPostsStore.posts.push($markdownStore.post);
+					$allPostsStore.count = $allPostsStore.posts.push($markdownStore.metadata);
 				}
 				console.log(data);
 			})
@@ -83,9 +78,9 @@
 
 <div class="relative mt-5 md:col-span-2 md:mt-0">
 	<h3 class="px-4 py-4 text-center text-2xl font-bold">
-		{#if $markdownStore?.post.title}{$markdownStore.post.title}{:else}Markdown Editor {/if}
+		{#if $markdownStore?.metadata?.title}{$markdownStore.metadata.title}{:else}Markdown Editor {/if}
 	</h3>
-	{#if $markdownStore}
+	{#if $markdownStore?.metadata}
 		<div class="flex items-center justify-end pr-8 focus:shadow-lg" role="group">
 			<button
 				class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
@@ -99,63 +94,23 @@
 				type="button"
 				on:click={() => {
 					if ($activeStore.isNewFile) {
-						saveNewFileSlug = createSlug($markdownStore.post.title);
+						saveNewFileSlug = createSlug($markdownStore.metadata?.title ?? '');
 						saveNewModal = true;
 					} else {
 						saveExistingModal = true;
 					}
 				}}
-				disabled={!formIsValid}
+				disabled={!$markdownStore.metadata?.isValid() ?? true}
 				class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 disabled:hover:bg-purple-600"
 				>Save</button>
 		</div>
-		<form action="#" method="POST">
-			<div class="overflow-hidden shadow sm:rounded-md">
-				<div class="px-4 py-5 sm:p-6">
-					<div class="grid grid-cols-6 gap-6">
-						<div class="col-span-6 sm:col-span-6 lg:col-span-2">
-							<TextInput bind:value={$activeStore.newSlug} readonly name="slug" label="Slug/URL" />
-						</div>
 
-						<div class="col-span-6 sm:col-span-3 lg:col-span-2">
-							<DatePicker label="Date" name="date" required bind:value={$markdownStore.post.date} />
-						</div>
-
-						<div class="col-span-6 sm:col-span-3 lg:col-span-2">
-							<TextInput
-								bind:value={$markdownStore.post.templateKey}
-								name="template"
-								label="Template"
-								required
-								readonly />
-						</div>
-
-						<div class="col-span-6">
-							<TextInput
-								bind:value={$markdownStore.post.title}
-								required
-								name="Title"
-								label="Title" />
-						</div>
-						<div class="col-span-6">
-							<label for="markdown" class="text-sm font-medium text-slate-200">Markdown</label>
-							<button
-								type="button"
-								class="float-right text-right text-sm font-medium text-slate-200"
-								on:click={() => {
-									previewModal = true;
-								}}>Preview</button>
-							<textarea
-								bind:value={$markdownStore.body}
-								name="markdown"
-								id="markdown"
-								class="textarea-lg mt-1  block h-[500px] w-full rounded-md focus:border-indigo-500 focus:ring-indigo-500"
-								placeholder="Markdown goes here" />
-						</div>
-					</div>
-				</div>
-			</div>
-		</form>
+		{#if $markdownStore.metadata instanceof Post}
+			<PostEditorForm
+				bind:metadata={$markdownStore.metadata}
+				bind:previewModal
+				bind:body={$markdownStore.body} />
+		{/if}
 	{:else}
 		<h3 class="px-8 text-center text-lg text-slate-200">
 			Load an existing file or create a new one to get started
@@ -166,14 +121,14 @@
 <!-- preview modal -->
 {#if $markdownStore}
 	{@const mdSource = $markdownStore.body}
-	<Modal title={$markdownStore.post.title} bind:open={previewModal} size="lg">
+	<Modal title={$markdownStore.metadata?.title} bind:open={previewModal} size="lg">
 		<SvelteMarkdown source={mdSource} />
 	</Modal>
 {/if}
 
 <CModal title="Save file?" bind:open={saveExistingModal} autoclose size="sm">
 	<p>
-		Save changes to file <strong>{$markdownStore.post.title}</strong>?
+		Save changes to file <strong>{$markdownStore.metadata?.title}</strong>?
 	</p>
 	<svelte:fragment slot="footer">
 		<button
@@ -190,8 +145,8 @@
 
 <CModal title="Save new file?" bind:open={saveNewModal} autoclose size="sm">
 	<p>
-		Creating new <strong>{$markdownStore.post.templateKey}</strong> named
-		<strong>{$markdownStore.post.title}</strong>.
+		Creating new <strong>{$markdownStore.metadata?.templateKey}</strong> named
+		<strong>{$markdownStore.metadata?.title}</strong>.
 	</p>
 	<p>The slug (url) will be fixed after saving, so this is your last chance to change it.</p>
 	<form>
@@ -219,9 +174,9 @@
 			on:click={(e) => {
 				let srcKey = 'sources/posts/' + saveNewFileSlug + '.md';
 				spinnerStore.set({ message: 'Saving ' + srcKey, shown: true });
-				$markdownStore.post.srcKey = srcKey;
-				$markdownStore.post.url = saveNewFileSlug;
-				$markdownStore.post.lastUpdated = new Date().toISOString();
+				$markdownStore.metadata.srcKey = srcKey;
+				$markdownStore.metadata.url = saveNewFileSlug;
+				$markdownStore.metadata.lastUpdated = new Date().toISOString();
 				saveFile();
 			}}
 			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"

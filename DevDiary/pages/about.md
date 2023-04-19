@@ -1,5 +1,6 @@
 ---
 template: about
+title: About Cantilever
 #siteName: Cantilever
 #author: Liam Davison
 --- #body

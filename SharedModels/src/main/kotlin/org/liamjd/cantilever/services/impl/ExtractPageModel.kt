@@ -8,11 +8,12 @@ import org.liamjd.cantilever.models.sqs.SqsMsgBody
 
 /**
  * A page model is different from a Post, in that it can have multiple named markdown sections.
- * It will start with basic metadata though, and the 'template' property is required.
+ * It will start with basic metadata though, and the 'template' and 'title' properties are required.
  * Sections must be named, and the name must start with '#'
  * The basic format is:
  * ```
  * ---
+ * title: <title>
  * template: <templateName>
  * #customProperty: customValue
  * --- #namedSection
@@ -55,7 +56,14 @@ fun extractPageModel(filename: String, source: String): SqsMsgBody.PageModelMsg 
         filename.toSlug()
     }
 
+    val title = if(metadata.contains("title:")) {
+        metadata.substringAfter("title:").substringBefore("\n").trim()
+    } else {
+        filename
+    }
+
     return SqsMsgBody.PageModelMsg(
+        title = title,
         srcKey = filename,
         templateKey = template,
         url = url,

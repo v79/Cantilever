@@ -25,10 +25,10 @@ dependencies {
 
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0-RC")
-    implementation("com.charleskorn.kaml:kaml:0.49.0")
+    implementation("com.charleskorn.kaml:kaml:0.53.0")
 
      // DI
-    implementation("io.insert-koin:koin-core:3.3.3")
+    implementation("io.insert-koin:koin-core:3.4.0")
 
     // sdk v2
     implementation(platform("software.amazon.awssdk:bom:2.19.8"))
@@ -41,7 +41,6 @@ dependencies {
     implementation("com.amazonaws:aws-lambda-java-events:3.11.0")
 
     // auth
-//    implementation("aws.sdk.kotlin:cognitoidentity:0.20.0-beta")
     implementation("com.auth0:java-jwt:4.2.2")
     implementation("com.auth0:jwks-rsa:0.21.3")
 

@@ -1,29 +1,28 @@
 <script lang="ts">
-	import { onDestroy, tick } from 'svelte';
-	import { activeStore } from '../stores/appStatusStore.svelte';
-	import { markdownStore } from '../stores/markdownContentStore.svelte';
-	import { notificationStore } from '../stores/notificationStore.svelte';
-	import { allPostsStore, postStore } from '../stores/postsStore.svelte';
-	import { userStore } from '../stores/userStore.svelte';
-	import { spinnerStore } from './utilities/spinnerWrapper.svelte';
-	import MarkdownListItem from './markdownListItem.svelte';
-	import { MarkdownContent, Post } from '../models/structure';
+	import { onDestroy, onMount, tick } from 'svelte';
+	import { Post, MarkdownContent, Page } from '../../models/structure';
+	import { activeStore } from '../../stores/appStatusStore.svelte';
+	import { markdownStore } from '../../stores/markdownContentStore.svelte';
+	import { notificationStore } from '../../stores/notificationStore.svelte';
+	import { userStore } from '../../stores/userStore.svelte';
+	import { allPagesStore, pageStore } from '../../stores/postsStore.svelte';
+	import { spinnerStore } from '../utilities/spinnerWrapper.svelte';
+	import MarkdownListItem from '../markdownListItem.svelte';
 
-	$: postsSorted = $postStore.sort(
-		(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-	);
+	// TODO : This might be better grouped by template
+	$: pagesSorted = $pageStore.sort((a, b) => {
+		if (a.srcKey < b.srcKey) return -1;
+		if (a.srcKey > b.srcKey) return 1;
+		return 0;
+	});
 
-	// onMount(async () => {});
+	onMount(async () => {});
 
-	function loadAllPosts() {
-		// https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/
-		// https://api.cantilevers.org/structure
-		// TODO: extract this sort of thing into a separate method, and add error handling, auth etc
-		// spinnerStore.set({ message: 'Loading project structure', shown: true });
-		console.log('Loading all posts json...');
+	function loadAllPages() {
+		console.log('Loading all pages json...');
 		let token = $userStore.token;
 		notificationStore.set({ shown: false, message: '', type: 'info' });
-		fetch('https://api.cantilevers.org/project/posts', {
+		fetch('https://api.cantilevers.org/project/pages', {
 			method: 'GET',
 			headers: {
 				Accept: 'application/json',
@@ -36,26 +35,26 @@
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
-				var tempPosts = new Array<Post>();
-				for (const p of data.data.posts) {
-					tempPosts.push(
-						new Post(
+				var tempPages = new Array<Page>();
+				for (const p of data.data.pages) {
+					tempPages.push(
+						new Page(
 							p.title,
 							p.srcKey,
 							p.templateKey,
 							p.url,
 							new Date(p.lastUpdated),
-							new Date(p.date)
+							new Map<string, string>(),
+							new Map<string, string>()
 						)
 					);
 				}
-				// allPostsStore.set(data.data);
-				allPostsStore.set({
-					count: tempPosts.length,
+				allPagesStore.set({
+					count: tempPages.length,
 					lastUpdated: data.lastUpdated,
-					posts: tempPosts
+					pages: tempPages
 				});
-				$notificationStore.message = 'Loaded all posts ' + $activeStore.activeFile;
+				$notificationStore.message = 'Loaded all pages ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
 			})
@@ -77,7 +76,7 @@
 		spinnerStore.set({ shown: true, message: 'Loading markdown file... ' + srcKey });
 		notificationStore.set({ shown: false, message: '', type: 'info' });
 		tick();
-		fetch('https://api.cantilevers.org/posts/' + encodeURIComponent(srcKey), {
+		fetch('https://api.cantilevers.org/project/pages/' + encodeURIComponent(srcKey), {
 			method: 'GET',
 			headers: {
 				Accept: 'application/json',
@@ -90,23 +89,24 @@
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
-				var tmpPost = new MarkdownContent(
-					new Post(
+				var tmpPage = new MarkdownContent(
+					new Page(
 						data.data.metadata.title,
 						data.data.metadata.srcKey,
 						data.data.metadata.templateKey,
 						data.data.metadata.url,
 						data.data.metadata.lastUpdated,
-						data.data.metadata.date
+						new Map<string, string>(Object.entries(data.data.metadata.attributes)),
+						new Map<string, string>(Object.entries(data.data.metadata.sections))
 					),
-					data.data.body
+					''
 				);
-				markdownStore.set(tmpPost);
-				$activeStore.activeFile = decodeURIComponent(tmpPost.metadata?.srcKey ?? '');
+				markdownStore.set(tmpPage);
+				$activeStore.activeFile = decodeURIComponent($markdownStore.metadata!!.srcKey);
 				$activeStore.isNewFile = false;
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
-				$activeStore.newSlug = $markdownStore.metadata?.url ?? '';
+				$activeStore.newSlug = $markdownStore.metadata!!.url;
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
@@ -124,8 +124,8 @@
 
 	async function rebuild() {
 		let token = $userStore.token;
-		console.log('Regenerating project posts file...');
-		fetch('https://api.cantilevers.org/project/posts/rebuild', {
+		console.log('Regenerating project pages file...');
+		fetch('https://api.cantilevers.org/project/pages/rebuild', {
 			method: 'PUT',
 			headers: {
 				Accept: 'application/json',
@@ -142,7 +142,7 @@
 					shown: true,
 					type: 'success'
 				});
-				loadAllPosts();
+				loadAllPages();
 			})
 			.catch((error) => {
 				console.log(error);
@@ -155,16 +155,17 @@
 			});
 	}
 
-	function createNewPost() {
+	function createNewPage() {
 		var newMDPost: MarkdownContent = {
 			body: '',
-			metadata: new Post(
+			metadata: new Page(
 				'',
 				'',
-				'post',
 				'',
-				'', // I know this is invalid, but I want a 'null' date here
-				new Date()
+				'',
+				new Date(),
+				new Map<string, string>(),
+				new Map<string, string>()
 			)
 		};
 
@@ -174,28 +175,28 @@
 		$activeStore.newSlug = '';
 		$activeStore.hasChanged = false;
 
-		console.log('Creating new post');
+		console.log('Creating new page');
 		markdownStore.set(newMDPost);
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
 		if (data) {
-			loadAllPosts();
+			loadAllPages();
 		}
 	});
 
-	const structStoreUnsubscribe = allPostsStore.subscribe((data) => {
-		postStore.set(data.posts);
+	const structStoreUnsubscribe = allPagesStore.subscribe((data) => {
+		pageStore.set(data.pages);
 	});
 
 	onDestroy(structStoreUnsubscribe);
 	onDestroy(userStoreUnsubscribe);
 </script>
 
-<h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-900">Posts</h3>
+<h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-900">Pages</h3>
 
 {#if $userStore === undefined}
-	<div class="px-8"><p class="text-warning text-lg">Login to see posts</p></div>
+	<div class="px-8"><p class="text-warning text-lg">Login to see pages</p></div>
 {:else}
 	<div class="flex items-center justify-center" role="group">
 		<button
@@ -210,23 +211,23 @@
 			on:click={(e) => {
 				console.log('Show spinner');
 				spinnerStore.set({ shown: true, message: 'Reloading project...' });
-				tick().then(() => loadAllPosts());
+				tick().then(() => loadAllPages());
 			}}>Reload</button>
 		<button
 			type="button"
-			on:click={createNewPost}
+			on:click={createNewPage}
 			class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
-			>New Post</button>
+			>New Page</button>
 	</div>
 	<div class="px-8">
-		{#if $allPostsStore}
-			<h4 class="text-right text-sm text-slate-900">{$allPostsStore.count} posts</h4>
+		{#if $allPagesStore}
+			<h4 class="text-right text-sm text-slate-900">{$allPagesStore.count} pages</h4>
 		{/if}
-		{#if postsSorted.length > 0}
+		{#if pagesSorted.length > 0}
 			<div class="justify-left flex py-2">
 				<ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
-					{#each postsSorted as post}
-						<MarkdownListItem item={post} onClickFn={loadMarkdown} />
+					{#each pagesSorted as page}
+						<MarkdownListItem item={page} onClickFn={loadMarkdown} />
 					{/each}
 				</ul>
 			</div>

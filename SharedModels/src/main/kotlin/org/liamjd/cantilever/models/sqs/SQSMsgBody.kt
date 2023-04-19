@@ -32,6 +32,7 @@ sealed class SqsMsgBody {
     @OptIn(ExperimentalSerializationApi::class)
     @Serializable
     data class PageModelMsg(
+        val title: String,
         val srcKey: String,
         val templateKey: String,
         val url: String,

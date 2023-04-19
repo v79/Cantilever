@@ -1,15 +1,58 @@
-<script>
-    import LoginButton from './loginButton.svelte';
-    import {spinnerStore} from './utilities/spinnerWrapper.svelte';
-    import {userStore} from '../stores/userStore.svelte';
-    import {allPostsStore} from '../stores/postsStore.svelte';
-    import {Chevron, Dropdown, DropdownItem, Navbar, NavBrand, NavLi, NavUl} from 'flowbite-svelte';
-    import CModal from './customized/cModal.svelte';
-    import CToast from './customized/cToast.svelte';
-    import {notificationStore} from '../stores/notificationStore.svelte';
+<script lang="ts">
+	import LoginButton from './loginButton.svelte';
+	import { spinnerStore } from './utilities/spinnerWrapper.svelte';
+	import { userStore } from '../stores/userStore.svelte';
+	import { activeStore } from '../stores/appStatusStore.svelte';
+	import { allPostsStore } from '../stores/postsStore.svelte';
+	import { markdownStore } from '../stores/markdownContentStore.svelte';
+	import { Chevron, Dropdown, DropdownItem, Navbar, NavBrand, NavLi, NavUl } from 'flowbite-svelte';
+	import CModal from './customized/cModal.svelte';
+	import CToast from './customized/cToast.svelte';
+	import { notificationStore } from '../stores/notificationStore.svelte';
+	import { afterUpdate, onMount } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 
-    let regenAllPostsModal = false;
+	let regenAllPostsModal = false;
 	let regenAllPagesModal = false;
+
+	var activePage = $activeStore.currentPage;
+	var postsPage: boolean,
+		templatesPage: boolean,
+		pagesPage: boolean = false;
+	var title = 'Cantilever Editor';
+
+	onMount(() => {});
+
+	afterUpdate(() => {
+		if ($activeStore.activeFile) {
+			title = 'Cantilever Editor: ' + activePage + ' - ' + $activeStore.activeFile;
+		} else {
+			title = 'Cantilever Editor: ' + activePage;
+		}
+		switch ($activeStore.currentPage) {
+			case 'Posts':
+				postsPage = true;
+				templatesPage = false;
+				pagesPage = false;
+				break;
+			case 'Pages':
+				postsPage = false;
+				templatesPage = false;
+				pagesPage = true;
+				break;
+			case 'Templates':
+				postsPage = false;
+				templatesPage = true;
+				pagesPage = false;
+				break;
+			default:
+				break;
+		}
+	});
+
+	afterNavigate(() => {
+		markdownStore.clear();
+	});
 
 	function regenerateAllPosts() {
 		console.log('Triggering regeneration of all posts');
@@ -60,6 +103,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>{title}</title>
+</svelte:head>
+
 <Navbar
 	color="none"
 	navClass="bg-slate-600 text-gray-200 shadow-lg  py-4 px-4"
@@ -80,9 +127,21 @@
 			<NavLi id="generate-menu" nonActiveClass="text-grey-200" class="cursor-pointer"
 				><Chevron aligned>Generate</Chevron></NavLi>
 		{/if}
-		<NavLi nonActiveClass="text-grey-200" href="/">Posts</NavLi>
-		<NavLi nonActiveClass="text-grey-200" href="/">Pages</NavLi>
-		<NavLi nonActiveClass="text-grey-200" href="/">Templates</NavLi>
+		<NavLi
+			nonActiveClass="text-grey-200"
+			activeClass="text-grey-200 font-bold"
+			active={postsPage}
+			href="/">Posts</NavLi>
+		<NavLi
+			nonActiveClass="text-grey-200"
+			activeClass="text-grey-200 font-bold"
+			active={pagesPage}
+			href="/pages">Pages</NavLi>
+		<NavLi
+			nonActiveClass="text-grey-200"
+			activeClass="text-grey-200 font-bold"
+			active={templatesPage}
+			href="/templates">Templates</NavLi>
 
 		{#if $userStore !== undefined}
 			<Dropdown triggeredBy="#generate-menu">

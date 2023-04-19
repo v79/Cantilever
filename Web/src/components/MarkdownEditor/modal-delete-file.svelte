@@ -1,13 +1,13 @@
 <script lang="ts">
-    import CModal from '../customized/cModal.svelte';
-    import {CLEAR_POST, markdownStore} from '../../stores/markdownPostStore.svelte';
-    import {spinnerStore} from '../utilities/spinnerWrapper.svelte';
-    import {userStore} from '../../stores/userStore.svelte';
-    import {allPostsStore} from '../../stores/postsStore.svelte';
-    import {notificationStore} from '../../stores/notificationStore.svelte';
-    import {createEventDispatcher} from 'svelte';
+	import CModal from '../customized/cModal.svelte';
+	import { CLEAR, markdownStore } from '../../stores/markdownContentStore.svelte';
+	import { spinnerStore } from '../utilities/spinnerWrapper.svelte';
+	import { userStore } from '../../stores/userStore.svelte';
+	import { allPostsStore } from '../../stores/postsStore.svelte';
+	import { notificationStore } from '../../stores/notificationStore.svelte';
+	import { createEventDispatcher } from 'svelte';
 
-    export let shown = false;
+	export let shown = false;
 
 	const closeDispatch = createEventDispatcher();
 	function callDispatcher(e: MouseEvent) {
@@ -20,17 +20,20 @@
 	let confirmInput: string = '';
 
 	function deleteFile() {
-		spinnerStore.set({ message: 'Deleting... ' + $markdownStore.post.srcKey, shown: true });
-		let srcKey = decodeURIComponent($markdownStore.post.srcKey);
+		spinnerStore.set({ message: 'Deleting... ' + $markdownStore.metadata?.srcKey, shown: true });
+		let srcKey = decodeURIComponent($markdownStore.metadata?.srcKey!!);
 		console.log('Deleting file ', srcKey);
-		fetch('https://api.cantilevers.org/posts/' + encodeURIComponent($markdownStore.post.srcKey), {
-			method: 'DELETE',
-			headers: {
-				Accept: 'text/plain',
-				Authorization: 'Bearer ' + $userStore.token
-			},
-			mode: 'cors'
-		})
+		fetch(
+			'https://api.cantilevers.org/posts/' + encodeURIComponent($markdownStore.metadata?.srcKey!!),
+			{
+				method: 'DELETE',
+				headers: {
+					Accept: 'text/plain',
+					Authorization: 'Bearer ' + $userStore.token
+				},
+				mode: 'cors'
+			}
+		)
 			.then((response) => response.text())
 			.then((data) => {
 				notificationStore.set({
@@ -41,7 +44,7 @@
 				$allPostsStore.count--;
 				let toDelete = $allPostsStore.posts.findIndex((post) => post.srcKey === srcKey);
 				$allPostsStore.posts.splice(toDelete, 1);
-				markdownStore.set(CLEAR_POST);
+				markdownStore.set(CLEAR);
 			})
 			.catch((error) => {
 				notificationStore.set({ message: 'Error deleting: ' + error, shown: true, type: 'error' });
@@ -60,10 +63,10 @@
 <!-- Delete file modal-->
 <CModal title="Delete file?" bind:open={shown} size="sm">
 	<p>
-		Delete source file <strong>{$markdownStore.post.title}</strong>
-		({decodeURIComponent($markdownStore.post.srcKey)})? Are you sure?
+		Delete source file <strong>{$markdownStore.metadata?.title}</strong>
+		({decodeURIComponent($markdownStore.metadata.srcKey)})? Are you sure?
 	</p>
-	<p class="text-red-600">This cannot be undone!</p>
+	<p class="text-red-600">This cannot be undone! Type '{CONFIRM_DELETE}' to confirm.</p>
 	<form>
 		<input
 			type="text"

@@ -1,16 +1,12 @@
 ---
 template: about
+title: Todo
 #siteName: Cantilever
 #author: Liam Davison
 --- #body
 ## Current Branch
 
-- **index-page**
-  - ✔️ Creating index.html and general support for static pages
-  - ✔️ API routes to regenerate named pages
-  - ✔️ API routes to regenerate pages based on templates
-    - ✔️ This is missing a "page structure" file, the overall project map for pages.
-  - ✔️ API routes to regenerate posts
+Not sure what the next priority will be. Probably the UI for pages, posts and templates.
 
 ## Priority Features
 
@@ -28,3 +24,17 @@ template: about
 ### Ideas and nice-to-haves
 
 Ultimately, I would like to be able to separate the 'cantilever' application (front-and-backend) with this cantilevers.org blogging website.
+
+## Historical branches
+
+- **index-page**
+  - ✔️ Creating index.html and general support for static pages
+  - ✔️ API routes to regenerate named pages
+  - ✔️ API routes to regenerate pages based on templates
+    - ✔️ This is missing a "page structure" file, the overall project map for pages.
+  - ✔️ API routes to regenerate posts
+
+## Bugs/Known Issues
+
+- The short form of API routing does not include the necessary CORS domain headers. Need to find a way to inject that into the root of the API.
+- The URL for a page seems to include the .md file extension - it should not

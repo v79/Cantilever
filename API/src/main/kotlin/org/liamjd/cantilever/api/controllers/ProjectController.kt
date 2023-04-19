@@ -1,5 +1,6 @@
 package org.liamjd.cantilever.api.controllers
 
+import kotlinx.datetime.Clock
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
@@ -13,6 +14,8 @@ import org.liamjd.cantilever.services.impl.extractPageModel
 import org.liamjd.cantilever.services.impl.extractPostMetadata
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 
+private const val APP_JSON = "application/json"
+
 /**
  * Manages all the project-wide configuration and json models
  * TODO: there is a lot of duplication in this class
@@ -22,14 +25,15 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     private val s3Service: S3Service by inject()
 
     /**
-     * Return a list of all the [Post]s
+     * Return a list of all the [PostMeta]s
      */
     fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostList>> {
         println("ProjectController: Retrieving all posts")
         return if (s3Service.objectExists(postsKey, sourceBucket)) {
             val postListJson = s3Service.getObjectAsString(postsKey, sourceBucket)
             val postList = Json.decodeFromString(PostList.serializer(), postListJson)
-            ResponseEntity.ok(body = APIResult.Success(value = postList))
+            val sorted = postList.posts.sortedBy { it.date }
+            ResponseEntity.ok(body = APIResult.Success(value = PostList(count = sorted.size,posts = sorted, lastUpdated = postList.lastUpdated)))
         } else {
             ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '$postsKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/posts/rebuild"))
         }
@@ -64,14 +68,14 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     }
 
     /**
-     * Rebuild the generated/posts.json file which contains the metadata for all the [Post]s in the project.
+     * Rebuild the generated/posts.json file which contains the metadata for all the [PostMeta]s in the project.
      */
     fun rebuildPostList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val posts = s3Service.listObjects(postsPrefix, sourceBucket)
         println("ProjectController: Rebuilding all posts from sources in '$postsPrefix'. ${posts.keyCount()} posts found.")
         var filesProcessed = 0
         if (posts.hasContents()) {
-            val list = mutableListOf<Post>()
+            val list = mutableListOf<PostMeta>()
             posts.contents().forEach { obj ->
                 if (obj.key().endsWith(".md")) {
                     println("Extracting metadata from file '${obj.key()}'")
@@ -86,7 +90,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                         return@forEach
                     }
                     list.add(
-                        Post(
+                        PostMeta(
                             title = postMetadata.title,
                             srcKey = obj.key(),
                             url = postMetadata.slug,
@@ -100,11 +104,12 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     println("Skipping non-markdown file '${obj.key()}'")
                 }
             }
+            println("Sorting output")
             list.sortByDescending { it.date }
-            val postList = PostList(posts = list, count = filesProcessed)
+            val postList = PostList(posts = list, count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(PostList.serializer(), postList)
             println("Saving PostList JSON file (${listJson.length} bytes)")
-            s3Service.putObject(postsKey, sourceBucket, listJson, "application/json")
+            s3Service.putObject(postsKey, sourceBucket, listJson, APP_JSON)
         } else {
             return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a $postsKey file."))
         }
@@ -134,13 +139,16 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                         println("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
                         return@forEach
                     }
+                    // we don't need to store the full contents of the sections in this file (just as we don't store the body in posts.json)
                     list.add(
                         Page(
+                            title = pageModel.title,
                             srcKey = pageModel.srcKey,
                             templateKey = pageModel.templateKey,
                             url = pageModel.url,
-                            sectionKeys = pageModel.sections.keys,
-                            attributeKeys = pageModel.attributes.keys
+                            sections = buildMap { pageModel.sections.keys.forEach {  key -> put(key,"") }},
+                            attributes = pageModel.attributes,
+                            lastUpdated = obj.lastModified().toKotlinInstant()
                         )
                     )
                     filesProcessed++
@@ -149,10 +157,10 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                 }
             }
             list.sortByDescending { it.lastUpdated }
-            val pageList = PageList(pages = list.toList(), count = filesProcessed)
+            val pageList = PageList(pages = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(PageList.serializer(), pageList)
             println("Saving PageList JSON file (${listJson.length} bytes)")
-            s3Service.putObject(pagesKey, sourceBucket, listJson, "application/json")
+            s3Service.putObject(pagesKey, sourceBucket, listJson, APP_JSON)
         } else {
             return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a $postsKey file."))
         }
@@ -180,10 +188,10 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                 }
             }
             list.sortByDescending { it.lastUpdated }
-            val templateList = TemplateList(templates = list.toList(), count = filesProcessed)
+            val templateList = TemplateList(templates = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(TemplateList.serializer(), templateList)
             println("Saving PageList JSON file (${listJson.length} bytes)")
-            s3Service.putObject(templatesKey, sourceBucket, listJson, "application/json")
+            s3Service.putObject(templatesKey, sourceBucket, listJson, APP_JSON)
         } else {
             return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a $templatesKey file."))
         }

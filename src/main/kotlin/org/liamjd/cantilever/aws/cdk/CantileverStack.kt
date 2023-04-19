@@ -193,7 +193,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             .defaultCorsPreflightOptions(
                 CorsOptions.builder()
                     .allowHeaders(listOf("Content-Type","Content-Length","X-Amz-Date","Authorization","X-Api-Key","X-Amz-Security-Token","X-Content-Length"))
-                    .allowMethods(listOf("GET", "PUT","OPTIONS","DELETE")).allowOrigins(listOf(deploymentDomain)).build()
+                    .allowMethods(listOf("GET", "PUT","POST","OPTIONS","DELETE")).allowOrigins(listOf(deploymentDomain)).build()
             )
             .handler(apiRoutingLambda)
             .proxy(true)
