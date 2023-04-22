@@ -3,7 +3,7 @@
 	import { MarkdownContent } from '../models/structure';
 
 	function createMarkdownStore() {
-		const { subscribe, set, update } = writable<MarkdownContent>();
+		const { subscribe, set, update } = writable<MarkdownContent>(new MarkdownContent(null, ''));
 		return {
 			subscribe,
 			set,

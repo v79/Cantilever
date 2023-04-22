@@ -62,7 +62,9 @@
 				);
 				if (!existing) {
 					console.log('Added brand new file to structure');
-					$allPostsStore.count = $allPostsStore.posts.push($markdownStore.metadata);
+					if ($markdownStore.metadata) {
+						$allPostsStore.count = $allPostsStore?.posts.push($markdownStore.metadata as Post);
+					}
 				}
 				console.log(data);
 			})
@@ -78,9 +80,10 @@
 
 <div class="relative mt-5 md:col-span-2 md:mt-0">
 	<h3 class="px-4 py-4 text-center text-2xl font-bold">
-		{#if $markdownStore?.metadata?.title}{$markdownStore.metadata.title}{:else}Markdown Editor {/if}
+		{#if $markdownStore.metadata?.title}{$markdownStore.metadata.title}{:else}Markdown Editor
+		{/if}
 	</h3>
-	{#if $markdownStore?.metadata}
+	{#if $markdownStore.metadata}
 		<div class="flex items-center justify-end pr-8 focus:shadow-lg" role="group">
 			<button
 				class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
@@ -94,7 +97,7 @@
 				type="button"
 				on:click={() => {
 					if ($activeStore.isNewFile) {
-						saveNewFileSlug = createSlug($markdownStore.metadata?.title ?? '');
+						saveNewFileSlug = createSlug($markdownStore?.metadata?.title ?? '');
 						saveNewModal = true;
 					} else {
 						saveExistingModal = true;
@@ -121,14 +124,14 @@
 <!-- preview modal -->
 {#if $markdownStore}
 	{@const mdSource = $markdownStore.body}
-	<Modal title={$markdownStore.metadata?.title} bind:open={previewModal} size="lg">
+	<Modal title={$markdownStore?.metadata?.title} bind:open={previewModal} size="lg">
 		<SvelteMarkdown source={mdSource} />
 	</Modal>
 {/if}
 
 <CModal title="Save file?" bind:open={saveExistingModal} autoclose size="sm">
 	<p>
-		Save changes to file <strong>{$markdownStore.metadata?.title}</strong>?
+		Save changes to file <strong>{$markdownStore?.metadata?.title}</strong>?
 	</p>
 	<svelte:fragment slot="footer">
 		<button
@@ -164,23 +167,26 @@
 				>Slug must not be blank and will be set to the default value on save</span>
 		{/if}
 	</form>
+
 	<svelte:fragment slot="footer">
-		<button
-			type="button"
-			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
-			>Cancel</button>
-		<button
-			type="button"
-			on:click={(e) => {
-				let srcKey = 'sources/posts/' + saveNewFileSlug + '.md';
-				spinnerStore.set({ message: 'Saving ' + srcKey, shown: true });
-				$markdownStore.metadata.srcKey = srcKey;
-				$markdownStore.metadata.url = saveNewFileSlug;
-				$markdownStore.metadata.lastUpdated = new Date().toISOString();
-				saveFile();
-			}}
-			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
-			>Save</button>
+		{#if $markdownStore.metadata}
+			<button
+				type="button"
+				class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+				>Cancel</button>
+			<button
+				type="button"
+				on:click={(e) => {
+					let srcKey = 'sources/posts/' + saveNewFileSlug + '.md';
+					spinnerStore.set({ message: 'Saving ' + srcKey, shown: true });
+					$markdownStore.metadata.srcKey = srcKey;
+					$markdownStore.metadata.url = saveNewFileSlug;
+					$markdownStore.metadata.lastUpdated = new Date().toISOString();
+					saveFile();
+				}}
+				class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+				>Save</button>
+		{/if}
 	</svelte:fragment>
 </CModal>
 

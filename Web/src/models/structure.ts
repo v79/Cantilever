@@ -140,6 +140,7 @@ export class Page implements MetadataItem {
 
 /**
  * When editing a piece of content, we need the Metadata and the body. This class combines both. It can represent any valid content item.
+ * Ideally metadata would not be null but I can't find a workaround.
  */
 export class MarkdownContent {
 	metadata: Post | Page | null;
