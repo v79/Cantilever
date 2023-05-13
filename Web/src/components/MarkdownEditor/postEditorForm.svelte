@@ -45,7 +45,7 @@
 						bind:value={body}
 						name="markdown"
 						id="markdown"
-						class="textarea-lg mt-1  block h-[500px] w-full rounded-md focus:border-indigo-500 focus:ring-indigo-500"
+						class="textarea-lg mt-1 block h-[500px] w-full rounded-md focus:border-indigo-500 focus:ring-indigo-500"
 						placeholder="Markdown goes here" />
 				</div>
 			</div>
