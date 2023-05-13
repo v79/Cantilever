@@ -1,11 +1,23 @@
 <script lang="ts">
 	import TextInput from '../forms/textInput.svelte';
+	import SvelteMarkdown from 'svelte-markdown';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import type { Page } from '../../models/structure';
-	import { Accordion, AccordionItem } from 'flowbite-svelte';
+	import { Accordion, AccordionItem, Modal } from 'flowbite-svelte';
 
 	export let metadata: Page;
-	export let previewModal = false;
+	let previewModal = false;
+
+	// function to combine all of the sections into a single string, for the preview modal
+	function mergeSources(sources: Map<string, string>) {
+		var source = '';
+		for (let src of sources.values()) {
+			source += '\n' + src;
+		}
+		return source;
+	}
+
+	$: markdownSource = mergeSources(metadata.sections);
 
 	function bindMap(e: Event, key: string) {
 		metadata.attributes.set(key, e.currentTarget.value);
@@ -68,11 +80,15 @@
 								<AccordionItem open>
 									<span slot="header">{key}</span>
 									<textarea
-										bind:value={body}
+										value={body}
 										name="markdown-{key}"
 										id="markdown-{key}"
 										class="textarea-lg mt-1 block h-[500px] w-full rounded-md focus:border-indigo-500 focus:ring-indigo-500"
-										placeholder="Markdown goes here" />
+										placeholder="Markdown goes here"
+										on:input={(event) => {
+											metadata.sections.set(key, event.currentTarget.value);
+											metadata.sections = metadata.sections;
+										}} />
 								</AccordionItem>
 							{/each}
 						</Accordion>
@@ -82,3 +98,9 @@
 		</form>
 	</div>
 </div>
+
+<!-- preview modal -->
+
+<Modal title={metadata?.title} bind:open={previewModal} size="lg">
+	<SvelteMarkdown source={markdownSource} />
+</Modal>
