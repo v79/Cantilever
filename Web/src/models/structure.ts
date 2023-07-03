@@ -14,9 +14,14 @@ export interface Layout {
 /**
  * A template file will end in .html.hbs and represents a handlebars template
  */
-export interface Template {
+export class Template {
 	key: string;
 	lastUpdated: Date;
+
+	constructor(key: string, lastUpdated: Date) {
+		this.key = key;
+		this.lastUpdated = lastUpdated;
+	}
 }
 
 /**
@@ -67,6 +72,25 @@ export abstract class MetadataItem {
 
 	abstract getDateString(): string;
 	abstract isValid(): boolean;
+}
+
+/**
+ * A handlebars item is different from a MetadataItem as it does not contain markdown content; it will be an HTML file (other types may follow) in the Handlebars templating format
+ */
+export class HandlebarsItem {
+	key: string;
+	shortName: string;
+	lastUpdated: Date;
+
+	constructor(key: string, lastUpdated: Date) {
+		this.key = key;
+		this.lastUpdated = lastUpdated;
+		this.shortName = key.split('/').slice(-1).join();
+	}
+
+	getDateString = () => {
+		return this.lastUpdated.toLocaleDateString('en-GB');
+	};
 }
 
 /**

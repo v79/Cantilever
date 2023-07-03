@@ -1,9 +1,10 @@
 <script lang="ts">
-    import {afterNavigate} from '$app/navigation';
-    import SpinnerWrapper from '../../components/utilities/spinnerWrapper.svelte';
-    import {activeStore} from '../../stores/appStatusStore.svelte';
+	import { afterNavigate } from '$app/navigation';
+	import SpinnerWrapper from '../../components/utilities/spinnerWrapper.svelte';
+	import { activeStore } from '../../stores/appStatusStore.svelte';
+	import TemplateList from '../../components/templates/templateList.svelte';
 
-    afterNavigate(() => {
+	afterNavigate(() => {
 		$activeStore.currentPage = 'Templates';
 		$activeStore.activeFile = '';
 	});
@@ -11,7 +12,7 @@
 
 <div class="flex grow flex-row">
 	<div class="basis-1/4 bg-slate-400">
-		<h2>Template list</h2>
+		<TemplateList />
 	</div>
 	<div class="basis-1/2 bg-slate-600">
 		<h2>Handlebars editor</h2>
