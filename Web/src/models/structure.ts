@@ -67,7 +67,7 @@ export abstract class MetadataItem {
 		this.srcKey = srcKey;
 		this.templateKey = templateKey;
 		this.url = url;
-		this.lastUpdated = lastUpdated;
+		this.lastUpdated = new Date(lastUpdated);
 	}
 
 	abstract getDateString(): string;
@@ -84,13 +84,13 @@ export class HandlebarsItem {
 
 	constructor(key: string, lastUpdated: Date) {
 		this.key = key;
-		this.lastUpdated = lastUpdated;
+		this.lastUpdated = new Date(lastUpdated);
 		this.shortName = key.split('/').slice(-1).join();
 	}
 
-	getDateString = () => {
+	getDateString(): string {
 		return this.lastUpdated.toLocaleDateString('en-GB');
-	};
+	}
 }
 
 /**
@@ -176,6 +176,18 @@ export class MarkdownContent {
 	}
 }
 
+/*
+	The [Template] class essentially represents the metadata of a handlebars template. This class contains the body as well.
+*/
+export class HandlebarsContent {
+	template: Template;
+	body: string;
+
+	constructor(template: Template, body: string) {
+		this.template = template;
+		this.body = body;
+	}
+}
 /**
  * Deprecated utility function
  * @param item
