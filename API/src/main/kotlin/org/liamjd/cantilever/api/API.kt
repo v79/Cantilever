@@ -40,6 +40,7 @@ class LambdaRouter : RequestHandlerWrapper() {
     private val structureController = StructureController(sourceBucket = sourceBucket, corsDomain = corsDomain)
     private val postController = PostController(sourceBucket = sourceBucket)
     private val pageController = PageController(sourceBucket = sourceBucket)
+    private val templateController = TemplateController(sourceBucket = sourceBucket)
     private val generatorController =
         GeneratorController(sourceBucket = sourceBucket)
     private val projectController = ProjectController(sourceBucket = sourceBucket)
@@ -98,6 +99,12 @@ class LambdaRouter : RequestHandlerWrapper() {
                     )
                 )
                 delete("/$SRCKEY", postController::deleteMarkdownPost).supplies(setOf(MimeType.plainText))
+            }
+        }
+
+        auth(CognitoJWTAuthorizer) {
+            group("/templates") {
+                get("/$SRCKEY", templateController::loadHandlebarsSource)
             }
         }
 

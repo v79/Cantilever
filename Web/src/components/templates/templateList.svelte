@@ -4,9 +4,10 @@
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { spinnerStore } from '../utilities/spinnerWrapper.svelte';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
-	import { HandlebarsItem, Template } from '../../models/structure';
+	import { HandlebarsContent, HandlebarsItem, Template } from '../../models/structure';
 	import { allTemplatesStore, templateStore } from '../../stores/postsStore.svelte';
 	import HandlebarListItem from '../handlebarListItem.svelte';
+	import { handlebarStore } from '../../stores/handlebarContentStore.svelte';
 
 	$: templatesSorted = $templateStore.sort((a, b) => {
 		if (a.key < b.key) return -1;
@@ -98,7 +99,49 @@
 	}
 
 	function loadHandlebars(key: string) {
+		let token = $userStore.token;
 		console.log('Loading handlebars file... ' + key);
+		spinnerStore.set({ shown: true, message: 'Loading handlebars file... ' + key });
+		notificationStore.set({ shown: false, message: '', type: 'info' });
+		tick();
+		fetch('https://api.cantilevers.org/templates/' + encodeURIComponent(key), {
+			method: 'GET',
+			headers: {
+				Accept: 'application/json',
+				Authorization: 'Bearer ' + token
+			},
+			mode: 'cors'
+		})
+			.then((response) => response.json())
+			.then((data) => {
+				console.dir(data);
+				if (data.data === undefined) {
+					throw new Error(data.message);
+				}
+				var tmpTemplate = new HandlebarsContent(
+					new Template(data.data.template.key, data.data.template.lastUpdated),
+					data.data.body
+				);
+				console.log('Built handlebars template');
+				handlebarStore.set(tmpTemplate);
+				$activeStore.activeFile = decodeURIComponent($handlebarStore.template!!.key);
+				$activeStore.isNewFile = false;
+				$activeStore.hasChanged = false;
+				$activeStore.isValid = true;
+				$activeStore.newSlug = $handlebarStore.template!!.key;
+				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
+				$notificationStore.shown = true;
+				$spinnerStore.shown = false;
+			})
+			.catch((error) => {
+				console.log(error);
+				notificationStore.set({
+					message: error,
+					shown: true,
+					type: 'error'
+				});
+				$spinnerStore.shown = false;
+			});
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {

@@ -4,6 +4,13 @@
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import TemplateList from '../../components/templates/templateList.svelte';
 	import { handlebarStore } from '../../stores/handlebarContentStore.svelte';
+	import { Template } from '../../models/structure';
+	import TemplateEditorForm from '../../components/HandlebarsEditor/templateEditorForm.svelte';
+
+	let deleteFileModal = false;
+	let saveExistingModal = false;
+	let saveNewModal = false;
+	let saveNewFileSlug = '';
 
 	afterNavigate(() => {
 		$activeStore.currentPage = 'Templates';
@@ -22,6 +29,38 @@
 				{#if $handlebarStore?.template?.key}{$handlebarStore?.template?.key}{:else}Handlebars Editor
 				{/if}
 			</h3>
+
+			{#if $handlebarStore?.template instanceof Template}
+				<div class="flex items-center justify-end pr-8 focus:shadow-lg" role="group">
+					<button
+						class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+						disabled>Reset Changes</button>
+					<button
+						class="inline-block bg-red-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+						on:click={() => {
+							deleteFileModal = true;
+						}}>Delete</button>
+					<button
+						type="button"
+						on:click={() => {
+							if ($activeStore.isNewFile) {
+								saveNewModal = true;
+							} else {
+								saveExistingModal = true;
+							}
+						}}
+						disabled={true}
+						class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 disabled:hover:bg-purple-600"
+						>Save</button>
+				</div>
+				<TemplateEditorForm
+					bind:template={$handlebarStore.template}
+					bind:body={$handlebarStore.body} />
+			{:else}
+				<h3 class="px-8 text-center text-lg text-slate-200">
+					Load an existing file or create a new one to get started
+				</h3>
+			{/if}
 		</div>
 	</div>
 
