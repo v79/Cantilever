@@ -105,6 +105,7 @@ class LambdaRouter : RequestHandlerWrapper() {
         auth(CognitoJWTAuthorizer) {
             group("/templates") {
                 get("/$SRCKEY", templateController::loadHandlebarsSource)
+                post("/", templateController::saveTemplate).supplies(setOf(MimeType.plainText))
             }
         }
 

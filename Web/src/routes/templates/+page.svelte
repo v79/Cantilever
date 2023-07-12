@@ -5,12 +5,38 @@
 	import TemplateList from '../../components/templates/templateList.svelte';
 	import { handlebarStore } from '../../stores/handlebarContentStore.svelte';
 	import { Template } from '../../models/structure';
+	import { userStore } from '../../stores/userStore.svelte';
+	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import TemplateEditorForm from '../../components/HandlebarsEditor/templateEditorForm.svelte';
+	import CModal from '../../components/customized/cModal.svelte';
 
 	let deleteFileModal = false;
 	let saveExistingModal = false;
 	let saveNewModal = false;
 	let saveNewFileSlug = '';
+
+	function saveFile() {
+		console.log('Saving template file ', $handlebarStore.template?.key);
+		let templateJson = JSON.stringify($handlebarStore);
+
+		fetch('https://api.cantilevers.org/templates/', {
+			method: 'POST',
+			headers: {
+				Accept: 'text/plain',
+				Authorization: 'Bearer ' + $userStore.token
+			},
+			body: templateJson,
+			mode: 'cors'
+		})
+			.then((response) => response.text())
+			.then((data) => {
+				notificationStore.set({
+					message: decodeURI($handlebarStore.template?.key ?? '') + ' saved. ' + data,
+					shown: true,
+					type: 'success'
+				});
+			});
+	}
 
 	afterNavigate(() => {
 		$activeStore.currentPage = 'Templates';
@@ -26,7 +52,7 @@
 	<div class="basis-1/2 bg-slate-600">
 		<div class="relative mt-5 md:col-span-2 md:mt-0">
 			<h3 class="px-4 py-4 text-center text-2xl font-bold">
-				{#if $handlebarStore?.template?.key}{$handlebarStore?.template?.key}{:else}Handlebars Editor
+				{#if $handlebarStore?.template?.key}{$activeStore.activeFile}{:else}Handlebars Editor
 				{/if}
 			</h3>
 
@@ -49,7 +75,7 @@
 								saveExistingModal = true;
 							}
 						}}
-						disabled={true}
+						disabled={false}
 						class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 disabled:hover:bg-purple-600"
 						>Save</button>
 				</div>
@@ -69,3 +95,20 @@
 		<SpinnerWrapper spinnerID="globalSpinner" />
 	</div>
 </div>
+
+<CModal title="Save file?" bind:open={saveExistingModal} autoclose size="sm">
+	<p>
+		Save changes to file <strong>{$activeStore.activeFile}</strong>?
+	</p>
+	<svelte:fragment slot="footer">
+		<button
+			type="button"
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Cancel</button>
+		<button
+			type="button"
+			on:click={saveFile}
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Save</button>
+	</svelte:fragment>
+</CModal>

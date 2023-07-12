@@ -33,9 +33,7 @@
 
 	function saveFile() {
 		console.log('Saving page file ', $markdownStore.metadata?.srcKey);
-		console.dir($markdownStore);
 		let pageJson = JSON.stringify($markdownStore, mapReplacer);
-		console.log(pageJson);
 
 		fetch('https://api.cantilevers.org/project/pages/', {
 			method: 'POST',
