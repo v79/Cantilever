@@ -53,11 +53,16 @@ class LambdaRouter : RequestHandlerWrapper() {
 
 //        filter = loggingFilter()
 
-        // /warm is an attempt to pre-warm this lambda. /ping is an API Gateway reserved route
+        /**
+        /warm is an attempt to pre-warm this lambda. /ping is an API Gateway reserved route
+         */
         get("/warm") { _: Request<Unit> -> println("Ping received; warming"); ResponseEntity.ok("warming") }.supplies(
             setOf(MimeType.plainText)
         )
 
+        /**
+         * TODO: the structure routes should be deprecated now, replaced with /project/ routes
+         */
         auth(CognitoJWTAuthorizer) {
             get("/structure", structureController::getStructureFile)
             group("/structure") {

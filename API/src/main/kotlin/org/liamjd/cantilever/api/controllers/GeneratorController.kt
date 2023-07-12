@@ -15,6 +15,8 @@ import org.liamjd.cantilever.services.SQSService
 import org.liamjd.cantilever.services.impl.extractPageModel
 import org.liamjd.cantilever.services.impl.extractPostMetadata
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
+import java.net.URLDecoder
+import java.nio.charset.Charset
 
 /**
  * Handle routes relating to document generation. Mostly this will be done by sending messages to the appropriate queues.
@@ -137,17 +139,18 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         if (requestKey == "*") {
             return ResponseEntity.notImplemented(body = APIResult.Error("Regeneration of all templates is not supported."))
         }
-        val templateKey = TEMPLATES_DIR + requestKey
+        val templateKey = URLDecoder.decode(requestKey, Charset.defaultCharset())
         println("GeneratorController received request to regenerate pages based on template '$templateKey'")
         // first, get the pages structure file
         if (!s3Service.objectExists(pagesKey, sourceBucket)) {
+            println("GeneratorController: No pages.json exists.")
             return ResponseEntity.notFound(body = APIResult.Error(message = "No pages.json file exists; there may be no pages defined or it may need regenerating."))
         }
         val pagesJson = s3Service.getObjectAsString(pagesKey, sourceBucket)
         var count = 0
         try {
             val pageList = Json.decodeFromString(PageList.serializer(), pagesJson)
-            pageList.pages.filter { it.templateKey == requestKey }.forEach {
+            pageList.pages.filter { it.templateKey == templateKey }.forEach {
                 println("Regenerating page ${it.srcKey} because it has template ${it.templateKey}")
                 val pageSource = s3Service.getObjectAsString(it.srcKey,sourceBucket)
                 queuePageRegeneration(it.srcKey,pageSource)
@@ -158,6 +161,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         } catch (se: SerializationException) {
             return ResponseEntity.serverError(body = APIResult.Error("Error processing pages.json; error is ${se.message}"))
         }
+        // TODO: return a different message when 0 files were regenerated
         return ResponseEntity.ok(APIResult.Success(value = "Regenerated $count files with the '$requestKey' template."))
     }
 

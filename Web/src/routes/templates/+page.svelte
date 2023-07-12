@@ -38,6 +38,33 @@
 			});
 	}
 
+	function generatePages() {
+		console.log(
+			'Trigger page regeneration for all pages with template ',
+			$handlebarStore.template?.key
+		);
+		if ($handlebarStore.template?.key) {
+			fetch(
+				'https://api.cantilevers.org/generate/template/' +
+					encodeURIComponent($handlebarStore.template?.key),
+				{
+					method: 'PUT',
+					headers: {
+						Accept: 'text/plain',
+						Authorization: 'Bearer ' + $userStore.token,
+						'X-Content-Length': '0'
+					},
+					mode: 'cors'
+				}
+			)
+				.then((response) => response.text())
+				.then((data) => {
+					notificationStore.set({ message: data, shown: true, type: 'success' });
+				});
+			//TODO error handling
+		}
+	}
+
 	afterNavigate(() => {
 		$activeStore.currentPage = 'Templates';
 		$activeStore.activeFile = '';
@@ -60,8 +87,13 @@
 				<div class="flex items-center justify-end pr-8 focus:shadow-lg" role="group">
 					<button
 						class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+						type="button"
+						on:click={generatePages}>Rebuild pages</button>
+					<button
+						class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 						disabled>Reset Changes</button>
 					<button
+						disabled
 						class="inline-block bg-red-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 						on:click={() => {
 							deleteFileModal = true;
