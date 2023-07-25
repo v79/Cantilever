@@ -19,7 +19,7 @@ repositories {
 
 dependencies {
     // AWS CDK
-    implementation("software.amazon.awscdk:aws-cdk-lib:2.58.1")
+    implementation("software.amazon.awscdk:aws-cdk-lib:2.88.0")
     implementation("software.constructs:constructs:10.1.222")
 
     // multiplatform datetime library

@@ -41,7 +41,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         val deploymentDomain = (env?.get("domainName")) ?: "http://localhost:5173"
         println("ENVIRONMENT: $env; deploymentDomain: $deploymentDomain")
 
-        Tags.of(this).add("Cantilever", "v0.0.4")
+        Tags.of(this).add("Cantilever", "v0.0.5")
 
         // Source bucket where Markdown, template files will be stored
         // I may wish to change the removal and deletion policies
