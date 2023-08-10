@@ -139,8 +139,12 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         if (requestKey == "*") {
             return ResponseEntity.notImplemented(body = APIResult.Error("Regeneration of all templates is not supported."))
         }
-        val templateKey = URLDecoder.decode(requestKey, Charset.defaultCharset())
-        println("GeneratorController received request to regenerate pages based on template '$templateKey'")
+        println("ENCODED: GeneratorController received request to regenerate pages based on template '$requestKey'")
+        //TODO: this only works for HTML handlebars templates, i.e. those whose file names end in ".index.html" in the "templates" folder.
+        // TODO: THIS NEEDS TO CHANGE!
+        // Also, annoying that I have to double-decode this.
+        val templateKey = URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset()).substringBefore(".").substringAfter("/")
+        println("DOUBLE DECODED: GeneratorController received request to regenerate pages based on template '$templateKey'")
         // first, get the pages structure file
         if (!s3Service.objectExists(pagesKey, sourceBucket)) {
             println("GeneratorController: No pages.json exists.")
@@ -150,6 +154,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         var count = 0
         try {
             val pageList = Json.decodeFromString(PageList.serializer(), pagesJson)
+            println("GeneratorController: pageList = $pageList")
             pageList.pages.filter { it.templateKey == templateKey }.forEach {
                 println("Regenerating page ${it.srcKey} because it has template ${it.templateKey}")
                 val pageSource = s3Service.getObjectAsString(it.srcKey,sourceBucket)
@@ -162,7 +167,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
             return ResponseEntity.serverError(body = APIResult.Error("Error processing pages.json; error is ${se.message}"))
         }
         // TODO: return a different message when 0 files were regenerated
-        return ResponseEntity.ok(APIResult.Success(value = "Regenerated $count files with the '$requestKey' template."))
+        return ResponseEntity.ok(APIResult.Success(value = "Queued $count files with the '$templateKey' template for regeneration."))
     }
 
     /**

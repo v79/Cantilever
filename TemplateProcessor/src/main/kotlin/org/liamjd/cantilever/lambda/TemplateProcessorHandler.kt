@@ -11,7 +11,7 @@ import org.liamjd.cantilever.common.FILE_TYPE.HTML_HBS
 import org.liamjd.cantilever.common.S3_KEY.fragments
 import org.liamjd.cantilever.common.S3_KEY.templates
 import org.liamjd.cantilever.common.SOURCE_TYPE
-import org.liamjd.cantilever.models.Structure
+import org.liamjd.cantilever.models.PageList
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
@@ -70,8 +70,11 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                     logger.info("Written final HTML file to '${message.metadata.slug}'")
                 }
                 SOURCE_TYPE.PAGES -> {
-                    val structureFile = s3Service.getObjectAsString("generated/structure.json",sourceBucket)
-                    val projectStructure = Json.decodeFromString<Structure>(structureFile)
+
+                    // TODO: THIS IS ALL A BIT BROKEN
+
+                    val structureFile = s3Service.getObjectAsString("generated/pages.json",sourceBucket)
+                    val pageList = Json.decodeFromString<PageList>(structureFile)
                     val message = Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.PageHandlebarsModelMsg
                     val pageTemplateKey = templates + message.template + HTML_HBS
                     logger.info("Extracted page model: $message")
@@ -91,7 +94,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                         model[name] = html
                     }
 
-                    model["posts"] = projectStructure.posts
+                    model["pages"] = pageList.pages
 
                     logger.info("Final page model keys: ${model.keys}")
                     val html = with(logger) {
@@ -100,7 +103,8 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                     }
                     logger.info("Rendered HTML: ${html.take(100)}")
 
-                    val outputFilename = message.url
+                    // TODO: this is a hack!
+                    val outputFilename = message.key.substringAfter("sources/pages/").substringBefore(".md")
                     s3Service.putObject(outputFilename,destinationBucket,html,"text/html")
                     logger.info("Written final HTML file to '$outputFilename'")
                 }
