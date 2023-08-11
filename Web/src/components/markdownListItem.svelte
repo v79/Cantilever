@@ -23,7 +23,8 @@
 	on:keyup={() => onClickFn(item.srcKey)}
 	on:click={() => onClickFn(item.srcKey)}>
 	{item.title}
-	{#if hovering}<span class="absolute top-0 right-4"
-			><small class="text-sm text-slate-400">{item.getDateString()}</small></span
-		>{/if}
+	<span class="absolute right-4 top-0"
+		><small class="text-sm text-slate-400"
+			>Template: {item.templateKey} ({item.getDateString()})</small
+		></span>
 </li>

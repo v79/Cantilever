@@ -48,18 +48,17 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
      * Save a handlebars template file
      */
     fun saveTemplate(request: Request<HandlebarsContent>): ResponseEntity<APIResult<String>> {
-        println("TemplateController: saveTemplate $request")
+        println("TemplateController: saveTemplate")
         val handlebarsContent = request.body
         val srcKey = URLDecoder.decode(handlebarsContent.template.key,Charset.defaultCharset())
 
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             println("Updating existing file '${handlebarsContent.template.key}'")
-            println(handlebarsContent.body.take(100))
             val length = s3Service.putObject(srcKey,sourceBucket,handlebarsContent.body,"text/html")
             ResponseEntity.ok(body = APIResult.OK("Updated file ${handlebarsContent.template.key}, $length bytes"))
         } else {
             println("Creating new file...")
-            println(handlebarsContent.template)
+            println(handlebarsContent.template.key)
             val length = s3Service.putObject(srcKey, sourceBucket, handlebarsContent.body, "text/html")
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }

@@ -39,40 +39,15 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
     }
 
     /**
-     * Build a [MarkdownPost] object from the source specified
-     */
-    private fun buildMarkdownPost(
-        srcKey: String
-    ): MarkdownPost {
-        val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
-        val metadata = extractPostMetadata(filename = srcKey, source = markdown)
-
-        println("Returning MarkdownPost from $metadata")
-        val mdPostMeta = MarkdownPost(
-            PostMeta(
-                title = metadata.title,
-                srcKey = srcKey,
-                url = metadata.slug,
-                templateKey = metadata.template,
-                date = metadata.date,
-                lastUpdated = metadata.lastModified
-            )
-        )
-        mdPostMeta.body = markdown.substringAfter("---").substringAfter("---").trim()
-        return mdPostMeta
-    }
-
-    /**
      * Save a [MarkdownPost] to the sources bucket
      */
     fun saveMarkdownPost(request: Request<MarkdownPost>): ResponseEntity<APIResult<String>> {
-        println("PostController: saveMarkdownPost $request")
+        println("PostController: saveMarkdownPost")
         val postToSave = request.body
         val srcKey = URLDecoder.decode(postToSave.metadata.srcKey, Charset.defaultCharset())
 
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             println("Updating existing file '${postToSave.metadata.srcKey}'")
-            println(postToSave.toString().take(100))
             val length = s3Service.putObject(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
@@ -102,5 +77,29 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
         } else {
             ResponseEntity.ok(body = APIResult.Error("Could not delete null markdownSource"))
         }
+    }
+
+    /**
+     * Build a [MarkdownPost] object from the source specified
+     */
+    private fun buildMarkdownPost(
+        srcKey: String
+    ): MarkdownPost {
+        val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
+        val metadata = extractPostMetadata(filename = srcKey, source = markdown)
+
+        println("Returning MarkdownPost from $metadata")
+        val mdPostMeta = MarkdownPost(
+            PostMeta(
+                title = metadata.title,
+                srcKey = srcKey,
+                url = metadata.slug,
+                templateKey = metadata.template,
+                date = metadata.date,
+                lastUpdated = metadata.lastModified
+            )
+        )
+        mdPostMeta.body = markdown.substringAfter("---").substringAfter("---").trim()
+        return mdPostMeta
     }
 }

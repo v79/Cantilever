@@ -12,6 +12,7 @@ import org.liamjd.cantilever.common.S3_KEY.fragments
 import org.liamjd.cantilever.common.S3_KEY.templates
 import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.PageList
+import org.liamjd.cantilever.models.PostList
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
@@ -40,7 +41,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             val eventRecord = event.records[0]
             logger.info("EventRecord: ${eventRecord.body}")
 
-            when(eventRecord.messageAttributes["sourceType"]?.stringValue ?: "posts") {
+            when (eventRecord.messageAttributes["sourceType"]?.stringValue ?: "posts") {
                 SOURCE_TYPE.POSTS -> {
                     val message = Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.HTMLFragmentReadyMsg
                     logger.info("Processing message: $message")
@@ -66,16 +67,21 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                     logger.info("Rendered HTML: ${html.take(100)}")
 
                     // save to S3
-                    s3Service.putObject(message.metadata.slug,destinationBucket,html,"text/html")
-                    logger.info("Written final HTML file to '${message.metadata.slug}'")
+                    val outputFilename = calculateFilename(message)
+                    s3Service.putObject(outputFilename, destinationBucket, html, "text/html")
+                    logger.info("Written final HTML file to '${outputFilename}'")
                 }
+
                 SOURCE_TYPE.PAGES -> {
 
                     // TODO: THIS IS ALL A BIT BROKEN
 
-                    val structureFile = s3Service.getObjectAsString("generated/pages.json",sourceBucket)
-                    val pageList = Json.decodeFromString<PageList>(structureFile)
-                    val message = Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.PageHandlebarsModelMsg
+                    val pagesFile = s3Service.getObjectAsString("generated/pages.json", sourceBucket)
+                    val postsFile = s3Service.getObjectAsString("generated/posts.json", sourceBucket)
+                    val pageList = Json.decodeFromString<PageList>(pagesFile)
+                    val postList = Json.decodeFromString<PostList>(postsFile)
+                    val message =
+                        Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.PageHandlebarsModelMsg
                     val pageTemplateKey = templates + message.template + HTML_HBS
                     logger.info("Extracted page model: $message")
 
@@ -83,34 +89,33 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                     logger.info("Loading template $pageTemplateKey")
                     val templateString = s3Service.getObjectAsString(pageTemplateKey, sourceBucket)
 
-                    val model = mutableMapOf<String,Any?>()
+                    val model = mutableMapOf<String, Any?>()
                     model["key"] = message.key
                     model["url"] = message.url
                     model.putAll(message.attributes)
 
                     message.sectionKeys.forEach { (name, objectKey) ->
-                        val html = s3Service.getObjectAsString(objectKey,sourceBucket)
+                        val html = s3Service.getObjectAsString(objectKey, sourceBucket)
                         logger.info("Adding $name to model from $objectKey: ${html.take(50)}")
                         model[name] = html
                     }
 
                     model["pages"] = pageList.pages
+                    model["posts"] = postList.posts
 
                     logger.info("Final page model keys: ${model.keys}")
                     val html = with(logger) {
                         val renderer = HandlebarsRenderer()
-                        renderer.render(model = model , template = templateString)
+                        renderer.render(model = model, template = templateString)
                     }
                     logger.info("Rendered HTML: ${html.take(100)}")
 
                     // TODO: this is a hack!
-                    val outputFilename = message.key.substringAfter("sources/pages/").substringBefore(".md")
-                    s3Service.putObject(outputFilename,destinationBucket,html,"text/html")
+                    val outputFilename = calculateFilename(message)
+                    s3Service.putObject(outputFilename, destinationBucket, html, "text/html")
                     logger.info("Written final HTML file to '$outputFilename'")
                 }
             }
-
-
         } catch (se: SerializationException) {
             logger.error("Failed to deserialize eventRecord $event, exception: ${se.message}")
             response = "500 Server Error"
@@ -122,6 +127,27 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         }
 
         return response
+    }
+
+    /**
+     * Calculate the final output file name
+     * For posts:
+     * - this is the metadata.slug object if it exists, or the source file name minus extensions if no slug exists
+     * For pages:
+     * - For the home page (i.e. for page index.md) this needs to be index.html
+     * - For all other pages, this should be the source file name minus the extension
+     */
+    private fun calculateFilename(message: SqsMsgBody): String {
+        println("TemplateProcessorHandler: Calculating final file name for $message")
+        return when (message) {
+            is SqsMsgBody.PageHandlebarsModelMsg ->
+                if (message.key.endsWith("index.md")) "index.html" else message.key.substringBefore(".md")
+            is SqsMsgBody.HTMLFragmentReadyMsg -> message.metadata.slug
+            is SqsMsgBody.MarkdownPostUploadMsg -> message.metadata.slug
+            is SqsMsgBody.PageModelMsg -> if (message.srcKey == "index.md") "index.html" else message.srcKey.substringBefore(
+                ".md"
+            )
+        }
     }
 }
 
