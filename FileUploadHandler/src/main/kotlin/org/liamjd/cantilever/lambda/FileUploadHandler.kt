@@ -42,6 +42,8 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         val logger = context.logger
         var response = "200 OK"
 
+        logger.info("${event.records.size} upload events received")
+
         try {
             val eventRecord = event.records[0]
             val srcKey = eventRecord.s3.`object`.urlDecodedKey
