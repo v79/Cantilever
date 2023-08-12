@@ -164,6 +164,7 @@ typealias HandlerFunction<I, T> = (request: Request<I>) -> ResponseEntity<T>
  */
 data class RouterFunction<I, T : Any>(
     val requestPredicate: RequestPredicate, val handler: HandlerFunction<I, T>, var authorizer: Authorizer? = null
+    // this could be a place to store the optional SWAGGER definition data?
 )
 
 /**

@@ -1,6 +1,7 @@
 # API Requirement
 
-Work-in progress for the defined API routes
+Work-in progress for the defined API routes.
+How might I implement a minimal swagger yaml file?
 
 `/warm`
 - GET - trigger a dummy request to keep the AWS Lambda function warmed up

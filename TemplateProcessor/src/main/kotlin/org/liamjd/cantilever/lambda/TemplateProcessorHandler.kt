@@ -11,7 +11,8 @@ import org.liamjd.cantilever.common.FILE_TYPE.HTML_HBS
 import org.liamjd.cantilever.common.S3_KEY.fragments
 import org.liamjd.cantilever.common.S3_KEY.templates
 import org.liamjd.cantilever.common.SOURCE_TYPE
-import org.liamjd.cantilever.models.Structure
+import org.liamjd.cantilever.models.PageList
+import org.liamjd.cantilever.models.PostList
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
@@ -31,93 +32,126 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
         val logger = context.logger
-        var response = "200 OK"
+        var responses = mutableListOf<String>()
 
         val sourceBucket = System.getenv("source_bucket")
         val destinationBucket = System.getenv("destination_bucket")
 
-        try {
-            val eventRecord = event.records[0]
-            logger.info("EventRecord: ${eventRecord.body}")
+        logger.info("${event.records.size} records received for processing...")
 
-            when(eventRecord.messageAttributes["sourceType"]?.stringValue ?: "posts") {
-                SOURCE_TYPE.POSTS -> {
-                    val message = Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.HTMLFragmentReadyMsg
-                    logger.info("Processing message: $message")
+        event.records.forEach { eventRecord ->
 
-                    val body = s3Service.getObjectAsString(message.fragmentKey, sourceBucket)
-                    logger.info("Loaded body fragment from '${fragments + message.fragmentKey}: ${body.take(100)}'")
+            try {
+                logger.info("EventRecord: ${eventRecord.body}")
 
-                    // load template file as specified by metadata
-                    val template = templates + message.metadata.template + HTML_HBS
-                    logger.info("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
-                    val templateString = s3Service.getObjectAsString(template, sourceBucket)
-                    logger.info("Got templateString: ${templateString.take(100)}")
+                when (eventRecord.messageAttributes["sourceType"]?.stringValue ?: "posts") {
+                    SOURCE_TYPE.POSTS -> {
+                        val message =
+                            Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.HTMLFragmentReadyMsg
+                        logger.info("Processing message: $message")
 
-                    // build model from project and from html fragment
-                    val model = mutableMapOf<String, Any?>()
-                    model["title"] = message.metadata.title
-                    model["body"] = body
+                        val body = s3Service.getObjectAsString(message.fragmentKey, sourceBucket)
+                        logger.info("Loaded body fragment from '${fragments + message.fragmentKey}: ${body.take(100)}'")
 
-                    val html = with(logger) {
-                        val renderer = HandlebarsRenderer()
-                        renderer.render(model = model, template = templateString)
+                        // load template file as specified by metadata
+                        val template = templates + message.metadata.template + HTML_HBS
+                        logger.info("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
+                        val templateString = s3Service.getObjectAsString(template, sourceBucket)
+                        logger.info("Got templateString: ${templateString.take(100)}")
+
+                        // build model from project and from html fragment
+                        val model = mutableMapOf<String, Any?>()
+                        model["title"] = message.metadata.title
+                        model["body"] = body
+
+                        val html = with(logger) {
+                            val renderer = HandlebarsRenderer()
+                            renderer.render(model = model, template = templateString)
+                        }
+                        logger.info("Rendered HTML: ${html.take(100)}")
+
+                        // save to S3
+                        val outputFilename = calculateFilename(message)
+                        s3Service.putObject(outputFilename, destinationBucket, html, "text/html")
+                        logger.info("Written final HTML file to '${outputFilename}'")
                     }
-                    logger.info("Rendered HTML: ${html.take(100)}")
 
-                    // save to S3
-                    s3Service.putObject(message.metadata.slug,destinationBucket,html,"text/html")
-                    logger.info("Written final HTML file to '${message.metadata.slug}'")
+                    SOURCE_TYPE.PAGES -> {
+
+                        // TODO: THIS IS ALL A BIT BROKEN
+
+                        val pagesFile = s3Service.getObjectAsString("generated/pages.json", sourceBucket)
+                        val postsFile = s3Service.getObjectAsString("generated/posts.json", sourceBucket)
+                        val pageList = Json.decodeFromString<PageList>(pagesFile)
+                        val postList = Json.decodeFromString<PostList>(postsFile)
+                        val message =
+                            Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.PageHandlebarsModelMsg
+                        val pageTemplateKey = templates + message.template + HTML_HBS
+                        logger.info("Extracted page model: $message")
+
+                        // load the page.html.hbs template
+                        logger.info("Loading template $pageTemplateKey")
+                        val templateString = s3Service.getObjectAsString(pageTemplateKey, sourceBucket)
+
+                        val model = mutableMapOf<String, Any?>()
+                        model["key"] = message.key
+                        model["url"] = message.url
+                        model.putAll(message.attributes)
+
+                        message.sectionKeys.forEach { (name, objectKey) ->
+                            val html = s3Service.getObjectAsString(objectKey, sourceBucket)
+                            logger.info("Adding $name to model from $objectKey: ${html.take(50)}")
+                            model[name] = html
+                        }
+
+                        model["pages"] = pageList.pages
+                        model["posts"] = postList.posts
+
+                        logger.info("Final page model keys: ${model.keys}")
+                        val html = with(logger) {
+                            val renderer = HandlebarsRenderer()
+                            renderer.render(model = model, template = templateString)
+                        }
+//                        logger.info("Rendered HTML: ${html.take(100)}")
+
+                        // TODO: this is a hack!
+                        val outputFilename = calculateFilename(message)
+                        s3Service.putObject(outputFilename, destinationBucket, html, "text/html")
+                        logger.info("Written final HTML file to '$outputFilename'")
+                    }
                 }
-                SOURCE_TYPE.PAGES -> {
-                    val structureFile = s3Service.getObjectAsString("generated/structure.json",sourceBucket)
-                    val projectStructure = Json.decodeFromString<Structure>(structureFile)
-                    val message = Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.PageHandlebarsModelMsg
-                    val pageTemplateKey = templates + message.template + HTML_HBS
-                    logger.info("Extracted page model: $message")
-
-                    // load the page.html.hbs template
-                    logger.info("Loading template $pageTemplateKey")
-                    val templateString = s3Service.getObjectAsString(pageTemplateKey, sourceBucket)
-
-                    val model = mutableMapOf<String,Any?>()
-                    model["key"] = message.key
-                    model["url"] = message.url
-                    model.putAll(message.attributes)
-
-                    message.sectionKeys.forEach { (name, objectKey) ->
-                        val html = s3Service.getObjectAsString(objectKey,sourceBucket)
-                        logger.info("Adding $name to model from $objectKey: ${html.take(50)}")
-                        model[name] = html
-                    }
-
-                    model["posts"] = projectStructure.posts
-
-                    logger.info("Final page model keys: ${model.keys}")
-                    val html = with(logger) {
-                        val renderer = HandlebarsRenderer()
-                        renderer.render(model = model , template = templateString)
-                    }
-                    logger.info("Rendered HTML: ${html.take(100)}")
-
-                    val outputFilename = message.url
-                    s3Service.putObject(outputFilename,destinationBucket,html,"text/html")
-                    logger.info("Written final HTML file to '$outputFilename'")
-                }
+            } catch (se: SerializationException) {
+                logger.error("Failed to deserialize eventRecord $eventRecord, exception: ${se.message}")
+                responses.add("500 Server Error")
+            } catch (nske: NoSuchKeyException) {
+                logger.error("Could not load file from S3, exception: ${nske.message}")
+                responses.add("500 Server Error")
             }
-
-
-        } catch (se: SerializationException) {
-            logger.error("Failed to deserialize eventRecord $event, exception: ${se.message}")
-            response = "500 Server Error"
-        } catch (nske: NoSuchKeyException) {
-            logger.error("Could not load file from S3, exception: ${nske.message}")
-            response = "500 Server Error"
-        } finally {
-            logger.info("Template processing completed")
         }
 
-        return response
+        return if(responses.size == 0) "200 OK" else "${responses.size} errors, final was ${responses.last()}"
+    }
+
+    /**
+     * Calculate the final output file name
+     * For posts:
+     * - this is the metadata.slug object if it exists, or the source file name minus extensions if no slug exists
+     * For pages:
+     * - For the home page (i.e. for page index.md) this needs to be index.html
+     * - For all other pages, this should be the source file name minus the extension
+     */
+    private fun calculateFilename(message: SqsMsgBody): String {
+        println("TemplateProcessorHandler: Calculating final file name for $message")
+        return when (message) {
+            is SqsMsgBody.PageHandlebarsModelMsg ->
+                if (message.key.endsWith("index.md")) "index.html" else message.key.substringBefore(".md")
+                    .substringAfterLast("pages/")
+            is SqsMsgBody.HTMLFragmentReadyMsg -> message.metadata.slug
+            is SqsMsgBody.MarkdownPostUploadMsg -> message.metadata.slug
+            is SqsMsgBody.PageModelMsg -> if (message.srcKey == "index.md") "index.html" else message.srcKey.substringBefore(
+                ".md"
+            ).substringAfterLast("pages/")
+        }
     }
 }
 

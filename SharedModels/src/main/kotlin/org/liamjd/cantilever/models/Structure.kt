@@ -43,6 +43,9 @@ data class Page(
 data class Template(val key: String, val lastUpdated: Instant = Clock.System.now())
 
 @Serializable
+data class HandlebarsContent(val template: Template, val body: String)
+
+@Serializable
 data class Layouts(val templates: MutableMap<String, Template>)
 
 @Serializable

@@ -1,12 +1,14 @@
 package org.liamjd.cantilever.api.controllers
 
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.models.PageList
+import org.liamjd.cantilever.models.PostList
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
@@ -15,6 +17,8 @@ import org.liamjd.cantilever.services.SQSService
 import org.liamjd.cantilever.services.impl.extractPageModel
 import org.liamjd.cantilever.services.impl.extractPostMetadata
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
+import java.net.URLDecoder
+import java.nio.charset.Charset
 
 /**
  * Handle routes relating to document generation. Mostly this will be done by sending messages to the appropriate queues.
@@ -27,6 +31,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         const val TEMPLATES_DIR = S3_KEY.templates + "/"
         const val error_NO_RESPONSE = "No response received for message"
         const val pagesKey = "generated/pages.json"
+        const val postsKey = "generated/posts.json"
     }
 
     private val s3Service: S3Service by inject()
@@ -129,7 +134,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
     }
 
     /**
-     * Generate the HTML fragments for all the pages which match the given template.
+     * Generate the HTML fragments for all the pages or posts which match the given template.
      * Does not currently handle the '*' wildcard.
      */
     fun generateTemplate(request: Request<Unit>): ResponseEntity<APIResult<String>> {
@@ -137,30 +142,56 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         if (requestKey == "*") {
             return ResponseEntity.notImplemented(body = APIResult.Error("Regeneration of all templates is not supported."))
         }
-        val templateKey = TEMPLATES_DIR + requestKey
-        println("GeneratorController received request to regenerate pages based on template '$templateKey'")
-        // first, get the pages structure file
+        println("ENCODED: GeneratorController received request to regenerate pages based on template '$requestKey'")
+        //TODO: this only works for HTML handlebars templates, i.e. those whose file names end in ".index.html" in the "templates" folder.
+        // TODO: THIS NEEDS TO CHANGE!
+        // Also, annoying that I have to double-decode this.
+        val templateKey = URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset()).substringBefore(".").substringAfter("/")
+        println("DOUBLE DECODED: GeneratorController received request to regenerate pages based on template '$templateKey'")
+        // first, get the pages and posts structure file
         if (!s3Service.objectExists(pagesKey, sourceBucket)) {
+            println("GeneratorController: No pages.json exists.")
             return ResponseEntity.notFound(body = APIResult.Error(message = "No pages.json file exists; there may be no pages defined or it may need regenerating."))
         }
+        if (!s3Service.objectExists(postsKey, sourceBucket)) {
+            println("GeneratorController: No posts.json exists.")
+            return ResponseEntity.notFound(body = APIResult.Error(message = "No posts.json file exists; there may be no posts defined or it may need regenerating."))
+        }
         val pagesJson = s3Service.getObjectAsString(pagesKey, sourceBucket)
+        val postsJson = s3Service.getObjectAsString(postsKey,sourceBucket)
         var count = 0
+
+        // TODO: we don't know if the template is for a Page or a Post. This is less than ideal as I have to check both.
         try {
             val pageList = Json.decodeFromString(PageList.serializer(), pagesJson)
-            pageList.pages.filter { it.templateKey == requestKey }.forEach {
+            println("Checking the ${pageList.count} pages for a template match to $templateKey")
+            pageList.pages.filter { it.templateKey == templateKey }.forEach {
                 println("Regenerating page ${it.srcKey} because it has template ${it.templateKey}")
                 val pageSource = s3Service.getObjectAsString(it.srcKey,sourceBucket)
                 queuePageRegeneration(it.srcKey,pageSource)
                 count++
             }
+
+            // TODO: again with the inconsistent naming of templates!
+            val postList = Json.decodeFromString(PostList.serializer(),postsJson)
+            println("Checking the ${postList.count} posts for a template match to $templateKey")
+            postList.posts.filter { it.templateKey == "templates/${templateKey}.html.hbs" }.forEach {
+                println("Regenerating post ${it.srcKey} because it has template ${it.templateKey}")
+                val postSource = s3Service.getObjectAsString(it.srcKey,sourceBucket)
+                queuePostRegeneration(it.srcKey,postSource)
+                count++
+            }
+
             // then, get the pageSrcKeys for each page which uses this template
             // then send the markdown message to each of these pages
         } catch (se: SerializationException) {
             return ResponseEntity.serverError(body = APIResult.Error("Error processing pages.json; error is ${se.message}"))
         }
-        return ResponseEntity.ok(APIResult.Success(value = "Regenerated $count files with the '$requestKey' template."))
+        // TODO: return a different message when 0 files were regenerated
+        return ResponseEntity.ok(APIResult.Success(value = "Queued $count files with the '$templateKey' template for regeneration."))
     }
 
+    // TODO: WE'VE DONE THIS TWICE NOW
     /**
      * Send a message to the markdown queue for a Page
      */
@@ -177,5 +208,22 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         } else {
             println(error_NO_RESPONSE)
         }
+    }
+
+    /**
+     * Send a message to the markdown queue for a Post
+     */
+    private fun queuePostRegeneration(postSrcKey: String, sourceString: String) {
+        // extract post model
+        val metadata = extractPostMetadata(filename = postSrcKey, source = sourceString)
+        // extract body
+        val markdownBody = sourceString.stripFrontMatter()
+
+        val message = SqsMsgBody.MarkdownPostUploadMsg(metadata, markdownBody)
+        val msgResponse = sqsService.sendMessage(
+            toQueue = markdownQueue,
+            body = message,
+            messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.POSTS)
+        )
     }
 }

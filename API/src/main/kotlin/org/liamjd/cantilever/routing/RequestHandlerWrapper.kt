@@ -10,6 +10,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 import org.liamjd.cantilever.routing.Router.Companion.CONTENT_TYPE
+import java.net.URLDecoder
+import java.nio.charset.Charset
 
 /**
  * Implementing the AWS API Gateway [RequestHandler] interface, this class looks for a route which matches the incoming request
@@ -39,7 +41,6 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
      * Finally, convert the [ResponseEntity] into the required [APIGatewayProxyResponseEvent].
      * If there is an error at any point, return an appropriate error response code and text body.
      */
-    @Suppress("UNCHECKED_CAST")
     internal fun handleRequest(input: APIGatewayProxyRequestEvent): APIGatewayProxyResponseEvent {
         println(
             "RequestHandlerWrapper: handleRequest(): looking for route which matches request  ${input.httpMethod} ${input.path} <${
@@ -79,18 +80,16 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         println("Processing route ${routerFunction.requestPredicate.method} ${routerFunction.requestPredicate.pathPattern}, supplying ${routerFunction.requestPredicate.supplies}")
         routerFunction.authorizer?.let { auth ->
             println("Checking authentication/authorization for ${auth.simpleName}")
-
-
-                val authResult = auth.authorize(input)
-                if (!authResult.authorized) {
-                    return ResponseEntity.unauthorized("Authorization check failed: ${authResult.message}")
-                }
+            val authResult = auth.authorize(input)
+            if (!authResult.authorized) {
+                return ResponseEntity.unauthorized("Authorization check failed: ${authResult.message}")
+            }
 
         }
 
         val handler: (Nothing) -> ResponseEntity<out Any> = routerFunction.handler
 
-        val entity = if (routerFunction.requestPredicate.kType == null) {
+        val entity: ResponseEntity<out Any> = if (routerFunction.requestPredicate.kType == null) {
             // this must be a GET request
             val request = Request(input, null, routerFunction.requestPredicate.pathPattern)
             (handler as HandlerFunction<*, *>)(request)

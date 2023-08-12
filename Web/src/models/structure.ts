@@ -14,9 +14,14 @@ export interface Layout {
 /**
  * A template file will end in .html.hbs and represents a handlebars template
  */
-export interface Template {
+export class Template {
 	key: string;
 	lastUpdated: Date;
+
+	constructor(key: string, lastUpdated: Date) {
+		this.key = key;
+		this.lastUpdated = lastUpdated;
+	}
 }
 
 /**
@@ -62,11 +67,30 @@ export abstract class MetadataItem {
 		this.srcKey = srcKey;
 		this.templateKey = templateKey;
 		this.url = url;
-		this.lastUpdated = lastUpdated;
+		this.lastUpdated = new Date(lastUpdated);
 	}
 
 	abstract getDateString(): string;
 	abstract isValid(): boolean;
+}
+
+/**
+ * A handlebars item is different from a MetadataItem as it does not contain markdown content; it will be an HTML file (other types may follow) in the Handlebars templating format
+ */
+export class HandlebarsItem {
+	key: string;
+	shortName: string;
+	lastUpdated: Date;
+
+	constructor(key: string, lastUpdated: Date) {
+		this.key = key;
+		this.lastUpdated = new Date(lastUpdated);
+		this.shortName = key.split('/').slice(-1).join();
+	}
+
+	getDateString(): string {
+		return this.lastUpdated.toLocaleDateString('en-GB');
+	}
 }
 
 /**
@@ -152,6 +176,18 @@ export class MarkdownContent {
 	}
 }
 
+/*
+	The [Template] class essentially represents the metadata of a handlebars template. This class contains the body as well.
+*/
+export class HandlebarsContent {
+	template: Template;
+	body: string;
+
+	constructor(template: Template, body: string) {
+		this.template = template;
+		this.body = body;
+	}
+}
 /**
  * Deprecated utility function
  * @param item

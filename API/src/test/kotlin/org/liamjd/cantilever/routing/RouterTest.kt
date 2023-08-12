@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test
 import org.liamjd.cantilever.api.models.RawJsonString
 import org.liamjd.cantilever.auth.AuthResult
 import org.liamjd.cantilever.auth.Authorizer
+import java.net.URLEncoder
+import java.nio.charset.Charset
 
 class RouterTest {
 
@@ -215,6 +217,18 @@ class RouterTest {
     }
 
     @Test
+    fun `can match a route with a path parameter containing forward slashes that has been encoded`() {
+        val testR = TestRouter()
+        val encodedPath = URLEncoder.encode("special/path", Charset.defaultCharset())
+        val event = APIGatewayProxyRequestEvent().withPath("/getParam/$encodedPath").withHttpMethod("GET")
+            .withHeaders(mapOf("accept" to "text/plain"))
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+        assertEquals("SPECIAL%2FPATH", response.body)
+    }
+
+    @Test
     fun `can match a route with a multiple path parameters`() {
         val testR = TestRouter()
         val event = APIGatewayProxyRequestEvent().withPath("/customer/xy123/purchaseOrder/2523").withHttpMethod("GET")
@@ -286,6 +300,9 @@ class RouterTest {
     }
 }
 
+/**
+ * This class contains all the test routes
+ */
 class TestRouter : RequestHandlerWrapper() {
 
     private val testController = TestController()
