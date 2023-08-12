@@ -36,36 +36,40 @@ data class AuthResult(val authorized: Boolean, val message: String)
  * Looks for the 'Authorizer' header, with the value 'Bearer <token>'
  * and verify that it is legitimate for the Cognito user pool
  */
-object CognitoJWTAuthorizer : Authorizer {
+class CognitoJWTAuthorizer(private val configuration: Map<String, String>) : Authorizer {
+
     override val simpleName: String
         get() = "CognitoJWT Bearer Token Authorizer"
 
     override fun authorize(request: APIGatewayProxyRequestEvent): AuthResult {
         val authHeader = request.getHeader("Authorization")
         println("CognitoJWTAuthenticator: Bearer = $authHeader")
-        if (authHeader == null) return AuthResult(false,"Missing Authorization Header")
+        if (authHeader == null) return AuthResult(false, "Missing Authorization Header")
         val token = extractToken(authHeader)
-        if (token == "") return AuthResult(false,"Invalid or missing Bearer token")
+        if (token == "") return AuthResult(false, "Invalid or missing Bearer token")
 
-        // TODO: externalise these
-        val awsCognitoRegion = "eu-west-2"
-        val awsUserPoolsId = "eu-west-2_aSdFDvU0j"
+        val awsCognitoRegion = configuration["cognito_region"]
+        val awsUserPoolsId = configuration["cognito_user_pools_id"]
 
-        val keyProvider: RSAKeyProvider = AWSCognitoRSAKeyProvider(awsCognitoRegion, awsUserPoolsId)
-        val algorithm: Algorithm = Algorithm.RSA256(keyProvider)
-        val jwtVerifier: JWTVerifier =
-            JWT.require(algorithm) //.withAudience("2qm9sgg2kh21masuas88vjc9se") // Validate your apps audience if needed
-                .build()
+        if (awsCognitoRegion != null && awsUserPoolsId != null) {
+            val keyProvider: RSAKeyProvider = AWSCognitoRSAKeyProvider(awsCognitoRegion, awsUserPoolsId)
+            val algorithm: Algorithm = Algorithm.RSA256(keyProvider)
+            val jwtVerifier: JWTVerifier =
+                JWT.require(algorithm) //.withAudience("2qm9sgg2kh21masuas88vjc9se") // Validate your apps audience if needed
+                    .build()
 
-        val verified = try {
-            jwtVerifier.verify(token)
-        } catch (veriException: JWTVerificationException) {
-            println("Verification of token failed; exception type is: ${veriException::class}")
-            println(veriException.message)
-            return AuthResult(false,veriException.message.toString())
+            val verified = try {
+                jwtVerifier.verify(token)
+            } catch (veriException: JWTVerificationException) {
+                println("Verification of token failed; exception type is: ${veriException::class}")
+                println(veriException.message)
+                return AuthResult(false, veriException.message.toString())
+            }
+            println("Authorized user ${verified.getClaim("name")}, token with claims: ${verified.claims}")
+            return AuthResult(true, "")
         }
-        println("Authorized user ${verified.getClaim("name")}, token with claims: ${verified.claims}")
-        return AuthResult(true,"")
+        println("Could not verify credentials; Cognito region and/or user pool ID not configured: $configuration")
+        return AuthResult(false, "Could not verify credentials; Cognito region and/or user pool ID not configured.")
     }
 
     private fun extractToken(header: String): String {
