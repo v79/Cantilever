@@ -37,13 +37,19 @@ class LambdaRouter : RequestHandlerWrapper() {
     }
 
     // May need some DI here once I start needing to add services for S3 etc
-    private val structureController = StructureController(sourceBucket = sourceBucket, corsDomain = corsDomain)
     private val postController = PostController(sourceBucket = sourceBucket)
     private val pageController = PageController(sourceBucket = sourceBucket)
     private val templateController = TemplateController(sourceBucket = sourceBucket)
     private val generatorController =
         GeneratorController(sourceBucket = sourceBucket)
     private val projectController = ProjectController(sourceBucket = sourceBucket)
+
+    private val cognitoJWTAuthorizer = CognitoJWTAuthorizer(
+        mapOf(
+            "cognito_region" to System.getenv("cognito_region"),
+            "cognito_user_pools_id" to System.getenv("cognito_user_pools_id")
+        )
+    )
 
     companion object {
         const val SRCKEY = "{srcKey}"
@@ -60,18 +66,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             setOf(MimeType.plainText)
         )
 
-        /**
-         * TODO: the structure routes should be deprecated now, replaced with /project/ routes
-         */
-        auth(CognitoJWTAuthorizer) {
-            get("/structure", structureController::getStructureFile)
-            group("/structure") {
-                get("/rebuild", structureController::rebuildStructureFile)
-                post("/addSource", structureController::addFileToStructure)
-            }
-        }
-
-        auth(CognitoJWTAuthorizer) {
+        auth(cognitoJWTAuthorizer) {
             group("/project") {
                 group("/posts") {
                     get("", projectController::getPosts)
@@ -90,7 +85,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
-        auth(CognitoJWTAuthorizer) {
+        auth(cognitoJWTAuthorizer) {
             group("/posts") {
                 get("/$SRCKEY", postController::loadMarkdownSource)
                 get("/preview/$SRCKEY") { request: Request<Unit> -> ResponseEntity.notImplemented(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!") }.supplies(
@@ -107,14 +102,14 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
-        auth(CognitoJWTAuthorizer) {
+        auth(cognitoJWTAuthorizer) {
             group("/templates") {
                 get("/$SRCKEY", templateController::loadHandlebarsSource)
                 post("/", templateController::saveTemplate).supplies(setOf(MimeType.plainText))
             }
         }
 
-        auth(CognitoJWTAuthorizer) {
+        auth(cognitoJWTAuthorizer) {
             group("/generate") {
                 put("/post/$SRCKEY", generatorController::generatePost).supplies(setOf(MimeType.plainText))
                 put("/page/$SRCKEY", generatorController::generatePage).supplies(setOf(MimeType.plainText))
@@ -128,7 +123,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
-        auth(CognitoJWTAuthorizer) {
+        auth(cognitoJWTAuthorizer) {
             group("/get") {
                 get("/post/$SRCKEY") { request: Request<Unit> ->
                     ResponseEntity.notImplemented(body = "Received request to return the HTML form of ${request.pathParameters["srcKey"]}")

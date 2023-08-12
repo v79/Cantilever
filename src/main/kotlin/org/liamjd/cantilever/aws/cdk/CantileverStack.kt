@@ -27,7 +27,9 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         source_bucket,
         markdown_processing_queue,
         handlebar_template_queue,
-        cors_domain
+        cors_domain,
+        cognito_region,
+        cognito_user_pools_id
     }
     // TODO: I suppose I'm going to need to set up a dev and production environment for this sort of thing. Boo.
 
@@ -41,7 +43,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         val deploymentDomain = (env?.get("domainName")) ?: "http://localhost:5173"
         println("ENVIRONMENT: $env; deploymentDomain: $deploymentDomain")
 
-        Tags.of(this).add("Cantilever", "v0.0.5")
+        Tags.of(this).add("Cantilever", "v0.0.6")
 
         // Source bucket where Markdown, template files will be stored
         // I may wish to change the removal and deletion policies
@@ -112,6 +114,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         )
 
         println("Creating API routing Lambda function")
+        val cr = env?.get("cognito_region")?: ""
+        val cpool = env?.get("cognito_user_pools_id")?: ""
         val apiRoutingLambda = createLambda(
             stack = this,
             id = "cantilever-api-router-lambda",
@@ -124,7 +128,9 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
                 ENV.destination_bucket.name to destinationBucket.bucketName,
                 ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
                 ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl,
-                ENV.cors_domain.name to deploymentDomain
+                ENV.cors_domain.name to deploymentDomain,
+                ENV.cognito_region.name to cr,
+                ENV.cognito_user_pools_id.name to cpool
             )
         )
 
@@ -224,7 +230,6 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
                     .callbackUrls(appUrls).logoutUrls(appUrls).build()
             ).build()
         )
-
     }
 
     private fun createDestinationBucket(): Bucket = Bucket.Builder.create(this, "cantilever-website")
