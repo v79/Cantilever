@@ -27,33 +27,52 @@ data class ResponseEntity<T : Any>(
         /**
          * Create a default successful response with the body and headers provided
          */
+        // 200
         inline fun <reified T : Any> ok(body: T? = null, headers: Map<String, String> = emptyMap()): ResponseEntity<T> {
             val tt: KType = typeOf<T>()
             return ResponseEntity<T>(HttpCodes.OK.code, body, headers).apply { kType = tt }
         }
 
-        // TODO: Other typical responses, such as 'created', 'accepted', 'no content', 'bad request', 'not found' etc
+        // 202
+        inline fun <reified T : Any> accepted(body: T? = null, headers: Map<String, String> = emptyMap()): ResponseEntity<T> {
+            val tt: KType = typeOf<T>()
+            return ResponseEntity<T>(HttpCodes.ACCEPTED.code, body, headers).apply { kType = tt }
+        }
 
+        // 204
+        /**
+         * @param body will be ignored as no content is sent with the HTTP 204 message
+         */
+        inline fun <reified T : Any> noContent(body: T? = null, headers: Map<String, String> = emptyMap()): ResponseEntity<T> {
+            val tt: KType = typeOf<T>()
+            return ResponseEntity<T>(HttpCodes.NO_CONTENT.code, body, headers).apply { kType = tt }
+        }
+
+        // 404
         inline fun <reified T : Any> notFound(body: T? = null, headers: Map<String, String> = emptyMap()): ResponseEntity<T> {
             val tt: KType = typeOf<T>()
             return ResponseEntity<T>(HttpCodes.NOT_FOUND.code, body, headers).apply { kType = tt }
         }
 
+        // 500
         inline fun <reified T : Any> serverError(body: T? = null, headers: Map<String, String> = emptyMap()): ResponseEntity<T> {
             val tt: KType = typeOf<T>()
             return ResponseEntity<T>(HttpCodes.SERVER_ERROR.code, body, headers).apply { kType = tt }
         }
 
+        // 401
         inline fun <reified T : Any> unauthorized(body: T? = null, headers: Map<String, String> = emptyMap()): ResponseEntity<T> {
             val tt: KType = typeOf<T>()
             return ResponseEntity<T>(HttpCodes.UNAUTHORIZED.code, body, headers).apply { kType = tt }
         }
 
+        // 400
         inline fun <reified T : Any> badRequest(body: T? = null, headers: Map<String, String> = emptyMap()): ResponseEntity<T> {
             val tt: KType = typeOf<T>()
             return ResponseEntity<T>(HttpCodes.BAD_REQUEST.code, body, headers).apply { kType = tt }
         }
 
+        // 501
         inline fun <reified T : Any> notImplemented(body: T? = null, headers: Map<String, String> = emptyMap()): ResponseEntity<T> {
             val tt: KType = typeOf<T>()
             return ResponseEntity<T>(HttpCodes.NOT_IMPLEMENTED.code, body, headers).apply { kType = tt }

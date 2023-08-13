@@ -143,10 +143,11 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
             return ResponseEntity.notImplemented(body = APIResult.Error("Regeneration of all templates is not supported."))
         }
         println("ENCODED: GeneratorController received request to regenerate pages based on template '$requestKey'")
-        //TODO: this only works for HTML handlebars templates, i.e. those whose file names end in ".index.html" in the "templates" folder.
-        // TODO: THIS NEEDS TO CHANGE!
+        // TODO: https://github.com/v79/Cantilever/issues/26 this only works for HTML handlebars templates, i.e. those whose file names end in ".index.html" in the "templates" folder.
         // Also, annoying that I have to double-decode this.
-        val templateKey = URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset()).substringBefore(".").substringAfter("/")
+        val templateKey =
+            URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset())
+                .substringBefore(".").substringAfter("/")
         println("DOUBLE DECODED: GeneratorController received request to regenerate pages based on template '$templateKey'")
         // first, get the pages and posts structure file
         if (!s3Service.objectExists(pagesKey, sourceBucket)) {
@@ -158,7 +159,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
             return ResponseEntity.notFound(body = APIResult.Error(message = "No posts.json file exists; there may be no posts defined or it may need regenerating."))
         }
         val pagesJson = s3Service.getObjectAsString(pagesKey, sourceBucket)
-        val postsJson = s3Service.getObjectAsString(postsKey,sourceBucket)
+        val postsJson = s3Service.getObjectAsString(postsKey, sourceBucket)
         var count = 0
 
         // TODO: we don't know if the template is for a Page or a Post. This is less than ideal as I have to check both.
@@ -167,28 +168,29 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
             println("Checking the ${pageList.count} pages for a template match to $templateKey")
             pageList.pages.filter { it.templateKey == templateKey }.forEach {
                 println("Regenerating page ${it.srcKey} because it has template ${it.templateKey}")
-                val pageSource = s3Service.getObjectAsString(it.srcKey,sourceBucket)
-                queuePageRegeneration(it.srcKey,pageSource)
+                val pageSource = s3Service.getObjectAsString(it.srcKey, sourceBucket)
+                queuePageRegeneration(it.srcKey, pageSource)
                 count++
             }
 
             // TODO: again with the inconsistent naming of templates!
-            val postList = Json.decodeFromString(PostList.serializer(),postsJson)
+            val postList = Json.decodeFromString(PostList.serializer(), postsJson)
             println("Checking the ${postList.count} posts for a template match to $templateKey")
             postList.posts.filter { it.templateKey == "templates/${templateKey}.html.hbs" }.forEach {
                 println("Regenerating post ${it.srcKey} because it has template ${it.templateKey}")
-                val postSource = s3Service.getObjectAsString(it.srcKey,sourceBucket)
-                queuePostRegeneration(it.srcKey,postSource)
+                val postSource = s3Service.getObjectAsString(it.srcKey, sourceBucket)
+                queuePostRegeneration(it.srcKey, postSource)
                 count++
             }
-
-            // then, get the pageSrcKeys for each page which uses this template
-            // then send the markdown message to each of these pages
         } catch (se: SerializationException) {
             return ResponseEntity.serverError(body = APIResult.Error("Error processing pages.json; error is ${se.message}"))
         }
-        // TODO: return a different message when 0 files were regenerated
-        return ResponseEntity.ok(APIResult.Success(value = "Queued $count files with the '$templateKey' template for regeneration."))
+
+        return if (count == 0) {
+            ResponseEntity.ok(APIResult.Success(value = "No pages or posts with the template '$templateKey' were suitable for regeneration."))
+        } else {
+            ResponseEntity.accepted(APIResult.Success(value = "Queued $count files with the '$templateKey' template for regeneration."))
+        }
     }
 
     // TODO: WE'VE DONE THIS TWICE NOW

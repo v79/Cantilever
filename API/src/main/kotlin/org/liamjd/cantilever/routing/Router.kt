@@ -6,7 +6,7 @@ import kotlin.reflect.typeOf
 
 /**
  * The Router class is the core of the routing mechanism
- * It provides the functions responding to the HTTP request methods (GET, POST) etc and matches them to
+ * It provides the functions responding to the HTTP request methods (GET, POST) etc. and matches them to
  * a [HandlerFunction] provided by the library user
  * Use the function [lambdaRouter] to create a new router, rather than the direct constructor
  */
@@ -172,7 +172,7 @@ data class RouterFunction<I, T : Any>(
  * @property apiRequest the full event from API Gateway
  * @property body the body, which will be empty for a GET but should have a value for PUT, POST etc
  * @property pathPattern the path pattern from the predicate, with the {parameters} etc
- * @property pathParameters a map of matching path parameters and their values, i.e path /get/{id} with id = 3 becomes `map[id] = 3`
+ * @property pathParameters a map of matching path parameters and their values, i.e. path /get/{id} with id = 3 becomes `map[id] = 3`
  */
 data class Request<I>(
     val apiRequest: APIGatewayProxyRequestEvent,
@@ -196,7 +196,8 @@ data class Request<I>(
  * Collection of useful HTTP codes I'm likely to need
  */
 enum class HttpCodes(val code: Int, val message: String) {
-    OK(200, "OK"), CREATED(201, "Created"),
+    OK(200, "OK"),
+    CREATED(201, "Created"),
     ACCEPTED(202, "Accepted"),
     NO_CONTENT(204, "No Content"),
     BAD_REQUEST(400, "Bad Request"),
