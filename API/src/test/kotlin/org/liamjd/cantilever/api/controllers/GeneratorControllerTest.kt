@@ -120,10 +120,28 @@ class GeneratorControllerTest : KoinTest {
     ]
             }
         """.trimIndent()
+
+        val mockPostJson = """
+            {
+  "count": 1,
+  "lastUpdated": "2023-07-03T19:46:47.042018Z",
+  "posts": [
+    {
+      "title": "Momentum lost",
+      "srcKey": "sources/posts/momentum-lost.md",
+      "url": "momentum-lost",
+      "date": "2023-05-13",
+      "lastUpdated": "2023-07-03T19:46:46.686504Z",
+      "templateKey": "templates/post.html.hbs"
+        }
+  ]
+}
+        """.trimIndent()
         val mockTodoPage = ""
         declareMock<S3Service> {
             every { mockS3.objectExists(any(), sourceBucket) } returns true
             every { mockS3.getObjectAsString("generated/pages.json", sourceBucket) } returns mockPageJson
+            every { mockS3.getObjectAsString("generated/posts.json", sourceBucket) } returns mockPostJson
             every { mockS3.getObjectAsString("sources/pages/todo.md", sourceBucket) } returns mockTodoPage
         }
         declareMock<SQSService> {
@@ -137,7 +155,7 @@ class GeneratorControllerTest : KoinTest {
 
         assertNotNull(response)
         println(response)
-        assertEquals(200, response.statusCode)
+        assertEquals(202, response.statusCode)
         verify(exactly = 1) { mockSQS.sendMessage(any(), any(), any()) }
     }
 
