@@ -4,8 +4,8 @@ name: Deploy to Amazon CDK
 
 on:
   workflow_dispatch:
-#  push:
-#    branches: [ "master" ]
+  push:
+    branches: [ "master" ]
 
 env:
   AWS_REGION: eu-west-2                   # set this to your preferred AWS region, e.g. us-west-1
@@ -20,36 +20,36 @@ jobs:
     environment: production
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2.2.0
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2.2.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Set up JDK 11
-      uses: actions/setup-java@v3
-      with:
-        java-version: '11'
-        distribution: 'corretto'
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'corretto'
 
-    - name: Set up gradle wrapper
-      uses: gradle/gradle-build-action@v2
+      - name: Set up gradle wrapper
+        uses: gradle/gradle-build-action@v2
 
-    - name: Set up nodeJS
-      uses: actions/setup-node@v3
-      with:
-        node-version: "18"
+      - name: Set up nodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
 
-    - name: Install aws-cdk
-      run: |
-        npm install -g aws-cdk
+      - name: Install aws-cdk
+        run: |
+          npm install -g aws-cdk
 
-    - name: CDK Synth to test run
-      run: |
-        gradle wrapper
-        cdk synth
+      - name: CDK Synth to test run
+        run: |
+          gradle wrapper
+          cdk deploy --context env=prod
       
