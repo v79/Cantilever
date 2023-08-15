@@ -41,11 +41,13 @@ jobs:
       with:
         node-version: "18"
 
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+
     - name: Install aws-cdk
       run: |
         npm install -g aws-cdk
 
     - name: CDK Synth to test run
-      uses: gradle/gradle-build-action@bd5760595778326ba7f1441bcf7e88b49de61a25 # v2.6.0
       run: cdk synth
       
