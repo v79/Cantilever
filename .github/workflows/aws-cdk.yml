@@ -38,8 +38,6 @@ jobs:
 
     - name: Set up gradle wrapper
       uses: gradle/gradle-build-action@v2
-      run: |
-        gradle wrapper
 
     - name: Set up nodeJS
       uses: actions/setup-node@v3
@@ -52,5 +50,6 @@ jobs:
 
     - name: CDK Synth to test run
       run: |
+        gradle wrapper
         cdk synth
       
