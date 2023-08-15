@@ -31,6 +31,15 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
 
+    - name: Set up nodeJS
+      uses: actions/setup-node@v3
+      with:
+        node-version: "18"
+
+    - name: Install aws-cdk
+      run: |
+        npm install -g aws-cdk
+
     - name: CDK Synth to test run
       id: cdk-synth
       run: cdk synth
