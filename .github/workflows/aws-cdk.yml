@@ -47,5 +47,7 @@ jobs:
 
     - name: CDK Synth to test run
       uses: gradle/gradle-build-action@v2
-      run: cdk synth
+      run: |
+        gradle wrapper
+        cdk synth
       
