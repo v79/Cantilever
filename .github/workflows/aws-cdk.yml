@@ -36,6 +36,11 @@ jobs:
         java-version: '11'
         distribution: 'corretto'
 
+    - name: Set up gradle wrapper
+      uses: gradle/gradle-build-action@v2
+      run: |
+        gradle wrapper
+
     - name: Set up nodeJS
       uses: actions/setup-node@v3
       with:
@@ -46,8 +51,6 @@ jobs:
         npm install -g aws-cdk
 
     - name: CDK Synth to test run
-      uses: gradle/gradle-build-action@v2
       run: |
-        gradle wrapper
         cdk synth
       
