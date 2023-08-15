@@ -5,9 +5,6 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
-@Deprecated(message = "Use separate Post, Page, Template list classes")
-@Serializable
-data class Structure(val layouts: Layouts, val posts: MutableList<PostMeta>, var postCount: Int)
 
 @Serializable
 data class PostList(val count: Int = 0, val lastUpdated: Instant, val posts: List<PostMeta>)
