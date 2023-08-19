@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="BigDataIdeConnectionSettings">
+    <option name="connections">
+      <list>
+        <ExtendedConnectionData>
+          <option name="extended">
+            <map>
+              <entry key="activeAuthenticationType" value="rO0ABXQAIkRlZmF1bHQgY3JlZGVudGlhbCBwcm92aWRlcnMgY2hhaW4=" />
+              <entry key="bucket" value="rO0ABXQAAA==" />
+              <entry key="bucketFilter" value="rO0ABXQACmNhbnRpbGV2ZXI=" />
+              <entry key="bucketFilterType" value="rO0ABX5yAD9jb20uamV0YnJhaW5zLmJpZ2RhdGF0b29scy5jb21tb24uZmlsZXN0b3JhZ2VzLkJ1Y2tldEZpbHRlclR5cGUAAAAAAAAAABIAAHhyAA5qYXZhLmxhbmcuRW51bQAAAAAAAAAAEgAAeHB0AAhDT05UQUlOUw==" />
+              <entry key="bucketName" value="rO0ABXQAAA==" />
+              <entry key="customEndpoint" value="rO0ABXQAAA==" />
+              <entry key="customRegion" value="rO0ABXQAAA==" />
+              <entry key="isBucketSourceCustom" value="rO0ABXNyABFqYXZhLmxhbmcuQm9vbGVhbs0gcoDVnPruAgABWgAFdmFsdWV4cAA=" />
+              <entry key="isDisableSocketProxy" value="rO0ABXNyABFqYXZhLmxhbmcuQm9vbGVhbs0gcoDVnPruAgABWgAFdmFsdWV4cAA=" />
+              <entry key="isMultiBucketSupport" value="rO0ABXNyABFqYXZhLmxhbmcuQm9vbGVhbs0gcoDVnPruAgABWgAFdmFsdWV4cAE=" />
+              <entry key="isPreemptiveBasicProxyAuth" value="rO0ABXNyABFqYXZhLmxhbmcuQm9vbGVhbs0gcoDVnPruAgABWgAFdmFsdWV4cAA=" />
+              <entry key="nonProxyHosts" value="rO0ABXQAAA==" />
+              <entry key="profileName" value="rO0ABXQAB2RlZmF1bHQ=" />
+              <entry key="proxyAuthEnabled" value="rO0ABXNyABFqYXZhLmxhbmcuQm9vbGVhbs0gcoDVnPruAgABWgAFdmFsdWV4cAA=" />
+              <entry key="proxyDomain" value="rO0ABXQAAA==" />
+              <entry key="proxyEnableType" value="rO0ABX5yADxjb20uamV0YnJhaW5zLmJpZ2RhdGF0b29scy5jb21tb24uY29ubmVjdGlvbi5Qcm94eUVuYWJsZVR5cGUAAAAAAAAAABIAAHhyAA5qYXZhLmxhbmcuRW51bQAAAAAAAAAAEgAAeHB0AAhESVNBQkxFRA==" />
+              <entry key="proxyHost" value="rO0ABXQAAA==" />
+              <entry key="proxyPort" value="rO0ABXNyABFqYXZhLmxhbmcuSW50ZWdlchLioKT3gYc4AgABSQAFdmFsdWV4cgAQamF2YS5sYW5nLk51bWJlcoaslR0LlOCLAgAAeHAAAABQ" />
+              <entry key="proxyWorkstation" value="rO0ABXQAAA==" />
+              <entry key="region" value="rO0ABXQACXVzLXdlc3QtMg==" />
+              <entry key="tunnel" value="rO0ABXNyAFdjb20uamV0YnJhaW5zLmJpZ2RhdGF0b29scy5jb21tb24uY29ubmVjdGlvbi50dW5uZWwubW9kZWwuQ29ubmVjdGlvblNzaFR1bm5lbERhdGFMZWdhY3mINKLe8MxKawIABFoACWlzRW5hYmxlZEkACnJlbW90ZVBvcnRMAAhjb25maWdJZHQAEkxqYXZhL2xhbmcvU3RyaW5nO0wACnJlbW90ZUhvc3RxAH4AAXhwAP////90AABxAH4AAw==" />
+              <entry key="useCustomEndpoint" value="rO0ABXNyABFqYXZhLmxhbmcuQm9vbGVhbs0gcoDVnPruAgABWgAFdmFsdWV4cAA=" />
+            </map>
+          </option>
+          <option name="fqn" value="org.jetbrains.hdfsplugin.hdfs.settings.S3ConnectionData" />
+          <option name="groupId" value="S3ConnectionGroup" />
+          <option name="innerId" value="AWS S3@S3ConnectionGroup@-892438569665402388" />
+          <option name="name" value="AWS S3" />
+          <option name="perProject" value="true" />
+        </ExtendedConnectionData>
+      </list>
+    </option>
+  </component>
+</project>

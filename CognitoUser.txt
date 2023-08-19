@@ -1,0 +1,47 @@
+New password password:
+
+hj0ou0DAn)an52mNH
+
+
+This is the ID_TOKEN response
+
+eyJraWQiOiJlWERpXC81aVZiMTFmdWc1cmlYYTNHRndXSzBjZWlBYjNOMTN6Y0NxVFlkaz0iLCJhbGciOiJSUzI1NiJ9.eyJhdF9oYXNoIjoiUE9CQTlFTXNVbHloUGlzQ2JyZUF1ZyIsInN1YiI6ImEwYWQ4NzMxLTQ5OTgtNDAwMS1hZGYwLTFhYTlhZTY2NzQ3NyIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTIuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0yX2FTZEZEdlUwaiIsImNvZ25pdG86dXNlcm5hbWUiOiJhMGFkODczMS00OTk4LTQwMDEtYWRmMC0xYWE5YWU2Njc0NzciLCJhdWQiOiI2aWpiNmJnM2hrMjJzZWxxNnJqMmJiNXJtcSIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNjc1NTg3MjE2LCJuYW1lIjoibGlhbSIsImV4cCI6MTY3NTU5MDgxNiwiaWF0IjoxNjc1NTg3MjE3LCJqdGkiOiI1ZTIwMTI4NC02NzE1LTQ2MTEtODZlNS05MGZlMTE1ZGJhZjYiLCJlbWFpbCI6ImxpYW1qZGF2aXNvbkBnbWFpbC5jb20ifQ.zpbPzGMVBbAjhTcuQktJO1tHq26dscFetiJQFNWiyP_wfza_2kSeniU2a8HqzVBDJRnfHeEjNzontpTuBTCx_0-ExbBVKemW5mPVzlst6EdYxzwjGUNFGbOH_jLD2p9Qd48FCuoJQ2bF3VkCTB54eSXPoQaU0eRelJEmu8t5EBOwLUcXoyAEGYXA2xruq7YZkdyttQypt-agGv4PK0RqEt303IEnbOkeJrWg-BqGgxnpKpDYuNplLoJx_K6e1DitT3nnFIhq0eV3eQ74pddIbOYKWpfANDj4RwGS5kxRaLcytzNFyP3-MBEy-c41NUcVDVBqembt_QEs5RYqr5GD4g
+
+In JWT it equates to:
+HEADER:
+{
+  "kid": "eXDi/5iVb11fug5riXa3GFwWK0ceiAb3N13zcCqTYdk=",
+  "alg": "RS256"
+}
+PAYLOAD:
+{
+  "at_hash": "POBA9EMsUlyhPisCbreAug",
+  "sub": "a0ad8731-4998-4001-adf0-1aa9ae667477",
+  "iss": "https://cognito-idp.eu-west-2.amazonaws.com/eu-west-2_aSdFDvU0j",
+  "cognito:username": "a0ad8731-4998-4001-adf0-1aa9ae667477",
+  "aud": "6ijb6bg3hk22selq6rj2bb5rmq",
+  "token_use": "id",
+  "auth_time": 1675587216,
+  "name": "liam",
+  "exp": 1675590816,
+  "iat": 1675587217,
+  "jti": "5e201284-6715-4611-86e5-90fe115dbaf6",
+  "email": "liamjdavison@gmail.com"
+}
+
+
+Specify more scopes to get more user details, i.e. scope=openId+profile will return this:
+{
+  "at_hash": "OY0dqIrflz9F_PJT_ncrRg",
+  "sub": "a0ad8731-4998-4001-adf0-1aa9ae667477",
+  "iss": "https://cognito-idp.eu-west-2.amazonaws.com/eu-west-2_aSdFDvU0j",
+  "cognito:username": "a0ad8731-4998-4001-adf0-1aa9ae667477",
+  "aud": "6ijb6bg3hk22selq6rj2bb5rmq",
+  "token_use": "id",
+  "auth_time": 1675437846,
+  "name": "liam",
+  "exp": 1675441446,
+  "iat": 1675437846,
+  "jti": "8185e3a0-a047-40d9-bca6-7faea6b27f86",
+  "email": "liamjdavison@gmail.com"
+}
