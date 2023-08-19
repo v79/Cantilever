@@ -8,8 +8,7 @@
 	import { userStore } from '../../stores/userStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import TemplateEditorForm from '../../components/HandlebarsEditor/templateEditorForm.svelte';
-	import CModal from '../../components/customized/cModal.svelte';
-
+	import { Modal } from 'flowbite-svelte';
 	let deleteFileModal = false;
 	let saveExistingModal = false;
 	let saveNewModal = false;
@@ -128,7 +127,7 @@
 	</div>
 </div>
 
-<CModal title="Save file?" bind:open={saveExistingModal} autoclose size="sm">
+<Modal title="Save file?" bind:open={saveExistingModal} autoclose size="sm">
 	<p>
 		Save changes to file <strong>{$activeStore.activeFile}</strong>?
 	</p>
@@ -143,4 +142,4 @@
 			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
 			>Save</button>
 	</svelte:fragment>
-</CModal>
+</Modal>
