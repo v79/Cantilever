@@ -44,7 +44,7 @@
 							previewModal = true;
 						}}>Preview</button>
 
-					<Viditor bind:value={body} />
+					<Viditor bind:body />
 				</div>
 			</div>
 		</div>

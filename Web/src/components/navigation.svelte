@@ -5,8 +5,8 @@
 	import { activeStore } from '../stores/appStatusStore.svelte';
 	import { allPostsStore } from '../stores/postsStore.svelte';
 	import { markdownStore } from '../stores/markdownContentStore.svelte';
-	import { Chevron, Dropdown, DropdownItem, Navbar, NavBrand, NavLi, NavUl } from 'flowbite-svelte';
-	import CModal from './customized/cModal.svelte';
+	import { Dropdown, DropdownItem, Navbar, NavBrand, NavLi, NavUl } from 'flowbite-svelte';
+	import { Modal } from 'flowbite-svelte';
 	import CToast from './customized/cToast.svelte';
 	import { notificationStore } from '../stores/notificationStore.svelte';
 	import { afterUpdate, onMount } from 'svelte';
@@ -125,7 +125,7 @@
 	<NavUl nonActiveClass="text-gray-200">
 		{#if $userStore !== undefined}
 			<NavLi id="generate-menu" nonActiveClass="text-grey-200" class="cursor-pointer"
-				><Chevron aligned>Generate</Chevron></NavLi>
+				>Generate</NavLi>
 		{/if}
 		<NavLi
 			nonActiveClass="text-grey-200"
@@ -158,7 +158,7 @@
 
 <CToast />
 
-<CModal title="Regenerate all posts?" bind:open={regenAllPostsModal} autoclose size="sm">
+<Modal title="Regenerate all posts?" bind:open={regenAllPostsModal} autoclose size="sm">
 	<p>Regenerating all {$allPostsStore.count} posts may take some time. Continue?</p>
 
 	<svelte:fragment slot="footer">
@@ -175,9 +175,9 @@
 			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
 			>Regenerate</button>
 	</svelte:fragment>
-</CModal>
+</Modal>
 
-<CModal title="Regenerate all pages?" bind:open={regenAllPagesModal} autoclose size="sm">
+<Modal title="Regenerate all pages?" bind:open={regenAllPagesModal} autoclose size="sm">
 	<p>Regenerating all pages may take some time. Continue?</p>
 
 	<svelte:fragment slot="footer">
@@ -194,4 +194,4 @@
 			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
 			>Regenerate</button>
 	</svelte:fragment>
-</CModal>
+</Modal>
