@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Modal } from 'flowbite-svelte';
+	import { Button, Modal } from 'flowbite-svelte';
 	import { afterUpdate, beforeUpdate, onDestroy } from 'svelte';
 	import SvelteMarkdown from 'svelte-markdown';
 	import { Post } from '../../models/structure';
@@ -8,7 +8,6 @@
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { allPostsStore } from '../../stores/postsStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
-	import CModal from '../customized/cModal.svelte';
 	import { spinnerStore } from '../utilities/spinnerWrapper.svelte';
 	import ModalDeleteFile from './modal-delete-file.svelte';
 	import PostEditorForm from './postEditorForm.svelte';
@@ -129,24 +128,17 @@
 	</Modal>
 {/if}
 
-<CModal title="Save file?" bind:open={saveExistingModal} autoclose size="sm">
+<Modal title="Save file?" bind:open={saveExistingModal} autoclose size="sm">
 	<p>
 		Save changes to file <strong>{$markdownStore?.metadata?.title}</strong>?
 	</p>
 	<svelte:fragment slot="footer">
-		<button
-			type="button"
-			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
-			>Cancel</button>
-		<button
-			type="button"
-			on:click={saveFile}
-			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
-			>Save</button>
+		<Button color="red">Cancel</Button>
+		<Button on:click={saveFile} color="purple">Save</Button>
 	</svelte:fragment>
-</CModal>
+</Modal>
 
-<CModal title="Save new file?" bind:open={saveNewModal} autoclose size="sm">
+<Modal title="Save new file?" bind:open={saveNewModal} autoclose size="sm">
 	<p>
 		Creating new <strong>{$markdownStore.metadata?.templateKey}</strong> named
 		<strong>{$markdownStore.metadata?.title}</strong>.
@@ -170,12 +162,9 @@
 
 	<svelte:fragment slot="footer">
 		{#if $markdownStore.metadata}
-			<button
-				type="button"
-				class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
-				>Cancel</button>
-			<button
-				type="button"
+			<Button color="red">Cancel</Button>
+			<Button
+				color="purple"
 				on:click={(e) => {
 					let srcKey = 'sources/posts/' + saveNewFileSlug + '.md';
 					spinnerStore.set({ message: 'Saving ' + srcKey, shown: true });
@@ -183,12 +172,10 @@
 					$markdownStore.metadata.url = saveNewFileSlug;
 					$markdownStore.metadata.lastUpdated = new Date().toISOString();
 					saveFile();
-				}}
-				class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
-				>Save</button>
+				}}>Save</Button>
 		{/if}
 	</svelte:fragment>
-</CModal>
+</Modal>
 
 <ModalDeleteFile
 	shown={deleteFileModal}

@@ -3,7 +3,8 @@
 	import SvelteMarkdown from 'svelte-markdown';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import type { Page } from '../../models/structure';
-	import { Accordion, AccordionItem, Modal } from 'flowbite-svelte';
+	import { Accordion, AccordionItem, Button, Footer, Modal, Tabs, TabItem } from 'flowbite-svelte';
+	import Viditor from '../Viditor.svelte';
 
 	export let metadata: Page;
 	let previewModal = false;
@@ -72,26 +73,24 @@
 							on:click={() => {
 								previewModal = true;
 							}}>Preview</button>
-						<Accordion
-							flush
-							activeClasses="bg-gray-100 dark:bg-gray-800 text-slate-200 dark:text-white focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-800"
-							inactiveClasses="text-slate-200 dark:text-slate-300 hover:bg-gray-100 hover:dark:bg-gray-800">
-							{#each [...metadata.sections] as [key, body]}
-								<AccordionItem open>
-									<span slot="header">{key}</span>
-									<textarea
-										value={body}
-										name="markdown-{key}"
+						<Tabs style="pill">
+							{#each [...metadata.sections] as [key, body], index}
+								<TabItem
+									open={index == 0}
+									title={key}
+									inactiveClasses="inline-block text-sm font-medium text-center disabled:cursor-not-allowed p-4 hover:text-purple-500 hover:border-gray-300 dark:hover:text-gray-300 text-slate-200 dark:text-gray-400"
+									activeClasses="inline-block text-sm font-medium text-center disabled:cursor-not-allowed p-4 border-b-2 border-purple-400 border-spacing-4 hover:text-purple-500 hover:border-gray-300 dark:hover:text-gray-300 text-slate-200 dark:text-gray-400">
+									<Viditor
+										bind:body
 										id="markdown-{key}"
-										class="textarea-lg mt-1 block h-[500px] w-full rounded-md focus:border-indigo-500 focus:ring-indigo-500"
-										placeholder="Markdown goes here"
-										on:input={(event) => {
-											metadata.sections.set(key, event.currentTarget.value);
+										onChange={(newBody) => {
+											body = newBody;
+											metadata.sections.set(key, newBody);
 											metadata.sections = metadata.sections;
 										}} />
-								</AccordionItem>
+								</TabItem>
 							{/each}
-						</Accordion>
+						</Tabs>
 					</div>
 				</div>
 			</div>
