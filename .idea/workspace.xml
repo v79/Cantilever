@@ -5,7 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="6fd734f3-8bc5-4504-925f-ed8e700627a2" name="Changes" comment="Rename action">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Web/src/components/customized/cModal.svelte" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -248,7 +247,7 @@
       <workItem from="1692042685003" duration="3228000" />
       <workItem from="1692368208729" duration="96000" />
       <workItem from="1692425871878" duration="609000" />
-      <workItem from="1692463737540" duration="120000" />
+      <workItem from="1692463737540" duration="547000" />
     </task>
     <task id="LOCAL-00001" summary="IntelliJ got a bit broken, had to reimport.">
       <created>1681146947431</created>
