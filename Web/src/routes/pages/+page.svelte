@@ -2,7 +2,7 @@
 	import { afterNavigate } from '$app/navigation';
 	import ModalDeleteFile from '../../components/MarkdownEditor/modal-delete-file.svelte';
 	import PageEditorForm from '../../components/MarkdownEditor/pageEditorForm.svelte';
-	import CModal from '../../components/customized/cModal.svelte';
+	import { Modal } from 'flowbite-svelte';
 	import PageList from '../../components/pages/pageList.svelte';
 	import SpinnerWrapper from '../../components/utilities/spinnerWrapper.svelte';
 	import { createSlug } from '../../functions/createSlug';
@@ -104,7 +104,7 @@
 	</div>
 </div>
 
-<CModal title="Save file?" bind:open={saveExistingModal} autoclose size="sm">
+<Modal title="Save file?" bind:open={saveExistingModal} autoclose size="sm">
 	<p>
 		Save changes to file <strong>{$markdownStore?.metadata?.title}</strong>?
 	</p>
@@ -119,7 +119,7 @@
 			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
 			>Save</button>
 	</svelte:fragment>
-</CModal>
+</Modal>
 
 <ModalDeleteFile
 	shown={deleteFileModal}

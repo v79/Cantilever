@@ -1,6 +1,6 @@
 <script lang="ts">
-	import CModal from '../customized/cModal.svelte';
 	import { CLEAR, markdownStore } from '../../stores/markdownContentStore.svelte';
+	import { Modal } from 'flowbite-svelte';
 	import { spinnerStore } from '../utilities/spinnerWrapper.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
 	import { allPostsStore } from '../../stores/postsStore.svelte';
@@ -61,7 +61,7 @@
 </script>
 
 <!-- Delete file modal-->
-<CModal title="Delete file?" bind:open={shown} size="sm">
+<Modal title="Delete file?" bind:open={shown} size="sm">
 	<p>
 		Delete source file <strong>{$markdownStore.metadata?.title}</strong>
 		({decodeURIComponent($markdownStore.metadata.srcKey)})? Are you sure?
@@ -94,4 +94,4 @@
 			class="rounded bg-red-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg disabled:bg-red-200"
 			>Delete</button>
 	</svelte:fragment>
-</CModal>
+</Modal>

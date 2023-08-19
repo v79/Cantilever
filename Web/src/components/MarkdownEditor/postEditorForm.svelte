@@ -4,6 +4,8 @@
 	import type { Post } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 
+	import Viditor from '../Viditor.svelte';
+
 	export let metadata: Post;
 	export let body: string = '';
 	export let previewModal = false;
@@ -41,12 +43,8 @@
 						on:click={() => {
 							previewModal = true;
 						}}>Preview</button>
-					<textarea
-						bind:value={body}
-						name="markdown"
-						id="markdown"
-						class="textarea-lg mt-1 block h-[500px] w-full rounded-md focus:border-indigo-500 focus:ring-indigo-500"
-						placeholder="Markdown goes here" />
+
+					<Viditor bind:body />
 				</div>
 			</div>
 		</div>
