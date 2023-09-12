@@ -188,6 +188,56 @@ export class HandlebarsContent {
 		this.body = body;
 	}
 }
+
+/*
+	The [CantileverProject] represents some metadata about the entire project.
+*/
+export class CantileverProject {
+	projectName: string;
+	author: string;
+	dateFormat: string;
+	dateTimeFormat: string;
+	imageResolutions: Map<string, ImgRes>;
+
+	constructor(
+		projectName: string,
+		author: string,
+		dateFormat: string,
+		dateTimeFormat: string,
+		imageResolutions: Map<string, ImgRes>
+	) {
+		this.projectName = projectName;
+		this.author = author;
+		this.dateFormat = dateFormat;
+		this.dateTimeFormat = dateTimeFormat;
+		this.imageResolutions = imageResolutions;
+	}
+}
+
+/*
+	The [ImgRes] Represents an image resolution in pixels.
+*/
+export class ImgRes {
+	x: number | undefined;
+	y: number | undefined;
+
+	constructor(x: number, y: number) {
+		this.x = x;
+		this.y = y;
+	}
+}
+
+/**
+ * Convert a string like "640x480" into a [ImgRes] object with values x=640, y=480
+ * @param resString
+ * @returns
+ */
+export function parseResString(resString: string) {
+	let xS: string = resString.substring(0, resString.indexOf('x'));
+	let yS: string = resString.substring(resString.indexOf('x') - 1);
+	return new ImgRes(parseInt(xS), parseInt(yS));
+}
+
 /**
  * Deprecated utility function
  * @param item

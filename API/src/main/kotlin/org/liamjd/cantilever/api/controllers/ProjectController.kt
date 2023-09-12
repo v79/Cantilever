@@ -1,7 +1,10 @@
 package org.liamjd.cantilever.api.controllers
 
+import com.charleskorn.kaml.Yaml
 import kotlinx.datetime.Clock
 import kotlinx.datetime.toKotlinInstant
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -24,6 +27,22 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
 
     private val s3Service: S3Service by inject()
 
+    fun getProject(request: Request<Unit>): ResponseEntity<APIResult<CantileverProject>> {
+        println("ProjectController: Retrieving 'cantilever.yaml' file")
+        return if (s3Service.objectExists(projectKey, sourceBucket)) {
+            val projectYaml = s3Service.getObjectAsString(projectKey, sourceBucket)
+            try {
+                val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
+                println("Project definition: $project")
+                ResponseEntity.ok(body = APIResult.Success(value = project))
+            } catch (se: SerializationException) {
+                ResponseEntity.serverError(body = APIResult.Error(message = se.message?: "Error deserializing cantilever.yaml. Project is broken."))
+            }
+        } else {
+            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '$projectKey' in bucket '$sourceBucket'. Project is broken."))
+        }
+    }
+
     /**
      * Return a list of all the [PostMeta]s
      */
@@ -33,7 +52,15 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
             val postListJson = s3Service.getObjectAsString(postsKey, sourceBucket)
             val postList = Json.decodeFromString(PostList.serializer(), postListJson)
             val sorted = postList.posts.sortedBy { it.date }
-            ResponseEntity.ok(body = APIResult.Success(value = PostList(count = sorted.size,posts = sorted, lastUpdated = postList.lastUpdated)))
+            ResponseEntity.ok(
+                body = APIResult.Success(
+                    value = PostList(
+                        count = sorted.size,
+                        posts = sorted,
+                        lastUpdated = postList.lastUpdated
+                    )
+                )
+            )
         } else {
             ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '$postsKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/posts/rebuild"))
         }
@@ -146,7 +173,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                             srcKey = pageModel.srcKey,
                             templateKey = pageModel.templateKey,
                             url = pageModel.url,
-                            sections = buildMap { pageModel.sections.keys.forEach {  key -> put(key,"") }},
+                            sections = buildMap { pageModel.sections.keys.forEach { key -> put(key, "") } },
                             attributes = pageModel.attributes,
                             lastUpdated = obj.lastModified().toKotlinInstant()
                         )
@@ -188,7 +215,8 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                 }
             }
             list.sortByDescending { it.lastUpdated }
-            val templateList = TemplateList(templates = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
+            val templateList =
+                TemplateList(templates = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(TemplateList.serializer(), templateList)
             println("Saving PageList JSON file (${listJson.length} bytes)")
             s3Service.putObject(templatesKey, sourceBucket, listJson, APP_JSON)
@@ -199,6 +227,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     }
 
     companion object {
+        const val projectKey = "cantilever.yaml"
         const val postsKey = "generated/posts.json"
         const val pagesKey = "generated/pages.json"
         const val templatesKey = "generated/templates.json"

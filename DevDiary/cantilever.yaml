@@ -1,0 +1,9 @@
+projectName: Cantilever
+author: Liam Davison
+dateFormat: dd/MM/yyyy
+dateTimeFormat: HH:mm dd/MM/yyyy
+imageResolutions:
+  - standard: "640x480"
+  - wider: "512x768"
+  - thumbW: "64x"
+  - thumbH: "x128"

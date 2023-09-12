@@ -10,8 +10,6 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 import org.liamjd.cantilever.routing.Router.Companion.CONTENT_TYPE
-import java.net.URLDecoder
-import java.nio.charset.Charset
 
 /**
  * Implementing the AWS API Gateway [RequestHandler] interface, this class looks for a route which matches the incoming request
@@ -72,6 +70,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
      * @param routerFunction the request predicate, handler and ???
      * @return a [ResponseEntity] object ready to be serialized and returned to the requester
      */
+    @Suppress("UNCHECKED_CAST")
     @OptIn(ExperimentalSerializationApi::class)
     private fun processRoute(
         input: APIGatewayProxyRequestEvent,
@@ -135,7 +134,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
     }
 
     /**
-     * Create a response to return to the client
+     * Create a response to return to the client. All fields will be serialized, even those with default values.
      * @param responseEntity the object being returned
      * @param mimeType the mime type of the response, typically application/json
      * @return an AWS [APIGatewayProxyResponseEvent] with the body of the response entity serialized in some way
@@ -146,7 +145,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
     ): APIGatewayProxyResponseEvent {
 
         var contentType = ""
-        val jsonFormat = Json { prettyPrint = false }
+        val jsonFormat = Json { prettyPrint = false; encodeDefaults = true }
         val body: String = when (mimeType) {
             MimeType.json -> {
                 responseEntity.kType?.let { ktype ->
