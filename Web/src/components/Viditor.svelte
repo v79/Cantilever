@@ -16,7 +16,7 @@
 		// should autogenerate an id to avoid conflicts with multiple instances
 
 		vditor = new Vditor(id, {
-			height: 400,
+			height: 800,
 			// i18n: "en_US",
 			lang: 'en_US',
 			value: body,

@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "1.8.0"
-    kotlin("plugin.serialization") version "1.7.20"
+    kotlin("jvm") version "1.9.10"
+    kotlin("plugin.serialization") version "1.9.0"
     id("org.jetbrains.kotlinx.kover") version "0.6.1"
 }
 
@@ -16,7 +16,7 @@ repositories {
 dependencies {
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
-    implementation("com.charleskorn.kaml:kaml:0.49.0")
+    implementation("com.charleskorn.kaml:kaml:0.55.0")
 
     // multiplatform datetime library
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
@@ -37,5 +37,5 @@ tasks.getByName<Test>("test") {
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.jvmTarget = "11"
+    kotlinOptions.jvmTarget = "17"
 }

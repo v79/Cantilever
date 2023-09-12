@@ -13,6 +13,7 @@ FileUploadHandler/gradle/wrapper/gradle-wrapper.properties
 .idea/sonarlint-state.xml
 .idea/sonarlint.xml
 .idea/sonarlint/
+.idea/modules/
 API/.gradle/
 API/build/
 FileUploadHandler/.gradle/
