@@ -38,7 +38,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
     init {
         // Get the "deploymentDomain" value from cdk.json, or default to the dev URL if not found
         @Suppress("UNCHECKED_CAST")
-        val envKey =  scope.node.tryGetContext("env") as String?
+        val envKey = scope.node.tryGetContext("env") as String?
         val env = scope.node.tryGetContext(envKey ?: "env") as LinkedHashMap<String, String>?
         val deploymentDomain = (env?.get("domainName")) ?: "http://localhost:5173"
         println("ENVIRONMENT: $env; deploymentDomain: $deploymentDomain")
@@ -114,8 +114,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         )
 
         println("Creating API routing Lambda function")
-        val cr = env?.get("cognito_region")?: ""
-        val cpool = env?.get("cognito_user_pools_id")?: ""
+        val cr = env?.get("cognito_region") ?: ""
+        val cpool = env?.get("cognito_user_pools_id") ?: ""
         val apiRoutingLambda = createLambda(
             stack = this,
             id = "cantilever-api-router-lambda",
@@ -199,8 +199,19 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             )
             .defaultCorsPreflightOptions(
                 CorsOptions.builder()
-                    .allowHeaders(listOf("Content-Type","Content-Length","X-Amz-Date","Authorization","X-Api-Key","X-Amz-Security-Token","X-Content-Length"))
-                    .allowMethods(listOf("GET", "PUT","POST","OPTIONS","DELETE")).allowOrigins(listOf(deploymentDomain)).build()
+                    .allowHeaders(
+                        listOf(
+                            "Content-Type",
+                            "Content-Length",
+                            "X-Amz-Date",
+                            "Authorization",
+                            "X-Api-Key",
+                            "X-Amz-Security-Token",
+                            "X-Content-Length"
+                        )
+                    )
+                    .allowMethods(listOf("GET", "PUT", "POST", "OPTIONS", "DELETE"))
+                    .allowOrigins(listOf(deploymentDomain)).build()
             )
             .handler(apiRoutingLambda)
             .proxy(true)
@@ -222,12 +233,23 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             UserPoolDomainOptions.builder()
                 .cognitoDomain(CognitoDomainOptions.builder().domainPrefix("cantilever").build()).build()
         )
+        println("Registering app clients with Cognito identity pool")
         val appUrls = listOf("https://app.cantilevers.org/", "http://localhost:5173/")
+        val corbelAppUrls =
+           listOf("https://127.0.0.1:44817","corbelApp://auth") // port randomly chosen here, needs to match that in the Corbel application
         pool.addClient(
             "cantilever-app",
             UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
                 OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(true).build())
                     .callbackUrls(appUrls).logoutUrls(appUrls).build()
+            ).build()
+        )
+        pool.addClient(
+            "corbel-app",
+            UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
+                OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(false).authorizationCodeGrant(true)
+                    .build()).scopes(listOf(OAuthScope.EMAIL, OAuthScope.OPENID, OAuthScope.COGNITO_ADMIN))
+                    .callbackUrls(corbelAppUrls).logoutUrls(appUrls).build()
             ).build()
         )
     }
