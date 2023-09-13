@@ -1,10 +1,10 @@
 <script lang="ts">
-	import TextInput from '../forms/textInput.svelte';
+	import { Modal, TabItem, Tabs } from 'flowbite-svelte';
 	import SvelteMarkdown from 'svelte-markdown';
-	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import type { Page } from '../../models/structure';
-	import { Accordion, AccordionItem, Button, Footer, Modal, Tabs, TabItem } from 'flowbite-svelte';
+	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import Viditor from '../Viditor.svelte';
+	import TextInput from '../forms/textInput.svelte';
 
 	export let metadata: Page;
 	let previewModal = false;

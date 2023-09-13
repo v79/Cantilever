@@ -230,11 +230,11 @@ export class ImgRes {
 /**
  * Convert a string like "640x480" into a [ImgRes] object with values x=640, y=480
  * @param resString
- * @returns
+ * @returns an [ImgRes] object with the appropriate dimensions. If a dimension is not found, it will be returned as NaN.
  */
 export function parseResString(resString: string) {
 	let xS: string = resString.substring(0, resString.indexOf('x'));
-	let yS: string = resString.substring(resString.indexOf('x') - 1);
+	let yS: string = resString.substring(resString.indexOf('x') + 1);
 	return new ImgRes(parseInt(xS), parseInt(yS));
 }
 

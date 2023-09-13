@@ -13,11 +13,9 @@
 	export let onInput: (e: Event) => void = (e: Event) => (value = e.target.value);
 	onMount(() => {
 		if (readonly) {
-			classes =
-				'mt-1 block w-full rounded-md border-gray-300 sm:text-sm text-slate-500 shadow-sm focus:border-gray-300';
+			classes += ' text-slate-500 shadow-sm focus:border-gray-300';
 		} else {
-			classes =
-				'mt-1 block w-full rounded-md border-gray-300 sm:text-sm focus:border-indigo-500 focus:ring-indigo-500';
+			classes += ' focus:border-indigo-500 focus:ring-indigo-500';
 		}
 	});
 </script>
@@ -25,7 +23,7 @@
 <label for={name} class="block text-sm font-medium text-slate-200">{label}</label>
 <input
 	{value}
-	type="text"
+	type="number"
 	{name}
 	{disabled}
 	id={name}
