@@ -8,3 +8,7 @@ Host: "h2ezadb0cl.execute-api.eu-west-2.amazonaws.com"
 GET
 Accept: application/json
 Host: "h2ezadb0cl.execute-api.eu-west-2.amazonaws.com"
+
+### GET all routes
+GET https://api.cantilevers.org/showAllRoutes
+Accept: application/json

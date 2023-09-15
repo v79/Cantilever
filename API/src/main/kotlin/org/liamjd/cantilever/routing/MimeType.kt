@@ -24,6 +24,7 @@ data class MimeType(val type: String, val subType: String) {
         val json = MimeType("application", "json")
         val html = MimeType("text", "html")
         val plainText = MimeType("text","plain")
+        val yaml = MimeType("application","yaml")
         fun parse(s: String): MimeType {
             val parts = s.split('/')
             return MimeType(parts[0].lowercase(), parts[1].lowercase())

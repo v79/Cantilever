@@ -225,6 +225,25 @@ export class ImgRes {
 		this.x = x;
 		this.y = y;
 	}
+
+	toJSON(): string {
+		return this.getStringX() + 'x' + this.getStringY();
+	}
+
+	getStringX(): string {
+		if (isNaN(this.x!!)) {
+			return '';
+		} else {
+			return '' + this.x;
+		}
+	}
+	getStringY(): string {
+		if (isNaN(this.y!!)) {
+			return '';
+		} else {
+			return '' + this.y;
+		}
+	}
 }
 
 /**

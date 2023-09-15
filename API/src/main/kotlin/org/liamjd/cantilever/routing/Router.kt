@@ -109,7 +109,7 @@ class Router internal constructor() {
         routes.forEach { route ->
             println("${route.value.requestPredicate.method} ${route.value.requestPredicate.pathPattern} <consumes: ${route.value.requestPredicate.accepts} (${route.value.requestPredicate.kType}) -> produces: ${route.value.requestPredicate.supplies}>")
         }
-        return routes.values.joinToString(separator = " ;") { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern}  <${it.requestPredicate.accepts} (${it.requestPredicate.kType}) -> ${it.requestPredicate.supplies}>" }
+        return routes.values.joinToString(separator = " ;\n") { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern}  <${it.requestPredicate.accepts} (${it.requestPredicate.kType}) -> ${it.requestPredicate.supplies}>" }
     }
 
     companion object {

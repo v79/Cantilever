@@ -51,6 +51,15 @@
 					shown: true,
 					type: 'success'
 				});
+			})
+			.catch((error) => {
+				console.log(error);
+				notificationStore.set({
+					message: error,
+					shown: true,
+					type: 'error'
+				});
+				return {};
 			});
 	}
 </script>

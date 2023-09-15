@@ -10,6 +10,7 @@
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
 	import { projectStore } from './projectStore.svelte';
+	import { stringify } from 'yaml';
 
 	let saveChangesModal = false;
 
@@ -74,8 +75,56 @@
 	}
 
 	function saveProject() {
-		console.log('Attempting to save updated project:');
-		console.dir($projectStore);
+		spinnerStore.set({
+			shown: true,
+			message: 'Saving uodated cantilevers project definition file...'
+		});
+		let yaml = stringify($projectStore);
+		console.log('Yaml output: ' + yaml);
+
+		fetch('https://api.cantilevers.org/project/', {
+			method: 'PUT',
+			headers: {
+				Accept: 'application/yaml',
+				'Content-Type': 'application/yaml',
+				Authorization: 'Bearer ' + $userStore.token
+			},
+			body: yaml,
+			mode: 'cors'
+		})
+			.then((response) => response.json())
+			.then((data) => {
+				if (data.data == undefined) {
+					throw new Error(data.message);
+				}
+				var tmpResolutions = Object.entries(data.data.imageResolutions); // Array[key, value]
+				var imageRestMap: Map<string, ImgRes> = new Map<string, ImgRes>();
+				for (const iR of tmpResolutions) {
+					imageRestMap.set(iR[0], parseResString(iR[1] as string));
+				}
+
+				var tmpProject = new CantileverProject(
+					data.data.projectName,
+					data.data.author,
+					data.data.dateFormat,
+					data.data.dateTimeFormat,
+					imageRestMap
+				);
+				projectStore.set(tmpProject);
+				$notificationStore.message = 'Updated project ' + tmpProject.projectName;
+				$notificationStore.shown = true;
+				$spinnerStore.shown = false;
+			})
+			.catch((error) => {
+				console.log(error);
+				notificationStore.set({
+					message: error,
+					shown: true,
+					type: 'error'
+				});
+				$spinnerStore.shown = false;
+				return {};
+			});
 	}
 
 	function updateResolution(oldKey: string, newKey: string, newRes: ImgRes) {
@@ -115,12 +164,8 @@
 			loadProjectDefinition();
 		}
 	});
-	// const projectStoreUnsubscribe = projectStore.subscribe((data) => {
-	// 	projectStore.set(data);
-	// });
 
 	onDestroy(userStoreUnsubscribe);
-	// onDestroy(projectStoreUnsubscribe);
 </script>
 
 <div class="flex grow flex-row">
@@ -219,15 +264,10 @@
 	</div>
 </div>
 
-<Modal title="Save file?" bind:open={saveChangesModal} autoclose size="sm">
+<Modal title="Save project?" bind:open={saveChangesModal} autoclose size="sm">
 	<p>
-		Save changes to project <strong>{$projectStore?.projectName}</strong>?
+		Save changes to project definition <strong>{$projectStore?.projectName}</strong>?
 	</p>
-	<pre>
-		{#each [...$projectStore.imageResolutions] as [key, res], index}
-			{key} - {res.x} x {res.y}<br />
-		{/each}
-	</pre>
 	<svelte:fragment slot="footer">
 		<button
 			type="button"

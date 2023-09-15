@@ -10,6 +10,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.models.*
+import org.liamjd.cantilever.routing.MimeType
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.S3Service
@@ -27,6 +28,9 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
 
     private val s3Service: S3Service by inject()
 
+    /**
+     * Return the 'cantilever.yaml' project definition file, in yaml format.
+     */
     fun getProject(request: Request<Unit>): ResponseEntity<APIResult<CantileverProject>> {
         println("ProjectController: Retrieving 'cantilever.yaml' file")
         return if (s3Service.objectExists(projectKey, sourceBucket)) {
@@ -36,11 +40,35 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                 println("Project definition: $project")
                 ResponseEntity.ok(body = APIResult.Success(value = project))
             } catch (se: SerializationException) {
-                ResponseEntity.serverError(body = APIResult.Error(message = se.message?: "Error deserializing cantilever.yaml. Project is broken."))
+                ResponseEntity.serverError(
+                    body = APIResult.Error(
+                        message = se.message ?: "Error deserializing cantilever.yaml. Project is broken."
+                    )
+                )
             }
         } else {
             ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '$projectKey' in bucket '$sourceBucket'. Project is broken."))
         }
+    }
+
+    /**
+     * Update the 'cantilever.yaml' project definition file. This will come to us as yaml document, not json.
+     */
+    fun updateProjectDefinition(request: Request<CantileverProject>): ResponseEntity<APIResult<CantileverProject>> {
+        println("ProjectController: Updating 'cantilever.yaml' file")
+        val updatedDefinition = request.body
+        if (updatedDefinition.projectName.isBlank()) {
+            return ResponseEntity.badRequest(APIResult.Error(message = "Unable to update project definition where 'project name' is blank"))
+        }
+        println("Updated project: $updatedDefinition")
+        val reprocessed = Yaml.default.encodeToString(CantileverProject.serializer(), request.body)
+        s3Service.putObject(
+            projectKey,
+            sourceBucket,
+            reprocessed,
+            MimeType.yaml.toString()
+        )
+        return ResponseEntity.ok(body = APIResult.Success(value = updatedDefinition))
     }
 
     /**

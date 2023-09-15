@@ -4,6 +4,7 @@ import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
+import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.SerializationException
@@ -103,14 +104,36 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                     ResponseEntity.badRequest(body = "No body received but $kType was expected. If there is legitimately no body, add a X-Content-Length header with value '0'.")
                 } else {
                     try {
+                        val contentType = input.getHeader("Content-Type")
+                        println("Processing route: input content type was $contentType. Deserializing...")
                         // Deserialize the input string with the serializer declared for the kType specified in the API definition
-                        val bodyObject = Json.decodeFromString(serializer(kType), input.body)
+                        // and based on the Content-Type header
+
+                        val bodyObject = if (contentType != null) when (MimeType.parse(contentType)) {
+                            MimeType.json -> {
+                                Json.decodeFromString(serializer(kType), input.body)
+                            }
+
+                            MimeType.yaml -> {
+                                Yaml.default.decodeFromString(serializer(kType), input.body)
+                            }
+
+                            else -> {
+                                input.body
+                            }
+                        } else input.body
+
                         val request = Request(input, bodyObject, routerFunction.requestPredicate.pathPattern)
                         (handler as HandlerFunction<*, *>)(request)
                     } catch (mfe: MissingFieldException) {
+                        println("Invalid request. Error is: ${mfe.message}")
                         ResponseEntity.badRequest(body = "Invalid request. Error is: ${mfe.message}")
                     } catch (se: SerializationException) {
+                        println("Could not deserialize body. Error is: ${se.message}")
                         ResponseEntity.badRequest(body = "Could not deserialize body. Error is: ${se.message}")
+                    } catch (iae: IllegalArgumentException) {
+                        println("Could not deserialize body. Error is: ${iae.message}")
+                        ResponseEntity.badRequest(body = "Could not deserialize body. Error is: ${iae.message}")
                     }
                 }
             }
