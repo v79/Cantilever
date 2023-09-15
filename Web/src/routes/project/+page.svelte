@@ -2,6 +2,7 @@
 	import { afterNavigate } from '$app/navigation';
 	import { Modal } from 'flowbite-svelte';
 	import { onDestroy, tick } from 'svelte';
+	import { stringify } from 'yaml';
 	import ImageResEdit from '../../components/forms/imageResEdit.svelte';
 	import TextInput from '../../components/forms/textInput.svelte';
 	import SpinnerWrapper, { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
@@ -10,7 +11,6 @@
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
 	import { projectStore } from './projectStore.svelte';
-	import { stringify } from 'yaml';
 
 	let saveChangesModal = false;
 
@@ -77,7 +77,7 @@
 	function saveProject() {
 		spinnerStore.set({
 			shown: true,
-			message: 'Saving uodated cantilevers project definition file...'
+			message: 'Saving updated cantilevers project definition file...'
 		});
 		let yaml = stringify($projectStore);
 		console.log('Yaml output: ' + yaml);
@@ -85,7 +85,7 @@
 		fetch('https://api.cantilevers.org/project/', {
 			method: 'PUT',
 			headers: {
-				Accept: 'application/yaml',
+				Accept: 'application/json',
 				'Content-Type': 'application/yaml',
 				Authorization: 'Bearer ' + $userStore.token
 			},
@@ -111,7 +111,7 @@
 					imageRestMap
 				);
 				projectStore.set(tmpProject);
-				$notificationStore.message = 'Updated project ' + tmpProject.projectName;
+				$notificationStore.message = 'Loaded project ' + tmpProject.projectName;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
 			})

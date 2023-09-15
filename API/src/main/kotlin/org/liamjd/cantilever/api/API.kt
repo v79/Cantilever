@@ -70,7 +70,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             group("/project") {
                 get("/", projectController::getProject)
                 put("/", projectController::updateProjectDefinition).expects(setOf(MimeType.yaml)).supplies(setOf(
-                    MimeType.yaml))
+                    MimeType.json))
                 group("/posts") {
                     get("", projectController::getPosts)
                     put(

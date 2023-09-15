@@ -52,7 +52,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     }
 
     /**
-     * Update the 'cantilever.yaml' project definition file. This will come to us as yaml document, not json.
+     * Update the 'cantilever.yaml' project definition file. This will come to us as yaml document, not json, but it will return as json.
      */
     fun updateProjectDefinition(request: Request<CantileverProject>): ResponseEntity<APIResult<CantileverProject>> {
         println("ProjectController: Updating 'cantilever.yaml' file")
@@ -61,11 +61,11 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
             return ResponseEntity.badRequest(APIResult.Error(message = "Unable to update project definition where 'project name' is blank"))
         }
         println("Updated project: $updatedDefinition")
-        val reprocessed = Yaml.default.encodeToString(CantileverProject.serializer(), request.body)
+        val jsonResponse = Json.encodeToString(CantileverProject.serializer(), request.body)
         s3Service.putObject(
             projectKey,
             sourceBucket,
-            reprocessed,
+            Yaml.default.encodeToString(CantileverProject.serializer(),updatedDefinition),
             MimeType.yaml.toString()
         )
         return ResponseEntity.ok(body = APIResult.Success(value = updatedDefinition))
