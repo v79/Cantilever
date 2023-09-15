@@ -11,15 +11,13 @@
 	export let classes = 'mt-1 block w-full rounded-md border-gray-300 sm:text-sm';
 
 	export let onInput: (e: Event) => void = (e: Event) => (value = e.target.value);
-	onMount(() => {
-		if (readonly) {
-			classes =
-				'mt-1 block w-full rounded-md border-gray-300 sm:text-sm text-slate-500 shadow-sm focus:border-gray-300';
-		} else {
-			classes =
-				'mt-1 block w-full rounded-md border-gray-300 sm:text-sm focus:border-indigo-500 focus:ring-indigo-500';
-		}
-	});
+
+	let classesToApply: string = '';
+	$: if (readonly) {
+		classesToApply = classes + ' bg-slate-200 text-slate-500 focus:border-gray-300';
+	} else {
+		classesToApply = classes + ' focus:border-indigo-500 focus:ring-indigo-500';
+	}
 </script>
 
 <label for={name} class="block text-sm font-medium text-slate-200">{label}</label>
@@ -34,7 +32,7 @@
 	autocomplete={name}
 	on:change={onChange}
 	on:input={onInput}
-	class={classes} />
+	class={classesToApply} />
 {#if required}
 	{#if value === ''}
 		<span class="text-sm text-yellow-200">{label} must not be blank</span>
