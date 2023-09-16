@@ -4,13 +4,15 @@ import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.SQSEvent
+import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.FILE_TYPE.HTML_HBS
 import org.liamjd.cantilever.common.S3_KEY.fragments
-import org.liamjd.cantilever.common.S3_KEY.templates
+import org.liamjd.cantilever.common.S3_KEY.projectKey
+import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
 import org.liamjd.cantilever.common.SOURCE_TYPE
+import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.PageList
 import org.liamjd.cantilever.models.PostList
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
@@ -32,10 +34,11 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
         val logger = context.logger
-        var responses = mutableListOf<String>()
+        val responses = mutableListOf<String>()
 
         val sourceBucket = System.getenv("source_bucket")
         val destinationBucket = System.getenv("destination_bucket")
+        val project: CantileverProject = getProjectModel(sourceBucket)
 
         logger.info("${event.records.size} records received for processing...")
 
@@ -54,13 +57,14 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                         logger.info("Loaded body fragment from '${fragments + message.fragmentKey}: ${body.take(100)}'")
 
                         // load template file as specified by metadata
-                        val template = templates + message.metadata.template + HTML_HBS
+                        val template = templatesPrefix + message.metadata.template + HTML_HBS
                         logger.info("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
                         val templateString = s3Service.getObjectAsString(template, sourceBucket)
                         logger.info("Got templateString: ${templateString.take(100)}")
 
                         // build model from project and from html fragment
                         val model = mutableMapOf<String, Any?>()
+                        model["project"] = project
                         model["title"] = message.metadata.title
                         model["body"] = body
 
@@ -86,7 +90,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                         val postList = Json.decodeFromString<PostList>(postsFile)
                         val message =
                             Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.PageHandlebarsModelMsg
-                        val pageTemplateKey = templates + message.template + HTML_HBS
+                        val pageTemplateKey = templatesPrefix + message.template + HTML_HBS
                         logger.info("Extracted page model: $message")
 
                         // load the page.html.hbs template
@@ -96,6 +100,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                         val model = mutableMapOf<String, Any?>()
                         model["key"] = message.key
                         model["url"] = message.url
+                        model["project"] = project
                         model.putAll(message.attributes)
 
                         message.sectionKeys.forEach { (name, objectKey) ->
@@ -129,7 +134,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             }
         }
 
-        return if(responses.size == 0) "200 OK" else "${responses.size} errors, final was ${responses.last()}"
+        return if (responses.size == 0) "200 OK" else "${responses.size} errors, final was ${responses.last()}"
     }
 
     /**
@@ -146,12 +151,21 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             is SqsMsgBody.PageHandlebarsModelMsg ->
                 if (message.key.endsWith("index.md")) "index.html" else message.key.substringBefore(".md")
                     .substringAfterLast("pages/")
+
             is SqsMsgBody.HTMLFragmentReadyMsg -> message.metadata.slug
             is SqsMsgBody.MarkdownPostUploadMsg -> message.metadata.slug
             is SqsMsgBody.PageModelMsg -> if (message.srcKey == "index.md") "index.html" else message.srcKey.substringBefore(
                 ".md"
             ).substringAfterLast("pages/")
         }
+    }
+
+    /**
+     * Return the CantileverProject model
+     */
+    private fun getProjectModel(sourceBucket: String): CantileverProject {
+        val projectYaml = s3Service.getObjectAsString(projectKey, sourceBucket)
+        return Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
     }
 }
 

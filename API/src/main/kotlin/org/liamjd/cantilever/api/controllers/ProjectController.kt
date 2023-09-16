@@ -4,11 +4,18 @@ import com.charleskorn.kaml.Yaml
 import kotlinx.datetime.Clock
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.S3_KEY
+import org.liamjd.cantilever.common.S3_KEY.pagesKey
+import org.liamjd.cantilever.common.S3_KEY.pagesPrefix
+import org.liamjd.cantilever.common.S3_KEY.postsKey
+import org.liamjd.cantilever.common.S3_KEY.postsPrefix
+import org.liamjd.cantilever.common.S3_KEY.projectKey
+import org.liamjd.cantilever.common.S3_KEY.templatesKey
+import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
 import org.liamjd.cantilever.models.*
 import org.liamjd.cantilever.routing.MimeType
 import org.liamjd.cantilever.routing.Request
@@ -65,7 +72,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
         s3Service.putObject(
             projectKey,
             sourceBucket,
-            Yaml.default.encodeToString(CantileverProject.serializer(),updatedDefinition),
+            jsonResponse,
             MimeType.yaml.toString()
         )
         return ResponseEntity.ok(body = APIResult.Success(value = updatedDefinition))
@@ -254,13 +261,4 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
         return ResponseEntity.ok(body = APIResult.Success("Written new '$templatesKey' with $filesProcessed markdown files processed"))
     }
 
-    companion object {
-        const val projectKey = "cantilever.yaml"
-        const val postsKey = "generated/posts.json"
-        const val pagesKey = "generated/pages.json"
-        const val templatesKey = "generated/templates.json"
-        const val postsPrefix = "sources/posts/"
-        const val pagesPrefix = "sources/pages/"
-        const val templatesPrefix = "templates/"
-    }
 }

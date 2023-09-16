@@ -1,12 +1,15 @@
 package org.liamjd.cantilever.api.controllers
 
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.*
+import org.liamjd.cantilever.common.S3_KEY.pagesKey
+import org.liamjd.cantilever.common.S3_KEY.pagesPrefix
+import org.liamjd.cantilever.common.S3_KEY.postsKey
+import org.liamjd.cantilever.common.S3_KEY.postsPrefix
 import org.liamjd.cantilever.models.PageList
 import org.liamjd.cantilever.models.PostList
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
@@ -26,12 +29,7 @@ import java.nio.charset.Charset
 class GeneratorController(val sourceBucket: String) : KoinComponent, APIController {
 
     companion object {
-        const val PAGES_DIR = S3_KEY.sources + SOURCE_TYPE.PAGES + "/"
-        const val POSTS_DIR = S3_KEY.sources + SOURCE_TYPE.POSTS + "/"
-        const val TEMPLATES_DIR = S3_KEY.templates + "/"
         const val error_NO_RESPONSE = "No response received for message"
-        const val pagesKey = "generated/pages.json"
-        const val postsKey = "generated/posts.json"
     }
 
     private val s3Service: S3Service by inject()
@@ -51,14 +49,14 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
             println("Wow, that's a big request")
 
             // get every page in the pages folder
-            val pageListResponse = s3Service.listObjects(PAGES_DIR, sourceBucket)
+            val pageListResponse = s3Service.listObjects(pagesPrefix, sourceBucket)
             println("There are ${pageListResponse.keyCount()} potential pages to process")
             var count = 0
             pageListResponse.contents().filter { it.key().endsWith(FILE_TYPE.MD) }.forEach { obj ->
                 println(obj.key())
                 val sourceString = s3Service.getObjectAsString(obj.key(), sourceBucket)
                 val pageSrcKey =
-                    obj.key().removePrefix(PAGES_DIR) // just want the actual file name
+                    obj.key().removePrefix(pagesPrefix) // just want the actual file name
                 // extract page model
                 val pageModel = extractPageModel(pageSrcKey, sourceString)
                 val msgResponse = sqsService.sendMessage(
@@ -77,13 +75,13 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
 
             return ResponseEntity.ok(body = APIResult.Success(value = "$count pages have been regenerated"))
         } else {
-            val srcKey = PAGES_DIR + requestKey
+            val srcKey = pagesPrefix + requestKey
             println("GeneratorController: Received request to regenerate page $srcKey")
             try {
                 println("Received page file $srcKey and sending it to Markdown processor queue")
                 val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
                 val pageSrcKey = srcKey.removePrefix(
-                    PAGES_DIR
+                    pagesPrefix
                 ) // just want the actual file name
                queuePageRegeneration(pageSrcKey,sourceString)
             } catch (nske: NoSuchKeyException) {
@@ -105,11 +103,11 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         if (requestKey == "*") {
             return ResponseEntity.notImplemented(body = APIResult.Error("Cannot yet regenerate all posts. Please specify I unique key"))
         }
-        val srcKey = POSTS_DIR + requestKey
+        val srcKey = postsPrefix + requestKey
         println("GeneratorController: Received request to regenerate post '$srcKey'")
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
-            val postSrcKey = srcKey.removePrefix(POSTS_DIR)
+            val postSrcKey = srcKey.removePrefix(postsPrefix)
             val postMetadata = extractPostMetadata(postSrcKey, sourceString)
             val markdownBody = sourceString.stripFrontMatter()
             val message = SqsMsgBody.MarkdownPostUploadMsg(postMetadata, markdownBody)
