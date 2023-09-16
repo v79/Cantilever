@@ -67,11 +67,12 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
             return ResponseEntity.badRequest(APIResult.Error(message = "Unable to update project definition where 'project name' is blank"))
         }
         println("Updated project: $updatedDefinition")
+        val yamlToSave = Yaml.default.encodeToString(CantileverProject.serializer(),request.body)
         val jsonResponse = Json.encodeToString(CantileverProject.serializer(), request.body)
         s3Service.putObject(
             projectKey,
             sourceBucket,
-            jsonResponse,
+            yamlToSave,
             MimeType.yaml.toString()
         )
         return ResponseEntity.ok(body = APIResult.Success(value = updatedDefinition))

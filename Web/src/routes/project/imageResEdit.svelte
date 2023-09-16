@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Modal } from 'flowbite-svelte';
 	import { ImgRes } from '../../models/structure';
-	import NumberInput from './numberInput.svelte';
-	import TextInput from './textInput.svelte';
+	import NumberInput from '../../components/forms/numberInput.svelte';
+	import TextInput from '../../components/forms/textInput.svelte';
 	import { onMount } from 'svelte';
 
 	export let index: number;

@@ -1,24 +1,19 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
-	import { Modal } from 'flowbite-svelte';
+	import { Modal, TabItem, Tabs } from 'flowbite-svelte';
 	import { onDestroy, tick } from 'svelte';
 	import { stringify } from 'yaml';
-	import ImageResEdit from '../../components/forms/imageResEdit.svelte';
 	import TextInput from '../../components/forms/textInput.svelte';
 	import SpinnerWrapper, { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
 	import { CantileverProject, ImgRes, parseResString } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
+	import CustomAttributeTab from './customAttributeTab.svelte';
+	import ImageResTab from './imageResTab.svelte';
 	import { projectStore } from './projectStore.svelte';
 
 	let saveChangesModal = false;
-
-	let addingNewImageRes: boolean = false;
-	let newImageResKey: string = '';
-	let newImageRes: ImgRes = new ImgRes(640, 480);
-
-	$: resCount = $projectStore.imageResolutions.size;
 
 	afterNavigate(() => {
 		$activeStore.currentPage = 'Project';
@@ -49,13 +44,19 @@
 				for (const iR of tmpResolutions) {
 					imageRestMap.set(iR[0], parseResString(iR[1] as string));
 				}
+				var tmpAttributes = Object.entries(data.data.attributes);
+				var attributeMap: Map<string, string> = new Map<string, string>();
+				for (const attr of tmpAttributes) {
+					attributeMap.set(attr[0], attr[1] as string);
+				}
 
 				var tmpProject = new CantileverProject(
 					data.data.projectName,
 					data.data.author,
 					data.data.dateFormat,
 					data.data.dateTimeFormat,
-					imageRestMap
+					imageRestMap,
+					attributeMap
 				);
 				projectStore.set(tmpProject);
 				$notificationStore.message = 'Loaded project ' + tmpProject.projectName;
@@ -102,13 +103,19 @@
 				for (const iR of tmpResolutions) {
 					imageRestMap.set(iR[0], parseResString(iR[1] as string));
 				}
+				var tmpAttributes = Object.entries(data.data.attributes);
+				var attributeMap: Map<string, string> = new Map<string, string>();
+				for (const attr of tmpAttributes) {
+					attributeMap.set(attr[0], attr[1] as string);
+				}
 
 				var tmpProject = new CantileverProject(
 					data.data.projectName,
 					data.data.author,
 					data.data.dateFormat,
 					data.data.dateTimeFormat,
-					imageRestMap
+					imageRestMap,
+					attributeMap
 				);
 				projectStore.set(tmpProject);
 				$notificationStore.message = 'Loaded project ' + tmpProject.projectName;
@@ -125,38 +132,6 @@
 				$spinnerStore.shown = false;
 				return {};
 			});
-	}
-
-	function updateResolution(oldKey: string, newKey: string, newRes: ImgRes) {
-		console.log(
-			'Updating resolution from ' +
-				oldKey +
-				'>' +
-				$projectStore.imageResolutions.get(oldKey) +
-				' with new key ' +
-				newKey
-		);
-		let res = $projectStore.imageResolutions.get(oldKey);
-		if (res || addingNewImageRes) {
-			$projectStore.imageResolutions.set(newKey, newRes);
-			$projectStore.imageResolutions.delete(oldKey);
-			console.log('Updated imageres from ' + oldKey + ' to ' + newKey);
-		}
-	}
-
-	function deleteResolution(key: string) {
-		console.log('Deleting resolution ' + key);
-		if (addingNewImageRes) {
-			addingNewImageRes = false;
-			newImageRes = new ImgRes(640, 480);
-			newImageResKey = '';
-		}
-		$projectStore.imageResolutions.delete(key);
-		$projectStore.imageResolutions = $projectStore.imageResolutions;
-	}
-
-	function enableAddResolution() {
-		addingNewImageRes = true;
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
@@ -220,37 +195,23 @@
 											label="Date/Time Format"
 											required />
 									</div>
-
-									<div class="col-span-5">
-										<h3 class="text-base font-bold text-slate-200">Image resolutions</h3>
-									</div>
-									<div class="col-span-1">
-										<button
-											disabled={addingNewImageRes}
-											on:click={enableAddResolution}
-											class="float-right text-right text-sm font-medium text-slate-200"
-											type="button">Add new...</button>
-									</div>
-									<div class="col-span-6 sm:col-span-6 lg:col-span-6">
-										{#if addingNewImageRes}
-											<ImageResEdit
-												index={resCount + 1}
-												key={newImageResKey}
-												res={newImageRes}
-												readonly={false}
-												onUpdate={updateResolution}
-												onDelete={deleteResolution} />
-										{/if}
-										{#each [...$projectStore.imageResolutions] as [key, res], index}
-											<ImageResEdit
-												{index}
-												{key}
-												{res}
-												onUpdate={updateResolution}
-												onDelete={deleteResolution} />
-										{/each}
-									</div>
 								</div>
+
+								<Tabs style="pill" contentClass="p-4 dark:bg-gray-800 mt-4">
+									<TabItem
+										open
+										title="Image resolutions"
+										inactiveClasses="inline-block text-sm font-medium text-center disabled:cursor-not-allowed p-4 hover:text-purple-500 hover:border-gray-300 dark:hover:text-gray-300 text-slate-200 dark:text-gray-400"
+										activeClasses="inline-block text-sm font-medium text-center disabled:cursor-not-allowed p-4 border-b-2 border-purple-400 border-spacing-4 hover:text-purple-500 hover:border-gray-300 dark:hover:text-gray-300 text-slate-200 dark:text-gray-400">
+										<ImageResTab />
+									</TabItem>
+									<TabItem
+										title="Custom attributes {$projectStore.attributes.size}"
+										inactiveClasses="inline-block text-sm font-medium text-center disabled:cursor-not-allowed p-4 hover:text-purple-500 hover:border-gray-300 dark:hover:text-gray-300 text-slate-200 dark:text-gray-400"
+										activeClasses="inline-block text-sm font-medium text-center disabled:cursor-not-allowed p-4 border-b-2 border-purple-400 border-spacing-4 hover:text-purple-500 hover:border-gray-300 dark:hover:text-gray-300 text-slate-200 dark:text-gray-400">
+										<CustomAttributeTab />
+									</TabItem>
+								</Tabs>
 							</div>
 						</form>
 					</div>

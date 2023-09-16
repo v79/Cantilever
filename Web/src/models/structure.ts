@@ -198,19 +198,22 @@ export class CantileverProject {
 	dateFormat: string;
 	dateTimeFormat: string;
 	imageResolutions: Map<string, ImgRes>;
+	attributes: Map<string, string>;
 
 	constructor(
 		projectName: string,
 		author: string,
 		dateFormat: string,
 		dateTimeFormat: string,
-		imageResolutions: Map<string, ImgRes>
+		imageResolutions: Map<string, ImgRes>,
+		attributes: Map<string, string>
 	) {
 		this.projectName = projectName;
 		this.author = author;
 		this.dateFormat = dateFormat;
 		this.dateTimeFormat = dateTimeFormat;
 		this.imageResolutions = imageResolutions;
+		this.attributes = attributes;
 	}
 }
 

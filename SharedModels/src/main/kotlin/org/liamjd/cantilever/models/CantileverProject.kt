@@ -1,5 +1,7 @@
 package org.liamjd.cantilever.models
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -13,12 +15,14 @@ import kotlinx.serialization.encoding.Encoder
  * Should be stored in a file called 'cantilever.yaml'
  */
 @Serializable
-data class CantileverProject(
+data class CantileverProject @OptIn(ExperimentalSerializationApi::class) constructor(
     val projectName: String,
     val author: String,
     val dateFormat: String = "dd/MM/yyyy",
     val dateTimeFormat: String = "HH:mm dd/MM/yyyy",
-    val imageResolutions: Map<String, ImgRes>
+    val imageResolutions: Map<String, ImgRes>,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    var attributes: Map<String,String>? = null
 )
 
 /**
