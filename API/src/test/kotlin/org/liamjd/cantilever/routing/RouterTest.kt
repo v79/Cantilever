@@ -18,6 +18,8 @@ class RouterTest {
 
     private val acceptJson = mapOf("accept" to "application/json")
     private val acceptText = mapOf("accept" to "text/plain")
+    private val contentJson = mapOf("Content-Type" to "application/json")
+    private val acceptHtml = mapOf("accept" to "text/html")
 
     @Test
     fun `can get a basic route`() {
@@ -44,7 +46,7 @@ class RouterTest {
     fun `matches route when produces is overridden with html`() {
         val testR = TestRouter()
         val event = APIGatewayProxyRequestEvent().withPath("/returnHtml").withHttpMethod("GET")
-            .withHeaders(mapOf("accept" to "text/html"))
+            .withHeaders(acceptHtml)
         val response = testR.handleRequest(event)
 
         assertEquals(200, response.statusCode)
@@ -209,7 +211,7 @@ class RouterTest {
     fun `can match a route with a path parameter and extract its value`() {
         val testR = TestRouter()
         val event = APIGatewayProxyRequestEvent().withPath("/getParam/special").withHttpMethod("GET")
-            .withHeaders(mapOf("accept" to "text/plain"))
+            .withHeaders(acceptText)
         val response = testR.handleRequest(event)
 
         assertEquals(200, response.statusCode)
@@ -221,7 +223,7 @@ class RouterTest {
         val testR = TestRouter()
         val encodedPath = URLEncoder.encode("special/path", Charset.defaultCharset())
         val event = APIGatewayProxyRequestEvent().withPath("/getParam/$encodedPath").withHttpMethod("GET")
-            .withHeaders(mapOf("accept" to "text/plain"))
+            .withHeaders(acceptText)
         val response = testR.handleRequest(event)
 
         assertEquals(200, response.statusCode)
@@ -232,7 +234,7 @@ class RouterTest {
     fun `can match a route with a multiple path parameters`() {
         val testR = TestRouter()
         val event = APIGatewayProxyRequestEvent().withPath("/customer/xy123/purchaseOrder/2523").withHttpMethod("GET")
-            .withHeaders(mapOf("accept" to "text/plain"))
+            .withHeaders(acceptText)
         val response = testR.handleRequest(event)
 
         assertEquals(200, response.statusCode)
@@ -253,26 +255,26 @@ class RouterTest {
     @Test
     fun `match a post route and deserialize a valid object`() {
         val testR = TestRouter()
-        val postThing = PostThis(name = "Apple", count = 23)
+        val postThing = PostThis(name = "Grapefruit", count = 23)
         val event = APIGatewayProxyRequestEvent().withPath("/postThing").withHttpMethod("POST").withBody(Json.encodeToString(postThing))
-            .withHeaders(acceptText)
+            .withHeaders(acceptText + contentJson)
         val response = testR.handleRequest(event)
 
         assertEquals(200, response.statusCode)
-        assertTrue(response.body.contains("Apple"))
+        assertTrue(response.body.contains("Grapefruit"))
         assertTrue(response.body.contains("23"))
     }
 
     @Test
     fun `bad request when supplied body does not contain all required fields`() {
         val testR = TestRouter()
-        val postThing = """{ "name": "Apple" }"""
+        val postThing = """{ "name": "Grapefruit" }"""
         val event = APIGatewayProxyRequestEvent().withPath("/postThing").withHttpMethod("POST").withBody(postThing)
-            .withHeaders(acceptText)
+            .withHeaders(acceptText + contentJson)
         val response = testR.handleRequest(event)
 
         assertEquals(400, response.statusCode)
-        assertFalse(response.body.contains("Apple"))
+        assertFalse(response.body.contains("Grapefruit"))
         assertTrue(response.body.startsWith("Invalid request."))
     }
 
@@ -292,7 +294,7 @@ class RouterTest {
         val testR = TestRouter()
         val postThing = DontPostThis(year = 1923L, truth = false)
         val event = APIGatewayProxyRequestEvent().withPath("/postThing").withHttpMethod("POST").withBody(Json.encodeToString(postThing))
-            .withHeaders(acceptText)
+            .withHeaders(acceptText + contentJson)
         val response = testR.handleRequest(event)
 
         assertEquals(400, response.statusCode)

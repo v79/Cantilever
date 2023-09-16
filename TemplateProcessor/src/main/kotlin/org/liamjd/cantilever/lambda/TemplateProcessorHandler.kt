@@ -7,7 +7,10 @@ import com.amazonaws.services.lambda.runtime.events.SQSEvent
 import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import org.liamjd.cantilever.common.FILES.INDEX_HTML
+import org.liamjd.cantilever.common.FILES.INDEX_MD
 import org.liamjd.cantilever.common.FILE_TYPE.HTML_HBS
+import org.liamjd.cantilever.common.FILE_TYPE.MD
 import org.liamjd.cantilever.common.S3_KEY.fragments
 import org.liamjd.cantilever.common.S3_KEY.projectKey
 import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
@@ -149,12 +152,12 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         println("TemplateProcessorHandler: Calculating final file name for $message")
         return when (message) {
             is SqsMsgBody.PageHandlebarsModelMsg ->
-                if (message.key.endsWith("index.md")) "index.html" else message.key.substringBefore(".md")
+                if (message.key.endsWith(INDEX_MD)) INDEX_HTML else message.key.substringBefore(MD)
                     .substringAfterLast("pages/")
 
             is SqsMsgBody.HTMLFragmentReadyMsg -> message.metadata.slug
             is SqsMsgBody.MarkdownPostUploadMsg -> message.metadata.slug
-            is SqsMsgBody.PageModelMsg -> if (message.srcKey == "index.md") "index.html" else message.srcKey.substringBefore(
+            is SqsMsgBody.PageModelMsg -> if (message.srcKey == INDEX_MD) INDEX_HTML else message.srcKey.substringBefore(
                 ".md"
             ).substringAfterLast("pages/")
         }

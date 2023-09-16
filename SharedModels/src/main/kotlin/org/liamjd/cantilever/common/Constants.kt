@@ -13,7 +13,14 @@ object S3_KEY {
     const val postsPrefix = "sources/posts/"
     const val pagesPrefix = "sources/pages/"
     const val templatesPrefix = "templates/"
+}
 
+/**
+ * Certain fixed files with constant names
+ */
+object FILES {
+    const val INDEX_MD = "index.md"
+    const val INDEX_HTML = "index.html"
 }
 
 /**
