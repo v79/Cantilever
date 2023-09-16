@@ -220,7 +220,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         val markdownBody = sourceString.stripFrontMatter()
 
         val message = SqsMsgBody.MarkdownPostUploadMsg(metadata, markdownBody)
-        val msgResponse = sqsService.sendMessage(
+        sqsService.sendMessage(
             toQueue = markdownQueue,
             body = message,
             messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.POSTS)

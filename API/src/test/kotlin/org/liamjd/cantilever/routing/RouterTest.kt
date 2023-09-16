@@ -385,9 +385,6 @@ class TestController {
 @Serializable
 data class SimpleClass(val message: String)
 
-@Serializable
-data class ClassContainingRawJson(val name: String, val raw: RawJsonString)
-
 @Serializable(with = ServiceResultSerializer::class)
 sealed class ServiceResult<out T : Any> {
     @Serializable

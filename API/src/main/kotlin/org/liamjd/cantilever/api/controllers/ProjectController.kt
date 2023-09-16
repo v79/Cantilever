@@ -8,7 +8,6 @@ import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.S3_KEY.pagesKey
 import org.liamjd.cantilever.common.S3_KEY.pagesPrefix
 import org.liamjd.cantilever.common.S3_KEY.postsKey
@@ -180,7 +179,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     }
 
     /**
-     * Rebuild the generated/pages.json file which contains the metadata for all the [Pages]s in the project.
+     * Rebuild the generated/pages.json file which contains the metadata for all the Pages in the project.
      */
     fun rebuildPageList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val pages = s3Service.listObjects(pagesPrefix, sourceBucket)
@@ -230,7 +229,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     }
 
     /**
-     * Rebuild the generated/templates.json file which contains the metadata for all the [Templates]s in the project.
+     * Rebuild the generated/templates.json file which contains the metadata for all the Templates in the project.
      */
     fun rebuildTemplateList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val templates = s3Service.listObjects(templatesPrefix, sourceBucket)
