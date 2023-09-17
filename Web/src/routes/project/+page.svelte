@@ -81,7 +81,6 @@
 			message: 'Saving updated cantilevers project definition file...'
 		});
 		let yaml = stringify($projectStore);
-		console.log('Yaml output: ' + yaml);
 
 		fetch('https://api.cantilevers.org/project/', {
 			method: 'PUT',
@@ -200,13 +199,13 @@
 								<Tabs style="pill" contentClass="p-4 dark:bg-gray-800 mt-4">
 									<TabItem
 										open
-										title="Image resolutions"
+										title="Image resolutions ({$projectStore.imageResolutions.size})"
 										inactiveClasses="inline-block text-sm font-medium text-center disabled:cursor-not-allowed p-4 hover:text-purple-500 hover:border-gray-300 dark:hover:text-gray-300 text-slate-200 dark:text-gray-400"
 										activeClasses="inline-block text-sm font-medium text-center disabled:cursor-not-allowed p-4 border-b-2 border-purple-400 border-spacing-4 hover:text-purple-500 hover:border-gray-300 dark:hover:text-gray-300 text-slate-200 dark:text-gray-400">
 										<ImageResTab />
 									</TabItem>
 									<TabItem
-										title="Custom attributes {$projectStore.attributes.size}"
+										title="Custom attributes ({$projectStore.attributes.size})"
 										inactiveClasses="inline-block text-sm font-medium text-center disabled:cursor-not-allowed p-4 hover:text-purple-500 hover:border-gray-300 dark:hover:text-gray-300 text-slate-200 dark:text-gray-400"
 										activeClasses="inline-block text-sm font-medium text-center disabled:cursor-not-allowed p-4 border-b-2 border-purple-400 border-spacing-4 hover:text-purple-500 hover:border-gray-300 dark:hover:text-gray-300 text-slate-200 dark:text-gray-400">
 										<CustomAttributeTab />

@@ -38,13 +38,13 @@
 		// TODO: This needs to change
 		console.log('Saving file ', $markdownStore.metadata?.srcKey);
 		let postJson = JSON.stringify($markdownStore);
-		console.log(postJson);
 
 		fetch('https://api.cantilevers.org/posts/', {
 			method: 'POST',
 			headers: {
 				Accept: 'text/plain',
-				Authorization: 'Bearer ' + $userStore.token
+				Authorization: 'Bearer ' + $userStore.token,
+				'Content-Type': 'application/json'
 			},
 			body: postJson,
 			mode: 'cors'
@@ -152,7 +152,6 @@
 			id="new-slug"
 			bind:value={saveNewFileSlug}
 			required
-			autocomplete="new-slug"
 			class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
 		{#if saveNewFileSlug === ''}
 			<span class="text-sm text-yellow-600"

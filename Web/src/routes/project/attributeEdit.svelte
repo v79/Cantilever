@@ -44,6 +44,19 @@
 	function deleteCustomAttribute() {
 		onDelete(newKey);
 	}
+
+	function updateKey(event: Event) {
+		const { target } = event;
+		if (target) {
+			newKey = (target as HTMLInputElement).value;
+		}
+	}
+	function updateValue(event: Event) {
+		const { target } = event;
+		if (target) {
+			newValue = (target as HTMLInputElement).value;
+		}
+	}
 </script>
 
 <div class="mt-1 grid grid-cols-12 gap-6">
@@ -54,9 +67,7 @@
 			name="imageres-{index}"
 			label="Name"
 			readonly={!editing}
-			onInput={(event) => {
-				newKey = event.target.value;
-			}} />
+			onInput={updateKey} />
 	</div>
 	<div class="col-span-3 sm:col-span-3 lg:col-span-3">
 		<TextInput
@@ -64,9 +75,7 @@
 			name="imageres-{index}-x"
 			label="Value"
 			readonly={!editing}
-			onInput={(event) => {
-				newValue = event.target.value;
-			}} />
+			onInput={updateValue} />
 	</div>
 	<div class="col-span-3 mt-7 sm:col-span-3 lg:col-span-3">
 		<span on:click={clickEdit} on:keypress={clickEdit}>{editSave}</span>

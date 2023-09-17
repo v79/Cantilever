@@ -7,7 +7,7 @@
 	import TextInput from '../forms/textInput.svelte';
 
 	export let metadata: Page;
-	let previewModal = false;
+	export let previewModal = false;
 
 	// function to combine all of the sections into a single string, for the preview modal
 	function mergeSources(sources: Map<string, string>) {
@@ -21,8 +21,11 @@
 	$: markdownSource = mergeSources(metadata.sections);
 
 	function bindMap(e: Event, key: string) {
-		metadata.attributes.set(key, e.currentTarget.value);
-		metadata.attributes = metadata.attributes;
+		const { target } = e;
+		if (target) {
+			metadata.attributes.set(key, (target as HTMLInputElement).value);
+			metadata.attributes = metadata.attributes;
+		}
 	}
 </script>
 

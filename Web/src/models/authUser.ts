@@ -1,15 +1,15 @@
 export class User {
-    name: String;
-    sub: String;
-    email: String;
-    auth_time: Number;
-    token: String;
+	name: string;
+	sub: string;
+	email: string;
+	auth_time: number;
+	token: string;
 
-    constructor(name: String, sub: String, email: String, auth_time: Number, token: String) {
-        this.name = name;
-        this.sub = sub;
-        this.email = email;
-        this.auth_time = auth_time;
-        this.token = token;
-    }
+	constructor(name: string, sub: string, email: string, auth_time: number, token: string) {
+		this.name = name;
+		this.sub = sub;
+		this.email = email;
+		this.auth_time = auth_time;
+		this.token = token;
+	}
 }

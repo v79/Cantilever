@@ -51,13 +51,23 @@
 	}
 
 	function updateDimension(dimension: string, e: Event) {
-		switch (dimension) {
-			case 'x':
-				res.x = parseInt(e.target.value);
-				break;
-			case 'y':
-				res.y = parseInt(e.target.value);
-				break;
+		const { target } = e;
+		if (target) {
+			switch (dimension) {
+				case 'x':
+					res.x = parseInt((target as HTMLInputElement).value);
+					break;
+				case 'y':
+					res.y = parseInt((target as HTMLInputElement).value);
+					break;
+			}
+		}
+	}
+
+	function updateKey(event: Event) {
+		const { target } = event;
+		if (target) {
+			newKey = (target as HTMLInputElement).value;
 		}
 	}
 
@@ -74,9 +84,7 @@
 			name="imageres-{index}"
 			label="Name"
 			readonly={!editing}
-			onInput={(event) => {
-				newKey = event.target.value;
-			}} />
+			onInput={updateKey} />
 	</div>
 	<div class="col-span-2 sm:col-span-2 lg:col-span-2">
 		<NumberInput

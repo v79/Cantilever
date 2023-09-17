@@ -23,7 +23,8 @@
 			method: 'POST',
 			headers: {
 				Accept: 'text/plain',
-				Authorization: 'Bearer ' + $userStore.token
+				Authorization: 'Bearer ' + $userStore.token,
+				'Content-Type': 'application/json'
 			},
 			body: templateJson,
 			mode: 'cors'

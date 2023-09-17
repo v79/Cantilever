@@ -10,7 +10,12 @@
 	export let onChange = (e: Event) => {};
 	export let classes = 'mt-1 block w-full rounded-md border-gray-300 sm:text-sm';
 
-	export let onInput: (e: Event) => void = (e: Event) => (value = e.target.value);
+	export let onInput: (e: Event) => void = (e: Event) => {
+		const { target } = e;
+		if (target) {
+			value = (target as HTMLInputElement).value;
+		}
+	};
 
 	let classesToApply: string = '';
 	$: if (readonly) {

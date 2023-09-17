@@ -1,10 +1,10 @@
 <script lang="ts">
-	import {PUBLIC_COGNITO_CALLBACK_URL} from '$env/static/public';
-	import type {JwtPayload} from 'jwt-decode';
+	import { PUBLIC_COGNITO_CALLBACK_URL } from '$env/static/public';
+	import type { JwtPayload } from 'jwt-decode';
 	import jwt_decode from 'jwt-decode';
-	import {onMount} from 'svelte';
-	import {User} from '../models/authUser';
-	import {CLEAR_USER, userStore} from '../stores/userStore.svelte';
+	import { onMount } from 'svelte';
+	import { User } from '../models/authUser';
+	import { CLEAR_USER, userStore } from '../stores/userStore.svelte';
 
 	let authToken: any;
 	let tokenPayload: JwtPayload;
@@ -31,6 +31,7 @@
 		if (authToken) {
 			tokenPayload = jwt_decode<JwtPayload>(authToken);
 			if (tokenPayload) {
+				// TODO: quite a few typescript errors here
 				$userStore = new User(
 					tokenPayload.name,
 					tokenPayload.sub,
@@ -113,14 +114,7 @@
 		height: 32px;
 	}
 
-	.svg-icon path,
-	.svg-icon polygon,
-	.svg-icon rect {
+	.svg-icon polygon {
 		fill: rgb(229, 231, 235);
-	}
-
-	.svg-icon circle {
-		stroke: rgb(229, 231, 235);
-		stroke-width: 1;
 	}
 </style>
