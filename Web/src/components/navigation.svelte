@@ -18,6 +18,7 @@
 	var activePage = $activeStore.currentPage;
 	var postsPage: boolean,
 		templatesPage: boolean,
+		projectPage: boolean,
 		pagesPage: boolean = false;
 	var title = 'Cantilever Editor';
 
@@ -34,16 +35,25 @@
 				postsPage = true;
 				templatesPage = false;
 				pagesPage = false;
+				projectPage = false;
 				break;
 			case 'Pages':
 				postsPage = false;
 				templatesPage = false;
 				pagesPage = true;
+				projectPage = false;
 				break;
 			case 'Templates':
 				postsPage = false;
 				templatesPage = true;
 				pagesPage = false;
+				projectPage = false;
+				break;
+			case 'Project':
+				postsPage = false;
+				templatesPage = false;
+				pagesPage = false;
+				projectPage = true;
 				break;
 			default:
 				break;
@@ -142,6 +152,11 @@
 			activeClass="text-grey-200 font-bold"
 			active={templatesPage}
 			href="/templates">Templates</NavLi>
+		<NavLi
+			nonActiveClass="text-grey-200"
+			activeClass="text-grey-200 font-bold"
+			active={projectPage}
+			href="/project">Project</NavLi>
 
 		{#if $userStore !== undefined}
 			<Dropdown triggeredBy="#generate-menu">

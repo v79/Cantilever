@@ -188,6 +188,78 @@ export class HandlebarsContent {
 		this.body = body;
 	}
 }
+
+/*
+	The [CantileverProject] represents some metadata about the entire project.
+*/
+export class CantileverProject {
+	projectName: string;
+	author: string;
+	dateFormat: string;
+	dateTimeFormat: string;
+	imageResolutions: Map<string, ImgRes>;
+	attributes: Map<string, string>;
+
+	constructor(
+		projectName: string,
+		author: string,
+		dateFormat: string,
+		dateTimeFormat: string,
+		imageResolutions: Map<string, ImgRes>,
+		attributes: Map<string, string>
+	) {
+		this.projectName = projectName;
+		this.author = author;
+		this.dateFormat = dateFormat;
+		this.dateTimeFormat = dateTimeFormat;
+		this.imageResolutions = imageResolutions;
+		this.attributes = attributes;
+	}
+}
+
+/*
+	The [ImgRes] Represents an image resolution in pixels.
+*/
+export class ImgRes {
+	x: number | undefined;
+	y: number | undefined;
+
+	constructor(x: number, y: number) {
+		this.x = x;
+		this.y = y;
+	}
+
+	toJSON(): string {
+		return this.getStringX() + 'x' + this.getStringY();
+	}
+
+	getStringX(): string {
+		if (isNaN(this.x!!)) {
+			return '';
+		} else {
+			return '' + this.x;
+		}
+	}
+	getStringY(): string {
+		if (isNaN(this.y!!)) {
+			return '';
+		} else {
+			return '' + this.y;
+		}
+	}
+}
+
+/**
+ * Convert a string like "640x480" into a [ImgRes] object with values x=640, y=480
+ * @param resString
+ * @returns an [ImgRes] object with the appropriate dimensions. If a dimension is not found, it will be returned as NaN.
+ */
+export function parseResString(resString: string) {
+	let xS: string = resString.substring(0, resString.indexOf('x'));
+	let yS: string = resString.substring(resString.indexOf('x') + 1);
+	return new ImgRes(parseInt(xS), parseInt(yS));
+}
+
 /**
  * Deprecated utility function
  * @param item

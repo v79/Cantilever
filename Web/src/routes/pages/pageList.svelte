@@ -1,27 +1,28 @@
 <script lang="ts">
-	import { onMount, onDestroy, tick } from 'svelte';
-	import { userStore } from '../../stores/userStore.svelte';
-	import { notificationStore } from '../../stores/notificationStore.svelte';
-	import { spinnerStore } from '../utilities/spinnerWrapper.svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
+	import { Post, MarkdownContent, Page } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
-	import { HandlebarsContent, HandlebarsItem, Template } from '../../models/structure';
-	import { allTemplatesStore, templateStore } from '../../stores/postsStore.svelte';
-	import HandlebarListItem from '../handlebarListItem.svelte';
-	import { handlebarStore } from '../../stores/handlebarContentStore.svelte';
+	import { markdownStore } from '../../stores/markdownContentStore.svelte';
+	import { notificationStore } from '../../stores/notificationStore.svelte';
+	import { userStore } from '../../stores/userStore.svelte';
+	import { allPagesStore, pageStore } from '../../stores/postsStore.svelte';
+	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
+	import MarkdownListItem from '../../components/markdownListItem.svelte';
 
-	$: templatesSorted = $templateStore.sort((a, b) => {
-		if (a.key < b.key) return -1;
-		if (a.key > b.key) return 1;
+	// TODO : This might be better grouped by template
+	$: pagesSorted = $pageStore.sort((a, b) => {
+		if (a.srcKey < b.srcKey) return -1;
+		if (a.srcKey > b.srcKey) return 1;
 		return 0;
 	});
 
 	onMount(async () => {});
 
-	function loadAllTemplates() {
-		console.log('Loading all templates json...');
+	function loadAllPages() {
+		console.log('Loading all pages json...');
 		let token = $userStore.token;
 		notificationStore.set({ shown: false, message: '', type: 'info' });
-		fetch('https://api.cantilevers.org/project/templates', {
+		fetch('https://api.cantilevers.org/project/pages', {
 			method: 'GET',
 			headers: {
 				Accept: 'application/json',
@@ -34,18 +35,26 @@
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
-				// deserialize
-				var tempTemplates = new Array<Template>();
-				for (const t of data.data.templates) {
-					tempTemplates.push(new Template(t.key, t.lastUpdated));
+				var tempPages = new Array<Page>();
+				for (const p of data.data.pages) {
+					tempPages.push(
+						new Page(
+							p.title,
+							p.srcKey,
+							p.templateKey,
+							p.url,
+							new Date(p.lastUpdated),
+							new Map<string, string>(),
+							new Map<string, string>()
+						)
+					);
 				}
-				// set templates store
-				allTemplatesStore.set({
-					count: tempTemplates.length,
+				allPagesStore.set({
+					count: tempPages.length,
 					lastUpdated: data.lastUpdated,
-					templates: tempTemplates
+					pages: tempPages
 				});
-				$notificationStore.message = 'Loaded all templates ' + $activeStore.activeFile;
+				$notificationStore.message = 'Loaded all pages ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
 			})
@@ -61,14 +70,62 @@
 			});
 	}
 
-	function createNewTemplate() {
-		console.log('Create new template');
+	function loadMarkdown(srcKey: string) {
+		let token = $userStore.token;
+		console.log('Loading markdown file... ' + srcKey);
+		spinnerStore.set({ shown: true, message: 'Loading markdown file... ' + srcKey });
+		notificationStore.set({ shown: false, message: '', type: 'info' });
+		tick();
+		fetch('https://api.cantilevers.org/project/pages/' + encodeURIComponent(srcKey), {
+			method: 'GET',
+			headers: {
+				Accept: 'application/json',
+				Authorization: 'Bearer ' + token
+			},
+			mode: 'cors'
+		})
+			.then((response) => response.json())
+			.then((data) => {
+				if (data.data === undefined) {
+					throw new Error(data.message);
+				}
+				var tmpPage = new MarkdownContent(
+					new Page(
+						data.data.metadata.title,
+						data.data.metadata.srcKey,
+						data.data.metadata.templateKey,
+						data.data.metadata.url,
+						data.data.metadata.lastUpdated,
+						new Map<string, string>(Object.entries(data.data.metadata.attributes)),
+						new Map<string, string>(Object.entries(data.data.metadata.sections))
+					),
+					''
+				);
+				markdownStore.set(tmpPage);
+				$activeStore.activeFile = decodeURIComponent($markdownStore.metadata!!.srcKey);
+				$activeStore.isNewFile = false;
+				$activeStore.hasChanged = false;
+				$activeStore.isValid = true;
+				$activeStore.newSlug = $markdownStore.metadata!!.url;
+				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
+				$notificationStore.shown = true;
+				$spinnerStore.shown = false;
+			})
+			.catch((error) => {
+				console.log(error);
+				notificationStore.set({
+					message: error,
+					shown: true,
+					type: 'error'
+				});
+				$spinnerStore.shown = false;
+			});
 	}
 
 	async function rebuild() {
 		let token = $userStore.token;
-		console.log('Regenerating project templates file...');
-		fetch('https://api.cantilevers.org/project/templates/rebuild', {
+		console.log('Regenerating project pages file...');
+		fetch('https://api.cantilevers.org/project/pages/rebuild', {
 			method: 'PUT',
 			headers: {
 				Accept: 'application/json',
@@ -85,7 +142,7 @@
 					shown: true,
 					type: 'success'
 				});
-				loadAllTemplates();
+				loadAllPages();
 			})
 			.catch((error) => {
 				console.log(error);
@@ -98,70 +155,48 @@
 			});
 	}
 
-	function loadHandlebars(key: string) {
-		let token = $userStore.token;
-		console.log('Loading handlebars file... ' + key);
-		spinnerStore.set({ shown: true, message: 'Loading handlebars file... ' + key });
-		notificationStore.set({ shown: false, message: '', type: 'info' });
-		tick();
-		fetch('https://api.cantilevers.org/templates/' + encodeURIComponent(key), {
-			method: 'GET',
-			headers: {
-				Accept: 'application/json',
-				Authorization: 'Bearer ' + token
-			},
-			mode: 'cors'
-		})
-			.then((response) => response.json())
-			.then((data) => {
-				console.dir(data);
-				if (data.data === undefined) {
-					throw new Error(data.message);
-				}
-				var tmpTemplate = new HandlebarsContent(
-					new Template(data.data.template.key, data.data.template.lastUpdated),
-					data.data.body
-				);
-				console.log('Built handlebars template');
-				handlebarStore.set(tmpTemplate);
-				$activeStore.activeFile = decodeURIComponent($handlebarStore.template!!.key);
-				$activeStore.isNewFile = false;
-				$activeStore.hasChanged = false;
-				$activeStore.isValid = true;
-				$activeStore.newSlug = $handlebarStore.template!!.key;
-				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
-				$notificationStore.shown = true;
-				$spinnerStore.shown = false;
-			})
-			.catch((error) => {
-				console.log(error);
-				notificationStore.set({
-					message: error,
-					shown: true,
-					type: 'error'
-				});
-				$spinnerStore.shown = false;
-			});
+	function createNewPage() {
+		var newMDPost: MarkdownContent = {
+			body: '',
+			metadata: new Page(
+				'',
+				'',
+				'',
+				'',
+				new Date(),
+				new Map<string, string>(),
+				new Map<string, string>()
+			)
+		};
+
+		$activeStore.activeFile = '';
+		$activeStore.isNewFile = true;
+		$activeStore.isValid = false;
+		$activeStore.newSlug = '';
+		$activeStore.hasChanged = false;
+
+		console.log('Creating new page');
+		markdownStore.set(newMDPost);
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
 		if (data) {
-			loadAllTemplates();
+			loadAllPages();
 		}
 	});
 
-	const templateStoreUnsubscribe = allTemplatesStore.subscribe((data) => {
-		templateStore.set(data.templates);
+	const structStoreUnsubscribe = allPagesStore.subscribe((data) => {
+		pageStore.set(data.pages);
 	});
 
+	onDestroy(structStoreUnsubscribe);
 	onDestroy(userStoreUnsubscribe);
-	onDestroy(templateStoreUnsubscribe);
 </script>
 
-<h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-900">Templates</h3>
+<h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-900">Pages</h3>
 
 {#if $userStore === undefined}
-	<div class="px-8"><p class="text-warning text-lg">Login to see templates</p></div>
+	<div class="px-8"><p class="text-warning text-lg">Login to see pages</p></div>
 {:else}
 	<div class="flex items-center justify-center" role="group">
 		<button
@@ -176,25 +211,23 @@
 			on:click={(e) => {
 				console.log('Show spinner');
 				spinnerStore.set({ shown: true, message: 'Reloading project...' });
-				tick().then(() => loadAllTemplates());
+				tick().then(() => loadAllPages());
 			}}>Reload</button>
 		<button
 			type="button"
-			on:click={createNewTemplate}
+			on:click={createNewPage}
 			class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
-			>New Template</button>
+			>New Page</button>
 	</div>
 	<div class="px-8">
-		{#if allTemplatesStore}
-			<h4 class="text-right text-sm text-slate-900">{$allTemplatesStore.count} templates</h4>
+		{#if $allPagesStore}
+			<h4 class="text-right text-sm text-slate-900">{$allPagesStore.count} pages</h4>
 		{/if}
-		{#if templatesSorted.length > 0}
+		{#if pagesSorted.length > 0}
 			<div class="justify-left flex py-2">
 				<ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
-					{#each templatesSorted as template}
-						<HandlebarListItem
-							item={new HandlebarsItem(template.key, template.lastUpdated)}
-							onClickFn={loadHandlebars} />
+					{#each pagesSorted as page}
+						<MarkdownListItem item={page} onClickFn={loadMarkdown} />
 					{/each}
 				</ul>
 			</div>

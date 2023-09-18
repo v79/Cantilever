@@ -68,6 +68,9 @@ class LambdaRouter : RequestHandlerWrapper() {
 
         auth(cognitoJWTAuthorizer) {
             group("/project") {
+                get("/", projectController::getProject)
+                put("/", projectController::updateProjectDefinition).expects(setOf(MimeType.yaml)).supplies(setOf(
+                    MimeType.json))
                 group("/posts") {
                     get("", projectController::getPosts)
                     put(

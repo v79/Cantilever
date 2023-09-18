@@ -1,12 +1,22 @@
 package org.liamjd.cantilever.api.controllers
 
+import com.charleskorn.kaml.Yaml
 import kotlinx.datetime.Clock
 import kotlinx.datetime.toKotlinInstant
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.S3_KEY.pagesKey
+import org.liamjd.cantilever.common.S3_KEY.pagesPrefix
+import org.liamjd.cantilever.common.S3_KEY.postsKey
+import org.liamjd.cantilever.common.S3_KEY.postsPrefix
+import org.liamjd.cantilever.common.S3_KEY.projectKey
+import org.liamjd.cantilever.common.S3_KEY.templatesKey
+import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
 import org.liamjd.cantilever.models.*
+import org.liamjd.cantilever.routing.MimeType
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.S3Service
@@ -25,6 +35,50 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     private val s3Service: S3Service by inject()
 
     /**
+     * Return the 'cantilever.yaml' project definition file, in yaml format.
+     */
+    fun getProject(request: Request<Unit>): ResponseEntity<APIResult<CantileverProject>> {
+        println("ProjectController: Retrieving 'cantilever.yaml' file")
+        return if (s3Service.objectExists(projectKey, sourceBucket)) {
+            val projectYaml = s3Service.getObjectAsString(projectKey, sourceBucket)
+            try {
+                val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
+                println("Project definition: $project")
+                ResponseEntity.ok(body = APIResult.Success(value = project))
+            } catch (se: SerializationException) {
+                ResponseEntity.serverError(
+                    body = APIResult.Error(
+                        message = se.message ?: "Error deserializing cantilever.yaml. Project is broken."
+                    )
+                )
+            }
+        } else {
+            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '$projectKey' in bucket '$sourceBucket'. Project is broken."))
+        }
+    }
+
+    /**
+     * Update the 'cantilever.yaml' project definition file. This will come to us as yaml document, not json, but it will return as json.
+     */
+    fun updateProjectDefinition(request: Request<CantileverProject>): ResponseEntity<APIResult<CantileverProject>> {
+        println("ProjectController: Updating 'cantilever.yaml' file")
+        val updatedDefinition = request.body
+        if (updatedDefinition.projectName.isBlank()) {
+            return ResponseEntity.badRequest(APIResult.Error(message = "Unable to update project definition where 'project name' is blank"))
+        }
+        println("Updated project: $updatedDefinition")
+        val yamlToSave = Yaml.default.encodeToString(CantileverProject.serializer(),request.body)
+        val jsonResponse = Json.encodeToString(CantileverProject.serializer(), request.body)
+        s3Service.putObject(
+            projectKey,
+            sourceBucket,
+            yamlToSave,
+            MimeType.yaml.toString()
+        )
+        return ResponseEntity.ok(body = APIResult.Success(value = updatedDefinition))
+    }
+
+    /**
      * Return a list of all the [PostMeta]s
      */
     fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostList>> {
@@ -33,7 +87,15 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
             val postListJson = s3Service.getObjectAsString(postsKey, sourceBucket)
             val postList = Json.decodeFromString(PostList.serializer(), postListJson)
             val sorted = postList.posts.sortedBy { it.date }
-            ResponseEntity.ok(body = APIResult.Success(value = PostList(count = sorted.size,posts = sorted, lastUpdated = postList.lastUpdated)))
+            ResponseEntity.ok(
+                body = APIResult.Success(
+                    value = PostList(
+                        count = sorted.size,
+                        posts = sorted,
+                        lastUpdated = postList.lastUpdated
+                    )
+                )
+            )
         } else {
             ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '$postsKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/posts/rebuild"))
         }
@@ -118,7 +180,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     }
 
     /**
-     * Rebuild the generated/pages.json file which contains the metadata for all the [Pages]s in the project.
+     * Rebuild the generated/pages.json file which contains the metadata for all the Pages in the project.
      */
     fun rebuildPageList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val pages = s3Service.listObjects(pagesPrefix, sourceBucket)
@@ -146,7 +208,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                             srcKey = pageModel.srcKey,
                             templateKey = pageModel.templateKey,
                             url = pageModel.url,
-                            sections = buildMap { pageModel.sections.keys.forEach {  key -> put(key,"") }},
+                            sections = buildMap { pageModel.sections.keys.forEach { key -> put(key, "") } },
                             attributes = pageModel.attributes,
                             lastUpdated = obj.lastModified().toKotlinInstant()
                         )
@@ -168,7 +230,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     }
 
     /**
-     * Rebuild the generated/templates.json file which contains the metadata for all the [Templates]s in the project.
+     * Rebuild the generated/templates.json file which contains the metadata for all the Templates in the project.
      */
     fun rebuildTemplateList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val templates = s3Service.listObjects(templatesPrefix, sourceBucket)
@@ -188,7 +250,8 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                 }
             }
             list.sortByDescending { it.lastUpdated }
-            val templateList = TemplateList(templates = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
+            val templateList =
+                TemplateList(templates = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(TemplateList.serializer(), templateList)
             println("Saving PageList JSON file (${listJson.length} bytes)")
             s3Service.putObject(templatesKey, sourceBucket, listJson, APP_JSON)
@@ -198,12 +261,4 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
         return ResponseEntity.ok(body = APIResult.Success("Written new '$templatesKey' with $filesProcessed markdown files processed"))
     }
 
-    companion object {
-        const val postsKey = "generated/posts.json"
-        const val pagesKey = "generated/pages.json"
-        const val templatesKey = "generated/templates.json"
-        const val postsPrefix = "sources/posts/"
-        const val pagesPrefix = "sources/pages/"
-        const val templatesPrefix = "templates/"
-    }
 }

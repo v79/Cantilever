@@ -3,7 +3,7 @@
 	import ModalDeleteFile from '../../components/MarkdownEditor/modal-delete-file.svelte';
 	import PageEditorForm from '../../components/MarkdownEditor/pageEditorForm.svelte';
 	import { Modal } from 'flowbite-svelte';
-	import PageList from '../../components/pages/pageList.svelte';
+	import PageList from './pageList.svelte';
 	import SpinnerWrapper from '../../components/utilities/spinnerWrapper.svelte';
 	import { createSlug } from '../../functions/createSlug';
 	import { Page } from '../../models/structure';
@@ -39,7 +39,8 @@
 			method: 'POST',
 			headers: {
 				Accept: 'text/plain',
-				Authorization: 'Bearer ' + $userStore.token
+				Authorization: 'Bearer ' + $userStore.token,
+				'Content-Type': 'application/json'
 			},
 			body: pageJson,
 			mode: 'cors'
@@ -51,6 +52,15 @@
 					shown: true,
 					type: 'success'
 				});
+			})
+			.catch((error) => {
+				console.log(error);
+				notificationStore.set({
+					message: error,
+					shown: true,
+					type: 'error'
+				});
+				return {};
 			});
 	}
 </script>

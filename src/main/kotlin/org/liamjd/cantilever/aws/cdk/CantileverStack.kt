@@ -236,7 +236,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         println("Registering app clients with Cognito identity pool")
         val appUrls = listOf("https://app.cantilevers.org/", "http://localhost:5173/")
         val corbelAppUrls =
-           listOf("https://127.0.0.1:44817","corbelApp://auth") // port randomly chosen here, needs to match that in the Corbel application
+           listOf("http://localhost:44817/callback","corbelApp://auth") // port randomly chosen here, needs to match that in the Corbel application
         pool.addClient(
             "cantilever-app",
             UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
@@ -249,7 +249,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
                 OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(false).authorizationCodeGrant(true)
                     .build()).scopes(listOf(OAuthScope.EMAIL, OAuthScope.OPENID, OAuthScope.COGNITO_ADMIN))
-                    .callbackUrls(corbelAppUrls).logoutUrls(appUrls).build()
+                    .callbackUrls(corbelAppUrls).logoutUrls(corbelAppUrls).build()
             ).build()
         )
     }
@@ -294,7 +294,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         environment: Map<String, String>?
     ): Function = Function.Builder.create(stack, id)
         .description(description ?: "")
-        .runtime(Runtime.JAVA_11)
+        .runtime(Runtime.JAVA_17)
         .memorySize(memory)
         .timeout(Duration.minutes(2))
         .code(Code.fromAsset(codePath))

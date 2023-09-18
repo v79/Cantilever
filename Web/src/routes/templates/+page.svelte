@@ -2,13 +2,14 @@
 	import { afterNavigate } from '$app/navigation';
 	import SpinnerWrapper from '../../components/utilities/spinnerWrapper.svelte';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
-	import TemplateList from '../../components/templates/templateList.svelte';
+	import TemplateList from './templateList.svelte';
 	import { handlebarStore } from '../../stores/handlebarContentStore.svelte';
 	import { Template } from '../../models/structure';
 	import { userStore } from '../../stores/userStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import TemplateEditorForm from '../../components/HandlebarsEditor/templateEditorForm.svelte';
 	import { Modal } from 'flowbite-svelte';
+
 	let deleteFileModal = false;
 	let saveExistingModal = false;
 	let saveNewModal = false;
@@ -22,7 +23,8 @@
 			method: 'POST',
 			headers: {
 				Accept: 'text/plain',
-				Authorization: 'Bearer ' + $userStore.token
+				Authorization: 'Bearer ' + $userStore.token,
+				'Content-Type': 'application/json'
 			},
 			body: templateJson,
 			mode: 'cors'

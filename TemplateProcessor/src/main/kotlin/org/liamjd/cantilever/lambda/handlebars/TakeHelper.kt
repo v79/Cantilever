@@ -6,7 +6,7 @@ import com.github.jknack.handlebars.Options
 import java.util.*
 
 /**
- * A modification of the standard handlebars '#each iterator.
+ * A modification of the standard handlebars '#each' iterator.
  * Use #take "5" to show only the first 5 items in the collection
  */
 class TakeHelper : Helper<Any> {

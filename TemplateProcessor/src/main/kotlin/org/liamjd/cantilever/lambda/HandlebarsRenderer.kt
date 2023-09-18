@@ -16,6 +16,9 @@ interface TemplateRender {
     fun render(model: Map<String, Any?>, template: String): String
 }
 
+/**
+ * Configuration for Handlebars, defining the helper functions (such as 'upper' and 'localDate') that may be used in templates.
+ */
 context(LambdaLogger)
 class HandlebarsRenderer : TemplateRender {
 

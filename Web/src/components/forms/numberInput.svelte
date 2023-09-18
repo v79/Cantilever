@@ -16,7 +16,6 @@
 			value = (target as HTMLInputElement).value;
 		}
 	};
-
 	let classesToApply: string = '';
 	$: if (readonly) {
 		classesToApply = classes + ' bg-slate-200 text-slate-500 focus:border-gray-300';
@@ -28,7 +27,7 @@
 <label for={name} class="block text-sm font-medium text-slate-200">{label}</label>
 <input
 	{value}
-	type="text"
+	type="number"
 	{name}
 	{disabled}
 	id={name}

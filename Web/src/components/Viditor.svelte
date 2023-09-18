@@ -9,14 +9,14 @@
 
 	export let onChange = (newBody: string) => {};
 
-	let vditor: Vditor = undefined;
+	let vditor: Vditor | undefined = undefined;
 
 	let initialize = () => {
 		// onMount because it relies on an id, you can't pass an element to the fn
 		// should autogenerate an id to avoid conflicts with multiple instances
 
 		vditor = new Vditor(id, {
-			height: 400,
+			height: 800,
 			// i18n: "en_US",
 			lang: 'en_US',
 			value: body,
@@ -76,7 +76,7 @@
 	};
 
 	// update parent component value
-	let update = (val) => {
+	let update = (val: any) => {
 		if (typeof vditor != 'undefined') {
 			if (body != vditor.getValue()) {
 				vditor.setValue(body);
