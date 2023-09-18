@@ -6,6 +6,7 @@ import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.S3Event
 import kotlinx.serialization.SerializationException
 import org.liamjd.cantilever.common.QUEUE
+import org.liamjd.cantilever.common.SOURCE_TYPE.*
 import org.liamjd.cantilever.common.createStringAttribute
 import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
@@ -24,9 +25,8 @@ import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
  * It analyses the file and determines where to send it.
  * `source_type` is determined by from the S3 object key:
  * - /sources/<source_type>/<filename>
- * - Supports "posts" and "pages" for now.
  *
- * "Posts" must be markdown files (.md). The source type is added to the SQS message queue so the receiver knows how to process it.
+ * "Posts" and "Pages" must be markdown files (.md). The source type is added to the SQS message queue so the receiver knows how to process it.
  */
 class FileUploadHandler : RequestHandler<S3Event, String> {
 
@@ -48,7 +48,9 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val eventRecord = event.records[0]
             val srcKey = eventRecord.s3.`object`.urlDecodedKey
             val srcBucket = eventRecord.s3.bucket.name
-            val sourceType = srcKey.substringAfter('/').substringBefore('/')
+            val folderName =
+                srcKey.substringAfter('/').substringBefore('/') // the folder determines the type, POST, PAGE, STATICS
+            val type = SourceHelper.fromFolderName(folderName)
             val queueUrl = System.getenv(QUEUE.MARKDOWN)
 
             logger.info("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
@@ -56,59 +58,31 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
             try {
                 val fileType = srcKey.substringAfterLast('.').lowercase()
-                logger.info("FileUpload handler: source type is '$sourceType'; file type is '$fileType'")
+                logger.info("FileUpload handler: source type is '$folderName'; file type is '$fileType'")
 
-                when (sourceType) {
-                    POSTS -> {
+                when (type) {
+                    Posts -> {
                         if (fileType == "md") {
-                            logger.info("Sending post $srcKey to markdown processor queue")
-                            // send to markdown processing queue
-                            try {
-                                val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
-
-                                // extract metadata
-                                val metadata = extractPostMetadata(filename = srcKey, source = sourceString)
-                                logger.info("Extracted metadata: $metadata")
-                                // extract body
-                                val markdownBody = sourceString.stripFrontMatter()
-
-                                val message = SqsMsgBody.MarkdownPostUploadMsg(metadata, markdownBody)
-                                val msgResponse = sqsService.sendMessage(
-                                    toQueue = queueUrl,
-                                    body = message,
-                                    messageAttributes = createStringAttribute("sourceType", sourceType)
-                                )
-
-                                if (msgResponse != null) {
-                                    logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
-                                } else {
-                                    logger.warn("No response received for message")
-                                }
-                            } catch (qdne: QueueDoesNotExistException) {
-                                logger.error("queue '$queueUrl' does not exist; ${qdne.message}")
-                            } catch (se: SerializationException) {
-                                logger.error("Failed to parse metadata string; ${se.message}")
-                            }
-                        }
-                    }
-
-                    PAGES -> {
-                        logger.info("Received page file $srcKey and sending it to Markdown processor queue")
-                        val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
-                        val pageSrcKey = srcKey.removePrefix("sources/$sourceType/") // just want the actual file name
-                        // extract page model
-                        val pageModelMsg = extractPageModel(pageSrcKey, sourceString)
-                        logger.info("Built page model for: ${pageModelMsg.srcKey}")
-
-                        val msgResponse = sqsService.sendMessage(toQueue = queueUrl, body = pageModelMsg, messageAttributes = createStringAttribute("sourceType",sourceType))
-                        if (msgResponse != null) {
-                            logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                            processPostUpload(logger, srcKey, srcBucket, queueUrl, folderName)
                         } else {
-                            logger.warn("No response received for message")
+                            logger.error("Posts must be written in Markdown format with the '.md' file extension")
                         }
                     }
+
+                    Pages -> {
+                        if (fileType == "md") {
+                            processPageUpload(logger, srcKey, srcBucket, folderName, queueUrl)
+                        } else {
+                            logger.error("Pages must be written in Markdown format with the '.md' file extension")
+                        }
+                    }
+
+                    Templates -> {
+                        logger.info("No action defined for TEMPLATE upload")
+                    }
+
                     else -> {
-                        logger.info("No action defined for source type '$sourceType'")
+                        logger.info("No action defined for source type '$folderName'")
                     }
                 }
 
@@ -124,12 +98,81 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         return response
     }
 
+    /**
+     * Process the uploaded POST markdown file and send a message to the markdown processor queue
+     */
+    private fun processPostUpload(
+        logger: LambdaLogger,
+        srcKey: String,
+        srcBucket: String,
+        queueUrl: String,
+        sourceType: String
+    ) {
+        logger.info("Sending post $srcKey to markdown processor queue")
+        try {
+            val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
+            // extract metadata
+            val metadata = extractPostMetadata(filename = srcKey, source = sourceString)
+            logger.info("Extracted metadata: $metadata")
+            // extract body
+            val markdownBody = sourceString.stripFrontMatter()
 
+            val postModelMsg = SqsMsgBody.MarkdownPostUploadMsg(metadata, markdownBody)
+            sendMessage(queueUrl, postModelMsg, sourceType, logger, srcKey)
+        } catch (qdne: QueueDoesNotExistException) {
+            logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
+        } catch (se: SerializationException) {
+            logger.error("Failed to parse metadata string; ${se.message}")
+        }
+    }
 
-    companion object {
-        const val POSTS = "posts"
-        const val PAGES = "pages"
-        const val STATICS = "statics"
+    /**
+     * Process the uploaded PAGE markdown file and send a message to the markdown processor queue
+     */
+    private fun processPageUpload(
+        logger: LambdaLogger,
+        srcKey: String,
+        srcBucket: String,
+        sourceType: String,
+        queueUrl: String
+    ) {
+        try {
+            logger.info("Received page file $srcKey and sending it to Markdown processor queue")
+            val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
+            val pageSrcKey = srcKey.removePrefix("sources/$sourceType/") // just want the actual file name
+            // extract page model
+            val pageModelMsg = extractPageModel(pageSrcKey, sourceString)
+            logger.info("Built page model for: ${pageModelMsg.srcKey}")
+
+            sendMessage(queueUrl, pageModelMsg, sourceType, logger, srcKey)
+        } catch (qdne: QueueDoesNotExistException) {
+            logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
+        } catch (se: SerializationException) {
+            logger.error("Failed to parse metadata string; ${se.message}")
+        }
+    }
+
+    /**
+     * Send a message to the specified queue
+     * @param queueUrl the SQS queue
+     */
+    private fun sendMessage(
+        queueUrl: String,
+        pageModelMsg: SqsMsgBody,
+        sourceType: String,
+        logger: LambdaLogger,
+        srcKey: String
+    ) {
+        val msgResponse = sqsService.sendMessage(
+            toQueue = queueUrl,
+            body = pageModelMsg,
+            messageAttributes = createStringAttribute("sourceType", sourceType)
+        )
+        if (msgResponse != null) {
+            logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+        } else {
+            logger.warn("No response received for message")
+        }
     }
 }
 

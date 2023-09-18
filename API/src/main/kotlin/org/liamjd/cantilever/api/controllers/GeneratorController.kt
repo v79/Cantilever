@@ -62,7 +62,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
                 val msgResponse = sqsService.sendMessage(
                     toQueue = markdownQueue,
                     body = pageModel,
-                    messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.PAGES)
+                    messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.Pages.folder)
                 )
 
                 if (msgResponse != null) {
@@ -116,7 +116,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
             val msgResponse = sqsService.sendMessage(
                 toQueue = markdownQueue,
                 body = message,
-                messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.POSTS)
+                messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.Posts.folder)
             )
             if (msgResponse != null) {
                 println("Message '$srcKey' sent to '$markdownQueue', message ID is '${msgResponse.messageId()}'")
@@ -145,7 +145,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         // Also, annoying that I have to double-decode this.
         val templateKey =
             URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset())
-                .substringBefore(".").substringAfter("/")
+                .substringBefore(".").substringAfterLast("/")
         println("DOUBLE DECODED: GeneratorController received request to regenerate pages based on template '$templateKey'")
         // first, get the pages and posts structure file
         if (!s3Service.objectExists(pagesKey, sourceBucket)) {
@@ -174,7 +174,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
             // TODO: again with the inconsistent naming of templates!
             val postList = Json.decodeFromString(PostList.serializer(), postsJson)
             println("Checking the ${postList.count} posts for a template match to $templateKey")
-            postList.posts.filter { it.templateKey == "templates/${templateKey}.html.hbs" }.forEach {
+            postList.posts.filter { it.templateKey == "${templateKey}.html.hbs" }.forEach {
                 println("Regenerating post ${it.srcKey} because it has template ${it.templateKey}")
                 val postSource = s3Service.getObjectAsString(it.srcKey, sourceBucket)
                 queuePostRegeneration(it.srcKey, postSource)
@@ -201,7 +201,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         val msgResponse = sqsService.sendMessage(
             toQueue = markdownQueue,
             body = pageModel,
-            messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.PAGES)
+            messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.Pages.folder)
         )
         return if (msgResponse != null) {
             println("Message '$pageSrcKey' sent to '$markdownQueue', message ID is ${msgResponse.messageId()}'")
@@ -223,7 +223,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         sqsService.sendMessage(
             toQueue = markdownQueue,
             body = message,
-            messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.POSTS)
+            messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.Posts.folder)
         )
     }
 }

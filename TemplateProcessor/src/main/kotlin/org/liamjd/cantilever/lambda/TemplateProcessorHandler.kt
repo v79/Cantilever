@@ -51,7 +51,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                 logger.info("EventRecord: ${eventRecord.body}")
 
                 when (eventRecord.messageAttributes["sourceType"]?.stringValue ?: "posts") {
-                    SOURCE_TYPE.POSTS -> {
+                    SOURCE_TYPE.Posts.folder -> {
                         val message =
                             Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.HTMLFragmentReadyMsg
                         logger.info("Processing message: $message")
@@ -83,7 +83,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                         logger.info("Written final HTML file to '${outputFilename}'")
                     }
 
-                    SOURCE_TYPE.PAGES -> {
+                    SOURCE_TYPE.Pages.folder -> {
 
                         // TODO: THIS IS ALL A BIT BROKEN
 

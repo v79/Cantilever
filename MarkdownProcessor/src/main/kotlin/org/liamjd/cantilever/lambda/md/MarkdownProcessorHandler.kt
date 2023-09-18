@@ -49,7 +49,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
             logger.info("SourceType: $sourceType")
 
             when (sourceType) {
-                SOURCE_TYPE.POSTS -> {
+                SOURCE_TYPE.Posts.folder -> {
                     val markdownPostUploadMsg =
                         Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.MarkdownPostUploadMsg
                     logger.info("Metadata: ${markdownPostUploadMsg.metadata}")
@@ -79,7 +79,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                     }
                 }
 
-                SOURCE_TYPE.PAGES -> {
+                SOURCE_TYPE.Pages.folder -> {
                     logger.info(eventRecord.body)
                     /**
                      * A page is different from a post. It has a different set of metadata.
