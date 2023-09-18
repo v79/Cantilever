@@ -21,3 +21,14 @@ FileUploadHandler/build/
 SharedModels/build/
 TemplateProcessor/build/
 /htmlReport/
+/.idea/kotlinc.xml
+/.idea/aws.xml
+/.idea/bigdataide_settings.xml
+/.idea/compiler.xml
+/.idea/gradle.xml
+/.idea/Cantilever.iml
+/.idea/jarRepositories.xml
+/.idea/misc.xml
+/.idea/vcs.xml
+/.idea/workspace.xml
+/.idea/modules.xml
