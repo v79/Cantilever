@@ -30,6 +30,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 
     private val s3Service: S3Service
     private val sqsService: SQSService
+    private lateinit var logger: LambdaLogger
 
     init {
         s3Service = S3ServiceImpl(Region.EU_WEST_2)
@@ -39,7 +40,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
     override fun handleRequest(event: SQSEvent, context: Context): String {
         val sourceBucket = System.getenv("source_bucket")
         val handlebarQueueUrl = System.getenv(QUEUE.HANDLEBARS)
-        val logger = context.logger
+        logger = context.logger
         val response = "200 OK"
 
         logger.info("Received ${event.records.size} events recieved for Markdown processing")

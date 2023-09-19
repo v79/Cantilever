@@ -32,6 +32,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
     private val s3Service: S3Service
     private val sqsService: SQSService
+    private lateinit var logger: LambdaLogger
 
     init {
         s3Service = S3ServiceImpl(Region.EU_WEST_2)
@@ -39,7 +40,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
     }
 
     override fun handleRequest(event: S3Event, context: Context): String {
-        val logger = context.logger
+        logger = context.logger
         var response = "200 OK"
 
         logger.info("${event.records.size} upload events received")
@@ -63,7 +64,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                 when (type) {
                     Posts -> {
                         if (fileType == "md") {
-                            processPostUpload(logger, srcKey, srcBucket, queueUrl, folderName)
+                            processPostUpload(srcKey, srcBucket, queueUrl, folderName)
                         } else {
                             logger.error("Posts must be written in Markdown format with the '.md' file extension")
                         }
@@ -71,7 +72,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
                     Pages -> {
                         if (fileType == "md") {
-                            processPageUpload(logger, srcKey, srcBucket, folderName, queueUrl)
+                            processPageUpload(srcKey, srcBucket, queueUrl, folderName)
                         } else {
                             logger.error("Pages must be written in Markdown format with the '.md' file extension")
                         }
@@ -102,7 +103,6 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
      * Process the uploaded POST markdown file and send a message to the markdown processor queue
      */
     private fun processPostUpload(
-        logger: LambdaLogger,
         srcKey: String,
         srcBucket: String,
         queueUrl: String,
@@ -118,7 +118,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val markdownBody = sourceString.stripFrontMatter()
 
             val postModelMsg = SqsMsgBody.MarkdownPostUploadMsg(metadata, markdownBody)
-            sendMessage(queueUrl, postModelMsg, sourceType, logger, srcKey)
+            sendMessage(queueUrl, postModelMsg, sourceType, srcKey)
         } catch (qdne: QueueDoesNotExistException) {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
@@ -130,11 +130,10 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
      * Process the uploaded PAGE markdown file and send a message to the markdown processor queue
      */
     private fun processPageUpload(
-        logger: LambdaLogger,
         srcKey: String,
         srcBucket: String,
-        sourceType: String,
-        queueUrl: String
+        queueUrl: String,
+        sourceType: String
     ) {
         try {
             logger.info("Received page file $srcKey and sending it to Markdown processor queue")
@@ -144,7 +143,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val pageModelMsg = extractPageModel(pageSrcKey, sourceString)
             logger.info("Built page model for: ${pageModelMsg.srcKey}")
 
-            sendMessage(queueUrl, pageModelMsg, sourceType, logger, srcKey)
+            sendMessage(queueUrl, pageModelMsg, sourceType, srcKey)
         } catch (qdne: QueueDoesNotExistException) {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
@@ -160,7 +159,6 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         queueUrl: String,
         pageModelMsg: SqsMsgBody,
         sourceType: String,
-        logger: LambdaLogger,
         srcKey: String
     ) {
         val msgResponse = sqsService.sendMessage(

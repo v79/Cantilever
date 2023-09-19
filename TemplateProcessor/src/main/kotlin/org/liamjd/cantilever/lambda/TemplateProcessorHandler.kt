@@ -30,13 +30,14 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
     private val s3Service: S3Service
+    private lateinit var logger: LambdaLogger
 
     init {
         s3Service = S3ServiceImpl(Region.EU_WEST_2)
     }
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
-        val logger = context.logger
+        logger = context.logger
         val responses = mutableListOf<String>()
 
         val sourceBucket = System.getenv("source_bucket")
@@ -63,7 +64,6 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                         val template = templatesPrefix + message.metadata.template + HTML_HBS
                         logger.info("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
                         val templateString = s3Service.getObjectAsString(template, sourceBucket)
-                        logger.info("Got templateString: ${templateString.take(100)}")
 
                         // build model from project and from html fragment
                         val model = mutableMapOf<String, Any?>()
@@ -75,7 +75,6 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                             val renderer = HandlebarsRenderer()
                             renderer.render(model = model, template = templateString)
                         }
-                        logger.info("Rendered HTML: ${html.take(100)}")
 
                         // save to S3
                         val outputFilename = calculateFilename(message)
