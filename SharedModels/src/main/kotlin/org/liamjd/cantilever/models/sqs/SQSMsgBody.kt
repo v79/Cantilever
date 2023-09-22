@@ -41,10 +41,13 @@ sealed class SqsMsgBody {
         val sections: Map<String, MarkdownSection>
     ) : SqsMsgBody()
 
-/**
- * Once markdown processing is complete, it sends this message to the handlebars template engine
- * so that the complete web page can be generated
- */
-@Serializable
-data class HTMLFragmentReadyMsg(val fragmentKey: String, val metadata: PostMetadata) : SqsMsgBody()
+    @Serializable
+    data class CssMsg(val srcKey: String, val destinationKey: String) : SqsMsgBody()
+
+    /**
+     * Once markdown processing is complete, it sends this message to the handlebars template engine
+     * so that the complete web page can be generated
+     */
+    @Serializable
+    data class HTMLFragmentReadyMsg(val fragmentKey: String, val metadata: PostMetadata) : SqsMsgBody()
 }

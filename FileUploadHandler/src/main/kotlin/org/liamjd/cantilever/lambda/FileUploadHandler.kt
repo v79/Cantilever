@@ -5,10 +5,8 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.S3Event
 import kotlinx.serialization.SerializationException
-import org.liamjd.cantilever.common.QUEUE
+import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.common.SOURCE_TYPE.*
-import org.liamjd.cantilever.common.createStringAttribute
-import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
@@ -51,28 +49,29 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val srcBucket = eventRecord.s3.bucket.name
             val folderName =
                 srcKey.substringAfter('/').substringBefore('/') // the folder determines the type, POST, PAGE, STATICS
-            val type = SourceHelper.fromFolderName(folderName)
-            val queueUrl = System.getenv(QUEUE.MARKDOWN)
+            val uploadFolder = SourceHelper.fromFolderName(folderName)
+            val markdownQueueURL = System.getenv(QUEUE.MARKDOWN)
+            val handlebarQueueURL = System.getenv(QUEUE.HANDLEBARS)
 
             logger.info("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
-            logger.info("MarkdownQueue: $queueUrl")
+            logger.info("MarkdownQueue: $markdownQueueURL")
 
             try {
                 val fileType = srcKey.substringAfterLast('.').lowercase()
                 logger.info("FileUpload handler: source type is '$folderName'; file type is '$fileType'")
 
-                when (type) {
+                when (uploadFolder) {
                     Posts -> {
-                        if (fileType == "md") {
-                            processPostUpload(srcKey, srcBucket, queueUrl, folderName)
+                        if (fileType == FILE_TYPE.MD) {
+                            processPostUpload(srcKey, srcBucket, markdownQueueURL, folderName)
                         } else {
                             logger.error("Posts must be written in Markdown format with the '.md' file extension")
                         }
                     }
 
                     Pages -> {
-                        if (fileType == "md") {
-                            processPageUpload(srcKey, srcBucket, queueUrl, folderName)
+                        if (fileType == FILE_TYPE.MD) {
+                            processPageUpload(srcKey, srcBucket, markdownQueueURL, folderName)
                         } else {
                             logger.error("Pages must be written in Markdown format with the '.md' file extension")
                         }
@@ -80,6 +79,15 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
                     Templates -> {
                         logger.info("No action defined for TEMPLATE upload")
+                    }
+
+                    Statics -> {
+                        logger.info("Analysing file type for static file upload")
+                        when (fileType) {
+                            FILE_TYPE.CSS -> {
+                                processCSSUpload(srcKey, srcBucket, handlebarQueueURL, fileType)
+                            }
+                        }
                     }
 
                     else -> {
@@ -148,6 +156,25 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
             logger.error("Failed to parse metadata string; ${se.message}")
+        }
+    }
+
+    /**
+     * Process the uploaded CSS file and send a message to the handlebars template processor queue
+     */
+    private fun processCSSUpload(
+        srcKey: String,
+        srcBucket: String,
+        queueUrl: String,
+        sourceType: String
+    ) {
+        try {
+            val destinationKey = "css/" + srcKey.removePrefix(S3_KEY.staticsPrefix)
+            val cssMsg = SqsMsgBody.CssMsg(srcKey, destinationKey)
+            logger.info("Sending message to Handlebars queue for $cssMsg")
+            sendMessage(queueUrl, cssMsg, sourceType, srcKey)
+        } catch (qdne: QueueDoesNotExistException) {
+            logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         }
     }
 

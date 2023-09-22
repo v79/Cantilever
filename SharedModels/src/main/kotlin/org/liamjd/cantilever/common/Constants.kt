@@ -9,6 +9,7 @@ object S3_KEY {
     const val postsPrefix = "$sources/posts/"
     const val pagesPrefix = "$sources/pages/"
     const val templatesPrefix = "${sources}/templates/"
+    const val staticsPrefix = "${sources}/statics/"
     const val projectKey = "$sources/cantilever.yaml"
     const val fragments = "$generated/htmlFragments/"
     const val postsKey = "$generated/posts.json"
@@ -28,11 +29,11 @@ object FILES {
  * Standard input file types
  */
 object FILE_TYPE {
-    const val MD = ".md"
-    const val HTML_HBS = ".html.hbs"
-    const val HTML = ".html"
-    const val YAML = ".yaml"
-    const val CSS = ".css"
+    const val MD = "md"
+    const val HTML_HBS = "html.hbs"
+    const val HTML = "html"
+    const val YAML = "yaml"
+    const val CSS = "css"
 }
 
 /**

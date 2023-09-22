@@ -37,7 +37,6 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
 
     init {
         // Get the "deploymentDomain" value from cdk.json, or default to the dev URL if not found
-        @Suppress("UNCHECKED_CAST")
         val envKey = scope.node.tryGetContext("env") as String?
         val env = scope.node.tryGetContext(envKey ?: "env") as LinkedHashMap<String, String>?
         val deploymentDomain = (env?.get("domainName")) ?: "http://localhost:5173"
@@ -82,7 +81,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             memory = 256,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
-                ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl
+                ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
+                ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl
             )
         )
 
@@ -181,6 +181,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         markdownProcessingQueue.queue.grantConsumeMessages(markdownProcessorLambda)
         handlebarProcessingQueue.queue.grantSendMessages(markdownProcessorLambda)
         handlebarProcessingQueue.queue.grantConsumeMessages(templateProcessorLambda)
+        handlebarProcessingQueue.queue.grantSendMessages(fileUploadLambda)
 
         println("Creating API Gateway integrations")
         val certificate = Certificate.fromCertificateArn(
