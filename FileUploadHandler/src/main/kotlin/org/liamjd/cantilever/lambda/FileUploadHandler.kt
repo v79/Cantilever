@@ -54,7 +54,6 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val handlebarQueueURL = System.getenv(QUEUE.HANDLEBARS)
 
             logger.info("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
-            logger.info("MarkdownQueue: $markdownQueueURL")
 
             try {
                 val fileType = srcKey.substringAfterLast('.').lowercase()
