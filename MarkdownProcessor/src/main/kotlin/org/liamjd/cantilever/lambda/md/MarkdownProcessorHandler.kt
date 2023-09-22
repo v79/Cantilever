@@ -45,8 +45,6 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         logger.info("Received ${event.records.size} events received for Markdown processing")
 
         event.records.forEach { eventRecord ->
-            val sourceType = eventRecord.messageAttributes["sourceType"]?.stringValue ?: "posts"
-
             when (val sqsMsgBody = Json.decodeFromString<SqsMsgBody>(eventRecord.body)) {
                 is SqsMsgBody.MarkdownPostUploadMsg -> {
                     logger.info("Metadata: ${sqsMsgBody.metadata}")
@@ -113,8 +111,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 
                     val msgResponse = sqsService.sendMessage(
                         toQueue = handlebarQueueUrl,
-                        body = message,
-                        messageAttributes = createStringAttribute("sourceType", sourceType)
+                        body = message
                     )
                     logger.info("Message '${Json.encodeToString(message)}' sent, message ID is ${msgResponse?.messageId()}")
                 }

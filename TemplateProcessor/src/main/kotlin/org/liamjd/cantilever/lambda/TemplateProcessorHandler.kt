@@ -154,7 +154,6 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             val renderer = HandlebarsRenderer()
             renderer.render(model = model, template = templateString)
         }
-        //                        logger.info("Rendered HTML: ${html.take(100)}")
 
         // TODO: this is a hack!
         val outputFilename = calculateFilename(pageMsg)
@@ -212,14 +211,23 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         println("TemplateProcessorHandler: Calculating final file name for $message")
         return when (message) {
             is SqsMsgBody.PageHandlebarsModelMsg ->
-                if (message.key.endsWith(INDEX_MD)) INDEX_HTML else message.key.substringBefore(MD)
+                if (message.key.endsWith(INDEX_MD)) INDEX_HTML else message.key.substringBefore(".$MD")
                     .substringAfterLast("pages/")
 
-            is SqsMsgBody.HTMLFragmentReadyMsg -> message.metadata.slug
-            is SqsMsgBody.MarkdownPostUploadMsg -> message.metadata.slug
-            is SqsMsgBody.PageModelMsg -> if (message.srcKey == INDEX_MD) INDEX_HTML else message.srcKey.substringBefore(
-                ".md"
-            ).substringAfterLast("pages/")
+            is SqsMsgBody.HTMLFragmentReadyMsg -> { // not relevant here
+                message.metadata.slug
+            }
+
+            is SqsMsgBody.MarkdownPostUploadMsg -> { // not relevant here
+                message.metadata.slug
+            }
+
+            is SqsMsgBody.PageModelMsg -> { // not relevant here
+                // if (message.srcKey == INDEX_MD) INDEX_HTML else message.srcKey.substringBefore(
+                //                ".md"
+                //            ).substringAfterLast("pages/")
+                ""
+            }
 
             is SqsMsgBody.CssMsg -> {
                 println("TODO: Processing CSS file")

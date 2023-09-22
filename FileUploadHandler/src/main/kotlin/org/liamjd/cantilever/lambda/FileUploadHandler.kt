@@ -62,7 +62,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                 when (uploadFolder) {
                     Posts -> {
                         if (fileType == FILE_TYPE.MD) {
-                            processPostUpload(srcKey, srcBucket, markdownQueueURL, folderName)
+                            processPostUpload(srcKey, srcBucket, markdownQueueURL)
                         } else {
                             logger.error("Posts must be written in Markdown format with the '.md' file extension")
                         }
@@ -70,7 +70,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
                     Pages -> {
                         if (fileType == FILE_TYPE.MD) {
-                            processPageUpload(srcKey, srcBucket, markdownQueueURL, folderName)
+                            processPageUpload(srcKey, srcBucket, markdownQueueURL)
                         } else {
                             logger.error("Pages must be written in Markdown format with the '.md' file extension")
                         }
@@ -84,13 +84,13 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                         logger.info("Analysing file type for static file upload")
                         when (fileType) {
                             FILE_TYPE.CSS -> {
-                                processCSSUpload(srcKey, srcBucket, handlebarQueueURL, fileType)
+                                processCSSUpload(srcKey, srcBucket, handlebarQueueURL)
                             }
                         }
                     }
 
                     else -> {
-                        logger.info("No action defined for source type '$folderName'")
+                        logger.info("No action defined for source type '$srcKey'")
                     }
                 }
 
@@ -112,8 +112,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
     private fun processPostUpload(
         srcKey: String,
         srcBucket: String,
-        queueUrl: String,
-        sourceType: String
+        queueUrl: String
     ) {
         logger.info("Sending post $srcKey to markdown processor queue")
         try {
@@ -125,7 +124,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val markdownBody = sourceString.stripFrontMatter()
 
             val postModelMsg = SqsMsgBody.MarkdownPostUploadMsg(metadata, markdownBody)
-            sendMessage(queueUrl, postModelMsg, sourceType, srcKey)
+            sendMessage(queueUrl, postModelMsg, srcKey)
         } catch (qdne: QueueDoesNotExistException) {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
@@ -139,18 +138,17 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
     private fun processPageUpload(
         srcKey: String,
         srcBucket: String,
-        queueUrl: String,
-        sourceType: String
+        queueUrl: String
     ) {
         try {
             logger.info("Received page file $srcKey and sending it to Markdown processor queue")
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
-            val pageSrcKey = srcKey.removePrefix("sources/$sourceType/") // just want the actual file name
+            val pageSrcKey = srcKey.removePrefix(S3_KEY.pagesPrefix) // just want the actual file name
             // extract page model
             val pageModelMsg = extractPageModel(pageSrcKey, sourceString)
             logger.info("Built page model for: ${pageModelMsg.srcKey}")
 
-            sendMessage(queueUrl, pageModelMsg, sourceType, srcKey)
+            sendMessage(queueUrl, pageModelMsg, srcKey)
         } catch (qdne: QueueDoesNotExistException) {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
@@ -165,13 +163,12 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         srcKey: String,
         srcBucket: String,
         queueUrl: String,
-        sourceType: String
     ) {
         try {
             val destinationKey = "css/" + srcKey.removePrefix(S3_KEY.staticsPrefix)
             val cssMsg = SqsMsgBody.CssMsg(srcKey, destinationKey)
             logger.info("Sending message to Handlebars queue for $cssMsg")
-            sendMessage(queueUrl, cssMsg, sourceType, srcKey)
+            sendMessage(queueUrl, cssMsg, srcKey)
         } catch (qdne: QueueDoesNotExistException) {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         }
@@ -184,13 +181,11 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
     private fun sendMessage(
         queueUrl: String,
         pageModelMsg: SqsMsgBody,
-        sourceType: String,
         srcKey: String
     ) {
         val msgResponse = sqsService.sendMessage(
             toQueue = queueUrl,
-            body = pageModelMsg,
-            messageAttributes = createStringAttribute("sourceType", sourceType)
+            body = pageModelMsg
         )
         if (msgResponse != null) {
             logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
