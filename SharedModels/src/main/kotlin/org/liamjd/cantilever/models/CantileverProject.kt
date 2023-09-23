@@ -19,7 +19,7 @@ data class CantileverProject @OptIn(ExperimentalSerializationApi::class) constru
     val author: String,
     val dateFormat: String = "dd/MM/yyyy",
     val dateTimeFormat: String = "HH:mm dd/MM/yyyy",
-    val imageResolutions: Map<String, ImgRes>,
+    val imageResolutions: Map<String, ImgRes> = emptyMap(),
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     var attributes: Map<String,String>? = null
 )

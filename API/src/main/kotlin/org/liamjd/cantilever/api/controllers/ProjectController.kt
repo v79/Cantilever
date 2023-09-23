@@ -43,7 +43,6 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
             val projectYaml = s3Service.getObjectAsString(projectKey, sourceBucket)
             try {
                 val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
-                println("Project definition: $project")
                 ResponseEntity.ok(body = APIResult.Success(value = project))
             } catch (se: SerializationException) {
                 ResponseEntity.serverError(

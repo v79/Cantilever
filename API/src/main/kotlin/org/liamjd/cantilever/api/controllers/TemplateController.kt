@@ -57,8 +57,7 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
             val length = s3Service.putObject(srcKey,sourceBucket,handlebarsContent.body,"text/html")
             ResponseEntity.ok(body = APIResult.OK("Updated file ${handlebarsContent.template.key}, $length bytes"))
         } else {
-            println("Creating new file...")
-            println(handlebarsContent.template.key)
+            println("Creating new file '${handlebarsContent.template.key}'")
             val length = s3Service.putObject(srcKey, sourceBucket, handlebarsContent.body, "text/html")
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }

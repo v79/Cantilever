@@ -1,9 +1,11 @@
 package org.liamjd.cantilever.api.controllers
 
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 import org.koin.core.context.startKoin
+import org.koin.core.context.stopKoin
 import org.koin.dsl.module
 import org.koin.test.KoinTest
 import org.koin.test.get
@@ -17,8 +19,10 @@ class MockTestTest : KoinTest {
     // Lazy inject property
     val componentB: ComponentB by inject()
 
-
-
+    @AfterEach
+    fun tearDown() {
+        stopKoin()
+    }
 
     @Test
     fun `should inject my components`() {
