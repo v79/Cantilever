@@ -25,12 +25,12 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
         val markdownSource = request.pathParameters["srcKey"]
         return if (markdownSource != null) {
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
-            println("PostsController loading Markdown file $decoded")
+            info("Loading Markdown file $decoded")
             return if (s3Service.objectExists(decoded, sourceBucket)) {
                 val mdPost = buildMarkdownPost(decoded)
                 ResponseEntity.ok(body = APIResult.Success(mdPost))
             } else {
-                println("PostController: File '$decoded' not found")
+                error("File '$decoded' not found")
                 ResponseEntity.notFound(body = APIResult.Error("Markdown file $decoded not found in bucket $sourceBucket"))
             }
         } else {
@@ -42,17 +42,17 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
      * Save a [MarkdownPost] to the sources bucket
      */
     fun saveMarkdownPost(request: Request<MarkdownPost>): ResponseEntity<APIResult<String>> {
-        println("PostController: saveMarkdownPost")
+        info("saveMarkdownPost")
         val postToSave = request.body
         val srcKey = URLDecoder.decode(postToSave.metadata.srcKey, Charset.defaultCharset())
 
+        // this if statement is a bit pointless just now as both routes do the same thing
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
-            println("Updating existing file '${postToSave.metadata.srcKey}'")
+            info("Updating existing file '${postToSave.metadata.srcKey}'")
             val length = s3Service.putObject(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
-            println("Creating new file...")
-            println(postToSave.metadata)
+            info("Creating new file...")
             val length = s3Service.putObject(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
@@ -66,15 +66,17 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
 
         return if (markdownSource != null) {
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
-            println("PostsController deleting Markdown file $decoded")
+            info("Deleting Markdown file $decoded")
             return if (s3Service.objectExists(decoded, sourceBucket)) {
-                println("Deleting file $decoded")
+                info("Deleting file $decoded")
                 s3Service.deleteObject(decoded, sourceBucket)
                 ResponseEntity.ok(body = APIResult.OK("Source $decoded deleted"))
             } else {
+                error("Could not delete $decoded; object not found")
                 ResponseEntity.ok(body = APIResult.Error("Could not delete $decoded; object not found"))
             }
         } else {
+            error("Could not delete null markdownSource")
             ResponseEntity.ok(body = APIResult.Error("Could not delete null markdownSource"))
         }
     }
@@ -88,7 +90,7 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
         val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
         val metadata = extractPostMetadata(filename = srcKey, source = markdown)
 
-        println("Returning MarkdownPost from $metadata")
+        info("Returning MarkdownPost from $metadata")
         val mdPostMeta = MarkdownPost(
             PostMeta(
                 title = metadata.title,
@@ -102,4 +104,8 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
         mdPostMeta.body = markdown.substringAfter("---").substringAfter("---").trim()
         return mdPostMeta
     }
+
+    override fun info(message: String) = println("INFO: PostController: $message")
+    override fun warn(message: String) = println("WARN: PostController: $message")
+    override fun error(message: String) = println("ERROR: PostController: $message")
 }

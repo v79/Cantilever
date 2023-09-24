@@ -4,10 +4,7 @@ import com.charleskorn.kaml.Yaml
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.SerializationException
-import org.liamjd.cantilever.common.FILE_TYPE
-import org.liamjd.cantilever.common.getFrontMatter
-import org.liamjd.cantilever.common.now
-import org.liamjd.cantilever.common.toSlug
+import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.models.PostMetadata
 
 /**
@@ -28,9 +25,9 @@ fun extractPostMetadata(filename: String, source: String): PostMetadata {
 
     }
     return PostMetadata(
-        title = filename.removeSuffix(FILE_TYPE.MD),
+        title = filename.removeSuffix(FILE_TYPE.MD).removeSuffix("."),
         template = "post",
-        slug = filename.removeSuffix(FILE_TYPE.MD).removePrefix("sources").toSlug(),
+        slug = filename.removeSuffix(FILE_TYPE.MD).removeSuffix(".").removePrefix(S3_KEY.sources).toSlug(),
         date = LocalDate.now(),
         lastModified = Clock.System.now()
     )

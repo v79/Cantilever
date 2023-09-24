@@ -10,8 +10,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.QUEUE
 import org.liamjd.cantilever.common.S3_KEY.fragments
-import org.liamjd.cantilever.common.SOURCE_TYPE
-import org.liamjd.cantilever.common.createStringAttribute
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
@@ -30,6 +28,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 
     private val s3Service: S3Service
     private val sqsService: SQSService
+    private lateinit var logger: LambdaLogger
 
     init {
         s3Service = S3ServiceImpl(Region.EU_WEST_2)
@@ -39,32 +38,27 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
     override fun handleRequest(event: SQSEvent, context: Context): String {
         val sourceBucket = System.getenv("source_bucket")
         val handlebarQueueUrl = System.getenv(QUEUE.HANDLEBARS)
-        val logger = context.logger
+        logger = context.logger
         val response = "200 OK"
 
-        logger.info("Received ${event.records.size} events recieved for Markdown processing")
+        logger.info("Received ${event.records.size} events received for Markdown processing")
 
         event.records.forEach { eventRecord ->
-            val sourceType = eventRecord.messageAttributes["sourceType"]?.stringValue ?: "posts"
-            logger.info("SourceType: $sourceType")
-
-            when (sourceType) {
-                SOURCE_TYPE.POSTS -> {
-                    val markdownPostUploadMsg =
-                        Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.MarkdownPostUploadMsg
-                    logger.info("Metadata: ${markdownPostUploadMsg.metadata}")
-                    val html = convertMDToHTML(mdSource = markdownPostUploadMsg.markdownText)
+            when (val sqsMsgBody = Json.decodeFromString<SqsMsgBody>(eventRecord.body)) {
+                is SqsMsgBody.MarkdownPostUploadMsg -> {
+                    logger.info("Metadata: ${sqsMsgBody.metadata}")
+                    val html = convertMDToHTML(mdSource = sqsMsgBody.markdownText)
                     val outputStream = ByteArrayOutputStream()
                     outputStream.bufferedWriter().write(html)
 
                     try {
-                        val htmlKey = fragments + markdownPostUploadMsg.metadata.slug
+                        val htmlKey = fragments + sqsMsgBody.metadata.slug
                         s3Service.putObject(htmlKey, sourceBucket, html, "text/html")
                         logger.info("Wrote HTML file '$htmlKey'")
                         logger.info("Sending message to handlebars handler")
                         val message = SqsMsgBody.HTMLFragmentReadyMsg(
                             fragmentKey = htmlKey,
-                            metadata = markdownPostUploadMsg.metadata
+                            metadata = sqsMsgBody.metadata
                         )
                         logger.info("Prepared message: $message")
 
@@ -79,48 +73,50 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                     }
                 }
 
-                SOURCE_TYPE.PAGES -> {
-                    logger.info(eventRecord.body)
+                is SqsMsgBody.PageModelMsg -> {
                     /**
                      * A page is different from a post. It has a different set of metadata.
                      * It may need access to the structure.json file to populate.
                      * It may contain multiple 'content slots'.
                      */
-                    val pageModel = Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.PageModelMsg
                     // transform each of the sections from Markdown to HTML and save them as fragments.
                     // then build a message model which contains references to each of the fragments
                     // which will be passed to the handlebars template
-                    val fragmentPrefix = fragments + pageModel.srcKey + "/"
+                    val fragmentPrefix = fragments + sqsMsgBody.srcKey + "/"
                     val sectionMap = mutableMapOf<String, String>()
                     var bytesWritten = 0
-                    pageModel.sections.forEach {
+                    sqsMsgBody.sections.forEach {
                         logger.info("Writing ${it.key} to ${fragmentPrefix}${it.key}")
                         val html = convertMDToHTML(it.value)
                         logger.info("HTML output is ${html.length} characters long.")
-                        bytesWritten += s3Service.putObject(fragmentPrefix + it.key, sourceBucket, html, "text/html")
+                        bytesWritten += s3Service.putObject(
+                            fragmentPrefix + it.key,
+                            sourceBucket,
+                            html,
+                            "text/html"
+                        )
                         sectionMap[it.key] = fragmentPrefix + it.key
                     }
 
                     val message = SqsMsgBody.PageHandlebarsModelMsg(
-                        key = pageModel.srcKey,
-                        template = pageModel.templateKey,
-                        attributes = pageModel.attributes,
+                        key = sqsMsgBody.srcKey,
+                        template = sqsMsgBody.templateKey,
+                        attributes = sqsMsgBody.attributes,
                         sectionKeys = sectionMap.toMap(),
-                        url = pageModel.url.removeSuffix(".md")
+                        url = sqsMsgBody.url.removeSuffix(".md")
                     )
-                    logger.info("${pageModel.sections.size} sections written, totalling $bytesWritten bytes")
+                    logger.info("${sqsMsgBody.sections.size} sections written, totalling $bytesWritten bytes")
                     logger.info("Prepared message: $message")
 
                     val msgResponse = sqsService.sendMessage(
                         toQueue = handlebarQueueUrl,
-                        body = message,
-                        messageAttributes = createStringAttribute("sourceType", sourceType)
+                        body = message
                     )
                     logger.info("Message '${Json.encodeToString(message)}' sent, message ID is ${msgResponse?.messageId()}")
                 }
 
-                else -> {
-                    logger.info("Cannot process unknown sourceType $sourceType")
+                is SqsMsgBody.CssMsg, is SqsMsgBody.HTMLFragmentReadyMsg, is SqsMsgBody.PageHandlebarsModelMsg -> {
+                    // these messages are for TemplateProcessor only
                 }
             }
         }
@@ -131,9 +127,9 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 /**
  * Wrappers for logging to make it slightly less annoying
  */
-fun LambdaLogger.info(function: String, message: String) = log("INFO $function:  $message\n")
+fun LambdaLogger.info(function: String, message: String) = log("INFO: $function:  $message\n")
 fun LambdaLogger.info(message: String) = info("MarkdownProcessorHandler", message)
-fun LambdaLogger.warn(function: String, message: String) = log("WARN $function:  $message\n")
+fun LambdaLogger.warn(function: String, message: String) = log("WARN: $function:  $message\n")
 fun LambdaLogger.warn(message: String) = warn("MarkdownProcessorHandler", message)
-fun LambdaLogger.error(function: String, message: String) = log("ERROR $function:  $message\n")
+fun LambdaLogger.error(function: String, message: String) = log("ERROR: $function:  $message\n")
 fun LambdaLogger.error(message: String) = error("MarkdownProcessorHandler", message)

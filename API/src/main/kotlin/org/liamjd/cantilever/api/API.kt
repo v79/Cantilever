@@ -92,14 +92,10 @@ class LambdaRouter : RequestHandlerWrapper() {
             group("/posts") {
                 get("/$SRCKEY", postController::loadMarkdownSource)
                 get("/preview/$SRCKEY") { request: Request<Unit> -> ResponseEntity.notImplemented(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!") }.supplies(
-                    setOf(
-                        MimeType.html
-                    )
+                    setOf(MimeType.html)
                 )
                 post("/", postController::saveMarkdownPost).supplies(
-                    setOf(
-                        MimeType.plainText
-                    )
+                    setOf(MimeType.plainText)
                 )
                 delete("/$SRCKEY", postController::deleteMarkdownPost).supplies(setOf(MimeType.plainText))
             }

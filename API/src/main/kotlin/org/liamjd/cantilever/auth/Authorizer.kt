@@ -23,6 +23,10 @@ import java.security.interfaces.RSAPublicKey
 interface Authorizer {
     val simpleName: String
     fun authorize(request: APIGatewayProxyRequestEvent): AuthResult
+
+    fun info(message: String) = println("INFO: Authorizer: $message")
+    fun warn(message: String) = println("WARN: Authorizer: $message")
+    fun logError(message: String) = println("ERROR: Authorizer: $message")
 }
 
 /**
@@ -43,8 +47,10 @@ class CognitoJWTAuthorizer(private val configuration: Map<String, String>) : Aut
 
     override fun authorize(request: APIGatewayProxyRequestEvent): AuthResult {
         val authHeader = request.getHeader("Authorization")
-        println("CognitoJWTAuthenticator: Bearer = $authHeader")
-        if (authHeader == null) return AuthResult(false, "Missing Authorization Header")
+        if (authHeader == null) {
+            logError("Missing Authorization Header")
+            return AuthResult(false, "Missing Authorization Header")
+        }
         val token = extractToken(authHeader)
         if (token == "") return AuthResult(false, "Invalid or missing Bearer token")
 
@@ -61,14 +67,14 @@ class CognitoJWTAuthorizer(private val configuration: Map<String, String>) : Aut
             val verified = try {
                 jwtVerifier.verify(token)
             } catch (veriException: JWTVerificationException) {
-                println("Verification of token failed; exception type is: ${veriException::class}")
-                println(veriException.message)
+                logError("Verification of token failed; exception type is: ${veriException::class}")
+                logError(veriException.message ?: "<No exception message found>")
                 return AuthResult(false, veriException.message.toString())
             }
-            println("Authorized user ${verified.getClaim("name")}, token with claims: ${verified.claims}")
+            info("Authorized user ${verified.getClaim("name")}, token with claims: ${verified.claims}")
             return AuthResult(true, "")
         }
-        println("Could not verify credentials; Cognito region and/or user pool ID not configured: $configuration")
+        logError("Could not verify credentials; Cognito region and/or user pool ID not configured: $configuration")
         return AuthResult(false, "Could not verify credentials; Cognito region and/or user pool ID not configured.")
     }
 
@@ -98,7 +104,6 @@ internal class AWSCognitoRSAKeyProvider(cognitoRegion: String, userPoolID: Strin
         return try {
             provider.get(kid).publicKey as RSAPublicKey
         } catch (jwke: JwkException) {
-            println(jwke.message)
             throw RuntimeException(
                 String.format(
                     "Failed to get JWT kid=%s from aws_kid_store_url=%s",

@@ -26,12 +26,12 @@ class PageController(val sourceBucket: String) : KoinComponent, APIController {
         val markdownSource = request.pathParameters["srcKey"]
         return if (markdownSource != null) {
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
-            println("PageController loading Markdown file $decoded")
+            info("Loading Markdown file $decoded")
             return if (s3Service.objectExists(decoded, sourceBucket)) {
                 val mdPage = buildMarkdownPage(decoded)
                 ResponseEntity.ok(body = APIResult.Success(mdPage))
             } else {
-                println("PageController: File '$decoded' not found")
+                error("File '$decoded' not found")
                 ResponseEntity.notFound(body = APIResult.Error("Markdown file $decoded not found in bucket $sourceBucket"))
             }
         } else {
@@ -61,20 +61,24 @@ class PageController(val sourceBucket: String) : KoinComponent, APIController {
      * Save a [MarkdownPage] to the sources bucket
      */
     fun saveMarkdownPageSource(request: Request<MarkdownPage>): ResponseEntity<APIResult<String>> {
-        println("PageController: saveMarkdownPageSource")
+        info("saveMarkdownPageSource")
         val pageToSave = request.body
         pageToSave.also {
-            println("PageToSave: ${it.metadata.title} has ${it.metadata.attributes.keys.size} attributes and ${it.metadata.sections.keys.size} sections")
+            info("PageToSave: ${it.metadata.title} has ${it.metadata.attributes.keys.size} attributes and ${it.metadata.sections.keys.size} sections")
         }
         val srcKey = URLDecoder.decode(pageToSave.metadata.srcKey, Charset.defaultCharset())
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
-            println("Updating existing file '${pageToSave.metadata.srcKey}'")
+            info("Updating existing file '${pageToSave.metadata.srcKey}'")
             val length = s3Service.putObject(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
-            println("Creating new file...")
+            info("Creating new file...")
             val length = s3Service.putObject(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
     }
+
+    override fun info(message: String) = println("INFO: PageController: $message")
+    override fun warn(message: String) = println("WARN: PageController: $message")
+    override fun error(message: String) = println("ERROR: PageController: $message")
 }
