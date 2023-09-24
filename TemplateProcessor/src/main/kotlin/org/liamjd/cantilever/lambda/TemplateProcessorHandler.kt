@@ -30,6 +30,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
     private val s3Service: S3Service
     private lateinit var logger: LambdaLogger
+    private lateinit var navigationBuilder: NavigationBuilder
 
     init {
         s3Service = S3ServiceImpl(Region.EU_WEST_2)
@@ -43,6 +44,9 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         val destinationBucket = System.getenv("destination_bucket")
         val project: CantileverProject = getProjectModel(sourceBucket)
 
+        with(logger) {
+            navigationBuilder = NavigationBuilder(s3Service)
+        }
         logger.info("${event.records.size} records received for processing...")
 
         event.records.forEach { eventRecord ->
@@ -128,7 +132,6 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         val postList = Json.decodeFromString<PostList>(postsFile)
 
         val pageTemplateKey = templatesPrefix + pageMsg.template + "." + HTML_HBS
-        logger.info("Extracted page model: $pageMsg")
 
         // load the page.html.hbs template
         logger.info("Loading template $pageTemplateKey")
@@ -138,11 +141,12 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         model["key"] = pageMsg.key
         model["url"] = pageMsg.url
         model["project"] = project
+        model["title"] = pageMsg.title
         model.putAll(pageMsg.attributes)
 
         pageMsg.sectionKeys.forEach { (name, objectKey) ->
             val html = s3Service.getObjectAsString(objectKey, sourceBucket)
-            logger.info("Adding $name to model from $objectKey: ${html.take(50)}")
+            logger.info("Adding section $name to model from $objectKey")
             model[name] = html
         }
 
@@ -187,8 +191,14 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         model["project"] = project
         model["title"] = postMsg.metadata.title
         model["body"] = body
+        model["date"] = postMsg.metadata.date
 
         val html = with(logger) {
+            val nav = navigationBuilder.getPostNavigationObjects(postMsg.metadata,sourceBucket)
+            nav.entries.forEach {
+                model[it.key] = it.value
+            }
+
             val renderer = HandlebarsRenderer()
             renderer.render(model = model, template = templateString)
         }

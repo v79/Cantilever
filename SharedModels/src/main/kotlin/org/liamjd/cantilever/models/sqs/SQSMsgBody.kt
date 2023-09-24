@@ -23,6 +23,7 @@ sealed class SqsMsgBody {
     @Serializable
     data class PageHandlebarsModelMsg(
         val key: String,
+        val title: String,
         val template: String,
         val attributes: Map<String, String>,
         val sectionKeys: Map<String, String>,

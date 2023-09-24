@@ -169,7 +169,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     warn("Skipping non-markdown file '${obj.key()}'")
                 }
             }
-            info("Sorting output")
+            info("Sorting output, most recent first")
             list.sortByDescending { it.date }
             val postList = PostList(posts = list, count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(PostList.serializer(), postList)
