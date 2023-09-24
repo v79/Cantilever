@@ -30,13 +30,18 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
     private val s3Service: S3Service
+    private val navigationBuilder: NavigationBuilder
+    private lateinit var logger: LambdaLogger
 
     init {
         s3Service = S3ServiceImpl(Region.EU_WEST_2)
+        with(logger) {
+            navigationBuilder = NavigationBuilder(s3Service)
+        }
     }
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
-        val logger = context.logger
+        logger = context.logger
         val responses = mutableListOf<String>()
 
         val sourceBucket = System.getenv("source_bucket")
@@ -55,32 +60,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                         val message =
                             Json.decodeFromString<SqsMsgBody>(eventRecord.body) as SqsMsgBody.HTMLFragmentReadyMsg
                         logger.info("Processing message: $message")
-
-                        val body = s3Service.getObjectAsString(message.fragmentKey, sourceBucket)
-                        logger.info("Loaded body fragment from '${fragments + message.fragmentKey}: ${body.take(100)}'")
-
-                        // load template file as specified by metadata
-                        val template = templatesPrefix + message.metadata.template + HTML_HBS
-                        logger.info("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
-                        val templateString = s3Service.getObjectAsString(template, sourceBucket)
-                        logger.info("Got templateString: ${templateString.take(100)}")
-
-                        // build model from project and from html fragment
-                        val model = mutableMapOf<String, Any?>()
-                        model["project"] = project
-                        model["title"] = message.metadata.title
-                        model["body"] = body
-
-                        val html = with(logger) {
-                            val renderer = HandlebarsRenderer()
-                            renderer.render(model = model, template = templateString)
-                        }
-                        logger.info("Rendered HTML: ${html.take(100)}")
-
-                        // save to S3
-                        val outputFilename = calculateFilename(message)
-                        s3Service.putObject(outputFilename, destinationBucket, html, "text/html")
-                        logger.info("Written final HTML file to '${outputFilename}'")
+                        renderPost(message, sourceBucket, project, destinationBucket)
                     }
 
                     SOURCE_TYPE.PAGES -> {
@@ -138,6 +118,54 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         }
 
         return if (responses.size == 0) "200 OK" else "${responses.size} errors, final was ${responses.last()}"
+    }
+
+    /**
+     * Build the render model and render the handlebars template for the given Post
+     * @param message the SQS message containing the details of the post to render
+     * @param sourceBucket
+     * @param project the overall project definition
+     * @param destinationBucket
+     */
+    private fun renderPost(
+        message: SqsMsgBody.HTMLFragmentReadyMsg,
+        sourceBucket: String,
+        project: CantileverProject,
+        destinationBucket: String
+    ) {
+            val body = s3Service.getObjectAsString(message.fragmentKey, sourceBucket)
+            logger.info("Loaded body fragment from '${fragments + message.fragmentKey}'")
+
+            // load template file as specified by metadata
+            val template = templatesPrefix + message.metadata.template + HTML_HBS
+            logger.info("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
+            val templateString = s3Service.getObjectAsString(template, sourceBucket)
+            logger.info("Got templateString: ${templateString.take(100)}")
+
+            // build model from project and from html fragment
+            val model = mutableMapOf<String, Any?>()
+            model["project"] = project
+            model["title"] = message.metadata.title
+            model["body"] = body
+
+        with(logger) {
+            navigationBuilder.getNavigationObjects(message.metadata, sourceBucket)
+            model["@prev"] = ""
+            model["@next"] = ""
+            model["@first"] = ""
+            model["@last"] = ""
+        }
+
+
+            val html = with(logger) {
+                val renderer = HandlebarsRenderer()
+                renderer.render(model = model, template = templateString)
+            }
+
+            // save to S3
+            val outputFilename = calculateFilename(message)
+            s3Service.putObject(outputFilename, destinationBucket, html, "text/html")
+            logger.info("Written final HTML file to '${outputFilename}'")
     }
 
     /**
