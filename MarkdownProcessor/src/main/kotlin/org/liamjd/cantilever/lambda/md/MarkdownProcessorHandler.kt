@@ -10,7 +10,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.QUEUE
 import org.liamjd.cantilever.common.S3_KEY.fragments
-import org.liamjd.cantilever.common.createStringAttribute
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
