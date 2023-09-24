@@ -34,6 +34,7 @@ interface S3Service {
      * @param bucket the s3 bucket name
      * @param contents the string of characters to write to the object
      * @param contentType the mime type of the file; optional
+     * @return size of object in bytes
      */
     fun putObject(key: String, bucket: String, contents: String, contentType: String?): Int
 

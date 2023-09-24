@@ -38,14 +38,14 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
      * Return the 'cantilever.yaml' project definition file, in yaml format.
      */
     fun getProject(request: Request<Unit>): ResponseEntity<APIResult<CantileverProject>> {
-        println("ProjectController: Retrieving 'cantilever.yaml' file")
+        info("Retrieving 'cantilever.yaml' file")
         return if (s3Service.objectExists(projectKey, sourceBucket)) {
             val projectYaml = s3Service.getObjectAsString(projectKey, sourceBucket)
             try {
                 val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
-                println("Project definition: $project")
                 ResponseEntity.ok(body = APIResult.Success(value = project))
             } catch (se: SerializationException) {
+                error(se.message ?: "Error deserializing cantilever.yaml. Project is broken.")
                 ResponseEntity.serverError(
                     body = APIResult.Error(
                         message = se.message ?: "Error deserializing cantilever.yaml. Project is broken."
@@ -53,6 +53,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                 )
             }
         } else {
+            error("Cannot find file '$projectKey' in bucket '$sourceBucket'. Project is broken.")
             ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '$projectKey' in bucket '$sourceBucket'. Project is broken."))
         }
     }
@@ -61,13 +62,13 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
      * Update the 'cantilever.yaml' project definition file. This will come to us as yaml document, not json, but it will return as json.
      */
     fun updateProjectDefinition(request: Request<CantileverProject>): ResponseEntity<APIResult<CantileverProject>> {
-        println("ProjectController: Updating 'cantilever.yaml' file")
+        info("Updating 'cantilever.yaml' file")
         val updatedDefinition = request.body
         if (updatedDefinition.projectName.isBlank()) {
             return ResponseEntity.badRequest(APIResult.Error(message = "Unable to update project definition where 'project name' is blank"))
         }
-        println("Updated project: $updatedDefinition")
-        val yamlToSave = Yaml.default.encodeToString(CantileverProject.serializer(),request.body)
+        info("Updated project: $updatedDefinition")
+        val yamlToSave = Yaml.default.encodeToString(CantileverProject.serializer(), request.body)
         val jsonResponse = Json.encodeToString(CantileverProject.serializer(), request.body)
         s3Service.putObject(
             projectKey,
@@ -105,12 +106,13 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
      * Return a list of all the [Page]s
      */
     fun getPages(request: Request<Unit>): ResponseEntity<APIResult<PageList>> {
-        println("ProjectController: Retrieving all pages")
+        info("Retrieving all pages")
         return if (s3Service.objectExists(pagesKey, sourceBucket)) {
             val pageListJson = s3Service.getObjectAsString(pagesKey, sourceBucket)
             val pageList = Json.decodeFromString(PageList.serializer(), pageListJson)
             ResponseEntity.ok(body = APIResult.Success(value = pageList))
         } else {
+            error("Cannot find file '$pagesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/pages/rebuild")
             ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '$pagesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/pages/rebuild"))
         }
     }
@@ -119,12 +121,13 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
      * Return a list of all the [Template]s
      */
     fun getTemplates(request: Request<Unit>): ResponseEntity<APIResult<TemplateList>> {
-        println("ProjectController: Retrieving templates pages")
+        info("Retrieving templates pages")
         return if (s3Service.objectExists(templatesKey, sourceBucket)) {
             val templateListJson = s3Service.getObjectAsString(templatesKey, sourceBucket)
             val templateList = Json.decodeFromString(TemplateList.serializer(), templateListJson)
             ResponseEntity.ok(body = APIResult.Success(value = templateList))
         } else {
+            error("Cannot find file '$templatesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/templates/rebuild")
             ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '$templatesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/templates/rebuild"))
         }
     }
@@ -134,13 +137,13 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
      */
     fun rebuildPostList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val posts = s3Service.listObjects(postsPrefix, sourceBucket)
-        println("ProjectController: Rebuilding all posts from sources in '$postsPrefix'. ${posts.keyCount()} posts found.")
+        info("Rebuilding all posts from sources in '$postsPrefix'. ${posts.keyCount()} posts found.")
         var filesProcessed = 0
         if (posts.hasContents()) {
             val list = mutableListOf<PostMeta>()
             posts.contents().forEach { obj ->
                 if (obj.key().endsWith(".md")) {
-                    println("Extracting metadata from file '${obj.key()}'")
+                    info("Extracting metadata from file '${obj.key()}'")
                     val markdownSource = s3Service.getObjectAsString(obj.key(), sourceBucket)
                     val postMetadata = extractPostMetadata(obj.key(), markdownSource)
                     val templateKey = templatesPrefix + postMetadata.template + ".html.hbs"
@@ -148,7 +151,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                         val lastModified = obj.lastModified().toKotlinInstant()
                         Template(templateKey, lastModified)
                     } catch (nske: NoSuchKeyException) {
-                        println("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
+                        error("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
                         return@forEach
                     }
                     list.add(
@@ -163,16 +166,17 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     )
                     filesProcessed++
                 } else {
-                    println("Skipping non-markdown file '${obj.key()}'")
+                    warn("Skipping non-markdown file '${obj.key()}'")
                 }
             }
-            println("Sorting output")
+            info("Sorting output")
             list.sortByDescending { it.date }
             val postList = PostList(posts = list, count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(PostList.serializer(), postList)
-            println("Saving PostList JSON file (${listJson.length} bytes)")
+            info("Saving PostList JSON file (${listJson.length} bytes)")
             s3Service.putObject(postsKey, sourceBucket, listJson, APP_JSON)
         } else {
+            error("No source files found in $sourceBucket which match the requirements to build a $postsKey file.")
             return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a $postsKey file."))
         }
         return ResponseEntity.ok(body = APIResult.Success("Written new '${postsKey}' with $filesProcessed markdown files processed"))
@@ -184,13 +188,13 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
      */
     fun rebuildPageList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val pages = s3Service.listObjects(pagesPrefix, sourceBucket)
-        println("ProjectController: Rebuilding all pages from sources in '$pagesPrefix'. ${pages.keyCount()} pages found.")
+        info("Rebuilding all pages from sources in '$pagesPrefix'. ${pages.keyCount()} pages found.")
         var filesProcessed = 0
         if (pages.hasContents()) {
             val list = mutableListOf<Page>()
             pages.contents().forEach { obj ->
                 if (obj.key().endsWith(".md")) {
-                    println("Extracting metadata from file '${obj.key()}'")
+                    info("Extracting metadata from file '${obj.key()}'")
                     val markdownSource = s3Service.getObjectAsString(obj.key(), sourceBucket)
                     val pageModel = extractPageModel(obj.key(), markdownSource)
                     val templateKey = templatesPrefix + pageModel.templateKey + ".html.hbs"
@@ -198,7 +202,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                         val lastModified = obj.lastModified().toKotlinInstant()
                         Template(templateKey, lastModified)
                     } catch (nske: NoSuchKeyException) {
-                        println("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
+                        error("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
                         return@forEach
                     }
                     // we don't need to store the full contents of the sections in this file (just as we don't store the body in posts.json)
@@ -215,13 +219,13 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     )
                     filesProcessed++
                 } else {
-                    println("Skipping non-markdown file '${obj.key()}'")
+                    warn("Skipping non-markdown file '${obj.key()}'")
                 }
             }
             list.sortByDescending { it.lastUpdated }
             val pageList = PageList(pages = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(PageList.serializer(), pageList)
-            println("Saving PageList JSON file (${listJson.length} bytes)")
+            info("Saving PageList JSON file (${listJson.length} bytes)")
             s3Service.putObject(pagesKey, sourceBucket, listJson, APP_JSON)
         } else {
             return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a $postsKey file."))
@@ -234,7 +238,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
      */
     fun rebuildTemplateList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val templates = s3Service.listObjects(templatesPrefix, sourceBucket)
-        println("ProjectController: Rebuilding all templates from sources in '$pagesPrefix'. ${templates.keyCount()} templates found.")
+        info("Rebuilding all templates from sources in '$pagesPrefix'. ${templates.keyCount()} templates found.")
         var filesProcessed = 0
         if (templates.hasContents()) {
             val list = mutableListOf<Template>()
@@ -246,19 +250,23 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     )
                     filesProcessed++
                 } else {
-                    println("Skipping non-hbs file '${obj.key()}'")
+                    warn("Skipping non-hbs file '${obj.key()}'")
                 }
             }
             list.sortByDescending { it.lastUpdated }
             val templateList =
                 TemplateList(templates = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(TemplateList.serializer(), templateList)
-            println("Saving PageList JSON file (${listJson.length} bytes)")
+            info("Saving PageList JSON file (${listJson.length} bytes)")
             s3Service.putObject(templatesKey, sourceBucket, listJson, APP_JSON)
         } else {
+            error("No source files found in $sourceBucket which match the requirements to build a $templatesKey file.")
             return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a $templatesKey file."))
         }
         return ResponseEntity.ok(body = APIResult.Success("Written new '$templatesKey' with $filesProcessed markdown files processed"))
     }
 
+    override fun info(message: String) = println("INFO: ProjectController: $message")
+    override fun warn(message: String) = println("WARN: ProjectController: $message")
+    override fun error(message: String) = println("ERROR: ProjectController: $message")
 }

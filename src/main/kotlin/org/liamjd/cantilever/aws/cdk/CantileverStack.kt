@@ -37,13 +37,12 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
 
     init {
         // Get the "deploymentDomain" value from cdk.json, or default to the dev URL if not found
-        @Suppress("UNCHECKED_CAST")
         val envKey = scope.node.tryGetContext("env") as String?
         val env = scope.node.tryGetContext(envKey ?: "env") as LinkedHashMap<String, String>?
         val deploymentDomain = (env?.get("domainName")) ?: "http://localhost:5173"
         println("ENVIRONMENT: $env; deploymentDomain: $deploymentDomain")
 
-        Tags.of(this).add("Cantilever", "v0.0.6")
+        Tags.of(this).add("Cantilever", "v0.0.7")
 
         // Source bucket where Markdown, template files will be stored
         // I may wish to change the removal and deletion policies
@@ -82,7 +81,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
             memory = 256,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
-                ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl
+                ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
+                ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl
             )
         )
 
@@ -181,6 +181,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         markdownProcessingQueue.queue.grantConsumeMessages(markdownProcessorLambda)
         handlebarProcessingQueue.queue.grantSendMessages(markdownProcessorLambda)
         handlebarProcessingQueue.queue.grantConsumeMessages(templateProcessorLambda)
+        handlebarProcessingQueue.queue.grantSendMessages(fileUploadLambda)
 
         println("Creating API Gateway integrations")
         val certificate = Certificate.fromCertificateArn(
