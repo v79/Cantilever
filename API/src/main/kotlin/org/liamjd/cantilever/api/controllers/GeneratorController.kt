@@ -10,6 +10,7 @@ import org.liamjd.cantilever.common.S3_KEY.pagesKey
 import org.liamjd.cantilever.common.S3_KEY.pagesPrefix
 import org.liamjd.cantilever.common.S3_KEY.postsKey
 import org.liamjd.cantilever.common.S3_KEY.postsPrefix
+import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
 import org.liamjd.cantilever.models.PageList
 import org.liamjd.cantilever.models.PostList
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
@@ -46,14 +47,13 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
     fun generatePage(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val requestKey = request.pathParameters["srcKey"]
         if (requestKey == "*") {
-            println("Wow, that's a big request")
+            warn("Wow, that's a big request")
 
             // get every page in the pages folder
             val pageListResponse = s3Service.listObjects(pagesPrefix, sourceBucket)
-            println("There are ${pageListResponse.keyCount()} potential pages to process")
+            info("There are ${pageListResponse.keyCount()} potential pages to process")
             var count = 0
             pageListResponse.contents().filter { it.key().endsWith(FILE_TYPE.MD) }.forEach { obj ->
-                println(obj.key())
                 val sourceString = s3Service.getObjectAsString(obj.key(), sourceBucket)
                 val pageSrcKey =
                     obj.key().removePrefix(pagesPrefix) // just want the actual file name
@@ -67,25 +67,25 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
 
                 if (msgResponse != null) {
                     count++
-                    println("Message '${obj.key()}' sent to '$markdownQueue', message ID is ${msgResponse.messageId()}'")
+                    info("Message '${obj.key()}' sent to '$markdownQueue', message ID is ${msgResponse.messageId()}'")
                 } else {
-                    println(error_NO_RESPONSE)
+                    error(error_NO_RESPONSE)
                 }
             }
 
             return ResponseEntity.ok(body = APIResult.Success(value = "$count pages have been regenerated"))
         } else {
             val srcKey = pagesPrefix + requestKey
-            println("GeneratorController: Received request to regenerate page $srcKey")
+            info("GeneratorController: Received request to regenerate page $srcKey")
             try {
-                println("Received page file $srcKey and sending it to Markdown processor queue")
+                info("Received page file $srcKey and sending it to Markdown processor queue")
                 val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
                 val pageSrcKey = srcKey.removePrefix(
                     pagesPrefix
                 ) // just want the actual file name
-               queuePageRegeneration(pageSrcKey,sourceString)
+                queuePageRegeneration(pageSrcKey, sourceString)
             } catch (nske: NoSuchKeyException) {
-                println("${nske.message} for key $srcKey")
+                error("${nske.message} for key $srcKey")
                 return ResponseEntity.notFound(body = APIResult.Error(message = "Could not find page with key $srcKey"))
             }
         }
@@ -104,14 +104,14 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
             return ResponseEntity.notImplemented(body = APIResult.Error("Cannot yet regenerate all posts. Please specify I unique key"))
         }
         val srcKey = postsPrefix + requestKey
-        println("GeneratorController: Received request to regenerate post '$srcKey'")
+        info("GeneratorController: Received request to regenerate post '$srcKey'")
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
             val postSrcKey = srcKey.removePrefix(postsPrefix)
             val postMetadata = extractPostMetadata(postSrcKey, sourceString)
             val markdownBody = sourceString.stripFrontMatter()
             val message = SqsMsgBody.MarkdownPostUploadMsg(postMetadata, markdownBody)
-            println("Built post metadata: $postMetadata")
+            info("Built post metadata: $postMetadata")
 
             val msgResponse = sqsService.sendMessage(
                 toQueue = markdownQueue,
@@ -119,13 +119,13 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
                 messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.Posts.folder)
             )
             if (msgResponse != null) {
-                println("Message '$srcKey' sent to '$markdownQueue', message ID is '${msgResponse.messageId()}'")
+                info("Message '$srcKey' sent to '$markdownQueue', message ID is '${msgResponse.messageId()}'")
             } else {
                 println(error_NO_RESPONSE)
             }
 
         } catch (nske: NoSuchKeyException) {
-            println("${nske.message} for key $srcKey")
+            error("${nske.message} for key $srcKey")
             return ResponseEntity.notFound(body = APIResult.Error(message = "Could not find post with key '$srcKey'"))
         }
         return ResponseEntity.ok(body = APIResult.Success(value = "Regenerated post '$requestKey'"))
@@ -146,14 +146,14 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         val templateKey =
             URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset())
                 .substringBefore(".").substringAfterLast("/")
-        println("DOUBLE DECODED: GeneratorController received request to regenerate pages based on template '$templateKey'")
+        info("DOUBLE DECODED: GeneratorController received request to regenerate pages based on template '$templateKey'")
         // first, get the pages and posts structure file
         if (!s3Service.objectExists(pagesKey, sourceBucket)) {
-            println("GeneratorController: No pages.json exists.")
+            error("GeneratorController: No pages.json exists.")
             return ResponseEntity.notFound(body = APIResult.Error(message = "No pages.json file exists; there may be no pages defined or it may need regenerating."))
         }
         if (!s3Service.objectExists(postsKey, sourceBucket)) {
-            println("GeneratorController: No posts.json exists.")
+            error("GeneratorController: No posts.json exists.")
             return ResponseEntity.notFound(body = APIResult.Error(message = "No posts.json file exists; there may be no posts defined or it may need regenerating."))
         }
         val pagesJson = s3Service.getObjectAsString(pagesKey, sourceBucket)
@@ -163,9 +163,9 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         // TODO: we don't know if the template is for a Page or a Post. This is less than ideal as I have to check both.
         try {
             val pageList = Json.decodeFromString(PageList.serializer(), pagesJson)
-            println("Checking the ${pageList.count} pages for a template match to $templateKey")
+            info("Checking the ${pageList.count} pages for a template match to $templateKey")
             pageList.pages.filter { it.templateKey == templateKey }.forEach {
-                println("Regenerating page ${it.srcKey} because it has template ${it.templateKey}")
+                info("Regenerating page ${it.srcKey} because it has template ${it.templateKey}")
                 val pageSource = s3Service.getObjectAsString(it.srcKey, sourceBucket)
                 queuePageRegeneration(it.srcKey, pageSource)
                 count++
@@ -173,14 +173,15 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
 
             // TODO: again with the inconsistent naming of templates!
             val postList = Json.decodeFromString(PostList.serializer(), postsJson)
-            println("Checking the ${postList.count} posts for a template match to $templateKey")
-            postList.posts.filter { it.templateKey == "${templateKey}.html.hbs" }.forEach {
-                println("Regenerating post ${it.srcKey} because it has template ${it.templateKey}")
+            info("Checking the ${postList.count} posts for a template match to $templateKey")
+            postList.posts.filter { it.templateKey == "${templatesPrefix}${templateKey}.html.hbs" }.forEach {
+                info("Regenerating post ${it.srcKey} because it has template ${it.templateKey}")
                 val postSource = s3Service.getObjectAsString(it.srcKey, sourceBucket)
                 queuePostRegeneration(it.srcKey, postSource)
                 count++
             }
         } catch (se: SerializationException) {
+            error("Error processing pages.json; error is ${se.message}")
             return ResponseEntity.serverError(body = APIResult.Error("Error processing pages.json; error is ${se.message}"))
         }
 
@@ -204,9 +205,9 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
             messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.Pages.folder)
         )
         return if (msgResponse != null) {
-            println("Message '$pageSrcKey' sent to '$markdownQueue', message ID is ${msgResponse.messageId()}'")
+            info("Message '$pageSrcKey' sent to '$markdownQueue', message ID is ${msgResponse.messageId()}'")
         } else {
-            println(error_NO_RESPONSE)
+            error(error_NO_RESPONSE)
         }
     }
 
@@ -226,4 +227,9 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
             messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.Posts.folder)
         )
     }
+
+    override fun info(message: String) = println("INFO: GeneratorController: $message")
+    override fun warn(message: String) = println("WARN: GeneratorController: $message")
+    override fun error(message: String) = println("ERROR: GeneratorController: $message")
+
 }

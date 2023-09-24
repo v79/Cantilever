@@ -33,7 +33,7 @@ class HandlebarsRenderer : TemplateRender {
     }
 
     override fun render(model: Map<String, Any?>, template: String): String {
-        log("HandlebarsRenderer processing model (${model.size} entries) for template ${template.take(100)}")
+        info("Processing model (${model.size} entries) for template ${template.take(100)}")
         val hbTemplate = handlebars.compileInline(template)
 
         return hbTemplate.apply(model)

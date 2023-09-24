@@ -198,9 +198,9 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 /**
  * Wrappers for logging to make it slightly less annoying
  */
-fun LambdaLogger.info(function: String, message: String) = log("INFO $function:  $message\n")
+fun LambdaLogger.info(function: String, message: String) = log("INFO: $function:  $message\n")
 fun LambdaLogger.info(message: String) = info("FileUploadHandler", message)
-fun LambdaLogger.warn(function: String, message: String) = log("WARN $function:  $message\n")
+fun LambdaLogger.warn(function: String, message: String) = log("WARN: $function:  $message\n")
 fun LambdaLogger.warn(message: String) = warn("FileUploadHandler", message)
-fun LambdaLogger.error(function: String, message: String) = log("ERROR $function:  $message\n")
+fun LambdaLogger.error(function: String, message: String) = log("ERROR: $function:  $message\n")
 fun LambdaLogger.error(message: String) = error("FileUploadHandler", message)

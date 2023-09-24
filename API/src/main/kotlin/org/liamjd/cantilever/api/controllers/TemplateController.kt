@@ -23,7 +23,7 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
         val handlebarSource = request.pathParameters["srcKey"]
         return if (handlebarSource != null) {
             val decoded = URLDecoder.decode(handlebarSource, Charset.defaultCharset())
-            println("TemplateController loading handlebar file $decoded")
+            info("Loading handlebar file $decoded")
             return if (s3Service.objectExists(decoded, sourceBucket)) {
                 val templateObj = s3Service.getObject(decoded, sourceBucket)
                 if (templateObj != null) {
@@ -32,14 +32,15 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
                     val handlebarsContent = HandlebarsContent(template, body)
                     ResponseEntity.ok(body = APIResult.Success(handlebarsContent))
                 } else {
-                    println("TemplateController: File '$decoded' not found")
+                    error("Handlebars file $decoded not found in bucket $sourceBucket")
                     ResponseEntity.notFound(body = APIResult.Error("Handlebars file $decoded not found in bucket $sourceBucket"))
                 }
             } else {
-                println("TemplateController: File '$decoded' not found")
+                error("Handlebars file $decoded not found in bucket $sourceBucket")
                 ResponseEntity.notFound(body = APIResult.Error("Handlebars file $decoded not found in bucket $sourceBucket"))
             }
         } else {
+            error("Invalid request for null source file")
             ResponseEntity.badRequest(body = APIResult.Error("Invalid request for null source file"))
         }
     }
@@ -48,18 +49,23 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
      * Save a handlebars template file
      */
     fun saveTemplate(request: Request<HandlebarsContent>): ResponseEntity<APIResult<String>> {
-        println("TemplateController: saveTemplate")
+        info("saveTemplate")
         val handlebarsContent = request.body
-        val srcKey = URLDecoder.decode(handlebarsContent.template.key,Charset.defaultCharset())
+        val srcKey = URLDecoder.decode(handlebarsContent.template.key, Charset.defaultCharset())
 
+        // both branches do the same thing
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
-            println("Updating existing file '${handlebarsContent.template.key}'")
-            val length = s3Service.putObject(srcKey,sourceBucket,handlebarsContent.body,"text/html")
+            info("Updating existing file '${handlebarsContent.template.key}'")
+            val length = s3Service.putObject(srcKey, sourceBucket, handlebarsContent.body, "text/html")
             ResponseEntity.ok(body = APIResult.OK("Updated file ${handlebarsContent.template.key}, $length bytes"))
         } else {
-            println("Creating new file '${handlebarsContent.template.key}'")
+            info("Creating new file '${handlebarsContent.template.key}'")
             val length = s3Service.putObject(srcKey, sourceBucket, handlebarsContent.body, "text/html")
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
     }
+
+    override fun info(message: String) = println("INFO: TemplateController: $message")
+    override fun warn(message: String) = println("WARN: TemplateController: $message")
+    override fun error(message: String) = println("ERROR: TemplateController: $message")
 }

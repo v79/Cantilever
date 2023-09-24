@@ -128,9 +128,9 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 /**
  * Wrappers for logging to make it slightly less annoying
  */
-fun LambdaLogger.info(function: String, message: String) = log("INFO $function:  $message\n")
+fun LambdaLogger.info(function: String, message: String) = log("INFO: $function:  $message\n")
 fun LambdaLogger.info(message: String) = info("MarkdownProcessorHandler", message)
-fun LambdaLogger.warn(function: String, message: String) = log("WARN $function:  $message\n")
+fun LambdaLogger.warn(function: String, message: String) = log("WARN: $function:  $message\n")
 fun LambdaLogger.warn(message: String) = warn("MarkdownProcessorHandler", message)
-fun LambdaLogger.error(function: String, message: String) = log("ERROR $function:  $message\n")
+fun LambdaLogger.error(function: String, message: String) = log("ERROR: $function:  $message\n")
 fun LambdaLogger.error(message: String) = error("MarkdownProcessorHandler", message)

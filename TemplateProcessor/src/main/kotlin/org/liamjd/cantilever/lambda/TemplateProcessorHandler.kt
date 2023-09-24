@@ -208,7 +208,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
      * - For all other pages, this should be the source file name minus the extension
      */
     private fun calculateFilename(message: SqsMsgBody): String {
-        println("TemplateProcessorHandler: Calculating final file name for $message")
+        logger.info("Calculating final file name for $message")
         return when (message) {
             is SqsMsgBody.PageHandlebarsModelMsg ->
                 if (message.key.endsWith(INDEX_MD)) INDEX_HTML else message.key.substringBefore(".$MD")
@@ -223,14 +223,10 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             }
 
             is SqsMsgBody.PageModelMsg -> { // not relevant here
-                // if (message.srcKey == INDEX_MD) INDEX_HTML else message.srcKey.substringBefore(
-                //                ".md"
-                //            ).substringAfterLast("pages/")
                 ""
             }
 
             is SqsMsgBody.CssMsg -> {
-                println("TODO: Processing CSS file")
                 return message.destinationKey
             }
         }
@@ -248,9 +244,9 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 /**
  * Wrappers for logging to make it slightly less annoying
  */
-fun LambdaLogger.info(function: String, message: String) = log("INFO $function:  $message\n")
+fun LambdaLogger.info(function: String, message: String) = log("INFO: $function:  $message\n")
 fun LambdaLogger.info(message: String) = info("TemplateProcessorHandler", message)
-fun LambdaLogger.warn(function: String, message: String) = log("WARN $function:  $message\n")
+fun LambdaLogger.warn(function: String, message: String) = log("WARN: $function:  $message\n")
 fun LambdaLogger.warn(message: String) = warn("TemplateProcessorHandler", message)
-fun LambdaLogger.error(function: String, message: String) = log("ERROR $function:  $message\n")
+fun LambdaLogger.error(function: String, message: String) = log("ERROR: $function:  $message\n")
 fun LambdaLogger.error(message: String) = error("TemplateProcessorHandler", message)
