@@ -24,7 +24,5 @@
 	on:click={() => onClickFn(item.srcKey)}>
 	{item.title}
 	<span class="absolute right-4 top-0"
-		><small class="text-sm text-slate-400"
-			>Template: {item.templateKey} ({item.getDateString()})</small
-		></span>
+		><small class="text-sm text-slate-400">({item.getDateString()})</small></span>
 </li>
