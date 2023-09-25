@@ -103,7 +103,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     }
 
     /**
-     * Return a list of all the [Page]s
+     * Return a list of all the [PageMeta]s
      */
     fun getPages(request: Request<Unit>): ResponseEntity<APIResult<PageList>> {
         info("Retrieving all pages")
@@ -191,7 +191,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
         info("Rebuilding all pages from sources in '$pagesPrefix'. ${pages.keyCount()} pages found.")
         var filesProcessed = 0
         if (pages.hasContents()) {
-            val list = mutableListOf<Page>()
+            val list = mutableListOf<PageMeta>()
             pages.contents().forEach { obj ->
                 if (obj.key().endsWith(".md")) {
                     info("Extracting metadata from file '${obj.key()}'")
@@ -207,7 +207,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     }
                     // we don't need to store the full contents of the sections in this file (just as we don't store the body in posts.json)
                     list.add(
-                        Page(
+                        PageMeta(
                             title = pageModel.title,
                             srcKey = pageModel.srcKey,
                             templateKey = pageModel.templateKey,

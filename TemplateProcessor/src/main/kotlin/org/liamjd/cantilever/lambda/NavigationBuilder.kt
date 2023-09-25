@@ -5,7 +5,7 @@ import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.models.PostList
 import org.liamjd.cantilever.models.PostMeta
-import org.liamjd.cantilever.models.PostMetadata
+import org.liamjd.cantilever.models.PostFrontmatter
 import org.liamjd.cantilever.services.S3Service
 
 context(LambdaLogger)
@@ -14,7 +14,7 @@ class NavigationBuilder(private val s3Service: S3Service) {
     /**
      * Return a useful map of [PostMeta] objects
      */
-    fun getPostNavigationObjects(currentPost: PostMetadata, sourceBucket: String): Map<String, PostMeta?> {
+    fun getPostNavigationObjects(currentPost: PostFrontmatter, sourceBucket: String): Map<String, PostMeta?> {
         val navMap: MutableMap<String, PostMeta?> = mutableMapOf()
         if (s3Service.objectExists(S3_KEY.postsKey, sourceBucket)) {
             val postListJson = s3Service.getObjectAsString(S3_KEY.postsKey, sourceBucket)
@@ -32,7 +32,7 @@ class NavigationBuilder(private val s3Service: S3Service) {
     /**
      * Posts are sorted most recent first, so the previous should be further down the list
      */
-    private fun getPrevPost(currentPost: PostMetadata, posts: List<PostMeta>): PostMeta? {
+    private fun getPrevPost(currentPost: PostFrontmatter, posts: List<PostMeta>): PostMeta? {
         val currentPostInList = posts.find { it.url == currentPost.slug }
         return if (currentPostInList != null) {
             val index = posts.indexOf(currentPostInList)
@@ -50,7 +50,7 @@ class NavigationBuilder(private val s3Service: S3Service) {
     /**
      * Posts are sorted most recent first, so the previous should be further up the list
      */
-    private fun getNextPost(currentPost: PostMetadata, posts: List<PostMeta>): PostMeta? {
+    private fun getNextPost(currentPost: PostFrontmatter, posts: List<PostMeta>): PostMeta? {
         val currentPostInList = posts.find { it.url == currentPost.slug }
         return if (currentPostInList != null) {
             val index = posts.indexOf(currentPostInList)

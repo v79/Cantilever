@@ -3,7 +3,7 @@ package org.liamjd.cantilever.api.controllers
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.models.Page
+import org.liamjd.cantilever.models.PageMeta
 import org.liamjd.cantilever.models.rest.MarkdownPage
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
@@ -45,7 +45,7 @@ class PageController(val sourceBucket: String) : KoinComponent, APIController {
     private fun buildMarkdownPage(srcKey: String): MarkdownPage {
         val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
         val metadata = extractPageModel(filename = srcKey, source = markdown)
-        val page = Page(
+        val pageMeta = PageMeta(
             title = metadata.title,
             templateKey = metadata.templateKey,
             srcKey = srcKey,
@@ -54,7 +54,7 @@ class PageController(val sourceBucket: String) : KoinComponent, APIController {
             sections = metadata.sections
         )
 
-        return MarkdownPage(page)
+        return MarkdownPage(pageMeta)
     }
 
     /**

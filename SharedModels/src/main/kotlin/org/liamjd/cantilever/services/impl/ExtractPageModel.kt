@@ -9,7 +9,7 @@ import org.liamjd.cantilever.models.sqs.SqsMsgBody
 /**
  * A page model is different from a Post, in that it can have multiple named markdown sections.
  * It will start with basic metadata though, and the 'template' and 'title' properties are required.
- * Sections must be named, and the name must start with '#'
+ * Sections must be named, and the name must start with '#' // TODO the hash symbol is a comment in Yaml, so maybe change this to '@' or '$' or '§'
  * The basic format is:
  * ```
  * ---
