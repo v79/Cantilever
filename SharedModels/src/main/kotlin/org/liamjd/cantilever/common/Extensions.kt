@@ -19,13 +19,22 @@ fun java.time.Instant.toLocalDateTime() =
     kotlinx.datetime.Instant.fromEpochMilliseconds(this.toEpochMilli()).toLocalDateTime(TimeZone.currentSystemDefault())
 
 /**
- * Replace characters which are not value for a URL with '-'
+ * Replace characters which are not valid for a URL with '-'
  * May result in duplicate - characters, which is not ideal but technically correct
  * Regex is "[;/?:@&=+\$, ]"
  */
 fun String.toSlug(): String {
     val reserved = "[;/?:@&=+\$, ]"
     return this.replace(Regex(pattern = reserved), "-").lowercase()
+}
+
+/**
+ * Replace characters which are not valid for a URL with '-'
+ * This is identical to [String.toSlug()] except that we retain the '/' character
+ */
+fun String.toS3Key(): String {
+    val reserved = "[;?:@&=+\$, ]"
+    return this.replace(Regex(pattern = reserved), replacement = "-").lowercase()
 }
 
 /**

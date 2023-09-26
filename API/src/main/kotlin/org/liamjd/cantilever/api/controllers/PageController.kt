@@ -3,6 +3,8 @@ package org.liamjd.cantilever.api.controllers
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.S3_KEY
+import org.liamjd.cantilever.common.toSlug
 import org.liamjd.cantilever.models.PageMeta
 import org.liamjd.cantilever.models.rest.MarkdownPage
 import org.liamjd.cantilever.routing.Request
@@ -36,6 +38,29 @@ class PageController(val sourceBucket: String) : KoinComponent, APIController {
             }
         } else {
             ResponseEntity.badRequest(body = APIResult.Error("Invalid request for null source file"))
+        }
+    }
+
+    /**
+     * Create a folder in S3 to store pages, i.e. under /sources/pages/
+     * This should be the full path, minus /sources/pages.
+     * I.e. given input /folderA/folderB it would create an S3 object with key /sources/pages/foldera/folderb
+     */
+    fun createFolder(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val folderName = request.pathParameters["folderName"]
+        return if (folderName != null) {
+            // folder name must be web safe
+            val slugged = S3_KEY.pagesPrefix + folderName.toSlug()
+            info("Creating folder '$slugged'")
+            if (!s3Service.objectExists(folderName, sourceBucket)) {
+                s3Service.createFolder(folderName, sourceBucket)
+                ResponseEntity.ok(body = APIResult.OK("Folder '$slugged' created"))
+            } else {
+                warn("Folder '$slugged' already exists")
+                ResponseEntity.accepted(body = APIResult.OK(""))
+            }
+        } else {
+            ResponseEntity.badRequest(body = APIResult.Error("Cannot create a folder with no name"))
         }
     }
 

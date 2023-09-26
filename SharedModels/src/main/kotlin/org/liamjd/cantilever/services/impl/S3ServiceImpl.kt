@@ -67,4 +67,15 @@ class S3ServiceImpl(region: Region) : S3Service {
             .build()
         return s3Client.deleteObject(request)
     }
+
+    override fun createFolder(key: String, bucket: String): Int {
+        if (key.endsWith('/')) return -1
+        val requestBuilder = PutObjectRequest.builder()
+            .contentLength(0L)
+            .key("$key/")
+            .bucket(bucket)
+            .build()
+        s3Client.putObject(requestBuilder, RequestBody.empty())
+        return 0
+    }
 }

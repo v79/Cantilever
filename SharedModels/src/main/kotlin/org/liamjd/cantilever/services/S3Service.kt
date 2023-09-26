@@ -61,4 +61,12 @@ interface S3Service {
      * @return the [DeleteObjectResponse], or null if there has been an exception
      */
     fun deleteObject(key: String, bucket: String): DeleteObjectResponse?
+
+    /**
+     * Create a 'folder' in S3 by creating a zero-byte object whose name ends in '/'. Do not supply the '/'
+     * @param key the name of the folder, with no trailing slash
+     * @param bucket the s3 bucket name
+     * @return 0, or -1 if not created
+     */
+    fun createFolder(key: String, bucket: String): Int
 }
