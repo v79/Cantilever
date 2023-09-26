@@ -1,13 +1,13 @@
 package org.liamjd.cantilever.services.impl
 
-import org.liamjd.cantilever.common.getFrontMatter
-import org.liamjd.cantilever.common.stripFrontMatter
-import org.liamjd.cantilever.common.toSlug
+import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 
 
 /**
  * A page model is different from a Post, in that it can have multiple named markdown sections.
+ * @param key full S3 key for the object
+ * @param source full contents of the file
  * It will start with basic metadata though, and the 'template' and 'title' properties are required.
  * Sections must be named, and the name must start with '#' // TODO the hash symbol is a comment in Yaml, so maybe change this to '@' or '$' or '§'
  * The basic format is:
@@ -22,7 +22,7 @@ import org.liamjd.cantilever.models.sqs.SqsMsgBody
  * More section content
  * ---
  */
-fun extractPageModel(filename: String, source: String): SqsMsgBody.PageModelMsg {
+fun extractPageModel(key: String, source: String): SqsMsgBody.PageModelMsg {
 
     val metadata = source.getFrontMatter().trim()
 
@@ -50,21 +50,23 @@ fun extractPageModel(filename: String, source: String): SqsMsgBody.PageModelMsg 
     } else {
         ""
     }
+
+    val pageFile = key.substringAfter(S3_KEY.pagesPrefix) // strip /sources/pages from the filename
     val url = if (metadata.contains("slug:")) {
-        metadata.substringAfter("slug:").substringBefore("\n").trim()
+        pageFile + metadata.substringAfter("slug:").substringBefore("\n").trim()
     } else {
-        filename.toSlug()
+        pageFile.substringBefore(".${FILE_TYPE.MD}")
     }
 
     val title = if(metadata.contains("title:")) {
         metadata.substringAfter("title:").substringBefore("\n").trim()
     } else {
-        filename
+        key
     }
 
     return SqsMsgBody.PageModelMsg(
         title = title,
-        srcKey = filename,
+        srcKey = key,
         templateKey = template,
         url = url,
         attributes = customAttributes.toMap(),

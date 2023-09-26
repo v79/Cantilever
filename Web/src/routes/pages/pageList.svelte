@@ -9,7 +9,7 @@
 	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
 	import MarkdownListItem from '../../components/markdownListItem.svelte';
 
-	// TODO : This might be better grouped by template
+	// TODO : This might be better grouped by template. Or by folder?
 	$: pagesSorted = $pageStore.sort((a, b) => {
 		if (a.srcKey < b.srcKey) return -1;
 		if (a.srcKey > b.srcKey) return 1;

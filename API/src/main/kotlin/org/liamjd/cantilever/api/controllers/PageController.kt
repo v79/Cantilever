@@ -69,7 +69,7 @@ class PageController(val sourceBucket: String) : KoinComponent, APIController {
      */
     private fun buildMarkdownPage(srcKey: String): MarkdownPage {
         val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
-        val metadata = extractPageModel(filename = srcKey, source = markdown)
+        val metadata = extractPageModel(key = srcKey, source = markdown)
         val pageMeta = PageMeta(
             title = metadata.title,
             templateKey = metadata.templateKey,
