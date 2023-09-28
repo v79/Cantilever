@@ -187,12 +187,18 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
      * Rebuild the generated/pages.json file which contains the metadata for all the Pages in the project.
      */
     fun rebuildPageList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
-        val pages = s3Service.listObjects(pagesPrefix, sourceBucket)
-        info("Rebuilding all pages from sources in '$pagesPrefix'. ${pages.keyCount()} pages found.")
+        val objectsResponse = s3Service.listObjects(pagesPrefix, sourceBucket)
+        info("Rebuilding all pages from sources in '$pagesPrefix'. ${objectsResponse.keyCount()} pages found.")
+        val folderList = s3Service.listFolders(pagesPrefix, sourceBucket)
         var filesProcessed = 0
-        if (pages.hasContents()) {
+        if (objectsResponse.hasContents()) {
             val list = mutableListOf<PageMeta>()
-            pages.contents().forEach { obj ->
+            // get the common deliminators, aka the folders
+            if (folderList.isNotEmpty()) {
+                info("Common prefixes (folders): $folderList")
+            }
+            // then get the individual files
+            objectsResponse.contents().forEach { obj ->
                 if (obj.key().endsWith(".md")) {
                     info("Extracting metadata from file '${obj.key()}'")
                     val markdownSource = s3Service.getObjectAsString(obj.key(), sourceBucket)
@@ -223,7 +229,12 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                 }
             }
             list.sortByDescending { it.lastUpdated }
-            val pageList = PageList(pages = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
+            val pageList = PageList(
+                pages = list.toList(),
+                folders = folderList,
+                count = filesProcessed,
+                lastUpdated = Clock.System.now()
+            )
             val listJson = Json.encodeToString(PageList.serializer(), pageList)
             info("Saving PageList JSON file (${listJson.length} bytes)")
             s3Service.putObject(pagesKey, sourceBucket, listJson, APP_JSON)

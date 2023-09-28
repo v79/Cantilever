@@ -69,4 +69,12 @@ interface S3Service {
      * @return 0, or -1 if not created
      */
     fun createFolder(key: String, bucket: String): Int
+
+    /**
+     * Return the list of 'folders' (technically, common prefixes) for the given prefix and bucket
+     * @param prefix the common prefix to search for
+     * @param bucket the s3 bucket name
+     * @return list of common prefixes, or an  empty list of none found
+     */
+    fun listFolders(prefix: String, bucket: String): List<String>
 }

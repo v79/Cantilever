@@ -21,7 +21,11 @@ data class PostList(val count: Int = 0, val lastUpdated: Instant, val posts: Lis
  * @property pages list of meta-data objects for each page
  */
 @Serializable
-data class PageList(val count: Int = 0, val lastUpdated: Instant, val pages: List<PageMeta>)
+data class PageList(val count: Int = 0, val folders: List<String> = emptyList(), val lastUpdated: Instant, val pages: List<PageMeta>) {
+    fun grouped(): Map<String, List<PageMeta>> {
+        return pages.groupBy(keySelector = {it.srcKey})
+    }
+}
 
 /**
  * Wrapper around the list of all templates. This represents templates.json
@@ -60,25 +64,6 @@ data class PostMeta(
  * @property attributes a map of custom attributes, both key and value
  * @property sections a map of the custom sections in the page, but the value is simply stored as an empty string
  * @property lastUpdated internal property updated whenever the page is saved
- *
- *
- * How to represent a folder structure? Well, the S3 key simulates this with the / separator.
- * So a page with key /sources/pages/apple/pear/banana.md will be a file called "banana.md" in a "apple > pear" folder path.
- * I would need to be able to create a 'folder' from the web UI.
- * Would such folders be recorded in pages.json? Or just implied?
- * One problem with srcKey is that it starts at /sources/pages/ - these are not relevant to the URL generation or UI
- * But that can be skipped fairly easily.
- * URL generation needs to change. And the destination in S3 needs to better reflect the source key.
- *
- *
- * SO:
- *
- * srcKey = full object path in S3 source bucket
- * url = full object path in S3 destination bucket.
- *      The leaf of the URL will typically start with the "slugified" version of the page title, but may be overridden when the page is first created.
- *      I'd then prepend the srcKey object path minus /sources/pages/.
- *
- *
  *
  */
 @Serializable
