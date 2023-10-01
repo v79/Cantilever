@@ -15,7 +15,7 @@ import org.liamjd.cantilever.common.S3_KEY.fragments
 import org.liamjd.cantilever.common.S3_KEY.projectKey
 import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
 import org.liamjd.cantilever.models.CantileverProject
-import org.liamjd.cantilever.models.PageList
+import org.liamjd.cantilever.models.PageTree
 import org.liamjd.cantilever.models.PostList
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.S3Service
@@ -128,7 +128,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
     ) {
         val pagesFile = s3Service.getObjectAsString("generated/pages.json", sourceBucket)
         val postsFile = s3Service.getObjectAsString("generated/posts.json", sourceBucket)
-        val pageList = Json.decodeFromString<PageList>(pagesFile)
+        val pageTree = Json.decodeFromString<PageTree>(pagesFile)
         val postList = Json.decodeFromString<PostList>(postsFile)
 
         val pageTemplateKey = templatesPrefix + pageMsg.template + "." + HTML_HBS
@@ -150,7 +150,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             model[name] = html
         }
 
-        model["pages"] = pageList.pages
+        model["pages"] = pageTree.root // TODO: WRONG
         model["posts"] = postList.posts
 
         logger.info("Final page model keys: ${model.keys}")

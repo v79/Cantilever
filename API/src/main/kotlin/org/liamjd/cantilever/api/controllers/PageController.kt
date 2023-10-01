@@ -5,7 +5,7 @@ import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.toSlug
-import org.liamjd.cantilever.models.PageMeta
+import org.liamjd.cantilever.models.PageTreeNode
 import org.liamjd.cantilever.models.rest.MarkdownPage
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
@@ -70,7 +70,7 @@ class PageController(val sourceBucket: String) : KoinComponent, APIController {
     private fun buildMarkdownPage(srcKey: String): MarkdownPage {
         val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
         val metadata = extractPageModel(key = srcKey, source = markdown)
-        val pageMeta = PageMeta(
+        val pageMeta = PageTreeNode.PageMeta(
             title = metadata.title,
             templateKey = metadata.templateKey,
             srcKey = srcKey,

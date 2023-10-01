@@ -20,12 +20,8 @@ data class PostList(val count: Int = 0, val lastUpdated: Instant, val posts: Lis
  * @property lastUpdated last updated date/time for the pages.json file
  * @property pages list of meta-data objects for each page
  */
-@Serializable
-data class PageList(val count: Int = 0, val folders: List<String> = emptyList(), val lastUpdated: Instant, val pages: List<PageMeta>) {
-    fun grouped(): Map<String, List<PageMeta>> {
-        return pages.groupBy(keySelector = {it.srcKey})
-    }
-}
+/*@Serializable
+data class PageList(val count: Int = 0, val lastUpdated: Instant, val pages: List<PageMeta>)*/
 
 /**
  * Wrapper around the list of all templates. This represents templates.json
@@ -53,28 +49,6 @@ data class PostMeta(
     val date: LocalDate,
     val lastUpdated: Instant = Clock.System.now(),
     val templateKey: String
-)
-
-/**
- * PageMeta is a summary class representing an individual Page. It does not contain the content for each section; they are flattened to empty strings
- * @property title user-provided title
- * @property srcKey the full S3 key for the page, must be unique, in format 'sources/pages/folder/leafname.md'
- * @property templateKey the leaf of the S3 key for the template this page is based on (e.g. if the full template key is /sources/templates/myTemplate.hbs then this value will be 'myTemplate'
- * @property url the calculated url for this page, initially based on the title, can be overridden, and needs to reflect the folder structure the source file is stored in in S3
- * @property attributes a map of custom attributes, both key and value
- * @property sections a map of the custom sections in the page, but the value is simply stored as an empty string
- * @property lastUpdated internal property updated whenever the page is saved
- *
- */
-@Serializable
-data class PageMeta(
-    val title: String,
-    val srcKey: String,
-    val templateKey: String,
-    val url: String,            // generated url, in format '/folder/leafname' (no .html unless it's index.html)
-    val attributes: Map<String, String>,
-    val sections: Map<String, String>,
-    val lastUpdated: Instant = Clock.System.now()
 )
 
 /**

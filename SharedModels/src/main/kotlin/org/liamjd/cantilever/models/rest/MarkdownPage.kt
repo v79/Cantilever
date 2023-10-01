@@ -1,14 +1,14 @@
 package org.liamjd.cantilever.models.rest
 
 import kotlinx.serialization.Serializable
-import org.liamjd.cantilever.models.PageMeta
+import org.liamjd.cantilever.models.PageTreeNode
 
 /**
  * REST API model wrapping a [PageMeta] metadata object and the sources of each named section. This what is edited/saved.
  */
 @Serializable
 class MarkdownPage(
-    val metadata: PageMeta,
+    val metadata: PageTreeNode.PageMeta,
     val body: String = ""
 ) {
     // the front-end sends a body in its MarkdownContent class, but is not needed for a Page

@@ -83,7 +83,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                 group("/pages") {
                     get("", projectController::getPages)
                     post("/", pageController::saveMarkdownPageSource).supplies(setOf(MimeType.plainText))
-                    put("/rebuild", projectController::rebuildPageList)
+                    put("/rebuild", projectController::rebuildPageTree)
                     get("/$SRCKEY", pageController::loadMarkdownSource)
                     put("/folder/new/{folderName}", pageController::createFolder).supplies(setOf(MimeType.plainText))
                 }

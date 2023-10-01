@@ -11,7 +11,8 @@ import org.liamjd.cantilever.common.S3_KEY.pagesPrefix
 import org.liamjd.cantilever.common.S3_KEY.postsKey
 import org.liamjd.cantilever.common.S3_KEY.postsPrefix
 import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
-import org.liamjd.cantilever.models.PageList
+import org.liamjd.cantilever.models.PageTree
+import org.liamjd.cantilever.models.PageTreeNode
 import org.liamjd.cantilever.models.PostList
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.routing.Request
@@ -162,14 +163,15 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
 
         // TODO: we don't know if the template is for a Page or a Post. This is less than ideal as I have to check both.
         try {
-            val pageList = Json.decodeFromString(PageList.serializer(), pagesJson)
-            info("Checking the ${pageList.count} pages for a template match to $templateKey")
-            pageList.pages.filter { it.templateKey == templateKey }.forEach {
-                info("Regenerating page ${it.srcKey} because it has template ${it.templateKey}")
-                val pageSource = s3Service.getObjectAsString(it.srcKey, sourceBucket)
-                queuePageRegeneration(it.srcKey, pageSource)
-                count++
-            }
+            val oageTree = Json.decodeFromString(PageTree.serializer(), pagesJson)
+            info("Checking the ${oageTree.root.count} pages for a template match to $templateKey")
+            oageTree.root.children?.filterIsInstance<PageTreeNode.PageMeta>()?.filter { it.templateKey == templateKey }
+                ?.forEach {
+                    info("Regenerating page ${it.srcKey} because it has template ${it.templateKey}")
+                    val pageSource = s3Service.getObjectAsString(it.srcKey, sourceBucket)
+                    queuePageRegeneration(it.srcKey, pageSource)
+                    count++
+                }
 
             // TODO: again with the inconsistent naming of templates!
             val postList = Json.decodeFromString(PostList.serializer(), postsJson)
