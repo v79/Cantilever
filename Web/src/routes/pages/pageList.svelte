@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
-	import { Post, MarkdownContent, Page } from '../../models/structure';
+	import { MarkdownContent, Page, PageTree, FolderNode } from '../../models/structure';
+	import type { TreeNode } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import { markdownStore } from '../../stores/markdownContentStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
-	import { allPagesStore, pageStore } from '../../stores/postsStore.svelte';
+	import { allPagesStore, pageStore, pageTreeStore } from '../../stores/postsStore.svelte';
 	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import MarkdownListItem from '../../components/markdownListItem.svelte';
+	import PageTreeView from './pageTreeView.svelte';
 
 	// TODO : This might be better grouped by template. Or by folder?
 	$: pagesSorted = $pageStore.sort((a, b) => {
@@ -15,6 +16,8 @@
 		if (a.srcKey > b.srcKey) return 1;
 		return 0;
 	});
+
+	$: rootFolder = $pageTreeStore.container;
 
 	onMount(async () => {});
 
@@ -35,25 +38,46 @@
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
+				console.log('Incoming PageTree...');
+				console.dir(data);
+				var rootFolder = new FolderNode(
+					'folder',
+					'sources/pages',
+					data.data.container.count,
+					new Array<TreeNode>()
+				);
+				var pageTree = new PageTree(data.data.lastUpdated, rootFolder);
+
+				console.log('PAGETREE BEFORE ADDING NODES:');
+				console.dir(pageTree);
+
+				// addNodesToTree(pageTree, data.data.container);
+				addNodesToContainer(rootFolder, data.data.container.children);
+
+				console.log('PAGETREE IS NOW:');
+				console.dir(pageTree);
+
+				pageTreeStore.set(pageTree);
+
 				var tempPages = new Array<Page>();
-				for (const p of data.data.pages) {
-					tempPages.push(
-						new Page(
-							p.title,
-							p.srcKey,
-							p.templateKey,
-							p.url,
-							new Date(p.lastUpdated),
-							new Map<string, string>(),
-							new Map<string, string>()
-						)
-					);
-				}
-				allPagesStore.set({
-					count: tempPages.length,
-					lastUpdated: data.lastUpdated,
-					pages: tempPages
-				});
+				// for (const p of data.data.pages) {
+				// 	tempPages.push(
+				// 		new Page(
+				// 			p.title,
+				// 			p.srcKey,
+				// 			p.templateKey,
+				// 			p.url,
+				// 			new Date(p.lastUpdated),
+				// 			new Map<string, string>(),
+				// 			new Map<string, string>()
+				// 		)
+				// 	);
+				// }
+				// allPagesStore.set({
+				// 	count: tempPages.length,
+				// 	lastUpdated: data.lastUpdated,
+				// 	pages: tempPages
+				// });
 				$notificationStore.message = 'Loaded all pages ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
@@ -68,6 +92,51 @@
 				$spinnerStore.shown = false;
 				return {};
 			});
+	}
+
+	/**
+	 * Recursive function which loops round the 'toAdd' array, and checks to see if the element is a Page or a Folder.
+	 * If it is a page, it adds it to the container.
+	 * If it is a folder, it creates a new sub-container (based on the folder), and calls this function recursively.
+	 * @param container
+	 * @param toAdd
+	 */
+	function addNodesToContainer(container: FolderNode, toAdd: Array<TreeNode>) {
+		if (toAdd) {
+			console.log(
+				'Adding ' + toAdd.length + ' potential children to container: ' + container.srcKey
+			);
+			for (const node of toAdd) {
+				// console.log(node);
+				if (node.type === 'page') {
+					var page = node as Page;
+					console.log(
+						'* Adding page ' +
+							page.srcKey +
+							' to container ' +
+							container.srcKey +
+							'with ' +
+							container.children?.length +
+							' children '
+					);
+					if (container.children == undefined) {
+						container.children = new Array<TreeNode>();
+					}
+					container.children.push(page); // why does this go infinite?
+				}
+				if (node.type === 'folder') {
+					var folder = node as FolderNode;
+					if (folder.children) {
+						console.log('Adding folder ' + folder.srcKey + ' to container');
+						//@ts-ignore
+						var newFolder = new FolderNode('folder', folder.srcKey, folder.count, null);
+						container.children.push(newFolder);
+
+						addNodesToContainer(newFolder, folder.children);
+					}
+				}
+			}
+		}
 	}
 
 	function loadMarkdown(srcKey: string) {
@@ -91,6 +160,7 @@
 				}
 				var tmpPage = new MarkdownContent(
 					new Page(
+						'page',
 						data.data.metadata.title,
 						data.data.metadata.srcKey,
 						data.data.metadata.templateKey,
@@ -159,6 +229,7 @@
 		var newMDPost: MarkdownContent = {
 			body: '',
 			metadata: new Page(
+				'page',
 				'',
 				'',
 				'',
@@ -223,13 +294,9 @@
 		{#if $allPagesStore}
 			<h4 class="text-right text-sm text-slate-900">{$allPagesStore.count} pages</h4>
 		{/if}
-		{#if pagesSorted.length > 0}
+		{#if $pageTreeStore}
 			<div class="justify-left flex py-2">
-				<ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
-					{#each pagesSorted as page}
-						<MarkdownListItem item={page} onClickFn={loadMarkdown} />
-					{/each}
-				</ul>
+				<PageTreeView {rootFolder} />
 			</div>
 		{:else}
 			<div class="flex items-center justify-center py-4">

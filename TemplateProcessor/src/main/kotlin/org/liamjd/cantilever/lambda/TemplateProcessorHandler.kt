@@ -150,7 +150,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             model[name] = html
         }
 
-        model["pages"] = pageTree.root // TODO: WRONG
+        model["pages"] = pageTree.container // TODO: WRONG
         model["posts"] = postList.posts
 
         logger.info("Final page model keys: ${model.keys}")

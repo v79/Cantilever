@@ -235,22 +235,19 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
 
             val folders = mutableListOf<PageTreeNode.FolderNode>()
             folderList.forEach {
-                folders.add(PageTreeNode.FolderNode(srcKey = it, null))
+                folders.add(PageTreeNode.FolderNode(srcKey = it, children = null, isRoot = false))
             }
-            folders.add(PageTreeNode.FolderNode(pagesPrefix, null))
+            folders.add(PageTreeNode.FolderNode(pagesPrefix, children = null, isRoot = true))
             var totalCount = folders.size
 
-            println("Folders: $folders")
             pageList.forEach { page ->
-                println("Finding parent folder for '${page.srcKey}'")
                 val match =
                     folders.find { folder -> folder.srcKey.substringBeforeLast("/") == page.srcKey.substringBeforeLast("/") }
-                println("match: $match")
                 if (match != null) {
                     if (match.children == null) {
                         match.children = mutableListOf()
                     }
-                    println("Adding page '${page.srcKey}' to folder '${match.srcKey}'")
+                    info("Adding page '${page.srcKey}' to folder '${match.srcKey}'")
                     match.children?.add(page)
                     match.count++
                     totalCount++
@@ -259,9 +256,9 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
 
             val combined: MutableList<PageTreeNode> = mutableListOf()
             combined.addAll(folders)
-            val rootFolder = PageTreeNode.FolderNode(pagesPrefix, combined)
-            rootFolder.count = totalCount
-            val pageTree = PageTree(lastUpdated = Clock.System.now(), root = rootFolder)
+            val containerFolder = PageTreeNode.FolderNode(pagesPrefix, combined, false)
+            containerFolder.count = totalCount
+            val pageTree = PageTree(lastUpdated = Clock.System.now(), container = containerFolder)
             val treeJson = Json.encodeToString(PageTree.serializer(), pageTree)
             info("Saving PageList JSON file (${treeJson.length} bytes)")
             s3Service.putObject(pagesKey, sourceBucket, treeJson, APP_JSON)

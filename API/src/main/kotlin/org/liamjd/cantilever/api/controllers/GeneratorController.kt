@@ -164,8 +164,8 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         // TODO: we don't know if the template is for a Page or a Post. This is less than ideal as I have to check both.
         try {
             val oageTree = Json.decodeFromString(PageTree.serializer(), pagesJson)
-            info("Checking the ${oageTree.root.count} pages for a template match to $templateKey")
-            oageTree.root.children?.filterIsInstance<PageTreeNode.PageMeta>()?.filter { it.templateKey == templateKey }
+            info("Checking the ${oageTree.container.count} pages for a template match to $templateKey")
+            oageTree.container.children?.filterIsInstance<PageTreeNode.PageMeta>()?.filter { it.templateKey == templateKey }
                 ?.forEach {
                     info("Regenerating page ${it.srcKey} because it has template ${it.templateKey}")
                     val pageSource = s3Service.getObjectAsString(it.srcKey, sourceBucket)

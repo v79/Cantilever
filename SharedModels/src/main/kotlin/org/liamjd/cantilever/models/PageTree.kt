@@ -7,19 +7,24 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * The pages tree will be composed of 'folders' (shared prefixes in S3) and actual Pages
+ */
 @Serializable
-sealed class PageTreeNode(val isFolder: Boolean) {
+sealed class PageTreeNode {
+
+    /**
+     * FolderNode represents a 'folder' in S3, or more accurately a 'common prefix' as S3 does not have folders
+     * @property srcKey an S3 object prefix common to one or more PageMeta items
+     * @property children nested collection of other [PageTreeNode]
+     */
     @Serializable
     @SerialName("folder")
-    data class FolderNode(val srcKey: String, var children: MutableList<PageTreeNode>?) : PageTreeNode(true) {
+    data class FolderNode(val srcKey: String, var children: MutableList<PageTreeNode>?, val isRoot: Boolean) : PageTreeNode() {
         @OptIn(ExperimentalSerializationApi::class)
         @EncodeDefault
         var count: Int = children?.size ?: 0
     }
-
-    @Serializable
-    @SerialName("fakePage")
-    data class FakePageNode(val srcKey: String, val title: String) : PageTreeNode(false)
 
     /**
      * PageMeta is a summary class representing an individual Page. It does not contain the content for each section; they are flattened to empty strings
@@ -51,9 +56,14 @@ sealed class PageTreeNode(val isFolder: Boolean) {
         val attributes: Map<String, String>,
         val sections: Map<String, String>,
         val lastUpdated: Instant = Clock.System.now()
-    ) : PageTreeNode(false)
+    ) : PageTreeNode()
 }
 
+/**
+ * The parent class containing all the [PageTreeNode]s
+ * @property lastUpdated generated date for pages.json
+ * @property container the main folder that contains the tree
+ */
 @Serializable
-class PageTree(val lastUpdated: Instant, val root: PageTreeNode.FolderNode) {
+class PageTree(val lastUpdated: Instant, val container: PageTreeNode.FolderNode) {
 }
