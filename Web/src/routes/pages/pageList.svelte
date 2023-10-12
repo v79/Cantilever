@@ -9,8 +9,17 @@
 	import { pageTreeStore } from '../../stores/postsStore.svelte';
 	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
 	import PageTreeView from './pageTreeView.svelte';
+	import { Modal } from 'flowbite-svelte';
+	import TextInput from '../../components/forms/textInput.svelte';
 
 	$: rootFolder = $pageTreeStore.container;
+
+	let newFolderModal: boolean = false;
+	let newFolderName: string = '';
+	let folders: FolderNode[] = [];
+	let selectedParentFolder: FolderNode | undefined = undefined;
+
+	$: newFolderValid = selectedParentFolder && (newFolderName !== '');
 
 	onMount(async () => {});
 
@@ -200,6 +209,33 @@
 		markdownStore.set(newMDPost);
 	}
 
+	/**
+	 * Return just the folders in the pageTreeStore
+	 */
+	function getFolders() {
+		if ($pageTreeStore.container.children) {
+			console.log('Getting all folders');
+			for (const t of $pageTreeStore.container.children) {
+				console.log(t);
+			}
+			let result = <FolderNode[]>(
+				$pageTreeStore.container.children.filter((value) => value.type == 'folder')
+			);
+			console.dir(result);
+			return result;
+		}
+		return [];
+	}
+
+	function openFolderModal() {
+		folders = getFolders();
+		newFolderModal = true;
+	}
+
+	function createNewFolder() {
+		console.log('Creating new folder in ' + selectedParentFolder?.srcKey + ' named ' + newFolderName);
+	}
+
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
 		if (data) {
 			loadAllPages();
@@ -229,6 +265,12 @@
 				spinnerStore.set({ shown: true, message: 'Reloading project...' });
 				tick().then(() => loadAllPages());
 			}}>Reload</button>
+		<button
+			class="easy-in-out inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+			on:click={openFolderModal}
+			>Add folder
+		</button>
+
 		<button
 			type="button"
 			on:click={createNewPage}
@@ -303,3 +345,36 @@
 		{/if}
 	</div>
 {/if}
+
+<Modal title="Add new folder" bind:open={newFolderModal} autoclose size="sm">
+	<p>Select the parent folder for the new folder:</p>
+	<ul>
+		{#each folders as f}
+			<li
+				class="hover:bg-slate-400"
+				on:click={(e) => (selectedParentFolder = f)}
+				on:keyup={(e) => (selectedParentFolder = f)}>
+				{f.srcKey}
+			</li>
+		{/each}
+	</ul>
+	<p>Selected: {selectedParentFolder ? selectedParentFolder.srcKey : ''}</p>
+
+	<form>
+		<TextInput name="new-folder-name" bind:value={newFolderName} label="Name" required/>
+	</form>
+
+	<p>{newFolderValid}</p>
+	<svelte:fragment slot="footer">
+		<button
+			type="button"
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Cancel</button>
+		<button
+			type="button"
+			disabled={!newFolderValid}
+			on:click={createNewFolder}
+			class="rounded bg-purple-600 px-6 py-2.5 disabled:bg-slate-400 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Create</button>
+	</svelte:fragment>
+</Modal>
