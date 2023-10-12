@@ -4,6 +4,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
+import org.liamjd.cantilever.common.toS3Key
 import org.liamjd.cantilever.common.toSlug
 import org.liamjd.cantilever.models.PageTreeNode
 import org.liamjd.cantilever.models.rest.MarkdownPage
@@ -43,17 +44,19 @@ class PageController(val sourceBucket: String) : KoinComponent, APIController {
 
     /**
      * Create a folder in S3 to store pages, i.e. under /sources/pages/
-     * This should be the full path, minus /sources/pages.
-     * I.e. given input /folderA/folderB it would create an S3 object with key /sources/pages/foldera/folderb
+     * This should be the full path.
      */
     fun createFolder(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val folderName = request.pathParameters["folderName"]
         return if (folderName != null) {
             // folder name must be web safe
-            val slugged = S3_KEY.pagesPrefix + folderName.toSlug()
+            val slugged = URLDecoder.decode(folderName, Charset.defaultCharset()).toS3Key()
             info("Creating folder '$slugged'")
-            if (!s3Service.objectExists(folderName, sourceBucket)) {
-                s3Service.createFolder(folderName, sourceBucket)
+            if (!s3Service.objectExists(slugged, sourceBucket)) {
+                val result = s3Service.createFolder(slugged, sourceBucket)
+                if(result != 0) {
+                    ResponseEntity.serverError(body = APIResult.Error("Folder '$slugged' was not created"))
+                }
                 ResponseEntity.ok(body = APIResult.OK("Folder '$slugged' created"))
             } else {
                 warn("Folder '$slugged' already exists")

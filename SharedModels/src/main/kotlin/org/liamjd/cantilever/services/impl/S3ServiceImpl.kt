@@ -77,7 +77,6 @@ class S3ServiceImpl(region: Region) : S3Service {
     }
 
     override fun createFolder(key: String, bucket: String): Int {
-        if (key.endsWith('/')) return -1
         val requestBuilder = PutObjectRequest.builder()
             .contentLength(0L)
             .key("$key/")

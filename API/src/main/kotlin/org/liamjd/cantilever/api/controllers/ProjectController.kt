@@ -189,7 +189,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     fun rebuildPageTree(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val objectsResponse = s3Service.listObjects(pagesPrefix, sourceBucket)
         info("Rebuilding all pages from sources in '$pagesPrefix'. ${objectsResponse.keyCount()} pages found.")
-        val folderList = s3Service.listFolders(pagesPrefix, sourceBucket)
+        val folderList = s3Service.listFolders(pagesPrefix, sourceBucket).toMutableSet()
         var filesProcessed = 0
         if (objectsResponse.hasContents()) {
             val pageList = mutableListOf<PageTreeNode.PageMeta>()
@@ -225,6 +225,9 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     )
                     filesProcessed++
                 } else {
+                    if(obj.key().endsWith("/")) {
+                        folderList.add(obj.key())
+                    }
                     warn("Skipping non-markdown file '${obj.key()}'")
                 }
             }
@@ -237,7 +240,6 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
             folderList.forEach {
                 folders.add(PageTreeNode.FolderNode(srcKey = it, children = null, isRoot = false))
             }
-            folders.add(PageTreeNode.FolderNode(pagesPrefix, children = null, isRoot = true))
             var totalCount = folders.size
 
             pageList.forEach { page ->

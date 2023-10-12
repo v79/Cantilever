@@ -84,7 +84,6 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
             if (!authResult.authorized) {
                 return ResponseEntity.unauthorized("Authorization check failed: ${authResult.message}")
             }
-
         }
 
         val handler: (Nothing) -> ResponseEntity<out Any> = routerFunction.handler

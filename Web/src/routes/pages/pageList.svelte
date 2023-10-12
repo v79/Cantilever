@@ -19,7 +19,7 @@
 	let folders: FolderNode[] = [];
 	let selectedParentFolder: FolderNode | undefined = undefined;
 
-	$: newFolderValid = selectedParentFolder && (newFolderName !== '');
+	$: newFolderValid = selectedParentFolder && newFolderName !== '';
 
 	onMount(async () => {});
 
@@ -40,8 +40,6 @@
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
-				console.log('Incoming PageTree...');
-				console.dir(data);
 				var rootFolder = new FolderNode(
 					'folder',
 					'sources/pages',
@@ -92,6 +90,11 @@
 						var newFolder = new FolderNode('folder', folder.srcKey, folder.count, null);
 						container.children.push(newFolder);
 						addNodesToContainer(newFolder, folder.children);
+					} else {
+						console.log('Adding empty folder node ' + folder.srcKey);
+						//@ts-ignore
+						var newFolder = new FolderNode('folder', folder.srcKey,0,[]);
+						container.children.push(newFolder);
 					}
 				}
 			}
@@ -214,10 +217,6 @@
 	 */
 	function getFolders() {
 		if ($pageTreeStore.container.children) {
-			console.log('Getting all folders');
-			for (const t of $pageTreeStore.container.children) {
-				console.log(t);
-			}
 			let result = <FolderNode[]>(
 				$pageTreeStore.container.children.filter((value) => value.type == 'folder')
 			);
@@ -227,13 +226,61 @@
 		return [];
 	}
 
+	/**
+	 * Fetch all the folders from the pageTreeStore, then open the new folder modal
+	 */
 	function openFolderModal() {
 		folders = getFolders();
 		newFolderModal = true;
 	}
 
+	/**
+	 * Create a new folder in `selectedParentFolder` with name `newFolderName`.
+	 */
 	function createNewFolder() {
-		console.log('Creating new folder in ' + selectedParentFolder?.srcKey + ' named ' + newFolderName);
+		const prefix = '/sources/pages/';
+		let folderName = encodeURIComponent(
+			(selectedParentFolder ? selectedParentFolder.srcKey : '') + newFolderName
+		);
+		console.log('Creating new folder ' + folderName);
+
+		fetch('https://api.cantilevers.org/project/pages/folder/new/' + folderName, {
+			method: 'PUT',
+			headers: {
+				Accept: 'text/plain',
+				Authorization: 'Bearer ' + $userStore.token,
+				'Content-Type': 'application/json',
+				'X-Content-Length': '0'
+			},
+			mode: 'cors'
+		})
+			.then((response) => {
+				if (!response.ok) {
+					throw response;
+				} else {
+					response.text();
+				}
+			})
+			.then((data) => {
+				notificationStore.set({
+					message: decodeURI(folderName) + ' saved. ' + data,
+					shown: true,
+					type: 'success'
+				});
+				loadAllPages();
+			})
+			.catch((error) => {
+				notificationStore.set({
+					message: 'Error creating folder: ' + error,
+					shown: true,
+					type: 'error'
+				});
+				console.log(error);
+			});
+		newFolderName = '';
+		selectedParentFolder = undefined;
+		newFolderModal = false;
+		$spinnerStore.shown = false;
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
@@ -254,7 +301,6 @@
 		<button
 			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {
-				console.log('Show spinner');
 				spinnerStore.set({ shown: true, message: 'Rebuilding project...' });
 				tick().then(() => rebuild());
 			}}>Rebuild</button>
@@ -348,23 +394,18 @@
 
 <Modal title="Add new folder" bind:open={newFolderModal} autoclose size="sm">
 	<p>Select the parent folder for the new folder:</p>
-	<ul>
+	<select bind:value={selectedParentFolder}>
 		{#each folders as f}
-			<li
-				class="hover:bg-slate-400"
-				on:click={(e) => (selectedParentFolder = f)}
-				on:keyup={(e) => (selectedParentFolder = f)}>
+			<option value={f}>
 				{f.srcKey}
-			</li>
+			</option>
 		{/each}
-	</ul>
+	</select>
+	
 	<p>Selected: {selectedParentFolder ? selectedParentFolder.srcKey : ''}</p>
 
-	<form>
-		<TextInput name="new-folder-name" bind:value={newFolderName} label="Name" required/>
-	</form>
+	<TextInput name="new-folder-name" bind:value={newFolderName} label="Name" required />
 
-	<p>{newFolderValid}</p>
 	<svelte:fragment slot="footer">
 		<button
 			type="button"
@@ -374,7 +415,7 @@
 			type="button"
 			disabled={!newFolderValid}
 			on:click={createNewFolder}
-			class="rounded bg-purple-600 px-6 py-2.5 disabled:bg-slate-400 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg disabled:bg-slate-400"
 			>Create</button>
 	</svelte:fragment>
 </Modal>

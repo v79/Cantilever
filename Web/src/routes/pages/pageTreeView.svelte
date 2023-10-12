@@ -3,10 +3,12 @@
 
 	export let rootFolder: FolderNode;
 	export let onClickFn: (srcKey: string) => void;
+
+	$: sorted = rootFolder.depthSort();
 </script>
 
 <ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
-	{#each rootFolder.children as node}
+	{#each sorted as node}
 		{#if node.type === 'folder'}
 			{@const folder = node}
 			<li

@@ -79,6 +79,19 @@ export class FolderNode implements TreeNode {
 		this.count = count;
 		this.children = children;
 	}
+
+	depthSort() {
+		return this.children.sort((a: TreeNode, b: TreeNode) => {
+			if(a.type === 'folder' && b.type === 'folder') {
+				const aFolder = a as FolderNode;
+				const bFolder = b as FolderNode;
+				if(aFolder.srcKey.split("/").length > bFolder.srcKey.split("/").length) return 1
+				if(aFolder.srcKey.split("/").length < bFolder.srcKey.split("/").length) return -1
+				return 0
+			}
+			return 0
+		})
+	}
 }
 
 /**
