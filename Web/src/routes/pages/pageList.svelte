@@ -419,3 +419,20 @@
 			>Create</button>
 	</svelte:fragment>
 </Modal>
+
+<Modal title="Create new page" bind:open={newPageModal} autoclose size="sm">
+	<p>Choose template and parent folder for page</p>
+
+	<svelte:fragment slot="footer">
+		<button
+			type="button"
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Cancel</button>
+		<button
+			type="button"
+			disabled={!newFolderValid}
+			on:click={createNewPage}
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg disabled:bg-slate-400"
+			>Create</button>
+	</svelte:fragment>
+</Modal>
