@@ -149,7 +149,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     val templateKey = templatesPrefix + postMetadata.template + ".html.hbs"
                     val template = try {
                         val lastModified = obj.lastModified().toKotlinInstant()
-                        Template(templateKey, lastModified)
+                        Template(templateKey, lastModified, emptyList(), emptyList())
                     } catch (nske: NoSuchKeyException) {
                         error("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
                         return@forEach
@@ -206,7 +206,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     val templateKey = templatesPrefix + pageModel.templateKey + ".html.hbs"
                     val template = try {
                         val lastModified = obj.lastModified().toKotlinInstant()
-                        Template(templateKey, lastModified)
+                        Template(templateKey, lastModified, emptyList(), emptyList())
                     } catch (nske: NoSuchKeyException) {
                         error("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
                         return@forEach
@@ -283,7 +283,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                 if (obj.key().endsWith(".hbs")) {
                     val lastModified = obj.lastModified().toKotlinInstant()
                     list.add(
-                        Template(obj.key(), lastModified)
+                        Template(obj.key(), lastModified, emptyList(), emptyList())
                     )
                     filesProcessed++
                 } else {

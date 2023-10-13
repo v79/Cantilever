@@ -27,7 +27,7 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
             return if (s3Service.objectExists(decoded, sourceBucket)) {
                 val templateObj = s3Service.getObject(decoded, sourceBucket)
                 if (templateObj != null) {
-                    val template = Template(handlebarSource, templateObj.lastModified().toKotlinInstant())
+                    val template = Template(handlebarSource, templateObj.lastModified().toKotlinInstant(), emptyList(), emptyList())
                     val body = s3Service.getObjectAsString(decoded, sourceBucket)
                     val handlebarsContent = HandlebarsContent(template, body)
                     ResponseEntity.ok(body = APIResult.Success(handlebarsContent))
@@ -63,6 +63,12 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
             val length = s3Service.putObject(srcKey, sourceBucket, handlebarsContent.body, "text/html")
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
+    }
+
+    fun getTemplateModel(request: Request<Unit>) : ResponseEntity<APIResult<Template>>{
+        val handlebarKey = request.pathParameters["templateKey"]
+
+        return ResponseEntity.notImplemented(body = APIResult.OK("Get template model not implemented yet!"))
     }
 
     override fun info(message: String) = println("INFO: TemplateController: $message")

@@ -57,7 +57,7 @@ data class PostMeta(
  * @property lastUpdated internal property updated whenever the template is saved.
  */
 @Serializable
-data class Template(val key: String, val lastUpdated: Instant = Clock.System.now())
+data class Template(val key: String, val lastUpdated: Instant = Clock.System.now(), val sections: List<String>, val attributes: List<String> )
 
 /**
  * Wrapper class for [Template] which also contains the full body of the Handlebars content
