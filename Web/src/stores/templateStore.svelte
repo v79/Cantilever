@@ -1,9 +1,10 @@
 <script lang="ts" context="module">
 	import { writable } from 'svelte/store';
-	import type {
-		AllTemplates,
-		Template as TemplateType,
-		HandlebarsContent as HBContentType
+	import {
+		type AllTemplates,
+		type Template as TemplateType,
+		type HandlebarsContent as HBContentType,
+		TemplateMetadata
 	} from '../models/structure';
 	import { Template, HandlebarsContent } from '../models/structure';
 	import { compute_rest_props } from 'svelte/internal';
@@ -85,6 +86,44 @@
 					);
 					console.log('Built handlebars template');
 					resolve(template);
+				})
+				.catch((error: Error) => {
+					console.log(error);
+					resolve(error);
+				});
+		});
+	}
+
+	/**
+	 * Fetch template metadata for the given template key
+	 * @param token authorization token
+	 * @param key template key
+	 * @returns Promise containing the meta data, or an Error
+	 */
+	export async function fetchTemplateMetadata(
+		token: string,
+		key: string
+	): Promise<TemplateMetadata | Error | undefined> {
+		console.log('Fetching TemplateMetadata for ' + key);
+		let metadata: TemplateMetadata | undefined = undefined;
+		return new Promise((resolve) => {
+			fetch('https://api.cantilevers.org/project/templates/' + encodeURIComponent(key), {
+				method: 'GET',
+				headers: {
+					Accept: 'application/json',
+					Authorization: 'Bearer ' + token
+				},
+				mode: 'cors'
+			})
+				.then((response) => response.json())
+				.then((data) => {
+					console.dir(data);
+					if (data === undefined || data instanceof Error) {
+						throw new Error(data.message);
+					}
+					metadata = new TemplateMetadata(data.data.name, data.data.sections);
+					console.log('Extracted TemplateMetadata for ' + metadata.name);
+					resolve(metadata);
 				})
 				.catch((error: Error) => {
 					console.log(error);

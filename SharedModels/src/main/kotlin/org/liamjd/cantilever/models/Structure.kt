@@ -54,10 +54,19 @@ data class PostMeta(
 /**
  * Represents a Handlebars template file. It does not contain the content. There is no yaml front-matter, and hence no metadata, for Templates.
  * @property key the full S3 key for this template ('sources/templates/myTemplate.hbs'). Note that [PageMeta] and [PostMeta] only refer to the leaf of this, i.e. 'myTemplate'
+ * @property sections list of strings representing different sections of the page template
  * @property lastUpdated internal property updated whenever the template is saved.
  */
 @Serializable
-data class Template(val key: String, val lastUpdated: Instant = Clock.System.now(), val sections: List<String>, val attributes: List<String> )
+data class Template(val key: String, val lastUpdated: Instant = Clock.System.now(), val sections: List<String>)
+
+/**
+ * Represents the frontmatter metadata for a handlebars template file
+ * @property name user-friendly name of the template
+ * @property sections list of custom section names for the template
+ */
+@Serializable
+data class TemplateMetadata(val name: String, val sections: List<String> = emptyList())
 
 /**
  * Wrapper class for [Template] which also contains the full body of the Handlebars content

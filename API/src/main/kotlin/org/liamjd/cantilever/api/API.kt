@@ -89,7 +89,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                 }
                 get("/templates", projectController::getTemplates)
                 put("/templates/rebuild", projectController::rebuildTemplateList)
-                get("/templates/{templateKey}", templateController::getTemplateModel)
+                get("/templates/{templateKey}", templateController::getTemplateMetadata)
             }
         }
 

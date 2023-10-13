@@ -1,6 +1,12 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
-	import { MarkdownContent, Page, PageTree, FolderNode } from '../../models/structure';
+	import {
+		MarkdownContent,
+		Page,
+		PageTree,
+		FolderNode,
+		TemplateMetadata
+	} from '../../models/structure';
 	import type { Template, TreeNode } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import { markdownStore } from '../../stores/markdownContentStore.svelte';
@@ -8,7 +14,7 @@
 	import { userStore } from '../../stores/userStore.svelte';
 	import { pageTreeStore } from '../../stores/postsStore.svelte';
 	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import { allTemplatesStore } from '../../stores/templateStore.svelte';
+	import { allTemplatesStore, fetchTemplateMetadata } from '../../stores/templateStore.svelte';
 	import PageTreeView from './pageTreeView.svelte';
 	import { Modal } from 'flowbite-svelte';
 	import TextInput from '../../components/forms/textInput.svelte';
@@ -202,7 +208,23 @@
 	 */
 	function createNewPage() {
 		if (selectedTemplate && selectedParentFolder) {
-			setupNewPage(selectedTemplate);
+			fetchTemplateMetadata($userStore.token, selectedTemplate.key).then(
+				(response) => {
+					console.dir(response);
+					if (response instanceof Error) {
+						notificationStore.set({
+							message: response.message,
+							shown: true,
+							type: 'error'
+						});
+						$spinnerStore.shown = false;
+					} else if (response instanceof TemplateMetadata) {
+						setupNewPage(selectedTemplate!!, response);
+					} else {
+						console.log('Could not create a new page; invalid response to fetchTemplateMetadata');
+					}
+				}
+			);
 		}
 	}
 
@@ -211,7 +233,7 @@
 	 * This needs to load the template file and process it to set up the custom attributes and sections.
 	 * @param template
 	 */
-	function setupNewPage(template: Template) {
+	function setupNewPage(template: Template, metadata: TemplateMetadata) {
 		var newMDPost: MarkdownContent = {
 			body: '',
 			metadata: new Page(
@@ -222,7 +244,7 @@
 				'',
 				new Date(),
 				new Map<string, string>(),
-				new Map<string, string>()
+				new Map(metadata.sections.map(obj => [obj, ""]))
 			)
 		};
 
