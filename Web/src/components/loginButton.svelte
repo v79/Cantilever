@@ -45,6 +45,8 @@
 
 	function login() {
 		if (authToken) {
+			// update stores with templates, pages, etc?
+
 			return;
 		}
 		window.location.assign(loginUrl);
@@ -57,7 +59,7 @@
 
 	function extractIdToken() {
 		if (window.location.hash) {
-			let hash = window.location.hash.substr(1);
+			let hash = window.location.hash.substring(1);
 			let regex = /id_token=([^&]*)/;
 			let match = hash.match(regex);
 			if (match) {

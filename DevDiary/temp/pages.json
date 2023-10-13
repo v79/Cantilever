@@ -1,0 +1,81 @@
+{
+  "count": 5,
+  "folders": [
+    "sources/pages/folder/"
+  ],
+  "lastUpdated": "2023-09-28T19:05:35.642577169Z",
+  "pages": [
+    {
+      "title": "In a folder, darkly",
+      "srcKey": "sources/pages/folder/in-folder.md",
+      "templateKey": "about",
+      "url": "folder/in-folder",
+      "attributes": {
+        "siteName": "Cantilever",
+        "author": "Liam Davison"
+      },
+      "sections": {
+        "body": ""
+      },
+      "lastUpdated": "2023-09-26T20:57:59Z"
+    },
+    {
+      "title": "Todo",
+      "srcKey": "sources/pages/todo.md",
+      "templateKey": "about",
+      "url": "todo",
+      "attributes": {
+        "siteName": "Cantilever",
+        "author": "Liam Davison"
+      },
+      "sections": {
+        "body": ""
+      },
+      "lastUpdated": "2023-09-25T19:17:50Z"
+    },
+    {
+      "title": "About Cantilever",
+      "srcKey": "sources/pages/about.md",
+      "templateKey": "about",
+      "url": "about",
+      "attributes": {
+        "siteName": "Cantilever",
+        "author": "Liam Davison"
+      },
+      "sections": {
+        "body": ""
+      },
+      "lastUpdated": "2023-09-24T13:12:37Z"
+    },
+    {
+      "title": "Testing Emoji",
+      "srcKey": "sources/pages/emoji.md",
+      "templateKey": "about",
+      "url": "emoji",
+      "attributes": {
+        "siteName": "Cantilever",
+        "author": "Liam Davison"
+      },
+      "sections": {
+        "body": ""
+      },
+      "lastUpdated": "2023-09-24T13:06:40Z"
+    },
+    {
+      "title": "Cantilever",
+      "srcKey": "sources/pages/index.md",
+      "templateKey": "index",
+      "url": "index",
+      "attributes": {
+        "siteName": "Cantilever",
+        "author": "Liam John Davison"
+      },
+      "sections": {
+        "body": "",
+        "blockA": "",
+        "links": ""
+      },
+      "lastUpdated": "2023-08-19T16:36:08Z"
+    }
+  ]
+}
