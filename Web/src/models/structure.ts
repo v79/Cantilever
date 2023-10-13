@@ -25,6 +25,19 @@ export class Template {
 }
 
 /**
+ * Yaml frontmatter for Templates
+ */
+export class TemplateMetadata {
+	name: string;
+	sections: Array<string>;
+
+	constructor(name: string, sections: Array<string>) {
+		this.name = name;
+		this.sections = sections;
+	}
+}
+
+/**
  * Wrapper collection for Posts
  */
 export interface AllPosts {

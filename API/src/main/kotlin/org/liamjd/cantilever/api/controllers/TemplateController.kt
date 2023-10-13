@@ -1,11 +1,15 @@
 package org.liamjd.cantilever.api.controllers
 
+import com.charleskorn.kaml.Yaml
 import kotlinx.datetime.toKotlinInstant
+import kotlinx.serialization.SerializationException
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.HandlebarsContent
 import org.liamjd.cantilever.models.Template
+import org.liamjd.cantilever.models.TemplateMetadata
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.S3Service
@@ -27,7 +31,7 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
             return if (s3Service.objectExists(decoded, sourceBucket)) {
                 val templateObj = s3Service.getObject(decoded, sourceBucket)
                 if (templateObj != null) {
-                    val template = Template(handlebarSource, templateObj.lastModified().toKotlinInstant(), emptyList(), emptyList())
+                    val template = Template(handlebarSource, templateObj.lastModified().toKotlinInstant(), emptyList())
                     val body = s3Service.getObjectAsString(decoded, sourceBucket)
                     val handlebarsContent = HandlebarsContent(template, body)
                     ResponseEntity.ok(body = APIResult.Success(handlebarsContent))
@@ -65,10 +69,29 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
         }
     }
 
-    fun getTemplateModel(request: Request<Unit>) : ResponseEntity<APIResult<Template>>{
+    /**
+     * Load the handlebars template file and extract its metadata
+     */
+    fun getTemplateMetadata(request: Request<Unit>): ResponseEntity<APIResult<TemplateMetadata>> {
         val handlebarKey = request.pathParameters["templateKey"]
-
-        return ResponseEntity.notImplemented(body = APIResult.OK("Get template model not implemented yet!"))
+        return if (handlebarKey != null) {
+            val srcKey = URLDecoder.decode(handlebarKey, Charset.defaultCharset())
+           return if (s3Service.objectExists(srcKey, sourceBucket)) {
+                try {
+                    info("Loading metadata for template $handlebarKey")
+                    val template = s3Service.getObjectAsString(srcKey, sourceBucket)
+                    val frontmatter = template.getFrontMatter()
+                    val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
+                    ResponseEntity.ok(body = APIResult.Success(metadata))
+                } catch (se: SerializationException){
+                    ResponseEntity.serverError(body = APIResult.Error("Could not deserialize template $srcKey. Error was ${se.message}"))
+                }
+            } else {
+               ResponseEntity.badRequest(body = APIResult.Error("Could not find template $srcKey"))
+           }
+        } else {
+            ResponseEntity.badRequest(body = APIResult.Error("Invalid template key"))
+        }
     }
 
     override fun info(message: String) = println("INFO: TemplateController: $message")

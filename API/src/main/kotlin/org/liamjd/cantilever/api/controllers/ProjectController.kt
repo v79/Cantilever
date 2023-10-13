@@ -15,6 +15,7 @@ import org.liamjd.cantilever.common.S3_KEY.postsPrefix
 import org.liamjd.cantilever.common.S3_KEY.projectKey
 import org.liamjd.cantilever.common.S3_KEY.templatesKey
 import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
+import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.*
 import org.liamjd.cantilever.routing.MimeType
 import org.liamjd.cantilever.routing.Request
@@ -149,7 +150,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     val templateKey = templatesPrefix + postMetadata.template + ".html.hbs"
                     val template = try {
                         val lastModified = obj.lastModified().toKotlinInstant()
-                        Template(templateKey, lastModified, emptyList(), emptyList())
+                        Template(templateKey, lastModified, emptyList())
                     } catch (nske: NoSuchKeyException) {
                         error("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
                         return@forEach
@@ -206,7 +207,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     val templateKey = templatesPrefix + pageModel.templateKey + ".html.hbs"
                     val template = try {
                         val lastModified = obj.lastModified().toKotlinInstant()
-                        Template(templateKey, lastModified, emptyList(), emptyList())
+                        Template(templateKey, lastModified, emptyList())
                     } catch (nske: NoSuchKeyException) {
                         error("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
                         return@forEach
@@ -280,14 +281,21 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
         if (templates.hasContents()) {
             val list = mutableListOf<Template>()
             templates.contents().forEach { obj ->
-                if (obj.key().endsWith(".hbs")) {
-                    val lastModified = obj.lastModified().toKotlinInstant()
-                    list.add(
-                        Template(obj.key(), lastModified, emptyList(), emptyList())
-                    )
-                    filesProcessed++
-                } else {
-                    warn("Skipping non-hbs file '${obj.key()}'")
+                try {
+                    if (obj.key().endsWith(".hbs")) {
+                        val lastModified = obj.lastModified().toKotlinInstant()
+                        val templateString = s3Service.getObjectAsString(obj.key(), sourceBucket)
+                        val frontMatter = templateString.getFrontMatter()
+                        val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontMatter)
+                        list.add(
+                            Template(obj.key(), lastModified, metadata.sections)
+                        )
+                        filesProcessed++
+                    } else {
+                        warn("Skipping non-hbs file '${obj.key()}'")
+                    }
+                } catch (se: SerializationException) {
+                    error("Error deserializing template file ${obj.key()}. Error was: ${se.message}")
                 }
             }
             list.sortByDescending { it.lastUpdated }
