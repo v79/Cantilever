@@ -53,7 +53,6 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
      * Save a handlebars template file
      */
     fun saveTemplate(request: Request<HandlebarsContent>): ResponseEntity<APIResult<String>> {
-        info("saveTemplate")
         val handlebarsContent = request.body
         val srcKey = URLDecoder.decode(handlebarsContent.template.key, Charset.defaultCharset())
 

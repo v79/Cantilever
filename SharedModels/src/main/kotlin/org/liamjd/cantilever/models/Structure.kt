@@ -58,7 +58,7 @@ data class PostMeta(
  * @property lastUpdated internal property updated whenever the template is saved.
  */
 @Serializable
-data class Template(val key: String, val lastUpdated: Instant = Clock.System.now(), val sections: List<String>)
+data class Template(val key: String, val lastUpdated: Instant = Clock.System.now(), val sections: List<String> = emptyList())
 
 /**
  * Represents the frontmatter metadata for a handlebars template file
