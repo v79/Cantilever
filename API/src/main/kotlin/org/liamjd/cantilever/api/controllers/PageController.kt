@@ -74,6 +74,7 @@ class PageController(val sourceBucket: String) : KoinComponent, APIController {
         val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
         val metadata = extractPageModel(key = srcKey, source = markdown)
         val pageMeta = PageTreeNode.PageMeta(
+            nodeType = "page",
             title = metadata.title,
             templateKey = metadata.templateKey,
             srcKey = srcKey,

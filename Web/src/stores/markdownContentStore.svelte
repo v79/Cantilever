@@ -3,6 +3,7 @@
 	import { MarkdownContent } from '../models/structure';
 
 	function createMarkdownStore() {
+		//@ts-ignore
 		const { subscribe, set, update } = writable<MarkdownContent>(new MarkdownContent(null, ''));
 		return {
 			subscribe,
@@ -20,5 +21,6 @@
 		return title.toLowerCase().replaceAll(invalid, '-');
 	}
 
+	//@ts-ignore
 	export const CLEAR = new MarkdownContent(null, '');
 </script>

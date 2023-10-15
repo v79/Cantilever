@@ -2,12 +2,10 @@
 	import { writable } from 'svelte/store';
 	import {
 		type AllTemplates,
-		type Template as TemplateType,
 		type HandlebarsContent as HBContentType,
 		TemplateMetadata
 	} from '../models/structure';
 	import { Template, HandlebarsContent } from '../models/structure';
-	import { compute_rest_props } from 'svelte/internal';
 
 	export const allTemplatesStore = writable<AllTemplates>({
 		count: 0,

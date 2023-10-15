@@ -81,13 +81,13 @@ export class PageTree {
  * FolderNode represents a folder, or more accurately a shared prefix in S3
  */
 export class FolderNode implements TreeNode {
-	type: string;
+	nodeType: string;
 	srcKey: string;
 	count: number;
 	children: TreeNode[];
 
 	constructor(type: string, srcKey: string, count: number, children: TreeNode[]) {
-		this.type = type;
+		this.nodeType = type;
 		this.srcKey = srcKey;
 		this.count = count;
 		this.children = children;
@@ -95,15 +95,15 @@ export class FolderNode implements TreeNode {
 
 	depthSort() {
 		return this.children.sort((a: TreeNode, b: TreeNode) => {
-			if(a.type === 'folder' && b.type === 'folder') {
+			if (a.nodeType === 'folder' && b.nodeType === 'folder') {
 				const aFolder = a as FolderNode;
 				const bFolder = b as FolderNode;
-				if(aFolder.srcKey.split("/").length > bFolder.srcKey.split("/").length) return 1
-				if(aFolder.srcKey.split("/").length < bFolder.srcKey.split("/").length) return -1
-				return 0
+				if (aFolder.srcKey.split('/').length > bFolder.srcKey.split('/').length) return 1;
+				if (aFolder.srcKey.split('/').length < bFolder.srcKey.split('/').length) return -1;
+				return 0;
 			}
-			return 0
-		})
+			return 0;
+		});
 	}
 }
 
@@ -111,7 +111,7 @@ export class FolderNode implements TreeNode {
  * Common interface for Pages and FolderNodes so they can be valid children of FolderNodes
  */
 export interface TreeNode {
-	type: string;
+	nodeType: string;
 }
 
 /**
@@ -190,7 +190,7 @@ export class Post extends MetadataItem {
  * This is metadata only, it does not contain the body content.
  */
 export class Page implements MetadataItem, TreeNode {
-	type: string;
+	nodeType: string;
 	title: string;
 	srcKey: string;
 	templateKey: string;
@@ -200,7 +200,7 @@ export class Page implements MetadataItem, TreeNode {
 	sections: Map<string, string>;
 
 	constructor(
-		type: string,
+		nodeType: string,
 		title: string,
 		srcKey: string,
 		templateKey: string,
@@ -209,7 +209,7 @@ export class Page implements MetadataItem, TreeNode {
 		attributes: Map<string, string>,
 		sections: Map<string, string>
 	) {
-		this.type = type;
+		this.nodeType = nodeType;
 		this.title = title;
 		this.srcKey = srcKey;
 		this.templateKey = templateKey;

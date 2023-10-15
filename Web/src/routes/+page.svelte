@@ -1,11 +1,12 @@
 <script lang="ts">
-    import PostList from '../components/postList.svelte';
-    import MarkdownEditor from '../components/MarkdownEditor/markdownEditor.svelte';
-    import SpinnerWrapper from '../components/utilities/spinnerWrapper.svelte';
-    import {activeStore} from '../stores/appStatusStore.svelte';
-    import {afterNavigate} from '$app/navigation';
+	import PostList from '../components/postList.svelte';
+	import MarkdownEditor from '../components/MarkdownEditor/markdownEditor.svelte';
+	import SpinnerWrapper from '../components/utilities/spinnerWrapper.svelte';
+	import { activeStore } from '../stores/appStatusStore.svelte';
+	import { afterNavigate } from '$app/navigation';
+	import ActiveStoreView from '../components/activeStoreView.svelte';
 
-    afterNavigate(() => {
+	afterNavigate(() => {
 		$activeStore.currentPage = 'Posts';
 	});
 </script>
@@ -19,6 +20,7 @@
 	</div>
 	<div class="invisible basis-1/4 bg-slate-800 lg:visible">
 		<h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-200">Messages</h3>
+		<ActiveStoreView />
 		<SpinnerWrapper spinnerID="globalSpinner" />
 	</div>
 </div>

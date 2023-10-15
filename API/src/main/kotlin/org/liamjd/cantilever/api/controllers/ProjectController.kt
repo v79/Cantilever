@@ -215,6 +215,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     // we don't need to store the full contents of the sections in this file (just as we don't store the body in posts.json)
                     pageList.add(
                         PageTreeNode.PageMeta(
+                            nodeType = "page",
                             title = pageModel.title,
                             srcKey = pageModel.srcKey,
                             templateKey = pageModel.templateKey,
@@ -239,7 +240,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
 
             val folders = mutableListOf<PageTreeNode.FolderNode>()
             folderList.forEach {
-                folders.add(PageTreeNode.FolderNode(srcKey = it, children = null, isRoot = false))
+                folders.add(PageTreeNode.FolderNode(nodeType = "folder", srcKey = it, children = null, isRoot = false))
             }
             var totalCount = folders.size
 
@@ -259,7 +260,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
 
             val combined: MutableList<PageTreeNode> = mutableListOf()
             combined.addAll(folders)
-            val containerFolder = PageTreeNode.FolderNode(pagesPrefix, combined, false)
+            val containerFolder = PageTreeNode.FolderNode("folder", pagesPrefix, combined, false)
             containerFolder.count = totalCount
             val pageTree = PageTree(lastUpdated = Clock.System.now(), container = containerFolder)
             val treeJson = Json.encodeToString(PageTree.serializer(), pageTree)

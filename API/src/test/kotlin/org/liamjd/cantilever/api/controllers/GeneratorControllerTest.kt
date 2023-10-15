@@ -100,25 +100,30 @@ class GeneratorControllerTest : KoinTest {
         val mockSqsResponse = mockk<SendMessageResponse>()
         val mockPageJson = """
             {
-            "count": 1,
-            "lastUpdated": "2023-03-13T20:46:36.647517Z"
-              "pages": [
-    {
-    "title": "Todo title",
-      "srcKey": "sources/pages/todo.md",
-      "templateKey": "about",
-      "url": "sources-pages-todo.md",
-      "attributes": {
-        "siteName" : "a name",
-        "author" : "writer mcwriterface"
-      },
-      "sections": {
-        "body": "empty body"
-      },
-      "lastUpdated": "2023-03-13T20:46:36.647517Z"
-    }
-    ]
-            }
+  "lastUpdated": "2023-10-12T15:23:36.140808078Z",
+  "container": {
+    "srcKey": "sources/pages/",
+    "children": [
+     {
+            "type": "page",
+            "title": "About Cantilever",
+            "srcKey": "sources/pages/about.md",
+            "templateKey": "about",
+            "url": "about",
+            "attributes": {
+              "siteName": "Cantilever",
+              "author": "Liam Davison"
+            },
+            "sections": {
+              "body": ""
+            },
+            "lastUpdated": "2023-09-24T13:12:37Z"
+          }
+      ],
+      "isRoot": true,
+      "count": 1
+      }
+      }
         """.trimIndent()
 
         val mockPostJson = """
@@ -138,11 +143,14 @@ class GeneratorControllerTest : KoinTest {
 }
         """.trimIndent()
         val mockTodoPage = ""
+        val mockTemplateText = ""
+
         declareMock<S3Service> {
             every { mockS3.objectExists(any(), sourceBucket) } returns true
             every { mockS3.getObjectAsString("generated/pages.json", sourceBucket) } returns mockPageJson
             every { mockS3.getObjectAsString("generated/posts.json", sourceBucket) } returns mockPostJson
-            every { mockS3.getObjectAsString("sources/pages/todo.md", sourceBucket) } returns mockTodoPage
+            every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns mockTodoPage
+            every { mockS3.getObjectAsString("about",sourceBucket)} returns mockTemplateText
         }
         declareMock<SQSService> {
             every { mockSQS.sendMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse

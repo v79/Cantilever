@@ -9,7 +9,7 @@
 
 <ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
 	{#each sorted as node}
-		{#if node.type === 'folder'}
+		{#if node.nodeType === 'folder'}
 			{@const folder = node}
 			<li
 				id={folder.srcKey}

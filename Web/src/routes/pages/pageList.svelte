@@ -49,6 +49,7 @@
 		})
 			.then((response) => response.json())
 			.then((data) => {
+				console.dir(data);
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
@@ -87,15 +88,14 @@
 	function addNodesToContainer(container: FolderNode, toAdd: Array<TreeNode>) {
 		if (toAdd) {
 			for (const node of toAdd) {
-				// console.log(node);
-				if (node.type === 'page') {
+				if (node.nodeType === 'page') {
 					var page = node as Page;
 					if (container.children == undefined) {
 						container.children = new Array<TreeNode>();
 					}
 					container.children.push(page);
 				}
-				if (node.type === 'folder') {
+				if (node.nodeType === 'folder') {
 					var folder = node as FolderNode;
 					if (folder.children) {
 						//@ts-ignore
@@ -103,7 +103,6 @@
 						container.children.push(newFolder);
 						addNodesToContainer(newFolder, folder.children);
 					} else {
-						console.log('Adding empty folder node ' + folder.srcKey);
 						//@ts-ignore
 						var newFolder = new FolderNode('folder', folder.srcKey, 0, []);
 						container.children.push(newFolder);
@@ -118,6 +117,7 @@
 	 * @param srcKey
 	 */
 	function loadMarkdown(srcKey: string) {
+		const pagesFolder: string = 'sources/pages/';
 		let token = $userStore.token;
 		console.log('Loading markdown file... ' + srcKey);
 		spinnerStore.set({ shown: true, message: 'Loading markdown file... ' + srcKey });
@@ -155,6 +155,16 @@
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
 				$activeStore.newSlug = $markdownStore.metadata!!.url;
+				let folder = new FolderNode(
+					'folder',
+					$activeStore.activeFile.substring(pagesFolder.length),
+					0,
+					[]
+				);
+				if (folder.srcKey.indexOf('/') == -1) {
+					folder.srcKey = '/';
+				}
+				$activeStore.folder = folder;
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
@@ -208,23 +218,21 @@
 	 */
 	function createNewPage() {
 		if (selectedTemplate && selectedParentFolder) {
-			fetchTemplateMetadata($userStore.token, selectedTemplate.key).then(
-				(response) => {
-					console.dir(response);
-					if (response instanceof Error) {
-						notificationStore.set({
-							message: response.message,
-							shown: true,
-							type: 'error'
-						});
-						$spinnerStore.shown = false;
-					} else if (response instanceof TemplateMetadata) {
-						setupNewPage(selectedTemplate!!, response);
-					} else {
-						console.log('Could not create a new page; invalid response to fetchTemplateMetadata');
-					}
+			fetchTemplateMetadata($userStore.token, selectedTemplate.key).then((response) => {
+				console.dir(response);
+				if (response instanceof Error) {
+					notificationStore.set({
+						message: response.message,
+						shown: true,
+						type: 'error'
+					});
+					$spinnerStore.shown = false;
+				} else if (response instanceof TemplateMetadata) {
+					setupNewPage(selectedTemplate!!, response, selectedParentFolder!!);
+				} else {
+					console.log('Could not create a new page; invalid response to fetchTemplateMetadata');
 				}
-			);
+			});
 		}
 	}
 
@@ -233,8 +241,8 @@
 	 * This needs to load the template file and process it to set up the custom attributes and sections.
 	 * @param template
 	 */
-	function setupNewPage(template: Template, metadata: TemplateMetadata) {
-		var newMDPost: MarkdownContent = {
+	function setupNewPage(template: Template, metadata: TemplateMetadata, folder: FolderNode) {
+		var newMDPage: MarkdownContent = {
 			body: '',
 			metadata: new Page(
 				'page',
@@ -244,18 +252,21 @@
 				'',
 				new Date(),
 				new Map<string, string>(),
-				new Map(metadata.sections.map(obj => [obj, ""]))
+				new Map(metadata.sections.map((obj) => [obj, '']))
 			)
 		};
-
+		$markdownStore.metadata = newMDPage.metadata;
 		$activeStore.activeFile = '';
 		$activeStore.isNewFile = true;
 		$activeStore.isValid = false;
 		$activeStore.newSlug = '';
 		$activeStore.hasChanged = false;
+		if (selectedParentFolder) {
+			$activeStore.folder = folder;
+		}
 
 		console.log('Creating new page');
-		markdownStore.set(newMDPost);
+		markdownStore.set(newMDPage);
 	}
 
 	/**
@@ -264,7 +275,7 @@
 	function getFolders() {
 		if ($pageTreeStore.container.children) {
 			let result = <FolderNode[]>(
-				$pageTreeStore.container.children.filter((value) => value.type == 'folder')
+				$pageTreeStore.container.children.filter((value) => value.nodeType == 'folder')
 			);
 			return result;
 		}

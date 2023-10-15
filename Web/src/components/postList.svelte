@@ -158,11 +158,13 @@
 	function createNewPost() {
 		var newMDPost: MarkdownContent = {
 			body: '',
+
 			metadata: new Post(
 				'',
 				'',
 				'post',
 				'',
+				//@ts-ignore
 				'', // I know this is invalid, but I want a 'null' date here
 				new Date()
 			)

@@ -9,6 +9,7 @@
 		isValid: false,
 		currentPage: 'Posts',
 		newSlug: '',
-		fileType: null
+		fileType: null,
+		folder: null
 	});
 </script>

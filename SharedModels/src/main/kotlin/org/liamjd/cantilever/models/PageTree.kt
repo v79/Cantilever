@@ -20,7 +20,7 @@ sealed class PageTreeNode {
      */
     @Serializable
     @SerialName("folder")
-    data class FolderNode(val srcKey: String, var children: MutableList<PageTreeNode>?, val isRoot: Boolean) : PageTreeNode() {
+    data class FolderNode(val nodeType:String = "folder", val srcKey: String, var children: MutableList<PageTreeNode>?, val isRoot: Boolean) : PageTreeNode() {
         @OptIn(ExperimentalSerializationApi::class)
         @EncodeDefault
         var count: Int = children?.size ?: 0
@@ -28,6 +28,7 @@ sealed class PageTreeNode {
 
     /**
      * PageMeta is a summary class representing an individual Page. It does not contain the content for each section; they are flattened to empty strings
+     * @property nodeType needed in the front end, but defaults to "page" here.
      * @property title user-provided title
      * @property srcKey the full S3 key for the page, must be unique, in format 'sources/pages/folder/leafname.md'
      * @property templateKey the leaf of the S3 key for the template this page is based on (e.g. if the full template key is /sources/templates/myTemplate.hbs then this value will be 'myTemplate'
@@ -35,20 +36,11 @@ sealed class PageTreeNode {
      * @property attributes a map of custom attributes, both key and value
      * @property sections a map of the custom sections in the page, but the value is simply stored as an empty string
      * @property lastUpdated internal property updated whenever the page is saved
-     *
-     *
-     * How to represent a folder structure? Well, the S3 key simulates this with the / separator.
-     * So a page with key /sources/pages/apple/pear/banana.md will be a file called "banana.md" in a "apple > pear" folder path.
-     * I would need to be able to create a 'folder' from the web UI.
-     * Would such folders be recorded in pages.json? Or just implied?
-     * One problem with srcKey is that it starts at /sources/pages/ - these are not relevant to the URL generation or UI
-     * But that can be skipped fairly easily.
-     * URL generation needs to change. And the destination in S3 needs to better reflect the source key.
-     *
      */
     @Serializable
     @SerialName("page")
     data class PageMeta(
+        val nodeType: String = "page",
         val title: String,
         val srcKey: String,
         val templateKey: String,
@@ -65,5 +57,4 @@ sealed class PageTreeNode {
  * @property container the main folder that contains the tree
  */
 @Serializable
-class PageTree(val lastUpdated: Instant, val container: PageTreeNode.FolderNode) {
-}
+class PageTree(val lastUpdated: Instant, val container: PageTreeNode.FolderNode)
