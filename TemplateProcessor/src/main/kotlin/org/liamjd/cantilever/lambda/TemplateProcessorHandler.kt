@@ -131,7 +131,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         val pageTree = Json.decodeFromString<PageTree>(pagesFile)
         val postList = Json.decodeFromString<PostList>(postsFile)
 
-        val pageTemplateKey = templatesPrefix + pageMsg.template + "." + HTML_HBS
+        val pageTemplateKey = pageMsg.template
 
         // load the page.html.hbs template
         logger.info("Loading template $pageTemplateKey")
