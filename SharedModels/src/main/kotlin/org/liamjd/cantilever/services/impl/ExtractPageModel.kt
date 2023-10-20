@@ -23,20 +23,18 @@ import org.liamjd.cantilever.models.sqs.SqsMsgBody
  * ---
  */
 fun extractPageModel(key: String, source: String): SqsMsgBody.PageModelMsg {
-
     val metadata = source.getFrontMatter().trim()
-
-    val customSections =
-        source.stripFrontMatter().split("---").filter { it.isNotEmpty() }.map { it.trim() }
+    val sectionRegex = Regex("(\n-{3} #)")
+    val customSections = if (sectionRegex.containsMatchIn(source)) {
+        source.split(sectionRegex).drop(1).map { it.trim() }
             .associate {
-                val sectionName = if (it.startsWith("#")) {
-                    it.substringAfter("#").substringBefore("\n").trim()
-                } else {
-                    ""
-                }
-                val sectionContent = it.substringAfter("#$sectionName").substringBefore("---").trim()
+                val sectionName = it.substringBefore("\n").trim()
+                val sectionContent = it.substringAfter(sectionName).trim()
                 sectionName to sectionContent
-            }.filter { it.key.isNotEmpty() }
+            }.filter { it.key.isNotEmpty() && !it.key.startsWith("=") }
+    } else {
+        emptyMap()
+    }
 
     val customAttributes = metadata.lines().associate {
         val key = it.substringBefore(":").trim()
@@ -58,7 +56,7 @@ fun extractPageModel(key: String, source: String): SqsMsgBody.PageModelMsg {
         pageFile.substringBefore(".${FILE_TYPE.MD}")
     }
 
-    val title = if(metadata.contains("title:")) {
+    val title = if (metadata.contains("title:")) {
         metadata.substringAfter("title:").substringBefore("\n").trim()
     } else {
         key

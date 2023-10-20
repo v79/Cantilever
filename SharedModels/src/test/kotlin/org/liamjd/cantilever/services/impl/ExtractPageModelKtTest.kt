@@ -2,6 +2,7 @@ package org.liamjd.cantilever.services.impl
 
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.liamjd.cantilever.models.sqs.MarkdownSection
 
 internal class ExtractPageModelKtTest {
 
@@ -9,89 +10,89 @@ internal class ExtractPageModelKtTest {
 
     @Test
     fun `extract model for core metadata only`() {
-        val result = extractPageModel(filename,coreOnly)
+        val result = extractPageModel(filename, coreOnly)
 
-        assertEquals("index",result.templateKey)
-        assertEquals(0,result.attributes.size)
-        assertEquals(0,result.sections.size)
+        assertEquals("index", result.templateKey)
+        assertEquals(0, result.attributes.size)
+        assertEquals(0, result.sections.size)
         assertNotNull(result.lastModified)
     }
 
     @Test
     fun `extract model with one named section not closed`() {
-        val result = extractPageModel(filename,singleNamedSection)
+        val result = extractPageModel(filename, singleNamedSection)
 
-        assertEquals("index",result.templateKey)
-        assertEquals(0,result.attributes.size)
-        assertEquals(1,result.sections.size)
+        assertEquals("index", result.templateKey)
+        assertEquals(0, result.attributes.size)
+        assertEquals(1, result.sections.size)
         assertNotNull(result.lastModified)
-        assertEquals("body",result.sections.keys.first())
+        assertEquals("body", result.sections.keys.first())
     }
 
     @Test
     fun `extract model with one named section is closed`() {
-        val result = extractPageModel(filename,sectionIsClosed)
+        val result = extractPageModel(filename, sectionIsClosed)
 
-        assertEquals("index",result.templateKey)
-        assertEquals(0,result.attributes.size)
-        assertEquals(1,result.sections.size)
+        assertEquals("index", result.templateKey)
+        assertEquals(0, result.attributes.size)
+        assertEquals(1, result.sections.size)
         assertNotNull(result.lastModified)
-        assertEquals("body",result.sections.keys.first())
+        assertEquals("body", result.sections.keys.first())
     }
 
     @Test
     fun `extract model with multiple sections not closed`() {
-        val result = extractPageModel(filename,multipleNamedSections)
+        val result = extractPageModel(filename, multipleNamedSections)
 
-        assertEquals("index",result.templateKey)
-        assertEquals(0,result.attributes.size)
-        assertEquals(2,result.sections.size)
+        assertEquals("index", result.templateKey)
+        assertEquals(0, result.attributes.size)
+        assertEquals(2, result.sections.size)
         assertNotNull(result.lastModified)
-        assertEquals("body",result.sections.keys.first())
+        assertEquals("body", result.sections.keys.first())
     }
 
     @Test
     fun `extract model with custom attributes in metadata`() {
-        val result = extractPageModel(filename,customMetadata)
+        val result = extractPageModel(filename, customMetadata)
 
-        assertEquals("index",result.templateKey)
-        assertEquals(1,result.attributes.size)
-        assertEquals(0,result.sections.size)
+        assertEquals("index", result.templateKey)
+        assertEquals(1, result.attributes.size)
+        assertEquals(0, result.sections.size)
         assertNotNull(result.lastModified)
-        assertEquals("author",result.attributes.keys.first())
-        assertEquals("Bob",result.attributes.values.first())
+        assertEquals("author", result.attributes.keys.first())
+        assertEquals("Bob", result.attributes.values.first())
     }
 
     @Test
     fun `if template is blank it parses but no template is set`() {
-        val result = extractPageModel(filename,templateMissing)
+        val result = extractPageModel(filename, templateMissing)
 
-        assertEquals("",result.templateKey)
+        assertEquals("", result.templateKey)
     }
 
     @Test
     fun `sections without names are skipped`() {
-        val result = extractPageModel(filename,unnamedSections)
+        val result = extractPageModel(filename, unnamedSections)
 
         println(result)
 
-        assertEquals("index",result.templateKey)
-        assertEquals(0,result.attributes.size)
-        assertEquals(0,result.sections.size)
+        assertEquals("index", result.templateKey)
+        assertEquals(0, result.attributes.size)
+        assertEquals(0, result.sections.size)
         assertNotNull(result.lastModified)
     }
 
     @Test
     fun `extract a complex model`() {
-        val result = extractPageModel(filename,complexContent)
-        assertEquals("index",result.templateKey)
-        assertEquals(3,result.attributes.size)
-        assertEquals(3,result.sections.size)
+        val result = extractPageModel(filename, complexContent)
+        assertEquals("index", result.templateKey)
+        assertEquals(3, result.attributes.size)
+        assertEquals(3, result.sections.size)
         assertNotNull(result.lastModified)
-        assertEquals("author",result.attributes.keys.first())
-        assertEquals("Sue",result.attributes.values.first())
+        assertEquals("author", result.attributes.keys.first())
+        assertEquals("Sue", result.attributes.values.first())
         val number = result.attributes["number"]
-        assertEquals("27",number)
+        assertEquals("27", number)
         val top = result.sections["top"]
         top?.let { t ->
             assertTrue(t.length > 50)
@@ -111,12 +112,50 @@ internal class ExtractPageModelKtTest {
     fun `extract metadata when embedded raw markdown contains block separators`() {
         val result = extractPageModel(filename, embeddedMarkdownDashes)
 
-        assertEquals("index",result.templateKey)
-        assertEquals(1,result.attributes.size)
-        assertEquals(1,result.sections.size)
+        assertEquals("index", result.templateKey)
+        assertEquals(1, result.attributes.size)
+        assertEquals(1, result.sections.size)
         assertNotNull(result.lastModified)
-        assertEquals("author",result.attributes.keys.first())
-        assertEquals("Bob",result.attributes.values.first())
+        assertEquals("author", result.attributes.keys.first())
+        assertEquals("Bob", result.attributes.values.first())
+    }
+
+    @Test
+    fun `extract metadata when markdown contains table with header elements`() {
+        val result = extractPageModel(filename, embeddedMarkdownTable)
+
+        assertEquals("index", result.templateKey)
+        assertEquals(1, result.attributes.size)
+        assertEquals(1, result.sections.size)
+        assertNotNull(result.lastModified)
+        assertEquals("author", result.attributes.keys.first())
+        assertEquals("Bob", result.attributes.values.first())
+    }
+
+    @Test
+    fun `extract metadata when markdown contains table with header elements real`() {
+        val result = extractPageModel(filename, realPage)
+
+        assertEquals("sources/templates/about.html.hbs", result.templateKey)
+        assertEquals(0, result.attributes.size)
+        assertEquals(1, result.sections.size)
+        assertNotNull(result.lastModified)
+        val section: MarkdownSection? = result.sections["body"]
+        assertNotNull(section)
+        section?.let {
+            val expected = """
+There are a number of values which are always available to page and post templates. Some are defined by the project, some are specific to the page type (page or post), and some are calculated.
+
+### Common Elements
+
+
+| col1 | col2 | col3 |
+| ------ | ------ | ------ |
+|      |      |      |
+|      |      |      |
+""".trimIndent()
+            assertEquals(expected, it.trimIndent())
+        }
     }
 }
 
@@ -184,7 +223,7 @@ val complexContent = """
     Blank lines won't scare it.
     
     99
-    ---#Middle
+    --- #Middle
     Etiam ligula risus, suscipit at justo ut, cursus dignissim nulla. Aliquam erat volutpat. Maecenas eget rutrum eros. Phasellus efficitur vestibulum erat,
     --- #Bottom
     #Nothing special about this anchor here.
@@ -202,4 +241,32 @@ val embeddedMarkdownDashes = """
     That triple shouldn't confuse the metadata extractor.
     ```
     The end.
+""".trimIndent()
+
+val embeddedMarkdownTable = """
+    ---
+    template: index
+    #author: Bob
+    --- #markdown
+    Here is a complex piece of markdown, which contains a table with empty cells
+    | col1 | col2 |
+    | ------ | ------ |
+    | key | ------ |
+    Might be tricky.
+""".trimIndent()
+
+val realPage = """
+    ---
+    title: Page Model
+    template: sources/templates/about.html.hbs
+    --- #body
+    There are a number of values which are always available to page and post templates. Some are defined by the project, some are specific to the page type (page or post), and some are calculated.
+
+    ### Common Elements
+
+
+    | col1 | col2 | col3 |
+    | ------ | ------ | ------ |
+    |      |      |      |
+    |      |      |      |
 """.trimIndent()
