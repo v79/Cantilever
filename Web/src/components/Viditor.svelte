@@ -21,6 +21,7 @@
 			lang: 'en_US',
 			value: body,
 			counter: { enable: true },
+			mode: 'ir',
 			toolbar: [
 				// "emoji",
 				'headings',
@@ -50,15 +51,16 @@
 				'link',
 				'table',
 				//"record",
-				//"edit-mode",
+				'|',
+				'edit-mode',
 				//"both",
-				// 'preview',
+				'preview',
 				'fullscreen',
 				// 'outline',
 				'devtools',
 				'br'
 			],
-			cdn: 'https://cdn.jsdelivr.net/npm/vditor@3.8.7', //defaults to jsdlvr
+			cdn: 'https://cdn.jsdelivr.net/npm/vditor@3.9.6', //defaults to jsdlvr
 			toolbarConfig: {
 				pin: true
 			},
