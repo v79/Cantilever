@@ -28,7 +28,6 @@ class HandlebarsRenderer : TemplateRender {
         handlebars.registerHelper("upper", StringHelpers.upper)
         handlebars.registerHelper("localDate", LocalDateFormatter("dd/MM/yyyy"))
         handlebars.registerHelper("take", TakeHelper())
-        handlebars.registerHelper("capitalize",StringHelpers.capitalize)
         handlebars.registerHelper("slugify", StringHelpers.slugify)
     }
 
