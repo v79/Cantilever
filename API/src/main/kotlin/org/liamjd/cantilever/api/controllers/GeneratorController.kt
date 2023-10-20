@@ -215,6 +215,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
                 }
             }
         }
+        // TODO: this count is wrong
         return localCount
     }
 

@@ -14,6 +14,7 @@ import org.liamjd.cantilever.common.FILE_TYPE.MD
 import org.liamjd.cantilever.common.S3_KEY.fragments
 import org.liamjd.cantilever.common.S3_KEY.projectKey
 import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
+import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.PageTree
 import org.liamjd.cantilever.models.PostList
@@ -135,8 +136,9 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
         // load the page.html.hbs template
         logger.info("Loading template $pageTemplateKey")
-        val templateString = s3Service.getObjectAsString(pageTemplateKey, sourceBucket)
-
+        val sourceString = s3Service.getObjectAsString(pageTemplateKey, sourceBucket)
+        // templates now have frontmatter; strip it out
+        val templateString = sourceString.stripFrontMatter()
         val model = mutableMapOf<String, Any?>()
         model["key"] = pageMsg.key
         model["url"] = pageMsg.url
@@ -184,7 +186,9 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         // load template file as specified by metadata
         val template = templatesPrefix + postMsg.metadata.template + "." + HTML_HBS
         logger.info("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
-        val templateString = s3Service.getObjectAsString(template, sourceBucket)
+        val sourceString = s3Service.getObjectAsString(template, sourceBucket)
+        // templates now have frontmatter; strip it out
+        val templateString = sourceString.stripFrontMatter()
 
         // build model from project and from html fragment
         val model = mutableMapOf<String, Any?>()
