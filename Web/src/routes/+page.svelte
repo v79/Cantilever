@@ -2,11 +2,12 @@
 	import PostList from '../components/postList.svelte';
 	import MarkdownEditor from '../components/MarkdownEditor/markdownEditor.svelte';
 	import SpinnerWrapper from '../components/utilities/spinnerWrapper.svelte';
-	import { activeStore } from '../stores/appStatusStore.svelte';
+	import { AS_CLEAR, activeStore } from '../stores/appStatusStore.svelte';
 	import { afterNavigate } from '$app/navigation';
 	import ActiveStoreView from '../components/activeStoreView.svelte';
 
 	afterNavigate(() => {
+		activeStore.set(AS_CLEAR);
 		$activeStore.currentPage = 'Posts';
 	});
 </script>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
 	import SpinnerWrapper from '../../components/utilities/spinnerWrapper.svelte';
-	import { activeStore } from '../../stores/appStatusStore.svelte';
+	import { AS_CLEAR, activeStore } from '../../stores/appStatusStore.svelte';
 	import TemplateList from './templateList.svelte';
 	import { handlebarStore } from '../../stores/handlebarContentStore.svelte';
 	import { Template } from '../../models/structure';
@@ -15,6 +15,11 @@
 	let saveExistingModal = false;
 	let saveNewModal = false;
 	let saveNewFileSlug = '';
+
+	afterNavigate(() => {
+		activeStore.set(AS_CLEAR);
+		$activeStore.currentPage = 'Templates';
+	})
 
 	function saveFile() {
 		console.log('Saving template file ', $handlebarStore.template?.key);
@@ -37,6 +42,7 @@
 					shown: true,
 					type: 'success'
 				});
+				$activeStore.isNewFile = false;
 			});
 	}
 

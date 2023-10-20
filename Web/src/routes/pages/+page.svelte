@@ -7,7 +7,7 @@
 	import SpinnerWrapper from '../../components/utilities/spinnerWrapper.svelte';
 	import { createSlug } from '../../functions/createSlug';
 	import { Page } from '../../models/structure';
-	import { activeStore } from '../../stores/appStatusStore.svelte';
+	import { AS_CLEAR, activeStore } from '../../stores/appStatusStore.svelte';
 	import { markdownStore } from '../../stores/markdownContentStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
@@ -20,8 +20,8 @@
 	let saveNewFileSlug = '';
 
 	afterNavigate(() => {
+		activeStore.set(AS_CLEAR);
 		$activeStore.currentPage = 'Pages';
-		$activeStore.activeFile = '';
 	});
 
 	function mapReplacer(key: string, value: any): any {
@@ -37,11 +37,12 @@
 			throw new Error('Cannot save a page with no metadata');
 		} else {
 			if ($markdownStore.metadata.srcKey) {
-				$markdownStore.metadata.srcKey = $activeStore.folder?.srcKey + $activeStore.newSlug;
+				$markdownStore.metadata.srcKey = $activeStore.folder?.srcKey + $activeStore.newSlug + '.md';
 			}
 			console.log('Saving page file ', $markdownStore.metadata?.srcKey);
 		}
 		let pageJson = JSON.stringify($markdownStore, mapReplacer);
+		console.log(pageJson);
 		fetch('https://api.cantilevers.org/project/pages/', {
 			method: 'POST',
 			headers: {
@@ -59,6 +60,7 @@
 					shown: true,
 					type: 'success'
 				});
+				$activeStore.isNewFile = false;
 			})
 			.catch((error) => {
 				console.log(error);
@@ -145,7 +147,7 @@
 <Modal title="Save new page?" bind:open={saveNewModal} autoclose size="sm">
 	<p>
 		Creating new page <strong>{$markdownStore.metadata?.title}</strong> from template
-		<strong>{$markdownStore.metadata?.templateKey}</strong> in folder <strong>???</strong>.
+		<strong>{$markdownStore.metadata?.templateKey}</strong> in folder <strong>{$activeStore.folder?.srcKey}</strong>.
 	</p>
 	<p>The slug (url) will be fixed after saving, so this is your last chance to change it.</p>
 	<form>

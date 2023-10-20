@@ -12,4 +12,15 @@
 		fileType: null,
 		folder: null
 	});
+
+	export const AS_CLEAR: AppStatus = {
+		activeFile: '',
+		isNewFile: false,
+		hasChanged: false,
+		isValid: true,
+		currentPage: '',
+		newSlug: '',
+		fileType: null,
+		folder: null
+	};
 </script>

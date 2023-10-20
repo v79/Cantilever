@@ -5,7 +5,10 @@
 		Page,
 		PageTree,
 		FolderNode,
-		TemplateMetadata
+		TemplateMetadata,
+
+		FileType
+
 	} from '../../models/structure';
 	import type { Template, TreeNode } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
@@ -154,16 +157,19 @@
 				$activeStore.isNewFile = false;
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
+				$activeStore.fileType = FileType.Page;
 				$activeStore.newSlug = $markdownStore.metadata!!.url;
+				let leafIndex = $activeStore.activeFile.lastIndexOf('/');
+				let folderString = '';
+				if(leafIndex >= pagesFolder.length) {
+					folderString =  $activeStore.activeFile.substring(pagesFolder.length,leafIndex)
+				}
 				let folder = new FolderNode(
 					'folder',
-					$activeStore.activeFile.substring(pagesFolder.length),
+					pagesFolder + folderString,
 					0,
 					[]
 				);
-				if (folder.srcKey.indexOf('/') == -1) {
-					folder.srcKey = '/';
-				}
 				$activeStore.folder = folder;
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;

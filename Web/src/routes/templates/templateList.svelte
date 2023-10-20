@@ -2,7 +2,7 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import HandlebarListItem from '../../components/handlebarListItem.svelte';
 	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import { HandlebarsContent, HandlebarsItem, Post, Template } from '../../models/structure';
+	import { FileType, FolderNode, HandlebarsContent, HandlebarsItem, Post, Template } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import { handlebarStore } from '../../stores/handlebarContentStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
@@ -110,7 +110,9 @@
 				$activeStore.isNewFile = false;
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
-				$activeStore.newSlug = $handlebarStore.template!!.key;
+				$activeStore.newSlug = "";
+				$activeStore.fileType = FileType.Template;
+				$activeStore.folder = new FolderNode("folder","sources/templates/",0,[]);
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;

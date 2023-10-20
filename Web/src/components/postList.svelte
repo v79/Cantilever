@@ -7,7 +7,7 @@
 	import { userStore } from '../stores/userStore.svelte';
 	import { spinnerStore } from './utilities/spinnerWrapper.svelte';
 	import MarkdownListItem from './markdownListItem.svelte';
-	import { MarkdownContent, Post } from '../models/structure';
+	import { FileType, FolderNode, MarkdownContent, Post } from '../models/structure';
 
 	$: postsSorted = $postStore.sort(
 		(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -107,6 +107,8 @@
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
 				$activeStore.newSlug = $markdownStore.metadata?.url ?? '';
+				$activeStore.fileType = FileType.Post;
+				$activeStore.folder = new FolderNode("folder","sources/posts/",0,[]);
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;

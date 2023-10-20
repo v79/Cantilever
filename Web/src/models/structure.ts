@@ -25,6 +25,15 @@ export class Template {
 }
 
 /**
+ * List of valid things that can be loaded and edited by the web app
+ */
+export enum FileType {
+	Post = "post",
+	Page = "page",
+	Template = "template"
+}
+
+/**
  * Yaml frontmatter for Templates
  */
 export class TemplateMetadata {

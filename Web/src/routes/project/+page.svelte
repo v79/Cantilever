@@ -6,7 +6,7 @@
 	import TextInput from '../../components/forms/textInput.svelte';
 	import SpinnerWrapper, { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
 	import { CantileverProject, ImgRes, parseResString } from '../../models/structure';
-	import { activeStore } from '../../stores/appStatusStore.svelte';
+	import { AS_CLEAR, activeStore } from '../../stores/appStatusStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
 	import CustomAttributeTab from './customAttributeTab.svelte';
@@ -16,8 +16,8 @@
 	let saveChangesModal = false;
 
 	afterNavigate(() => {
+		activeStore.set(AS_CLEAR);
 		$activeStore.currentPage = 'Project';
-		$activeStore.activeFile = '';
 	});
 
 	function loadProjectDefinition() {

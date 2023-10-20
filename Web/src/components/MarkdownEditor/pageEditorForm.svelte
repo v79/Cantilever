@@ -1,13 +1,24 @@
 <script lang="ts">
 	import { Modal, TabItem, Tabs } from 'flowbite-svelte';
+	import { beforeUpdate } from 'svelte';
 	import SvelteMarkdown from 'svelte-markdown';
+	import { createSlug } from '../../functions/createSlug';
 	import type { Page } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
+	import { markdownStore } from '../../stores/markdownContentStore.svelte';
+
 	import Viditor from '../Viditor.svelte';
 	import TextInput from '../forms/textInput.svelte';
 
 	export let metadata: Page;
 	export let previewModal = false;
+
+	beforeUpdate(() => {
+		if ($activeStore.isNewFile) {
+			$activeStore.newSlug = createSlug($markdownStore.metadata?.title ?? '');
+			$activeStore.activeFile = $activeStore.newSlug + '.md';
+		}
+	});
 
 	// function to combine all of the sections into a single string, for the preview modal
 	function mergeSources(sources: Map<string, string>) {
