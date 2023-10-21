@@ -144,6 +144,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         model["url"] = pageMsg.url
         model["project"] = project
         model["title"] = pageMsg.title
+        model["lastModified"] = pageMsg.lastModified
         model.putAll(pageMsg.attributes)
 
         pageMsg.sectionKeys.forEach { (name, objectKey) ->

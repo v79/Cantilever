@@ -30,7 +30,8 @@ sealed class SqsMsgBody {
         val template: String,
         val attributes: Map<String, String>,
         val sectionKeys: Map<String, String>,
-        val url: String
+        val url: String,
+        val lastModified: Instant
     ) : SqsMsgBody()
 
     /**
