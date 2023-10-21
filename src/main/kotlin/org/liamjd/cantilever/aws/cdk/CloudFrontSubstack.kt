@@ -1,9 +1,12 @@
 package org.liamjd.cantilever.aws.cdk
 
 import software.amazon.awscdk.Duration
+import software.amazon.awscdk.RemovalPolicy
 import software.amazon.awscdk.Stack
 import software.amazon.awscdk.Tags
 import software.amazon.awscdk.services.cloudfront.*
+import software.amazon.awscdk.services.s3.Bucket
+import software.amazon.awscdk.services.s3.BucketAccessControl
 import software.amazon.awscdk.services.s3.IBucket
 
 class CloudFrontSubstack {
@@ -60,6 +63,15 @@ class CloudFrontSubstack {
                 )
             )
             .priceClass(PriceClass.PRICE_CLASS_100)
+            .loggingConfig(LoggingConfiguration.builder()
+                .bucket(Bucket.Builder.create(stack, "cantilever-CloudFrontLogs")
+                    .accessControl(BucketAccessControl.LOG_DELIVERY_WRITE)
+                    .versioned(false)
+                    .removalPolicy(RemovalPolicy.DESTROY)
+                    .build())
+                .includeCookies(true)
+                .build()
+            )
             .viewerProtocolPolicy(ViewerProtocolPolicy.REDIRECT_TO_HTTPS)
             .errorConfigurations(
                 listOf(
