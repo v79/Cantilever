@@ -5,6 +5,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
+import kotlinx.datetime.LocalDate
 import kotlin.test.*
 
 internal class HandlebarsRendererTest {
@@ -72,6 +73,38 @@ internal class HandlebarsRendererTest {
     }
 
     @Test
+    fun `can render an object where the name starts with at`() {
+        val templateString = "next: {{@next.title}}"
+        val model = mapOf<String,TestLink?>("@next" to TestLink("NEXT"))
+        val expectedResult = "next: NEXT"
+
+        with(mockLogger) {
+            val renderer = HandlebarsRenderer()
+            // execute
+            val result = renderer.render(model, templateString)
+            // verify
+            assertEquals(expectedResult, result)
+        }
+    }
+
+    @Test
+    fun `localDate formatter works when custom format supplied`() {
+        // setup
+        val templateString = """{{ localDate this.date this.dateFormat }}"""
+        val expectedResult = "24/09/2023"
+        val date = LocalDate(2023,9,24)
+        val model = mapOf<String,Any?>("date" to date, "dateFormat" to "dd/MM/yyyy")
+
+        with(mockLogger) {
+            val renderer = HandlebarsRenderer()
+            // execute
+            val result = renderer.render(model, templateString)
+            // verify
+            assertEquals(expectedResult, result)
+        }
+    }
+
+    @Test
     fun `does not mangle emoji in model`() {
         // setup
         val templateString = "<html><title>{{title}}</title></html>"
@@ -92,4 +125,5 @@ internal class HandlebarsRendererTest {
     }
 }
 
-class TestPost(val title: String)
+internal class TestPost(val title: String)
+internal class TestLink(val title: String)

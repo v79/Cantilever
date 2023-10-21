@@ -65,6 +65,7 @@
 						$allPostsStore.count = $allPostsStore?.posts.push($markdownStore.metadata as Post);
 					}
 				}
+				$activeStore.isNewFile = false;
 				console.log(data);
 			})
 			.catch((error) => {

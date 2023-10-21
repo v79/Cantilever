@@ -1,11 +1,15 @@
 package org.liamjd.cantilever.api.controllers
 
+import com.charleskorn.kaml.Yaml
 import kotlinx.datetime.toKotlinInstant
+import kotlinx.serialization.SerializationException
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.HandlebarsContent
 import org.liamjd.cantilever.models.Template
+import org.liamjd.cantilever.models.TemplateMetadata
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.S3Service
@@ -27,8 +31,10 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
             return if (s3Service.objectExists(decoded, sourceBucket)) {
                 val templateObj = s3Service.getObject(decoded, sourceBucket)
                 if (templateObj != null) {
-                    val template = Template(handlebarSource, templateObj.lastModified().toKotlinInstant())
                     val body = s3Service.getObjectAsString(decoded, sourceBucket)
+                    val frontmatter = body.getFrontMatter()
+                    val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
+                    val template = Template(handlebarSource, metadata.name, templateObj.lastModified().toKotlinInstant(), emptyList())
                     val handlebarsContent = HandlebarsContent(template, body)
                     ResponseEntity.ok(body = APIResult.Success(handlebarsContent))
                 } else {
@@ -49,7 +55,6 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
      * Save a handlebars template file
      */
     fun saveTemplate(request: Request<HandlebarsContent>): ResponseEntity<APIResult<String>> {
-        info("saveTemplate")
         val handlebarsContent = request.body
         val srcKey = URLDecoder.decode(handlebarsContent.template.key, Charset.defaultCharset())
 
@@ -62,6 +67,31 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
             info("Creating new file '${handlebarsContent.template.key}'")
             val length = s3Service.putObject(srcKey, sourceBucket, handlebarsContent.body, "text/html")
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
+        }
+    }
+
+    /**
+     * Load the handlebars template file and extract its metadata
+     */
+    fun getTemplateMetadata(request: Request<Unit>): ResponseEntity<APIResult<TemplateMetadata>> {
+        val handlebarKey = request.pathParameters["templateKey"]
+        return if (handlebarKey != null) {
+            val srcKey = URLDecoder.decode(handlebarKey, Charset.defaultCharset())
+           return if (s3Service.objectExists(srcKey, sourceBucket)) {
+                try {
+                    info("Loading metadata for template $handlebarKey")
+                    val template = s3Service.getObjectAsString(srcKey, sourceBucket)
+                    val frontmatter = template.getFrontMatter()
+                    val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
+                    ResponseEntity.ok(body = APIResult.Success(metadata))
+                } catch (se: SerializationException){
+                    ResponseEntity.serverError(body = APIResult.Error("Could not deserialize template $srcKey. Error was ${se.message}"))
+                }
+            } else {
+               ResponseEntity.badRequest(body = APIResult.Error("Could not find template $srcKey"))
+           }
+        } else {
+            ResponseEntity.badRequest(body = APIResult.Error("Invalid template key"))
         }
     }
 

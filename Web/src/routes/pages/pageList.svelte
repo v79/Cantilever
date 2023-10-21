@@ -1,20 +1,40 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
-	import { Post, MarkdownContent, Page } from '../../models/structure';
+	import {
+		MarkdownContent,
+		Page,
+		PageTree,
+		FolderNode,
+		TemplateMetadata,
+
+		FileType
+
+	} from '../../models/structure';
+	import type { Template, TreeNode } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import { markdownStore } from '../../stores/markdownContentStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
-	import { allPagesStore, pageStore } from '../../stores/postsStore.svelte';
+	import { pageTreeStore } from '../../stores/postsStore.svelte';
 	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import MarkdownListItem from '../../components/markdownListItem.svelte';
+	import { allTemplatesStore, fetchTemplateMetadata } from '../../stores/templateStore.svelte';
+	import PageTreeView from './pageTreeView.svelte';
+	import { Modal } from 'flowbite-svelte';
+	import TextInput from '../../components/forms/textInput.svelte';
+	import { fetchTemplates } from '../../stores/templateStore.svelte';
 
-	// TODO : This might be better grouped by template
-	$: pagesSorted = $pageStore.sort((a, b) => {
-		if (a.srcKey < b.srcKey) return -1;
-		if (a.srcKey > b.srcKey) return 1;
-		return 0;
-	});
+	$: rootFolder = $pageTreeStore.container;
+
+	let newFolderModal: boolean = false;
+	let newFolderName: string = '';
+	let newPageModal: boolean = false;
+	let folders: FolderNode[] = [];
+	let templates: Template[] = [];
+	let selectedParentFolder: FolderNode | undefined = undefined;
+	let selectedTemplate: Template | undefined = undefined;
+
+	$: newFolderValid = selectedParentFolder && newFolderName !== '';
+	$: newPageValid = selectedParentFolder && selectedTemplate;
 
 	onMount(async () => {});
 
@@ -32,28 +52,19 @@
 		})
 			.then((response) => response.json())
 			.then((data) => {
+				console.dir(data);
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
-				var tempPages = new Array<Page>();
-				for (const p of data.data.pages) {
-					tempPages.push(
-						new Page(
-							p.title,
-							p.srcKey,
-							p.templateKey,
-							p.url,
-							new Date(p.lastUpdated),
-							new Map<string, string>(),
-							new Map<string, string>()
-						)
-					);
-				}
-				allPagesStore.set({
-					count: tempPages.length,
-					lastUpdated: data.lastUpdated,
-					pages: tempPages
-				});
+				var rootFolder = new FolderNode(
+					'folder',
+					'sources/pages',
+					data.data.container.count,
+					new Array<TreeNode>()
+				);
+				var pageTree = new PageTree(data.data.lastUpdated, rootFolder);
+				addNodesToContainer(rootFolder, data.data.container.children);
+				pageTreeStore.set(pageTree);
 				$notificationStore.message = 'Loaded all pages ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
@@ -70,7 +81,46 @@
 			});
 	}
 
+	/**
+	 * Recursive function which loops round the 'toAdd' array, and checks to see if the element is a Page or a Folder.
+	 * If it is a page, it adds it to the container.
+	 * If it is a folder, it creates a new sub-container (based on the folder), and calls this function recursively.
+	 * @param container a FolderNode in the tree
+	 * @param toAdd array of TreeNodes, which may be FolderNode or Page
+	 */
+	function addNodesToContainer(container: FolderNode, toAdd: Array<TreeNode>) {
+		if (toAdd) {
+			for (const node of toAdd) {
+				if (node.nodeType === 'page') {
+					var page = node as Page;
+					if (container.children == undefined) {
+						container.children = new Array<TreeNode>();
+					}
+					container.children.push(page);
+				}
+				if (node.nodeType === 'folder') {
+					var folder = node as FolderNode;
+					if (folder.children) {
+						//@ts-ignore
+						var newFolder = new FolderNode('folder', folder.srcKey, folder.count, null);
+						container.children.push(newFolder);
+						addNodesToContainer(newFolder, folder.children);
+					} else {
+						//@ts-ignore
+						var newFolder = new FolderNode('folder', folder.srcKey, 0, []);
+						container.children.push(newFolder);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Load the markdown for the specified page srcKey.
+	 * @param srcKey
+	 */
 	function loadMarkdown(srcKey: string) {
+		const pagesFolder: string = 'sources/pages/';
 		let token = $userStore.token;
 		console.log('Loading markdown file... ' + srcKey);
 		spinnerStore.set({ shown: true, message: 'Loading markdown file... ' + srcKey });
@@ -91,6 +141,7 @@
 				}
 				var tmpPage = new MarkdownContent(
 					new Page(
+						'page',
 						data.data.metadata.title,
 						data.data.metadata.srcKey,
 						data.data.metadata.templateKey,
@@ -106,7 +157,20 @@
 				$activeStore.isNewFile = false;
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
+				$activeStore.fileType = FileType.Page;
 				$activeStore.newSlug = $markdownStore.metadata!!.url;
+				let leafIndex = $activeStore.activeFile.lastIndexOf('/');
+				let folderString = '';
+				if(leafIndex >= pagesFolder.length) {
+					folderString =  $activeStore.activeFile.substring(pagesFolder.length,leafIndex)
+				}
+				let folder = new FolderNode(
+					'folder',
+					pagesFolder + folderString,
+					0,
+					[]
+				);
+				$activeStore.folder = folder;
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
@@ -155,28 +219,154 @@
 			});
 	}
 
+	/**
+	 * Start the new page flow
+	 */
 	function createNewPage() {
-		var newMDPost: MarkdownContent = {
+		if (selectedTemplate && selectedParentFolder) {
+			fetchTemplateMetadata($userStore.token, selectedTemplate.key).then((response) => {
+				console.dir(response);
+				if (response instanceof Error) {
+					notificationStore.set({
+						message: response.message,
+						shown: true,
+						type: 'error'
+					});
+					$spinnerStore.shown = false;
+				} else if (response instanceof TemplateMetadata) {
+					setupNewPage(selectedTemplate!!, response, selectedParentFolder!!);
+				} else {
+					console.log('Could not create a new page; invalid response to fetchTemplateMetadata');
+				}
+			});
+		}
+	}
+
+	/**
+	 * Create a blank, empty page and update the activeStore to update the UI, putting user into edit mode.
+	 * This needs to load the template file and process it to set up the custom attributes and sections.
+	 * @param template
+	 */
+	function setupNewPage(template: Template, metadata: TemplateMetadata, folder: FolderNode) {
+		var newMDPage: MarkdownContent = {
 			body: '',
 			metadata: new Page(
+				'page',
 				'',
 				'',
-				'',
+				template.key,
 				'',
 				new Date(),
 				new Map<string, string>(),
-				new Map<string, string>()
+				new Map(metadata.sections.map((obj) => [obj, '']))
 			)
 		};
-
+		$markdownStore.metadata = newMDPage.metadata;
 		$activeStore.activeFile = '';
 		$activeStore.isNewFile = true;
 		$activeStore.isValid = false;
 		$activeStore.newSlug = '';
 		$activeStore.hasChanged = false;
+		if (selectedParentFolder) {
+			$activeStore.folder = folder;
+		}
 
 		console.log('Creating new page');
-		markdownStore.set(newMDPost);
+		markdownStore.set(newMDPage);
+	}
+
+	/**
+	 * Return just the folders in the pageTreeStore
+	 */
+	function getFolders() {
+		if ($pageTreeStore.container.children) {
+			let result = <FolderNode[]>(
+				$pageTreeStore.container.children.filter((value) => value.nodeType == 'folder')
+			);
+			return result;
+		}
+		return [];
+	}
+
+	function getTemplates() {
+		if ($allTemplatesStore.count > 0) {
+			console.log($allTemplatesStore.count);
+			return $allTemplatesStore.templates;
+		} else {
+			console.log('Need to load templates');
+			fetchTemplates($userStore.token);
+		}
+		return [];
+	}
+
+	/**
+	 * Fetch all the folders from the pageTreeStore, then open the new folder modal
+	 */
+	function openFolderModal() {
+		selectedParentFolder = undefined;
+		selectedTemplate = undefined;
+		folders = getFolders();
+		newFolderModal = true;
+	}
+
+	/**
+	 * Fetch all the templates and folders, then open the new page modal
+	 */
+	function openNewPageModal() {
+		selectedParentFolder = undefined;
+		selectedTemplate = undefined;
+		folders = getFolders();
+		templates = getTemplates();
+		newPageModal = true;
+	}
+
+	/**
+	 * Create a new folder in `selectedParentFolder` with name `newFolderName`.
+	 */
+	function createNewFolder() {
+		const prefix = '/sources/pages/';
+		let folderName = encodeURIComponent(
+			(selectedParentFolder ? selectedParentFolder.srcKey : '') + newFolderName
+		);
+		console.log('Creating new folder ' + folderName);
+
+		fetch('https://api.cantilevers.org/project/pages/folder/new/' + folderName, {
+			method: 'PUT',
+			headers: {
+				Accept: 'text/plain',
+				Authorization: 'Bearer ' + $userStore.token,
+				'Content-Type': 'application/json',
+				'X-Content-Length': '0'
+			},
+			mode: 'cors'
+		})
+			.then((response) => {
+				if (!response.ok) {
+					throw response;
+				} else {
+					response.text();
+				}
+			})
+			.then((data) => {
+				notificationStore.set({
+					message: decodeURI(folderName) + ' saved. ' + data,
+					shown: true,
+					type: 'success'
+				});
+				loadAllPages();
+			})
+			.catch((error) => {
+				notificationStore.set({
+					message: 'Error creating folder: ' + error,
+					shown: true,
+					type: 'error'
+				});
+				console.log(error);
+			});
+		newFolderName = '';
+		selectedParentFolder = undefined;
+		newFolderModal = false;
+		$spinnerStore.shown = false;
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
@@ -185,11 +375,6 @@
 		}
 	});
 
-	const structStoreUnsubscribe = allPagesStore.subscribe((data) => {
-		pageStore.set(data.pages);
-	});
-
-	onDestroy(structStoreUnsubscribe);
 	onDestroy(userStoreUnsubscribe);
 </script>
 
@@ -202,7 +387,6 @@
 		<button
 			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {
-				console.log('Show spinner');
 				spinnerStore.set({ shown: true, message: 'Rebuilding project...' });
 				tick().then(() => rebuild());
 			}}>Rebuild</button>
@@ -214,22 +398,22 @@
 				tick().then(() => loadAllPages());
 			}}>Reload</button>
 		<button
+			class="easy-in-out inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+			on:click={openFolderModal}
+			>Add folder
+		</button>
+
+		<button
 			type="button"
-			on:click={createNewPage}
+			on:click={openNewPageModal}
 			class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			>New Page</button>
 	</div>
 	<div class="px-8">
-		{#if $allPagesStore}
-			<h4 class="text-right text-sm text-slate-900">{$allPagesStore.count} pages</h4>
-		{/if}
-		{#if pagesSorted.length > 0}
+		{#if $pageTreeStore && $pageTreeStore.container}
+			<h4 class="text-right text-sm text-slate-900">{$pageTreeStore.container.count} pages</h4>
 			<div class="justify-left flex py-2">
-				<ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
-					{#each pagesSorted as page}
-						<MarkdownListItem item={page} onClickFn={loadMarkdown} />
-					{/each}
-				</ul>
+				<PageTreeView {rootFolder} onClickFn={loadMarkdown} />
 			</div>
 		{:else}
 			<div class="flex items-center justify-center py-4">
@@ -293,3 +477,77 @@
 		{/if}
 	</div>
 {/if}
+
+<Modal title="Add new folder" bind:open={newFolderModal} autoclose size="sm">
+	<p>Select the parent folder for the new folder:</p>
+	<label for="add-folder-select" class="block text-sm font-medium text-slate-600">Folder</label>
+	<select
+		bind:value={selectedParentFolder}
+		id="add-folder-select"
+		class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+		{#each folders as f}
+			<option value={f}>
+				{f.srcKey}
+			</option>
+		{/each}
+	</select>
+
+	<p>Selected: {selectedParentFolder ? selectedParentFolder.srcKey : ''}</p>
+
+	<TextInput name="new-folder-name" bind:value={newFolderName} label="Name" required />
+
+	<svelte:fragment slot="footer">
+		<button
+			type="button"
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Cancel</button>
+		<button
+			type="button"
+			disabled={!newFolderValid}
+			on:click={createNewFolder}
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg disabled:bg-slate-400"
+			>Create</button>
+	</svelte:fragment>
+</Modal>
+
+<Modal title="Create new page" bind:open={newPageModal} autoclose size="sm">
+	<p>Choose template and parent folder for page</p>
+
+	<label for="template-select" class="block text-sm font-medium text-slate-600">Template</label>
+	<select
+		bind:value={selectedTemplate}
+		id="template-select"
+		class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+		{#each $allTemplatesStore.templates as template}
+			<option value={template}>
+				{template.key}
+			</option>
+		{/each}
+	</select>
+
+	<label for="new-page-folder-select" class="block text-sm font-medium text-slate-600"
+		>Folder</label>
+	<select
+		bind:value={selectedParentFolder}
+		id="new-page-folder-select"
+		class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+		{#each folders as f}
+			<option value={f}>
+				{f.srcKey}
+			</option>
+		{/each}
+	</select>
+
+	<svelte:fragment slot="footer">
+		<button
+			type="button"
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Cancel</button>
+		<button
+			type="button"
+			disabled={!newPageValid}
+			on:click={createNewPage}
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg disabled:bg-slate-400"
+			>Create</button>
+	</svelte:fragment>
+</Modal>

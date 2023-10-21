@@ -6,18 +6,19 @@
 	import TextInput from '../../components/forms/textInput.svelte';
 	import SpinnerWrapper, { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
 	import { CantileverProject, ImgRes, parseResString } from '../../models/structure';
-	import { activeStore } from '../../stores/appStatusStore.svelte';
+	import { AS_CLEAR, activeStore } from '../../stores/appStatusStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
 	import CustomAttributeTab from './customAttributeTab.svelte';
 	import ImageResTab from './imageResTab.svelte';
 	import { projectStore } from './projectStore.svelte';
+	import ActiveStoreView from '../../components/activeStoreView.svelte';
 
 	let saveChangesModal = false;
 
 	afterNavigate(() => {
+		activeStore.set(AS_CLEAR);
 		$activeStore.currentPage = 'Project';
-		$activeStore.activeFile = '';
 	});
 
 	function loadProjectDefinition() {
@@ -219,7 +220,7 @@
 		</div>
 	</div>
 	<div class="invisible basis-1/4 bg-slate-800 lg:visible">
-		<h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-200">Messages</h3>
+		<ActiveStoreView />
 		<SpinnerWrapper spinnerID="globalSpinner" />
 	</div>
 </div>

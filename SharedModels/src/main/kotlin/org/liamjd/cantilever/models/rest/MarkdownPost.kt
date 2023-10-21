@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import org.liamjd.cantilever.models.PostMeta
 
 /**
- * REST API model wrapping a [PostMeta] metadata object and the source string
+ * REST API model wrapping a [PostMeta] metadata object and the source string. This is what is edited/saved.
  */
 @Serializable
 class MarkdownPost(val metadata: PostMeta) {

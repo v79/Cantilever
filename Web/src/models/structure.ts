@@ -16,11 +16,35 @@ export interface Layout {
  */
 export class Template {
 	key: string;
+	name: string;
 	lastUpdated: Date;
 
-	constructor(key: string, lastUpdated: Date) {
+	constructor(key: string, name: string, lastUpdated: Date) {
 		this.key = key;
+		this.name = name;
 		this.lastUpdated = lastUpdated;
+	}
+}
+
+/**
+ * List of valid things that can be loaded and edited by the web app
+ */
+export enum FileType {
+	Post = 'post',
+	Page = 'page',
+	Template = 'template'
+}
+
+/**
+ * Yaml frontmatter for Templates
+ */
+export class TemplateMetadata {
+	name: string;
+	sections: Array<string>;
+
+	constructor(name: string, sections: Array<string>) {
+		this.name = name;
+		this.sections = sections;
 	}
 }
 
@@ -52,6 +76,56 @@ export interface AllTemplates {
 }
 
 /**
+ * Parent class for the tree of pages and folders
+ */
+export class PageTree {
+	lastUpdated: Date;
+	container: FolderNode;
+
+	constructor(lastUpdated: Date, containerNode: FolderNode) {
+		this.lastUpdated = lastUpdated;
+		this.container = containerNode;
+	}
+}
+
+/**
+ * FolderNode represents a folder, or more accurately a shared prefix in S3
+ */
+export class FolderNode implements TreeNode {
+	nodeType: string;
+	srcKey: string;
+	count: number;
+	children: TreeNode[];
+
+	constructor(type: string, srcKey: string, count: number, children: TreeNode[]) {
+		this.nodeType = type;
+		this.srcKey = srcKey;
+		this.count = count;
+		this.children = children;
+	}
+
+	depthSort() {
+		return this.children.sort((a: TreeNode, b: TreeNode) => {
+			if (a.nodeType === 'folder' && b.nodeType === 'folder') {
+				const aFolder = a as FolderNode;
+				const bFolder = b as FolderNode;
+				if (aFolder.srcKey.split('/').length > bFolder.srcKey.split('/').length) return 1;
+				if (aFolder.srcKey.split('/').length < bFolder.srcKey.split('/').length) return -1;
+				return 0;
+			}
+			return 0;
+		});
+	}
+}
+
+/**
+ * Common interface for Pages and FolderNodes so they can be valid children of FolderNodes
+ */
+export interface TreeNode {
+	nodeType: string;
+}
+
+/**
  * Abstract class which represents all the common elements of a file which contains Markdown content, and will be rendered with the help of a Template.
  * Implementations include Post and Page.
  */
@@ -79,11 +153,13 @@ export abstract class MetadataItem {
  */
 export class HandlebarsItem {
 	key: string;
+	name: string;
 	shortName: string;
 	lastUpdated: Date;
 
-	constructor(key: string, lastUpdated: Date) {
+	constructor(key: string, name: string, lastUpdated: Date) {
 		this.key = key;
+		this.name = name;
 		this.lastUpdated = new Date(lastUpdated);
 		this.shortName = key.split('/').slice(-1).join();
 	}
@@ -126,7 +202,8 @@ export class Post extends MetadataItem {
  * A Page is a static piece of content, generally unchanging content at a fixed URL.
  * This is metadata only, it does not contain the body content.
  */
-export class Page implements MetadataItem {
+export class Page implements MetadataItem, TreeNode {
+	nodeType: string;
 	title: string;
 	srcKey: string;
 	templateKey: string;
@@ -136,6 +213,7 @@ export class Page implements MetadataItem {
 	sections: Map<string, string>;
 
 	constructor(
+		nodeType: string,
 		title: string,
 		srcKey: string,
 		templateKey: string,
@@ -144,6 +222,7 @@ export class Page implements MetadataItem {
 		attributes: Map<string, string>,
 		sections: Map<string, string>
 	) {
+		this.nodeType = nodeType;
 		this.title = title;
 		this.srcKey = srcKey;
 		this.templateKey = templateKey;

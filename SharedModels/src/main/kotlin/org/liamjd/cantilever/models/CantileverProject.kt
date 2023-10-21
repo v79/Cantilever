@@ -10,8 +10,14 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 /**
- * Project definition file. Will change a lot.
- * Should be stored in a file called 'cantilever.yaml'
+ * Project definition file. *Will change a lot*. Should be stored in a file called 'cantilever.yaml'. Although Cantilever does not yet support multiple projects, this metadata object is useful for page rendering.
+ *
+ * @property projectName user-provided project name. Required.
+ * @property author user-provided project author. Required.
+ * @property dateFormat the default format for dates in rendered output; can be overridden with the 'localDate' handlebars helper
+ * @property dateTimeFormat the default format for rendering dates and times. Not currently used.
+ * @property imageResolutions a map of image resolutions; if empty uploaded images will not be scaled. Otherwise, images will be scaled and named according to this map. Written in the format "name: 320x260". Eg. if the map contains the key "square" and an [ImgRes] of x=320,y=320, then when an image is uploaded a scaled copy will be created with name '<original-name>-square.jpg`.
+ * @property attributes a map of additional custom values which will be passed when rendering pages, posts etc.
  */
 @Serializable
 data class CantileverProject @OptIn(ExperimentalSerializationApi::class) constructor(
@@ -27,11 +33,16 @@ data class CantileverProject @OptIn(ExperimentalSerializationApi::class) constru
 /**
  * Represents an image resolution in pixels.
  * If one of the dimensions is null, then aspect ratio should be maintained.
- * If both are null, it's a bit broken
+ * If both are null, it's a bit broken. *Don't do this* but I can't prevent you.
+ * @property x the width of the resolution, in pixels. If null, the width will not be changed.
+ * @property y the height of the resolution, in pixels. If null, the height will not be changed.
  */
 @Serializable(with = ImgResSerializer::class)
 data class ImgRes(val x: Int?, val y: Int?)
 
+/**
+ * Converts the X and Y values into a string of the format "XxY" (where that middle 'x' would be read as 'by').
+ */
 object ImgResSerializer : KSerializer<ImgRes> {
     override val descriptor = PrimitiveSerialDescriptor("ImgRes", PrimitiveKind.STRING)
     override fun serialize(encoder: Encoder, value: ImgRes) {

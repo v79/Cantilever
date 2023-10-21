@@ -15,7 +15,7 @@ import org.liamjd.cantilever.common.toSlug
  */
 @OptIn(ExperimentalSerializationApi::class) // required for @EncodeDefault
 @Serializable
-data class PostMetadata(
+data class PostFrontmatter(
     val title: String,
     @EncodeDefault val template: String = "post",
     @EncodeDefault val slug: String = title.toSlug(),

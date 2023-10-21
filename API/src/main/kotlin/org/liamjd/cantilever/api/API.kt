@@ -69,8 +69,11 @@ class LambdaRouter : RequestHandlerWrapper() {
         auth(cognitoJWTAuthorizer) {
             group("/project") {
                 get("/", projectController::getProject)
-                put("/", projectController::updateProjectDefinition).expects(setOf(MimeType.yaml)).supplies(setOf(
-                    MimeType.json))
+                put("/", projectController::updateProjectDefinition).expects(setOf(MimeType.yaml)).supplies(
+                    setOf(
+                        MimeType.json
+                    )
+                )
                 group("/posts") {
                     get("", projectController::getPosts)
                     put(
@@ -80,11 +83,13 @@ class LambdaRouter : RequestHandlerWrapper() {
                 group("/pages") {
                     get("", projectController::getPages)
                     post("/", pageController::saveMarkdownPageSource).supplies(setOf(MimeType.plainText))
-                    put("/rebuild", projectController::rebuildPageList)
+                    put("/rebuild", projectController::rebuildPageTree)
                     get("/$SRCKEY", pageController::loadMarkdownSource)
+                    put("/folder/new/{folderName}", pageController::createFolder).supplies(setOf(MimeType.plainText))
                 }
                 get("/templates", projectController::getTemplates)
                 put("/templates/rebuild", projectController::rebuildTemplateList)
+                get("/templates/{templateKey}", templateController::getTemplateMetadata)
             }
         }
 

@@ -10,8 +10,8 @@ import org.liamjd.cantilever.common.S3_KEY.pagesKey
 import org.liamjd.cantilever.common.S3_KEY.pagesPrefix
 import org.liamjd.cantilever.common.S3_KEY.postsKey
 import org.liamjd.cantilever.common.S3_KEY.postsPrefix
-import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
-import org.liamjd.cantilever.models.PageList
+import org.liamjd.cantilever.models.PageTree
+import org.liamjd.cantilever.models.PageTreeNode
 import org.liamjd.cantilever.models.PostList
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.routing.Request
@@ -145,7 +145,6 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         // Also, annoying that I have to double-decode this.
         val templateKey =
             URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset())
-                .substringBefore(".").substringAfterLast("/")
         info("DOUBLE DECODED: GeneratorController received request to regenerate pages based on template '$templateKey'")
         // first, get the pages and posts structure file
         if (!s3Service.objectExists(pagesKey, sourceBucket)) {
@@ -162,19 +161,14 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
 
         // TODO: we don't know if the template is for a Page or a Post. This is less than ideal as I have to check both.
         try {
-            val pageList = Json.decodeFromString(PageList.serializer(), pagesJson)
-            info("Checking the ${pageList.count} pages for a template match to $templateKey")
-            pageList.pages.filter { it.templateKey == templateKey }.forEach {
-                info("Regenerating page ${it.srcKey} because it has template ${it.templateKey}")
-                val pageSource = s3Service.getObjectAsString(it.srcKey, sourceBucket)
-                queuePageRegeneration(it.srcKey, pageSource)
-                count++
-            }
+            val pageTree = Json.decodeFromString(PageTree.serializer(), pagesJson)
+            info("Checking entire page tree, with ${pageTree.container.count} nodes, for pages for a template match to $templateKey")
+            count = scanPageTree(pageTree.container, templateKey, count)
 
             // TODO: again with the inconsistent naming of templates!
             val postList = Json.decodeFromString(PostList.serializer(), postsJson)
             info("Checking the ${postList.count} posts for a template match to $templateKey")
-            postList.posts.filter { it.templateKey == "${templatesPrefix}${templateKey}.html.hbs" }.forEach {
+            postList.posts.filter { it.templateKey == templateKey }.forEach {
                 info("Regenerating post ${it.srcKey} because it has template ${it.templateKey}")
                 val postSource = s3Service.getObjectAsString(it.srcKey, sourceBucket)
                 queuePostRegeneration(it.srcKey, postSource)
@@ -190,6 +184,39 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         } else {
             ResponseEntity.accepted(APIResult.Success(value = "Queued $count files with the '$templateKey' template for regeneration."))
         }
+    }
+
+    /**
+     * Recursively loop through the page tree, searching for PageMeta nodes which match the specified templateKey
+     * @param folderNode collection of nodes
+     * @param templateKey the page template key
+     * @param count current count of files sent for rendering
+     * @return updated count of files sent for rendering
+     */
+    private fun scanPageTree(
+        folderNode: PageTreeNode.FolderNode,
+        templateKey: String,
+        count: Int
+    ): Int {
+        var localCount = count
+        folderNode.children?.forEach { node ->
+            when (node) {
+                is PageTreeNode.PageMeta -> {
+                    if (node.templateKey == templateKey) {
+                        info("Regenerating page ${node.srcKey} because it has template '${node.templateKey}'")
+                        val pageSource = s3Service.getObjectAsString(node.srcKey, sourceBucket)
+                        queuePageRegeneration(node.srcKey, pageSource)
+                        localCount++
+                    }
+                }
+
+                is PageTreeNode.FolderNode -> {
+                    localCount += scanPageTree(node, templateKey, localCount)
+                }
+            }
+        }
+        // TODO: this count is wrong
+        return localCount
     }
 
     // TODO: WE'VE DONE THIS TWICE NOW

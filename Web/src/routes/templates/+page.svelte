@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
 	import SpinnerWrapper from '../../components/utilities/spinnerWrapper.svelte';
-	import { activeStore } from '../../stores/appStatusStore.svelte';
+	import { AS_CLEAR, activeStore } from '../../stores/appStatusStore.svelte';
 	import TemplateList from './templateList.svelte';
 	import { handlebarStore } from '../../stores/handlebarContentStore.svelte';
 	import { Template } from '../../models/structure';
@@ -9,11 +9,17 @@
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import TemplateEditorForm from '../../components/HandlebarsEditor/templateEditorForm.svelte';
 	import { Modal } from 'flowbite-svelte';
+	import ActiveStoreView from '../../components/activeStoreView.svelte';
 
 	let deleteFileModal = false;
 	let saveExistingModal = false;
 	let saveNewModal = false;
 	let saveNewFileSlug = '';
+
+	afterNavigate(() => {
+		activeStore.set(AS_CLEAR);
+		$activeStore.currentPage = 'Templates';
+	});
 
 	function saveFile() {
 		console.log('Saving template file ', $handlebarStore.template?.key);
@@ -36,6 +42,7 @@
 					shown: true,
 					type: 'success'
 				});
+				$activeStore.isNewFile = false;
 			});
 	}
 
@@ -124,7 +131,7 @@
 	</div>
 
 	<div class="invisible basis-1/4 bg-slate-800 lg:visible">
-		<h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-200">Messages</h3>
+		<ActiveStoreView />
 		<SpinnerWrapper spinnerID="globalSpinner" />
 	</div>
 </div>

@@ -15,6 +15,7 @@ import org.liamjd.cantilever.common.S3_KEY.postsPrefix
 import org.liamjd.cantilever.common.S3_KEY.projectKey
 import org.liamjd.cantilever.common.S3_KEY.templatesKey
 import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
+import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.*
 import org.liamjd.cantilever.routing.MimeType
 import org.liamjd.cantilever.routing.Request
@@ -103,14 +104,14 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     }
 
     /**
-     * Return a list of all the [Page]s
+     * Return a list of all the [PageMeta]s
      */
-    fun getPages(request: Request<Unit>): ResponseEntity<APIResult<PageList>> {
+    fun getPages(request: Request<Unit>): ResponseEntity<APIResult<PageTree>> {
         info("Retrieving all pages")
         return if (s3Service.objectExists(pagesKey, sourceBucket)) {
             val pageListJson = s3Service.getObjectAsString(pagesKey, sourceBucket)
-            val pageList = Json.decodeFromString(PageList.serializer(), pageListJson)
-            ResponseEntity.ok(body = APIResult.Success(value = pageList))
+            val pageTree = Json.decodeFromString(PageTree.serializer(), pageListJson)
+            ResponseEntity.ok(body = APIResult.Success(value = pageTree))
         } else {
             error("Cannot find file '$pagesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/pages/rebuild")
             ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '$pagesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/pages/rebuild"))
@@ -149,7 +150,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     val templateKey = templatesPrefix + postMetadata.template + ".html.hbs"
                     val template = try {
                         val lastModified = obj.lastModified().toKotlinInstant()
-                        Template(templateKey, lastModified)
+                        Template(templateKey, "", lastModified, emptyList())
                     } catch (nske: NoSuchKeyException) {
                         error("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
                         return@forEach
@@ -169,7 +170,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     warn("Skipping non-markdown file '${obj.key()}'")
                 }
             }
-            info("Sorting output")
+            info("Sorting output, most recent first")
             list.sortByDescending { it.date }
             val postList = PostList(posts = list, count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(PostList.serializer(), postList)
@@ -184,15 +185,21 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     }
 
     /**
-     * Rebuild the generated/pages.json file which contains the metadata for all the Pages in the project.
+     * Rebuild the generated/pages.json file which contains the metadata for all the Pages and Page folders in the project.
      */
-    fun rebuildPageList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
-        val pages = s3Service.listObjects(pagesPrefix, sourceBucket)
-        info("Rebuilding all pages from sources in '$pagesPrefix'. ${pages.keyCount()} pages found.")
+    fun rebuildPageTree(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val objectsResponse = s3Service.listObjects(pagesPrefix, sourceBucket)
+        info("Rebuilding all pages from sources in '$pagesPrefix'. ${objectsResponse.keyCount()} pages found.")
+        val folderList = s3Service.listFolders(pagesPrefix, sourceBucket).toMutableSet()
         var filesProcessed = 0
-        if (pages.hasContents()) {
-            val list = mutableListOf<Page>()
-            pages.contents().forEach { obj ->
+        if (objectsResponse.hasContents()) {
+            val pageList = mutableListOf<PageTreeNode.PageMeta>()
+            // get the common deliminators, aka the folders
+            if (folderList.isNotEmpty()) {
+                info("Common prefixes (folders): $folderList")
+            }
+            // then get the individual files
+            objectsResponse.contents().forEach { obj ->
                 if (obj.key().endsWith(".md")) {
                     info("Extracting metadata from file '${obj.key()}'")
                     val markdownSource = s3Service.getObjectAsString(obj.key(), sourceBucket)
@@ -200,14 +207,15 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     val templateKey = templatesPrefix + pageModel.templateKey + ".html.hbs"
                     val template = try {
                         val lastModified = obj.lastModified().toKotlinInstant()
-                        Template(templateKey, lastModified)
+                        Template(templateKey, "",lastModified, emptyList())
                     } catch (nske: NoSuchKeyException) {
                         error("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
                         return@forEach
                     }
                     // we don't need to store the full contents of the sections in this file (just as we don't store the body in posts.json)
-                    list.add(
-                        Page(
+                    pageList.add(
+                        PageTreeNode.PageMeta(
+                            nodeType = "page",
                             title = pageModel.title,
                             srcKey = pageModel.srcKey,
                             templateKey = pageModel.templateKey,
@@ -219,14 +227,45 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     )
                     filesProcessed++
                 } else {
+                    if(obj.key().endsWith("/")) {
+                        folderList.add(obj.key())
+                    }
                     warn("Skipping non-markdown file '${obj.key()}'")
                 }
             }
-            list.sortByDescending { it.lastUpdated }
-            val pageList = PageList(pages = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
-            val listJson = Json.encodeToString(PageList.serializer(), pageList)
-            info("Saving PageList JSON file (${listJson.length} bytes)")
-            s3Service.putObject(pagesKey, sourceBucket, listJson, APP_JSON)
+
+            // folderList contains a flat list of all folders ('common prefixes')
+            // pageList contains a flat list of_all_ pages
+            // we need to create FolderNodes for each of the items in FolderList, and add the appropriate children from pageList
+
+            val folders = mutableListOf<PageTreeNode.FolderNode>()
+            folderList.forEach {
+                folders.add(PageTreeNode.FolderNode(nodeType = "folder", srcKey = it, children = null, isRoot = false))
+            }
+            var totalCount = folders.size
+
+            pageList.forEach { page ->
+                val match =
+                    folders.find { folder -> folder.srcKey.substringBeforeLast("/") == page.srcKey.substringBeforeLast("/") }
+                if (match != null) {
+                    if (match.children == null) {
+                        match.children = mutableListOf()
+                    }
+                    info("Adding page '${page.srcKey}' to folder '${match.srcKey}'")
+                    match.children?.add(page)
+                    match.count++
+                    totalCount++
+                }
+            }
+
+            val combined: MutableList<PageTreeNode> = mutableListOf()
+            combined.addAll(folders)
+            val containerFolder = PageTreeNode.FolderNode("folder", pagesPrefix, combined, false)
+            containerFolder.count = totalCount
+            val pageTree = PageTree(lastUpdated = Clock.System.now(), container = containerFolder)
+            val treeJson = Json.encodeToString(PageTree.serializer(), pageTree)
+            info("Saving PageList JSON file (${treeJson.length} bytes)")
+            s3Service.putObject(pagesKey, sourceBucket, treeJson, APP_JSON)
         } else {
             return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a $postsKey file."))
         }
@@ -243,14 +282,21 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
         if (templates.hasContents()) {
             val list = mutableListOf<Template>()
             templates.contents().forEach { obj ->
-                if (obj.key().endsWith(".hbs")) {
-                    val lastModified = obj.lastModified().toKotlinInstant()
-                    list.add(
-                        Template(obj.key(), lastModified)
-                    )
-                    filesProcessed++
-                } else {
-                    warn("Skipping non-hbs file '${obj.key()}'")
+                try {
+                    if (obj.key().endsWith(".hbs")) {
+                        val lastModified = obj.lastModified().toKotlinInstant()
+                        val templateString = s3Service.getObjectAsString(obj.key(), sourceBucket)
+                        val frontMatter = templateString.getFrontMatter()
+                        val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontMatter)
+                        list.add(
+                            Template(obj.key(), metadata.name, lastModified, metadata.sections)
+                        )
+                        filesProcessed++
+                    } else {
+                        warn("Skipping non-hbs file '${obj.key()}'")
+                    }
+                } catch (se: SerializationException) {
+                    error("Error deserializing template file ${obj.key()}. Error was: ${se.message}")
                 }
             }
             list.sortByDescending { it.lastUpdated }

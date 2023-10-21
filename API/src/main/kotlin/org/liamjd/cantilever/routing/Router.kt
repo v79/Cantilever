@@ -33,7 +33,7 @@ class Router internal constructor() {
     }
 
     /**
-     * HTTP POST
+     * HTTP POST, used to create new data
      */
     inline fun <reified I, T : Any> post(
         pattern: String, noinline handlerFunction: HandlerFunction<I, T>
@@ -48,7 +48,7 @@ class Router internal constructor() {
     }
 
     /**
-     * HTTP PUT, untested
+     * HTTP PUT, to update or replace existing data
      */
     inline fun <reified I, T : Any> put(
         pattern: String, noinline handlerFunction: HandlerFunction<I, T>

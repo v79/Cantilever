@@ -99,26 +99,125 @@ class GeneratorControllerTest : KoinTest {
     fun `responds to request to regenerate pages based on a template`() {
         val mockSqsResponse = mockk<SendMessageResponse>()
         val mockPageJson = """
-            {
-            "count": 1,
-            "lastUpdated": "2023-03-13T20:46:36.647517Z"
-              "pages": [
-    {
-    "title": "Todo title",
-      "srcKey": "sources/pages/todo.md",
-      "templateKey": "about",
-      "url": "sources-pages-todo.md",
-      "attributes": {
-        "siteName" : "a name",
-        "author" : "writer mcwriterface"
+       {
+  "lastUpdated": "2023-10-20T09:50:13.895554407Z",
+  "container": {
+    "srcKey": "sources/pages/",
+    "children": [
+      {
+        "type": "folder",
+        "srcKey": "sources/pages/bio/",
+        "children": [
+          {
+            "type": "page",
+            "title": "About me",
+            "srcKey": "sources/pages/bio/about-me.md",
+            "templateKey": "sources/templates/about.html.hbs",
+            "url": "bio/about-me",
+            "attributes": {},
+            "sections": {
+              "body": ""
+            },
+            "lastUpdated": "2023-10-19T19:03:59Z"
+          }
+        ],
+        "isRoot": false,
+        "count": 1
       },
-      "sections": {
-        "body": "empty body"
+      {
+        "type": "folder",
+        "srcKey": "sources/pages/folder/",
+        "children": null,
+        "isRoot": false,
+        "count": 0
       },
-      "lastUpdated": "2023-03-13T20:46:36.647517Z"
-    }
-    ]
-            }
+      {
+        "type": "folder",
+        "srcKey": "sources/pages/",
+        "children": [
+          {
+            "type": "page",
+            "title": "About Cantilever",
+            "srcKey": "sources/pages/about.md",
+            "templateKey": "sources/templates/about.html.hbs",
+            "url": "about",
+            "attributes": {
+              "siteName": "Cantilever",
+              "author": "Liam Davison"
+            },
+            "sections": {
+              "body": ""
+            },
+            "lastUpdated": "2023-10-20T09:50:05Z"
+          },
+          {
+            "type": "page",
+            "title": "Testing Emoji",
+            "srcKey": "sources/pages/about.md",
+            "templateKey": "sources/templates/about.html.hbs",
+            "url": "emoji",
+            "attributes": {
+              "siteName": "Cantilever",
+              "author": "Liam Davison"
+            },
+            "sections": {
+              "body": ""
+            },
+            "lastUpdated": "2023-10-20T09:49:59Z"
+          },
+          {
+            "type": "page",
+            "title": "Cantilever",
+            "srcKey": "sources/pages/index.md",
+            "templateKey": "index",
+            "url": "index",
+            "attributes": {
+              "siteName": "Cantilever",
+              "author": "Liam John Davison"
+            },
+            "sections": {
+              "body": "",
+              "blockA": "",
+              "links": ""
+            },
+            "lastUpdated": "2023-08-19T16:36:08Z"
+          },
+          {
+            "type": "page",
+            "title": "Page Model",
+            "srcKey": "sources/pages/about.md",
+            "templateKey": "sources/templates/about.html.hbs",
+            "url": "page-model",
+            "attributes": {},
+            "sections": {
+              "body": ""
+            },
+            "lastUpdated": "2023-10-20T07:07:55Z"
+          },
+          {
+            "type": "page",
+            "title": "Todo",
+            "srcKey": "sources/pages/about.md",
+            "templateKey": "sources/templates/about.html.hbs",
+            "url": "todo",
+            "attributes": {
+              "siteName": "Cantilever",
+              "author": "Liam Davison"
+            },
+            "sections": {
+              "body": ""
+            },
+            "lastUpdated": "2023-10-20T09:49:49Z"
+          }
+        ],
+        "isRoot": false,
+        "count": 5
+      }
+    ],
+    "isRoot": false,
+    "count": 9
+  }
+}
         """.trimIndent()
 
         val mockPostJson = """
@@ -138,25 +237,29 @@ class GeneratorControllerTest : KoinTest {
 }
         """.trimIndent()
         val mockTodoPage = ""
+        val mockTemplateText = ""
+
         declareMock<S3Service> {
             every { mockS3.objectExists(any(), sourceBucket) } returns true
             every { mockS3.getObjectAsString("generated/pages.json", sourceBucket) } returns mockPageJson
             every { mockS3.getObjectAsString("generated/posts.json", sourceBucket) } returns mockPostJson
-            every { mockS3.getObjectAsString("sources/pages/todo.md", sourceBucket) } returns mockTodoPage
+            every { mockS3.getObjectAsString("sources/pages/bio/about-me.md", sourceBucket)} returns mockTodoPage
+            every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns mockTodoPage
+            every { mockS3.getObjectAsString("sources/templates/about.html.hbs",sourceBucket)} returns mockTemplateText
         }
         declareMock<SQSService> {
             every { mockSQS.sendMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "2345"
         val controller = GeneratorController(sourceBucket)
-        val request = buildRequest(path = "/generate/template/about", pathPattern = "/generate/template/{templateKey}")
+        val request = buildRequest(path = "/generate/template/sources%252Ftemplates%252Fabout.html.hbs", pathPattern = "/generate/template/{templateKey}")
 
         val response = controller.generateTemplate(request)
 
         assertNotNull(response)
         println(response)
         assertEquals(202, response.statusCode)
-        verify(exactly = 1) { mockSQS.sendMessage(any(), any(), any()) }
+        verify(exactly = 5) { mockSQS.sendMessage(any(), any(), any()) }
     }
 
     @Test

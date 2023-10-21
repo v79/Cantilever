@@ -28,14 +28,12 @@ class HandlebarsRenderer : TemplateRender {
         handlebars.registerHelper("upper", StringHelpers.upper)
         handlebars.registerHelper("localDate", LocalDateFormatter("dd/MM/yyyy"))
         handlebars.registerHelper("take", TakeHelper())
-        handlebars.registerHelper("capitalize",StringHelpers.capitalize)
         handlebars.registerHelper("slugify", StringHelpers.slugify)
     }
 
     override fun render(model: Map<String, Any?>, template: String): String {
-        info("Processing model (${model.size} entries) for template ${template.take(100)}")
+        // Using compileInline means I won't get any proper error reporting, sadly
         val hbTemplate = handlebars.compileInline(template)
-
         return hbTemplate.apply(model)
     }
 

@@ -22,7 +22,9 @@
 	on:focus={null}
 	on:keyup={() => onClickFn(item.key)}
 	on:click={() => onClickFn(item.key)}>
-	{item.shortName}
+	{item.name}
+	<br />
+	<span class="text sm text-slate-400">{item.shortName}</span>
 	{#if hovering}<span class="absolute right-4 top-0"
 			><small class="text-sm text-slate-400">{item.getDateString()}</small></span
 		>{/if}

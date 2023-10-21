@@ -103,6 +103,8 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                         template = sqsMsgBody.templateKey,
                         attributes = sqsMsgBody.attributes,
                         sectionKeys = sectionMap.toMap(),
+                        title = sqsMsgBody.title,
+                        lastModified = sqsMsgBody.lastModified,
                         url = sqsMsgBody.url.removeSuffix(".md")
                     )
                     logger.info("${sqsMsgBody.sections.size} sections written, totalling $bytesWritten bytes")

@@ -1,0 +1,64 @@
+---
+title: New Template Approach
+sections:
+- Body
+- links
+- footer
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="author" content="{{author}}">
+    <meta name="generator" content="cantilevers">
+    <title>{{ siteName }}</title>
+    <link rel="stylesheet" href="css/pico.min.css">
+</head>
+<body>
+
+<header class="container">
+    <hgroup>
+        <h1>{{upper siteName}}</h1>
+        <h3><em>Built with the Cantilever severless generator</em></h3>
+    </hgroup>
+</header>
+
+<main class="container">
+    <div class="grid">
+        <section>
+            {{{ body }}}
+
+            <div class="posts">
+                <ul>
+                    {{#each posts}}
+                        <li>{{localDate this.date}} <a href="/{{this.url}}">{{this.title}}</a></li>
+                    {{/each}}
+                </ul>
+            </div>
+            <div class="posts">
+                <h3>Or maybe just the first five? (<code>take "5"</code>)</h3>
+                <ul>
+                    {{#take posts "5"}}
+                        <li>{{localDate this.date}} <a href="/{{this.url}}">{{this.title}}</a></li>
+                    {{/take}}
+                </ul>
+            </div>
+
+        </section>
+
+        <aside class="">
+            <h3>Useful Links</h3>
+            {{{links}}}
+        </aside>
+    </div>
+</main>
+
+<footer class="container">
+    <small>Built with <a href="https://app.cantilevers.org/">Cantilevers</a></small>
+    {{footer}}
+</footer>
+
+</body>
+</html>

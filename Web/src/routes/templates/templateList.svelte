@@ -1,13 +1,18 @@
 <script lang="ts">
-	import { onMount, onDestroy, tick } from 'svelte';
-	import { userStore } from '../../stores/userStore.svelte';
-	import { notificationStore } from '../../stores/notificationStore.svelte';
-	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import { activeStore } from '../../stores/appStatusStore.svelte';
-	import { HandlebarsContent, HandlebarsItem, Template } from '../../models/structure';
-	import { allTemplatesStore, templateStore } from '../../stores/postsStore.svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import HandlebarListItem from '../../components/handlebarListItem.svelte';
+	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
+	import { FileType, FolderNode, HandlebarsContent, HandlebarsItem, Post, Template } from '../../models/structure';
+	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import { handlebarStore } from '../../stores/handlebarContentStore.svelte';
+	import { notificationStore } from '../../stores/notificationStore.svelte';
+	import {
+		allTemplatesStore,
+		fetchHandlebarTemplate,
+		templateStore
+	} from '../../stores/templateStore.svelte';
+	import { userStore } from '../../stores/userStore.svelte';
+	import { fetchTemplates } from '../../stores/templateStore.svelte';
 
 	$: templatesSorted = $templateStore.sort((a, b) => {
 		if (a.key < b.key) return -1;
@@ -17,48 +22,28 @@
 
 	onMount(async () => {});
 
-	function loadAllTemplates() {
+	/**
+	 * Load
+	 */
+	export function loadAllTemplates() {
 		console.log('Loading all templates json...');
 		let token = $userStore.token;
 		notificationStore.set({ shown: false, message: '', type: 'info' });
-		fetch('https://api.cantilevers.org/project/templates', {
-			method: 'GET',
-			headers: {
-				Accept: 'application/json',
-				Authorization: 'Bearer ' + token
-			},
-			mode: 'cors'
-		})
-			.then((response) => response.json())
-			.then((data) => {
-				if (data.data === undefined) {
-					throw new Error(data.message);
-				}
-				// deserialize
-				var tempTemplates = new Array<Template>();
-				for (const t of data.data.templates) {
-					tempTemplates.push(new Template(t.key, t.lastUpdated));
-				}
-				// set templates store
-				allTemplatesStore.set({
-					count: tempTemplates.length,
-					lastUpdated: data.lastUpdated,
-					templates: tempTemplates
-				});
-				$notificationStore.message = 'Loaded all templates ' + $activeStore.activeFile;
-				$notificationStore.shown = true;
-				$spinnerStore.shown = false;
-			})
-			.catch((error) => {
-				console.log(error);
-				notificationStore.set({
-					message: error,
-					shown: true,
-					type: 'error'
-				});
-				$spinnerStore.shown = false;
-				return {};
+
+		let result = fetchTemplates(token);
+		if (result) {
+			// is error condition
+			notificationStore.set({
+				message: result.message,
+				shown: true,
+				type: 'error'
 			});
+			$spinnerStore.shown = false;
+		} else {
+			$notificationStore.message = 'Loaded all templates ' + $activeStore.activeFile;
+			$notificationStore.shown = true;
+			$spinnerStore.shown = false;
+		}
 	}
 
 	function createNewTemplate() {
@@ -98,50 +83,43 @@
 			});
 	}
 
-	function loadHandlebars(key: string) {
+	/**
+	 * Load the handlebars template file into the activeStore
+	 * @param key
+	 */
+	async function loadHandlebars(key: string) {
 		let token = $userStore.token;
 		console.log('Loading handlebars file... ' + key);
 		spinnerStore.set({ shown: true, message: 'Loading handlebars file... ' + key });
 		notificationStore.set({ shown: false, message: '', type: 'info' });
 		tick();
-		fetch('https://api.cantilevers.org/templates/' + encodeURIComponent(key), {
-			method: 'GET',
-			headers: {
-				Accept: 'application/json',
-				Authorization: 'Bearer ' + token
-			},
-			mode: 'cors'
-		})
-			.then((response) => response.json())
-			.then((data) => {
-				console.dir(data);
-				if (data.data === undefined) {
-					throw new Error(data.message);
-				}
-				var tmpTemplate = new HandlebarsContent(
-					new Template(data.data.template.key, data.data.template.lastUpdated),
-					data.data.body
-				);
-				console.log('Built handlebars template');
-				handlebarStore.set(tmpTemplate);
-				$activeStore.activeFile = decodeURIComponent($handlebarStore.template!!.key);
-				$activeStore.isNewFile = false;
-				$activeStore.hasChanged = false;
-				$activeStore.isValid = true;
-				$activeStore.newSlug = $handlebarStore.template!!.key;
-				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
-				$notificationStore.shown = true;
-				$spinnerStore.shown = false;
-			})
-			.catch((error) => {
-				console.log(error);
+
+		fetchHandlebarTemplate(token, key).then((response) => {
+			console.log('Fetched');
+			console.dir(response);
+			if (response instanceof Error) {
 				notificationStore.set({
-					message: error,
+					message: response.message,
 					shown: true,
 					type: 'error'
 				});
 				$spinnerStore.shown = false;
-			});
+			} else if (response instanceof HandlebarsContent) {
+				handlebarStore.set(response);
+				$activeStore.activeFile = decodeURIComponent($handlebarStore.template!!.key);
+				$activeStore.isNewFile = false;
+				$activeStore.hasChanged = false;
+				$activeStore.isValid = true;
+				$activeStore.newSlug = "";
+				$activeStore.fileType = FileType.Template;
+				$activeStore.folder = new FolderNode("folder","sources/templates/",0,[]);
+				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
+				$notificationStore.shown = true;
+				$spinnerStore.shown = false;
+			} else {
+				console.log('Failed to fetch template ' + key + ' and no error was returned!');
+			}
+		});
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
@@ -193,7 +171,7 @@
 				<ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
 					{#each templatesSorted as template}
 						<HandlebarListItem
-							item={new HandlebarsItem(template.key, template.lastUpdated)}
+							item={new HandlebarsItem(template.key, template.name, template.lastUpdated)}
 							onClickFn={loadHandlebars} />
 					{/each}
 				</ul>

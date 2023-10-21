@@ -60,11 +60,29 @@ class S3ServiceImpl(region: Region) : S3Service {
         return s3Client.listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).build())
     }
 
+    override fun listFolders(prefix: String, bucket: String): List<String> {
+        val request =  s3Client.listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).delimiter("/").build())
+        if(request.hasCommonPrefixes()) {
+            return request.commonPrefixes().map { it.prefix() }.toList()
+        }
+        return emptyList()
+    }
+
     override fun deleteObject(key: String, bucket: String): DeleteObjectResponse? {
         val request = DeleteObjectRequest.builder()
             .key(key)
             .bucket(bucket)
             .build()
         return s3Client.deleteObject(request)
+    }
+
+    override fun createFolder(key: String, bucket: String): Int {
+        val requestBuilder = PutObjectRequest.builder()
+            .contentLength(0L)
+            .key("$key/")
+            .bucket(bucket)
+            .build()
+        s3Client.putObject(requestBuilder, RequestBody.empty())
+        return 0
     }
 }
