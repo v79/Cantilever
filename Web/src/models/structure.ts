@@ -16,10 +16,12 @@ export interface Layout {
  */
 export class Template {
 	key: string;
+	name: string;
 	lastUpdated: Date;
 
-	constructor(key: string, lastUpdated: Date) {
+	constructor(key: string, name: string, lastUpdated: Date) {
 		this.key = key;
+		this.name = name;
 		this.lastUpdated = lastUpdated;
 	}
 }
@@ -28,9 +30,9 @@ export class Template {
  * List of valid things that can be loaded and edited by the web app
  */
 export enum FileType {
-	Post = "post",
-	Page = "page",
-	Template = "template"
+	Post = 'post',
+	Page = 'page',
+	Template = 'template'
 }
 
 /**
@@ -151,11 +153,13 @@ export abstract class MetadataItem {
  */
 export class HandlebarsItem {
 	key: string;
+	name: string;
 	shortName: string;
 	lastUpdated: Date;
 
-	constructor(key: string, lastUpdated: Date) {
+	constructor(key: string, name: string, lastUpdated: Date) {
 		this.key = key;
+		this.name = name;
 		this.lastUpdated = new Date(lastUpdated);
 		this.shortName = key.split('/').slice(-1).join();
 	}

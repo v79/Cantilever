@@ -35,7 +35,7 @@
 				// deserialize
 				var tempTemplates = new Array<Template>();
 				for (const t of data.data.templates) {
-					tempTemplates.push(new Template(t.key, t.lastUpdated));
+					tempTemplates.push(new Template(t.key, t.name, t.lastUpdated));
 				}
 				// set templates store
 				allTemplatesStore.set({

@@ -171,7 +171,7 @@
 				<ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
 					{#each templatesSorted as template}
 						<HandlebarListItem
-							item={new HandlebarsItem(template.key, template.lastUpdated)}
+							item={new HandlebarsItem(template.key, template.name, template.lastUpdated)}
 							onClickFn={loadHandlebars} />
 					{/each}
 				</ul>

@@ -121,7 +121,6 @@
 		</div>
 	</div>
 	<div class="invisible basis-1/4 bg-slate-800 lg:visible">
-		<h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-200">Messages</h3>
 		<ActiveStoreView />
 		<SpinnerWrapper spinnerID="globalSpinner" />
 	</div>
@@ -147,7 +146,8 @@
 <Modal title="Save new page?" bind:open={saveNewModal} autoclose size="sm">
 	<p>
 		Creating new page <strong>{$markdownStore.metadata?.title}</strong> from template
-		<strong>{$markdownStore.metadata?.templateKey}</strong> in folder <strong>{$activeStore.folder?.srcKey}</strong>.
+		<strong>{$markdownStore.metadata?.templateKey}</strong> in folder
+		<strong>{$activeStore.folder?.srcKey}</strong>.
 	</p>
 	<p>The slug (url) will be fixed after saving, so this is your last chance to change it.</p>
 	<form>

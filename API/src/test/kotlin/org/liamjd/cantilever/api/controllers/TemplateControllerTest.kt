@@ -54,7 +54,11 @@ internal class TemplateControllerTest : KoinTest {
     fun `respond to request to load handlebars source`() {
         val mockResponse = mockk<GetObjectResponse>()
         val srcKey = "my-template.hbs"
-        val mockBody = ""
+        val mockBody = """
+            ---
+            name: My Template
+            ---
+        """.trimIndent()
         declareMock<S3Service> {
             every { mockS3.objectExists("my-template.hbs", sourceBucket) } returns true
             every { mockS3.getObject(any(), sourceBucket) } returns mockResponse

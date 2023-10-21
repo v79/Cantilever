@@ -3,8 +3,8 @@
 	const none: string = 'none';
 </script>
 
+<h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-200">Current file</h3>
 <div>
-	<h3 class="px-4 py-4 text-lg text-slate-200">Active store</h3>
 	<dl class="px-4 py-4 text-slate-200">
 		<dt class="font-bold">File</dt>
 		<dl class="px-8 text-slate-200">{$activeStore.activeFile ? $activeStore.activeFile : none}</dl>

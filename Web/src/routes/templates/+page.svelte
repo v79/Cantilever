@@ -19,7 +19,7 @@
 	afterNavigate(() => {
 		activeStore.set(AS_CLEAR);
 		$activeStore.currentPage = 'Templates';
-	})
+	});
 
 	function saveFile() {
 		console.log('Saving template file ', $handlebarStore.template?.key);
@@ -131,7 +131,6 @@
 	</div>
 
 	<div class="invisible basis-1/4 bg-slate-800 lg:visible">
-		<h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-200">Messages</h3>
 		<ActiveStoreView />
 		<SpinnerWrapper spinnerID="globalSpinner" />
 	</div>

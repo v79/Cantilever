@@ -31,8 +31,10 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
             return if (s3Service.objectExists(decoded, sourceBucket)) {
                 val templateObj = s3Service.getObject(decoded, sourceBucket)
                 if (templateObj != null) {
-                    val template = Template(handlebarSource, templateObj.lastModified().toKotlinInstant(), emptyList())
                     val body = s3Service.getObjectAsString(decoded, sourceBucket)
+                    val frontmatter = body.getFrontMatter()
+                    val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
+                    val template = Template(handlebarSource, metadata.name, templateObj.lastModified().toKotlinInstant(), emptyList())
                     val handlebarsContent = HandlebarsContent(template, body)
                     ResponseEntity.ok(body = APIResult.Success(handlebarsContent))
                 } else {
