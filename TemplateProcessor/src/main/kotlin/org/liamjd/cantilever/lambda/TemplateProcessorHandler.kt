@@ -69,10 +69,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                     is SqsMsgBody.PageModelMsg, is SqsMsgBody.MarkdownPostUploadMsg -> {
                         // do nothing, these messages are not valid in this context
                     }
-
                 }
-
-
             } catch (se: SerializationException) {
                 logger.error("Failed to deserialize eventRecord $eventRecord, exception: ${se.message}")
                 responses.add("500 Server Error")
@@ -199,7 +196,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         model["date"] = postMsg.metadata.date
 
         val html = with(logger) {
-            val nav = navigationBuilder.getPostNavigationObjects(postMsg.metadata,sourceBucket)
+            val nav = navigationBuilder.getPostNavigationObjects(postMsg.metadata, sourceBucket)
             nav.entries.forEach {
                 model[it.key] = it.value
             }

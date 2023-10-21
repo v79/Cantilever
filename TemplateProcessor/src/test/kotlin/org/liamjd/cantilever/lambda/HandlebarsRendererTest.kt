@@ -6,6 +6,8 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.Month
 import kotlin.test.*
 
 internal class HandlebarsRendererTest {
@@ -88,7 +90,7 @@ internal class HandlebarsRendererTest {
     }
 
     @Test
-    fun `localDate formatter works when custom format supplied`() {
+    fun `localDate formatter works when project format supplied`() {
         // setup
         val templateString = """{{ localDate this.date this.dateFormat }}"""
         val expectedResult = "24/09/2023"
@@ -101,6 +103,40 @@ internal class HandlebarsRendererTest {
             val result = renderer.render(model, templateString)
             // verify
             assertEquals(expectedResult, result)
+        }
+    }
+
+    @Test
+    fun `localDate formatter when custom format supplied`() {
+        // setup
+        val templateString = """{{ localDate this.date "HH:mm dd MMM yyyy" }}"""
+        val expectedResult = "20:14 21 Oct 2023"
+        val dateTime = LocalDateTime(year = 2023, month = Month.OCTOBER, dayOfMonth = 21, hour = 20, minute = 14)
+        val model = mapOf<String,Any?>("date" to dateTime)
+
+        with(mockLogger) {
+            val renderer = HandlebarsRenderer()
+            // execute
+            val result = renderer.render(model, templateString)
+            // verify
+            assertEquals(expectedResult,result)
+        }
+    }
+
+    @Test
+    fun `localDate formatter when ISO format supplied`() {
+        // setup
+        val templateString = """{{ localDate this.date "ISO_WEEK_DATE" }}"""
+        val expectedResult = "2023-W42-6"
+        val dateTime = LocalDateTime(year = 2023, month = Month.OCTOBER, dayOfMonth = 21, hour = 20, minute = 14)
+        val model = mapOf<String,Any?>("date" to dateTime)
+
+        with(mockLogger) {
+            val renderer = HandlebarsRenderer()
+            // execute
+            val result = renderer.render(model, templateString)
+            // verify
+            assertEquals(expectedResult,result)
         }
     }
 
