@@ -16,24 +16,16 @@ export interface Layout {
  */
 export class Template {
 	key: string;
-	name: string;
+	metadata: TemplateMetadata;
 	lastUpdated: Date;
 
-	constructor(key: string, name: string, lastUpdated: Date) {
+	constructor(key: string, lastUpdated: Date, metadata: TemplateMetadata) {
 		this.key = key;
-		this.name = name;
 		this.lastUpdated = lastUpdated;
+		this.metadata = metadata;
 	}
 }
 
-/**
- * List of valid things that can be loaded and edited by the web app
- */
-export enum FileType {
-	Post = 'post',
-	Page = 'page',
-	Template = 'template'
-}
 
 /**
  * Yaml frontmatter for Templates
@@ -73,6 +65,15 @@ export interface AllTemplates {
 	count: number;
 	lastUpdated: Date;
 	templates: Array<Template>;
+}
+
+/**
+ * List of valid things that can be loaded and edited by the web app
+ */
+export enum FileType {
+	Post = 'post',
+	Page = 'page',
+	Template = 'template'
 }
 
 /**
@@ -256,9 +257,9 @@ export class MarkdownContent {
 }
 
 /*
-	The [Template] class essentially represents the metadata of a handlebars template. This class contains the body as well.
+	This class contains a template, and the body (the raw HTML)
 */
-export class HandlebarsContent {
+export class HandlebarsTemplate {
 	template: Template;
 	body: string;
 

@@ -1,3 +1,8 @@
+---
+name: General Content
+sections:
+- body
+---
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,16 +11,16 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="author" content="{{author}}">
     <meta name="generator" content="cantilevers">
-    <title>{{ siteName }}</title>
+    <title>{{ project.projectName }} - {{ title }}</title>
+    <link rel="stylesheet" href="/css/pico.css">
 </head>
 <body>
-<section id="banner" class="">
-    <div class="">
-        <h1 class=""><span class="">{{upper siteName}}</span></h1>
-    </div>
-</section>
-<section class="body">
-    {{{body}}}
-</section>
+<header class="container">
+    <a href="https://www.cantilevers.org/">Home</a>
+	<h1>{{title}}</h1>
+</header>
+<main class="container">
+    {{{ body }}}
+</main>
 </body>
 </html>

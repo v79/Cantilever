@@ -3,8 +3,8 @@
 	import SpinnerWrapper from '../../components/utilities/spinnerWrapper.svelte';
 	import { AS_CLEAR, activeStore } from '../../stores/appStatusStore.svelte';
 	import TemplateList from './templateList.svelte';
-	import { handlebarStore } from '../../stores/handlebarContentStore.svelte';
-	import { Template } from '../../models/structure';
+	import { currentTemplate } from '../../stores/templateStore.svelte';
+	import { HandlebarsTemplate, Template } from '../../models/structure';
 	import { userStore } from '../../stores/userStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import TemplateEditorForm from '../../components/HandlebarsEditor/templateEditorForm.svelte';
@@ -22,8 +22,10 @@
 	});
 
 	function saveFile() {
-		console.log('Saving template file ', $handlebarStore.template?.key);
-		let templateJson = JSON.stringify($handlebarStore);
+		console.log('Saving template file ', $currentTemplate.template.key);
+		$currentTemplate.template.lastUpdated = new Date();
+		let templateJson = JSON.stringify($currentTemplate);
+		console.log(templateJson);
 
 		fetch('https://api.cantilevers.org/templates/', {
 			method: 'POST',
@@ -38,7 +40,7 @@
 			.then((response) => response.text())
 			.then((data) => {
 				notificationStore.set({
-					message: decodeURI($handlebarStore.template?.key ?? '') + ' saved. ' + data,
+					message: decodeURI($currentTemplate.template.key ?? '') + ' saved. ' + data,
 					shown: true,
 					type: 'success'
 				});
@@ -49,12 +51,12 @@
 	function generatePages() {
 		console.log(
 			'Trigger page regeneration for all pages with template ',
-			$handlebarStore.template?.key
+			$currentTemplate.template.key
 		);
-		if ($handlebarStore.template?.key) {
+		if ($currentTemplate.template.key) {
 			fetch(
 				'https://api.cantilevers.org/generate/template/' +
-					encodeURIComponent($handlebarStore.template?.key),
+					encodeURIComponent($currentTemplate.template.key),
 				{
 					method: 'PUT',
 					headers: {
@@ -87,11 +89,11 @@
 	<div class="basis-1/2 bg-slate-600">
 		<div class="relative mt-5 md:col-span-2 md:mt-0">
 			<h3 class="px-4 py-4 text-center text-2xl font-bold">
-				{#if $handlebarStore?.template?.key}{$activeStore.activeFile}{:else}Handlebars Editor
+				{#if $currentTemplate}{$activeStore.activeFile}{:else}Handlebars Editor
 				{/if}
 			</h3>
 
-			{#if $handlebarStore?.template instanceof Template}
+			{#if $currentTemplate instanceof HandlebarsTemplate}
 				<div class="flex items-center justify-end pr-8 focus:shadow-lg" role="group">
 					<button
 						class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
@@ -120,8 +122,8 @@
 						>Save</button>
 				</div>
 				<TemplateEditorForm
-					bind:template={$handlebarStore.template}
-					bind:body={$handlebarStore.body} />
+					bind:hbTemplate={$currentTemplate}
+					bind:body={$currentTemplate.body} />
 			{:else}
 				<h3 class="px-8 text-center text-lg text-slate-200">
 					Load an existing file or create a new one to get started

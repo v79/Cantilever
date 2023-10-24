@@ -1,9 +1,8 @@
 <script lang="ts">
+	import type { HandlebarsTemplate } from '../../models/structure';
 	import TextInput from '../forms/textInput.svelte';
-	import { activeStore } from '../../stores/appStatusStore.svelte';
-	import type { Template } from '../../models/structure';
 
-	export let template: Template;
+	export let hbTemplate: HandlebarsTemplate;
 	export let body: string = '';
 </script>
 
@@ -13,7 +12,10 @@
 			<div class="overflow-hidden shadow sm:rounded-md">
 				<div class="grid grid-cols-6 gap-6">
 					<div class="col-span-6 sm:col-span-6 lg:col-span-3">
-						<TextInput bind:value={$activeStore.activeFile} readonly name="slug" label="Filename" />
+						<TextInput bind:value={hbTemplate.template.key} readonly name="slug" label="Filename" />
+					</div>
+					<div class="col-span-6 sm:col-span-6 lg:col-span-3">
+						<TextInput bind:value={hbTemplate.template.metadata.name} name="template-name" label="Template name" />
 					</div>
 				</div>
 

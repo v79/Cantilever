@@ -7,9 +7,10 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.getFrontMatter
-import org.liamjd.cantilever.models.HandlebarsContent
+import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.Template
 import org.liamjd.cantilever.models.TemplateMetadata
+import org.liamjd.cantilever.models.rest.HandlebarsTemplate
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.S3Service
@@ -21,9 +22,9 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
     private val s3Service: S3Service by inject()
 
     /**
-     * Load a handlebars template file with the specified 'srcKey' and return it as a [HandlebarsContent] response
+     * Load a handlebars template file with the specified 'srcKey' and return it as a [HandlebarsTemplate] response
      */
-    fun loadHandlebarsSource(request: Request<Unit>): ResponseEntity<APIResult<HandlebarsContent>> {
+    fun loadHandlebarsSource(request: Request<Unit>): ResponseEntity<APIResult<HandlebarsTemplate>> {
         val handlebarSource = request.pathParameters["srcKey"]
         return if (handlebarSource != null) {
             val decoded = URLDecoder.decode(handlebarSource, Charset.defaultCharset())
@@ -34,9 +35,13 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
                     val body = s3Service.getObjectAsString(decoded, sourceBucket)
                     val frontmatter = body.getFrontMatter()
                     val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
-                    val template = Template(handlebarSource, metadata.name, templateObj.lastModified().toKotlinInstant(), emptyList())
-                    val handlebarsContent = HandlebarsContent(template, body)
-                    ResponseEntity.ok(body = APIResult.Success(handlebarsContent))
+                    info("Handlebar frontmatter: $metadata")
+                    val template = Template(
+                        handlebarSource,
+                        templateObj.lastModified().toKotlinInstant(),
+                        metadata)
+                    val handlebarsTemplate = HandlebarsTemplate(template, body.stripFrontMatter())
+                    ResponseEntity.ok(body = APIResult.Success(handlebarsTemplate))
                 } else {
                     error("Handlebars file $decoded not found in bucket $sourceBucket")
                     ResponseEntity.notFound(body = APIResult.Error("Handlebars file $decoded not found in bucket $sourceBucket"))
@@ -52,21 +57,21 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
     }
 
     /**
-     * Save a handlebars template file
+     * Save a handlebars template file, which contains a key, sections, name and body
      */
-    fun saveTemplate(request: Request<HandlebarsContent>): ResponseEntity<APIResult<String>> {
+    fun saveTemplate(request: Request<HandlebarsTemplate>): ResponseEntity<APIResult<String>> {
         val handlebarsContent = request.body
         val srcKey = URLDecoder.decode(handlebarsContent.template.key, Charset.defaultCharset())
 
         // both branches do the same thing
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             info("Updating existing file '${handlebarsContent.template.key}'")
-            val length = s3Service.putObject(srcKey, sourceBucket, handlebarsContent.body, "text/html")
+            val length = writeTemplateFile(handlebarsContent, srcKey)
             ResponseEntity.ok(body = APIResult.OK("Updated file ${handlebarsContent.template.key}, $length bytes"))
         } else {
             info("Creating new file '${handlebarsContent.template.key}'")
-            val length = s3Service.putObject(srcKey, sourceBucket, handlebarsContent.body, "text/html")
-            ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
+            val length = writeTemplateFile(handlebarsContent, srcKey)
+            ResponseEntity.ok(body = APIResult.OK("Updated file ${handlebarsContent.template.key}, $length bytes"))
         }
     }
 
@@ -77,22 +82,46 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
         val handlebarKey = request.pathParameters["templateKey"]
         return if (handlebarKey != null) {
             val srcKey = URLDecoder.decode(handlebarKey, Charset.defaultCharset())
-           return if (s3Service.objectExists(srcKey, sourceBucket)) {
+            return if (s3Service.objectExists(srcKey, sourceBucket)) {
                 try {
                     info("Loading metadata for template $handlebarKey")
                     val template = s3Service.getObjectAsString(srcKey, sourceBucket)
                     val frontmatter = template.getFrontMatter()
                     val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
                     ResponseEntity.ok(body = APIResult.Success(metadata))
-                } catch (se: SerializationException){
+                } catch (se: SerializationException) {
                     ResponseEntity.serverError(body = APIResult.Error("Could not deserialize template $srcKey. Error was ${se.message}"))
                 }
             } else {
-               ResponseEntity.badRequest(body = APIResult.Error("Could not find template $srcKey"))
-           }
+                ResponseEntity.badRequest(body = APIResult.Error("Could not find template $srcKey"))
+            }
         } else {
             ResponseEntity.badRequest(body = APIResult.Error("Invalid template key"))
         }
+    }
+
+    /**
+     * Build the frontmatter for the metadata for a handlebars template file
+     */
+    private fun buildFrontmatterForTemplate(template: Template): String {
+        val sBuilder = StringBuilder()
+        sBuilder.append("---\n")
+        sBuilder.append("name: ${template.metadata.name}\n")
+        sBuilder.append("sections:\n")
+        template.metadata.sections.forEach {
+            sBuilder.append(" - $it\n")
+        }
+        sBuilder.append("---\n")
+        return sBuilder.toString()
+    }
+
+    /**
+     * Write a handlebars template file to S3, combining the metadata and the body into a single string
+     */
+    private fun writeTemplateFile(handlebarsContent: HandlebarsTemplate, key: String): Int {
+        val frontmatter = buildFrontmatterForTemplate(template = handlebarsContent.template)
+        val body = frontmatter + handlebarsContent.body
+        return s3Service.putObject(key, sourceBucket, body, "text/html")
     }
 
     override fun info(message: String) = println("INFO: TemplateController: $message")

@@ -2,12 +2,12 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import HandlebarListItem from '../../components/handlebarListItem.svelte';
 	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import { FileType, FolderNode, HandlebarsContent, HandlebarsItem, Post, Template } from '../../models/structure';
+	import { FileType, FolderNode, HandlebarsItem, HandlebarsTemplate, Post, Template } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
-	import { handlebarStore } from '../../stores/handlebarContentStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import {
 		allTemplatesStore,
+		currentTemplate,
 		fetchHandlebarTemplate,
 		templateStore
 	} from '../../stores/templateStore.svelte';
@@ -84,7 +84,7 @@
 	}
 
 	/**
-	 * Load the handlebars template file into the activeStore
+	 * Load the handlebars template file into the currentTemplate store
 	 * @param key
 	 */
 	async function loadHandlebars(key: string) {
@@ -95,8 +95,6 @@
 		tick();
 
 		fetchHandlebarTemplate(token, key).then((response) => {
-			console.log('Fetched');
-			console.dir(response);
 			if (response instanceof Error) {
 				notificationStore.set({
 					message: response.message,
@@ -104,9 +102,9 @@
 					type: 'error'
 				});
 				$spinnerStore.shown = false;
-			} else if (response instanceof HandlebarsContent) {
-				handlebarStore.set(response);
-				$activeStore.activeFile = decodeURIComponent($handlebarStore.template!!.key);
+			} else if (response instanceof HandlebarsTemplate) {
+				currentTemplate.set(response);
+				$activeStore.activeFile = decodeURIComponent($currentTemplate.template.key);
 				$activeStore.isNewFile = false;
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
@@ -117,7 +115,7 @@
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
 			} else {
-				console.log('Failed to fetch template ' + key + ' and no error was returned!');
+				console.log('Failed to fetch template ' + key + ' and no error was returned; perhaps wrong type?');
 			}
 		});
 	}
@@ -171,7 +169,7 @@
 				<ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
 					{#each templatesSorted as template}
 						<HandlebarListItem
-							item={new HandlebarsItem(template.key, template.name, template.lastUpdated)}
+							item={new HandlebarsItem(template.key, template.metadata.name, template.lastUpdated)}
 							onClickFn={loadHandlebars} />
 					{/each}
 				</ul>
