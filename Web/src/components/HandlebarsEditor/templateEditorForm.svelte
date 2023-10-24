@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { Badge } from 'flowbite-svelte';
 	import type { HandlebarsTemplate } from '../../models/structure';
+	import { templateStore } from '../../stores/templateStore.svelte';
 	import TextInput from '../forms/textInput.svelte';
 
 	export let hbTemplate: HandlebarsTemplate;
@@ -15,11 +17,32 @@
 						<TextInput bind:value={hbTemplate.template.key} readonly name="slug" label="Filename" />
 					</div>
 					<div class="col-span-6 sm:col-span-6 lg:col-span-3">
-						<TextInput bind:value={hbTemplate.template.metadata.name} name="template-name" label="Template name" />
+						<TextInput
+							bind:value={hbTemplate.template.metadata.name}
+							name="template-name"
+							label="Template name" />
 					</div>
+
+					{#if hbTemplate.template.metadata.sections}
+						<div class="col-span-5">
+							<h3 class="text-base font-bold text-slate-200">Sections</h3>
+						</div>
+						<div class="col-span-1">
+							<button
+								class="float-right text-right text-sm font-medium text-slate-200"
+								type="button">Edit...</button>
+						</div>
+						<div class="col-span-6 flex items-center justify-center space-x-4">
+							{#each hbTemplate.template.metadata.sections as section}
+								<Badge
+									class="bg-primary-100 dark:bg-primary-900 inline-flex items-center justify-center divide-gray-200 rounded-md border-gray-200 py-0.5  px-2.5 text-lg font-medium text-slate-200 dark:divide-gray-700 dark:border-gray-700 dark:text-slate-800 border-2"
+									>{section}</Badge>
+							{/each}
+						</div>
+					{/if}
 				</div>
 
-				<div class="col-span-6">
+				<div class="col-span-6 gap-6">
 					<label for="markdown" class="text-sm font-medium text-slate-200">Handlebars HTML</label>
 					<textarea
 						bind:value={body}

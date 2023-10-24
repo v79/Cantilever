@@ -25,7 +25,6 @@
 		console.log('Saving template file ', $currentTemplate.template.key);
 		$currentTemplate.template.lastUpdated = new Date();
 		let templateJson = JSON.stringify($currentTemplate);
-		console.log(templateJson);
 
 		fetch('https://api.cantilevers.org/templates/', {
 			method: 'POST',
