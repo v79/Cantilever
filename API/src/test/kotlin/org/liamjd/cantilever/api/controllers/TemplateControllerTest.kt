@@ -14,8 +14,9 @@ import org.koin.test.inject
 import org.koin.test.junit5.KoinTestExtension
 import org.koin.test.junit5.mock.MockProviderExtension
 import org.koin.test.mock.declareMock
-import org.liamjd.cantilever.models.HandlebarsContent
 import org.liamjd.cantilever.models.Template
+import org.liamjd.cantilever.models.TemplateMetadata
+import org.liamjd.cantilever.models.rest.HandlebarsTemplate
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
@@ -92,23 +93,28 @@ internal class TemplateControllerTest : KoinTest {
 
     @Test
     fun `saves a new template file when none exists`() {
-        val mockHandlebarsContent = mockk<HandlebarsContent>()
+        val mockHandlebarsContent = mockk<HandlebarsTemplate>()
         val mockTemplate = mockk<Template>()
+        val mockTemplateMeta = mockk<TemplateMetadata>()
         val body = """
             {{{ name }}}
         """.trimIndent()
         every { mockTemplate.key } returns "my-template"
+        every { mockTemplate.metadata } returns mockTemplateMeta
+        every { mockTemplateMeta.name } returns "My Template"
         every { mockHandlebarsContent.template } returns mockTemplate
         every { mockHandlebarsContent.body } returns body
+        every { mockTemplateMeta.sections } returns listOf("body")
+
         declareMock<S3Service> {
-            every { mockS3.objectExists("my-template", sourceBucket) } returns false
-            every { mockS3.putObject("my-template", sourceBucket, body, "text/html") } returns 1234
+            every { mockS3.objectExists("my-template", sourceBucket) } returns true
+            every { mockS3.putObject("my-template", sourceBucket, any(), "text/html") } returns 1234
         }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
         val controller = TemplateController(sourceBucket)
-        val request = Request<HandlebarsContent>(
+        val request = Request<HandlebarsTemplate>(
             apiRequest = apiProxyEvent,
             body = mockHandlebarsContent,
             pathPattern = "/templates/"
@@ -121,23 +127,28 @@ internal class TemplateControllerTest : KoinTest {
 
     @Test
     fun `updates an existing template file`() {
-        val mockHandlebarsContent = mockk<HandlebarsContent>()
+        val mockHandlebarsContent = mockk<HandlebarsTemplate>()
         val mockTemplate = mockk<Template>()
+        val mockTemplateMeta = mockk<TemplateMetadata>()
         val body = """
             {{{ name }}}
         """.trimIndent()
         every { mockTemplate.key } returns "my-template"
+        every { mockTemplate.metadata } returns mockTemplateMeta
+        every { mockTemplateMeta.name } returns "My Template"
         every { mockHandlebarsContent.template } returns mockTemplate
         every { mockHandlebarsContent.body } returns body
+        every { mockTemplateMeta.sections } returns listOf("body")
+
         declareMock<S3Service> {
             every { mockS3.objectExists("my-template", sourceBucket) } returns true
-            every { mockS3.putObject("my-template", sourceBucket, body, "text/html") } returns 1234
+            every { mockS3.putObject("my-template", sourceBucket, any(), "text/html") } returns 1234
         }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
         val controller = TemplateController(sourceBucket)
-        val request = Request<HandlebarsContent>(
+        val request = Request<HandlebarsTemplate>(
             apiRequest = apiProxyEvent,
             body = mockHandlebarsContent,
             pathPattern = "/templates/"

@@ -2,10 +2,10 @@
 	import { writable } from 'svelte/store';
 	import {
 		type AllTemplates,
-		type HandlebarsContent as HBContentType,
+		type HandlebarsTemplate as HBTemplateType,
 		TemplateMetadata
 	} from '../models/structure';
-	import { Template, HandlebarsContent } from '../models/structure';
+	import { Template, HandlebarsTemplate } from '../models/structure';
 
 	export const allTemplatesStore = writable<AllTemplates>({
 		count: 0,
@@ -13,6 +13,7 @@
 		templates: []
 	});
 	export const templateStore = writable<Template[]>();
+	export const currentTemplate = writable<HandlebarsTemplate>();
 
 	/**
 	 * Populate the allTemplatesStore by fetching from the server
@@ -32,10 +33,17 @@
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
+				console.dir(data.data);
 				// deserialize
 				var tempTemplates = new Array<Template>();
 				for (const t of data.data.templates) {
-					tempTemplates.push(new Template(t.key, t.name, t.lastUpdated));
+					tempTemplates.push(
+						new Template(
+							t.key,
+							t.lastUpdated,
+							new TemplateMetadata(t.metadata.name, t.metadata.sections)
+						)
+					);
 				}
 				// set templates store
 				allTemplatesStore.set({
@@ -55,15 +63,13 @@
 	 * Fetch a handlebars template file for the given key
 	 * @param token
 	 * @param key
-	 * @returns Promise<HBContentType | Error | undefined>
+	 * @returns Promise<HandlebarsTemplate | Error | undefined>
 	 */
 	export async function fetchHandlebarTemplate(
 		token: string,
 		key: string
-	): Promise<HBContentType | Error | undefined> {
+	): Promise<HandlebarsTemplate | Error | undefined> {
 		console.log('Fetching template ' + key);
-		let template: HBContentType | undefined = undefined;
-
 		return new Promise((resolve) => {
 			fetch('https://api.cantilevers.org/templates/' + encodeURIComponent(key), {
 				method: 'GET',
@@ -78,12 +84,19 @@
 					if (data === undefined) {
 						throw new Error(data.message);
 					}
-					template = new HandlebarsContent(
-						new Template(data.data.template.key, data.data.template.lastUpdated),
+					let hbTemplate = new HandlebarsTemplate(
+						new Template(
+							decodeURIComponent(data.data.template.key),
+							data.data.template.lastUpdated,
+							new TemplateMetadata(
+								data.data.template.metadata.name,
+								data.data.template.metadata.sections
+							)
+						),
 						data.data.body
 					);
-					console.log('Built handlebars template');
-					resolve(template);
+					currentTemplate.set(hbTemplate);
+					resolve(hbTemplate);
 				})
 				.catch((error: Error) => {
 					console.log(error);
@@ -120,7 +133,6 @@
 						throw new Error(data.message);
 					}
 					metadata = new TemplateMetadata(data.data.name, data.data.sections);
-					console.log('Extracted TemplateMetadata for ' + metadata.name);
 					resolve(metadata);
 				})
 				.catch((error: Error) => {

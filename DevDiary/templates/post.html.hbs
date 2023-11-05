@@ -1,10 +1,35 @@
+---
+name: Blog post
+---
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>{{ title }}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="author" content="{{author}}">
+    <meta name="generator" content="cantilevers">
+    <title>{{ project.projectName }} - {{ title }}</title>
+    <link rel="stylesheet" href="/css/pico.css">
 </head>
 <body>
+<header class="container">
+    <a href="https://www.cantilevers.org/">Home</a>
+	<hgroup>
+		<h1>{{title}}</h1>
+        <p>{{ localDate this.date this.dateFormat }}</p>
+	</hgroup>
+</header>
+<main class="container">
     {{{ body }}}
+
+{{#if @next}}
+Next: <a href="{{@next.url}}">{{@next.title}}</a>
+{{/if}}
+{{#if @prev}}
+Prev: <a href="{{@prev.url}}">{{@prev.title}}</a>
+{{/if}}
+
+</main>
 </body>
 </html>

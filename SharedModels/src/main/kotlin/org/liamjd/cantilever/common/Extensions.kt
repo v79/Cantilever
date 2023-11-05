@@ -38,14 +38,14 @@ fun String.toS3Key(): String {
 }
 
 /**
- * Remove the metadata block from a post or page, i.e. remove the first '---' ... '---' block from the file
+ * Remove the metadata block from a post, template or page, i.e. remove the first '---' ... '---' block from the file
  */
 fun String.stripFrontMatter(): String {
     return this.substringAfter("---").substringAfter("---").trim()
 }
 
 /**
- * Extract the metadata block from a post or page, i.e. the content between the first '---' ... '---' block from the file
+ * Extract the metadata block from a post, template or page, i.e. the content between the first '---' ... '---' block from the file
  */
 fun String.getFrontMatter(): String {
     return this.substringAfter("---").substringBefore("---")

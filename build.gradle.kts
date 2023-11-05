@@ -4,8 +4,8 @@ plugins {
     kotlin("jvm") version "1.9.10"
     application
     `maven-publish`
-    id("org.sonarqube") version "3.5.0.2730"
-    id("org.jetbrains.kotlinx.kover") version "0.6.1"
+    id("org.sonarqube") version "4.4.1.3373"
+    id("org.jetbrains.kotlinx.kover") version "0.7.4"
 }
 
 group = "org.liamjd"
@@ -19,11 +19,11 @@ repositories {
 
 dependencies {
     // AWS CDK
-    implementation("software.amazon.awscdk:aws-cdk-lib:2.88.0")
-    implementation("software.constructs:constructs:10.1.222")
+    implementation("software.amazon.awscdk:aws-cdk-lib:2.104.0")
+    implementation("software.constructs:constructs:10.3.0")
 
     // multiplatform datetime library
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
 
     testImplementation(kotlin("test"))
 }
@@ -53,6 +53,8 @@ tasks {
     }
 }
 
-koverMerged {
-    enable()
+koverReport {
+    defaults {
+
+    }
 }

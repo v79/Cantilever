@@ -1,3 +1,9 @@
+---
+name: Index
+sections:
+- body
+- links
+---
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,39 +13,43 @@
     <meta name="author" content="{{author}}">
     <meta name="generator" content="cantilevers">
     <title>{{ siteName }}</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/pico.css">
 </head>
 <body>
-<section id="banner" class="">
-    <div class="">
-        <h1 class=""><span class="">{{upper siteName}}</span></h1>
-    </div>
-</section>
-<section id="body">
-    <h3>Body</h3>
-    {{{body}}}
 
-    <div class="posts">
-        <ul>
-        {{#each posts}}
-            <li>{{localDate this.date}} <a href="/{{this.url}}">{{this.title}}</a></li>
-        {{/each}}
-        </ul>
-    </div>
-    <h3>Or maybe just the first five? (take "5")</h3>
-    <ul>
-        {{#take posts "5"}}
-            <li>{{localDate this.date}} <a href="/{{this.url}}">{{this.title}}</a></li>
-        {{/take}}
-    </ul>
-</section>
-<aside>
-    <h3>Block A</h3>
-    {{{blockA}}}
-</aside>
-<aside>
-    <h3>Useful Links</h3>
-    {{{links}}}
-</aside>
+<header class="container">
+	<hgroup>
+		<h1>{{upper siteName}}</h1>
+		<h3><em>Built with the Cantilever serverless generator</em></h3>
+	</hgroup>
+</header>
+
+<main class="container">
+	<div class="grid">
+		<section>
+			{{{ body }}}
+			
+			<div class="posts">
+<h3>Recent posts</h3>
+				<ul>
+				{{#take posts "5"}}
+					<li>{{localDate this.date}} <a href="/{{this.url}}">{{this.title}}</a></li>
+				{{/take}}
+				</ul>
+			</div>	
+		</section>
+		
+		<aside class="">
+			<h3>Useful Links</h3>
+			{{{links}}}
+		</aside>
+	</div>
+</main>
+
+<footer class="container">
+    <small>Last updated: <time datetime="{{lastModified}}">{{ localDate this.lastModified "HH:mm dd MMM yyyy" }}</time></small><br/>
+	<small>Built with <a href="https://app.cantilevers.org/">Cantilevers</a></small>
+</footer>
+
 </body>
 </html>

@@ -1,7 +1,7 @@
 plugins {
     kotlin("jvm") version "1.9.10"
     kotlin("plugin.serialization") version "1.9.0"
-    id("org.jetbrains.kotlinx.kover") version "0.6.1"
+    id("org.jetbrains.kotlinx.kover") version "0.7.4"
 }
 
 group = "org.liamjd.cantilever"
@@ -19,10 +19,10 @@ dependencies {
     implementation("com.charleskorn.kaml:kaml:0.55.0")
 
     // multiplatform datetime library
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
 
     // sdk v2
-    implementation(platform("software.amazon.awssdk:bom:2.19.8"))
+    implementation(platform("software.amazon.awssdk:bom:2.21.1"))
     implementation("software.amazon.awssdk:s3")
     implementation("software.amazon.awssdk:lambda")
     implementation("software.amazon.awssdk:sqs")

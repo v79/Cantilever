@@ -1,9 +1,9 @@
-projectName: Cantilever
-author: Liam Davison
-dateFormat: dd/MM/yyyy
-dateTimeFormat: HH:mm dd/MM/yyyy
+projectName: "Cantilever Devlog"
+author: "Liam Davison"
+dateFormat: "dd/MM/yyyy"
+dateTimeFormat: "HH:mm dd/MM/yyyy"
 imageResolutions:
-  - standard: "640x480"
-  - wider: "512x768"
-  - thumbW: "64x"
-  - thumbH: "x128"
+  "bigSquare": "640x640"
+  "Wider": "512x1024"
+attributes:
+  "Greep2": "Wibble3"

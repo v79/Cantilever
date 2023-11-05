@@ -150,7 +150,8 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     val templateKey = templatesPrefix + postMetadata.template + ".html.hbs"
                     val template = try {
                         val lastModified = obj.lastModified().toKotlinInstant()
-                        Template(templateKey, "", lastModified, emptyList())
+                        val templateMetadata = TemplateMetadata("", emptyList())
+                        Template(templateKey, lastModified, templateMetadata)
                     } catch (nske: NoSuchKeyException) {
                         error("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
                         return@forEach
@@ -207,7 +208,8 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     val templateKey = templatesPrefix + pageModel.templateKey + ".html.hbs"
                     val template = try {
                         val lastModified = obj.lastModified().toKotlinInstant()
-                        Template(templateKey, "",lastModified, emptyList())
+                        val templateMetadata = TemplateMetadata("", emptyList())
+                        Template(templateKey, lastModified, templateMetadata)
                     } catch (nske: NoSuchKeyException) {
                         error("Cannot find template file '$templateKey'; aborting for file '${obj.key()}'")
                         return@forEach
@@ -227,7 +229,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                     )
                     filesProcessed++
                 } else {
-                    if(obj.key().endsWith("/")) {
+                    if (obj.key().endsWith("/")) {
                         folderList.add(obj.key())
                     }
                     warn("Skipping non-markdown file '${obj.key()}'")
@@ -289,7 +291,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
                         val frontMatter = templateString.getFrontMatter()
                         val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontMatter)
                         list.add(
-                            Template(obj.key(), metadata.name, lastModified, metadata.sections)
+                            Template(obj.key(), lastModified, metadata)
                         )
                         filesProcessed++
                     } else {
