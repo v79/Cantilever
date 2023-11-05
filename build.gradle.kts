@@ -19,11 +19,11 @@ repositories {
 
 dependencies {
     // AWS CDK
-    implementation("software.amazon.awscdk:aws-cdk-lib:2.88.0")
-    implementation("software.constructs:constructs:10.1.222")
+    implementation("software.amazon.awscdk:aws-cdk-lib:2.104.0")
+    implementation("software.constructs:constructs:10.3.0")
 
     // multiplatform datetime library
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
 
     testImplementation(kotlin("test"))
 }

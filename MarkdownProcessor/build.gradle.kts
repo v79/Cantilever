@@ -25,16 +25,16 @@ dependencies {
 
 
     // sdk v2
-    implementation(platform("software.amazon.awssdk:bom:2.19.8"))
+    implementation(platform("software.amazon.awssdk:bom:2.21.15"))
     implementation("software.amazon.awssdk:s3")
     implementation("software.amazon.awssdk:lambda")
     implementation("software.amazon.awssdk:sqs")
 
     // lambda functions
-    implementation("com.amazonaws:aws-lambda-java-core:1.2.2")
-    implementation("com.amazonaws:aws-lambda-java-events:3.11.0")
+    implementation("com.amazonaws:aws-lambda-java-core:1.2.3")
+    implementation("com.amazonaws:aws-lambda-java-events:3.11.3")
 
-    runtimeOnly("com.amazonaws:aws-lambda-java-log4j2:1.5.1")
+    runtimeOnly("com.amazonaws:aws-lambda-java-log4j2:1.6.0")
 
     // markdown processing
     implementation("com.vladsch.flexmark:flexmark-all:0.64.0")

@@ -25,16 +25,16 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
 
     // sdk v2
-    implementation(platform("software.amazon.awssdk:bom:2.19.8"))
+    implementation(platform("software.amazon.awssdk:bom:2.21.15"))
     implementation("software.amazon.awssdk:s3")
     implementation("software.amazon.awssdk:lambda")
     implementation("software.amazon.awssdk:sqs")
 
     // lambda functions
-    implementation("com.amazonaws:aws-lambda-java-core:1.2.2")
-    implementation("com.amazonaws:aws-lambda-java-events:3.11.0")
+    implementation("com.amazonaws:aws-lambda-java-core:1.2.3")
+    implementation("com.amazonaws:aws-lambda-java-events:3.11.3")
 
-    runtimeOnly("com.amazonaws:aws-lambda-java-log4j2:1.5.1")
+    runtimeOnly("com.amazonaws:aws-lambda-java-log4j2:1.6.0")
 
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
