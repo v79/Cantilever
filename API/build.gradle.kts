@@ -21,7 +21,7 @@ repositories {
 dependencies {
     // shared elements
     implementation(project(":SharedModels"))
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
 
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0-RC")
