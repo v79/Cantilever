@@ -4,8 +4,8 @@ plugins {
     kotlin("jvm") version "1.9.10"
     application
     `maven-publish`
-    id("org.sonarqube") version "3.5.0.2730"
-    id("org.jetbrains.kotlinx.kover") version "0.6.1"
+    id("org.sonarqube") version "4.4.1.3373"
+    id("org.jetbrains.kotlinx.kover") version "0.7.4"
 }
 
 group = "org.liamjd"
@@ -53,6 +53,8 @@ tasks {
     }
 }
 
-koverMerged {
-    enable()
+koverReport {
+    defaults {
+
+    }
 }
