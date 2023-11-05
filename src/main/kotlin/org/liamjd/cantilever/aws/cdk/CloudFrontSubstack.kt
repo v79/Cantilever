@@ -33,7 +33,7 @@ class CloudFrontSubstack {
         destinationBucket: IBucket
     ): CloudFrontWebDistribution {
 
-        Tags.of(stack).add("Cantilever", "v0.0.5")
+        Tags.of(stack).add("Cantilever", "v0.0.7")
 
         val webOai = OriginAccessIdentity.Builder.create(stack, "WebOai").build()
         destinationBucket.grantRead(webOai)
