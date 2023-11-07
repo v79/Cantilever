@@ -58,6 +58,15 @@ sealed class ContentNode {
         var next: SrcKey? = null
         var prev: SrcKey? = null
     }
+
+    @Serializable
+    @SerialName("template")
+    data class TemplateNode(
+        override val srcKey: String,
+        override val lastUpdated: Instant = Clock.System.now(),
+        val title: String,
+        val sections: List<String>
+    ) : ContentNode()
 }
 
 class FolderNotEmptyException(message: String) : Exception(message)
@@ -66,17 +75,27 @@ class FolderNotEmptyException(message: String) : Exception(message)
 class ContentTree {
 
     val items: MutableList<ContentNode> = mutableListOf()
+    val templates: MutableList<ContentNode.TemplateNode> = mutableListOf()
 
     fun insert(node: ContentNode) {
         when (node) {
             is ContentNode.FolderNode -> insertFolder(node)
             is ContentNode.PageNode -> insertPage(node)
             is ContentNode.PostNode -> insertPost(node)
+            is ContentNode.TemplateNode -> insertTemplate(node)
         }
     }
 
     fun insertAll(nodes: List<ContentNode>) {
         nodes.forEach { insert(it) }
+    }
+
+    fun insertTemplate(templateNode: ContentNode.TemplateNode) {
+        templates.add(templateNode)
+    }
+
+    fun deleteTemplate(templateNode: ContentNode.TemplateNode) {
+        templates.remove(templateNode)
     }
 
     fun insertFolder(folderNode: ContentNode.FolderNode) {
@@ -192,6 +211,14 @@ class ContentTree {
     private fun getNode(srcKey: SrcKey): ContentNode? {
         return items.find { it.srcKey == srcKey }
     }
+
+    fun getPagesForTemplate(templateKey: String): List<ContentNode.PageNode> {
+        return items.filterIsInstance<ContentNode.PageNode>().filter { it.templateKey == templateKey }
+    }
+
+    fun getPostsForTemplate(templateKey: String): List<ContentNode.PostNode> {
+        return items.filterIsInstance<ContentNode.PostNode>().filter { it.templateKey == templateKey }
+    }
 }
 
 class NewModelsTest {
@@ -240,7 +267,7 @@ class NewModelsTest {
     private val booksPage = ContentNode.PageNode(
         srcKey = "sources/pages/books/books.md",
         title = "Books",
-        templateKey = "page",
+        templateKey = "sources/templates/myTemplate.hbs",
         url = "/books/index",
         isRoot = true,
         attributes = mapOf("author" to "Liam", "tags" to "test"),
@@ -411,5 +438,21 @@ class NewModelsTest {
         items.deleteFolder(bioFolder)
 
         assertEquals(0, items.items.count())
+    }
+
+    @Test
+    fun `can insert and delete a template`() {
+        val items = ContentTree()
+        val template = ContentNode.TemplateNode(
+            srcKey = "sources/templates/myTemplate.hbs",
+            title = "My Template",
+            sections = listOf("header", "footer")
+        )
+        items.insertTemplate(template)
+        items.insertPage(booksPage)
+        assertEquals(1, items.templates.count())
+        assertEquals(1, items.getPagesForTemplate(template.srcKey).count())
+        items.deleteTemplate(template)
+        assertEquals(0, items.templates.count())
     }
 }
