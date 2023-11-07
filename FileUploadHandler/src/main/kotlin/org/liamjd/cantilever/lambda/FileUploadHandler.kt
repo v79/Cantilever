@@ -44,7 +44,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         logger.info("${event.records.size} upload events received")
 
         try {
-            val eventRecord = event.records[0]
+            val eventRecord = event.records[0] // TODO: No, this is wrong, we need to process all records
             val srcKey = eventRecord.s3.`object`.urlDecodedKey
             val srcBucket = eventRecord.s3.bucket.name
             val folderName =
