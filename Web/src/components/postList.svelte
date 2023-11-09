@@ -31,6 +31,7 @@
 			.then((response) => response.text())
 			.then((data) => {
 				console.log(data);
+				$spinnerStore.shown = false;
 			})
 			.catch((error) => {
 				console.log(error);

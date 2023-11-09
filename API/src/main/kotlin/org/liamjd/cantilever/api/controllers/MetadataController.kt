@@ -35,36 +35,42 @@ class MetadataController(val sourceBucket: String) : KoinComponent, APIControlle
                 if (it.key() !in ignoreList) {
                     if (it.key().endsWith("/")) {
                         val folder = ContentNode.FolderNode(it.key())
-                        info(folder.toString())
                         contentTree.insertFolder(folder)
                         filesProcessed++
                     } else {
                         if (it.key().startsWith("sources/posts/") && it.key() != "sources/posts/") {
                             val post = buildPostNode(it.key())
-                            info(post.toString())
                             contentTree.insertPost(post)
                             filesProcessed++
                         }
                         if (it.key().startsWith("sources/pages/") && it.key() != "sources/pages/") {
                             val page = buildPageNode(it.key())
-                            info(page.toString())
-                            // TODO: really want to add to its parent folder, not the root
                             contentTree.insertPage(page)
                             filesProcessed++
                         }
                         if (it.key().startsWith("sources/templates/") && it.key() != "sources/templates/") {
                             val template = buildTemplateNode(it.key())
-                            info(template.toString())
                             contentTree.insertTemplate(template)
                             filesProcessed++
                         }
                         if (it.key().startsWith("sources/statics/") && it.key() != "sources/statics/") {
                             val static = ContentNode.StaticNode(it.key())
                             static.fileType = it.key().substringAfterLast(".")
-                            info(static.toString())
                             contentTree.insertStatic(static)
                             filesProcessed++
                         }
+                    }
+                }
+            }
+
+            // now update folder children
+            contentTree.items.forEach {
+                if (it is ContentNode.PageNode) {
+                    val parent =
+                        contentTree.items.find { node -> node.srcKey == it.parent + "/" } as ContentNode.FolderNode?
+                    parent?.children?.add(it.srcKey)
+                    if (it.isRoot) {
+                        parent?.indexPage = it.srcKey
                     }
                 }
             }
@@ -98,6 +104,7 @@ class MetadataController(val sourceBucket: String) : KoinComponent, APIControlle
     private fun buildPageNode(pageKey: String): ContentNode.PageNode {
         val pageContents = s3Service.getObjectAsString(pageKey, sourceBucket)
         val frontmatter = extractPageModel(pageKey, pageContents)
+        val parentFolder = pageKey.substringBeforeLast("/")
         val page = ContentNode.PageNode(
             srcKey = pageKey,
             title = frontmatter.title,
@@ -107,6 +114,7 @@ class MetadataController(val sourceBucket: String) : KoinComponent, APIControlle
             attributes = frontmatter.attributes,
             sections = frontmatter.sections.keys.associateWith { "" }
         )
+        page.parent = parentFolder
         return page
     }
 
