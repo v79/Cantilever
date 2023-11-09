@@ -15,6 +15,35 @@
 
 	// onMount(async () => {});
 
+	function rebuildAll() {
+		console.log('Testing new metadata rebuild');
+		let token = $userStore.token;
+		notificationStore.set({ shown: false, message: '', type: 'info' });
+		fetch('https://api.cantilevers.org/metadata/rebuild', {
+			method: 'PUT',
+			headers: {
+				Accept: 'application/json',
+				Authorization: 'Bearer ' + token,
+				'X-Content-Length': '0'
+			},
+			mode: 'cors'
+		})
+			.then((response) => response.text())
+			.then((data) => {
+				console.log(data);
+			})
+			.catch((error) => {
+				console.log(error);
+				notificationStore.set({
+					message: error,
+					shown: true,
+					type: 'error'
+				});
+				$spinnerStore.shown = false;
+				return {};
+			});
+	}
+
 	function loadAllPosts() {
 		// https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/
 		// https://api.cantilevers.org/structure
@@ -108,7 +137,7 @@
 				$activeStore.isValid = true;
 				$activeStore.newSlug = $markdownStore.metadata?.url ?? '';
 				$activeStore.fileType = FileType.Post;
-				$activeStore.folder = new FolderNode("folder","sources/posts/",0,[]);
+				$activeStore.folder = new FolderNode('folder', 'sources/posts/', 0, []);
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
@@ -202,6 +231,14 @@
 	<div class="px-8"><p class="text-warning text-lg">Login to see posts</p></div>
 {:else}
 	<div class="flex items-center justify-center" role="group">
+		<button
+			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
+			on:click={(e) => {
+				console.log('Show spinner');
+				spinnerStore.set({ shown: true, message: 'Rebuilding project metadata...' });
+				tick().then(() => rebuildAll());
+			}}>Meta rebuild</button>
+			<br />
 		<button
 			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {

@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.charleskorn.kaml.Yaml
+import com.charleskorn.kaml.YamlConfiguration
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.SerializationException
 import org.koin.core.component.KoinComponent
@@ -34,6 +35,7 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
                 if (templateObj != null) {
                     val body = s3Service.getObjectAsString(decoded, sourceBucket)
                     val frontmatter = body.getFrontMatter()
+                    // TODO: this throws exception if a value is missing from the frontmatter, even though it should encode the default
                     val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
                     info("Handlebar frontmatter: $metadata")
                     val template = Template(
@@ -108,7 +110,7 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
         sBuilder.append("---\n")
         sBuilder.append("name: ${template.metadata.name}\n")
         sBuilder.append("sections:\n")
-        template.metadata.sections.forEach {
+        template.metadata.sections?.forEach {
             sBuilder.append(" - $it\n")
         }
         sBuilder.append("---\n")

@@ -66,7 +66,7 @@ data class Template(val key: String, val lastUpdated: Instant = Clock.System.now
  * @property sections list of custom section names for the template
  */
 @Serializable
-data class TemplateMetadata(val name: String, val sections: List<String> = emptyList())
+data class TemplateMetadata(val name: String, val sections: List<String>? = emptyList())
 
 @Deprecated(message = "This is obsolete, not used.")
 @Serializable

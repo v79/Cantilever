@@ -43,6 +43,7 @@ sealed class SqsMsgBody {
         val title: String,
         val srcKey: String,
         val templateKey: String,
+        val isRoot: Boolean = false,
         val url: String,
         @EncodeDefault val lastModified: Instant = Clock.System.now(),
         val attributes: Map<String, String>,

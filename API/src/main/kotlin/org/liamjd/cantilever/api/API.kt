@@ -43,6 +43,7 @@ class LambdaRouter : RequestHandlerWrapper() {
     private val generatorController =
         GeneratorController(sourceBucket = sourceBucket)
     private val projectController = ProjectController(sourceBucket = sourceBucket)
+    private val metadataController = MetadataController(sourceBucket = sourceBucket)
 
     private val cognitoJWTAuthorizer = CognitoJWTAuthorizer(
         mapOf(
@@ -132,6 +133,12 @@ class LambdaRouter : RequestHandlerWrapper() {
                 get("/post/$SRCKEY") { request: Request<Unit> ->
                     ResponseEntity.notImplemented(body = "Received request to return the HTML form of ${request.pathParameters["srcKey"]}")
                 }
+            }
+        }
+
+        auth(cognitoJWTAuthorizer) {
+            group("/metadata") {
+                put("/rebuild", metadataController::rebuildFromSources)
             }
         }
 

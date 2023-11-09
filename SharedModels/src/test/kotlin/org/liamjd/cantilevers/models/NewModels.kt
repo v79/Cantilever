@@ -9,219 +9,12 @@ import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.liamjd.cantilever.models.ContentNode
+import org.liamjd.cantilever.models.ContentTree
+import org.liamjd.cantilever.models.FolderNotEmptyException
 
-typealias SrcKey = String // an S3 bucket object key
 
-@Serializable
-sealed class ContentNode {
-    abstract val srcKey: SrcKey
-    abstract val lastUpdated: Instant
-
-    @Serializable
-    @SerialName("folder")
-    data class FolderNode(
-        override val srcKey: String,
-        override val lastUpdated: Instant = Clock.System.now(),
-        val children: MutableList<SrcKey> = mutableListOf(),
-        var indexPage: SrcKey? = null,
-    ) : ContentNode() {
-        val count: Int
-            get() = children.size
-    }
-
-    @Serializable
-    @SerialName("page")
-    data class PageNode(
-        override val srcKey: String,
-        override val lastUpdated: Instant = Clock.System.now(),
-        val title: String,
-        val templateKey: String,
-        val url: String,
-        val isRoot: Boolean,
-        val attributes: Map<String, String>,
-        val sections: Map<String, String>,
-    ) : ContentNode() {
-        var parent: SrcKey? = null
-    }
-
-    @Serializable
-    @SerialName("post")
-    data class PostNode(
-        override val srcKey: String,
-        override val lastUpdated: Instant = Clock.System.now(),
-        val title: String,
-        val templateKey: String,
-        val date: Instant,
-        val url: String,
-        val attributes: Map<String, String>
-    ) : ContentNode() {
-        var next: SrcKey? = null
-        var prev: SrcKey? = null
-    }
-
-    @Serializable
-    @SerialName("template")
-    data class TemplateNode(
-        override val srcKey: String,
-        override val lastUpdated: Instant = Clock.System.now(),
-        val title: String,
-        val sections: List<String>
-    ) : ContentNode()
-}
-
-class FolderNotEmptyException(message: String) : Exception(message)
-
-@Serializable
-class ContentTree {
-
-    val items: MutableList<ContentNode> = mutableListOf()
-    val templates: MutableList<ContentNode.TemplateNode> = mutableListOf()
-
-    fun insert(node: ContentNode) {
-        when (node) {
-            is ContentNode.FolderNode -> insertFolder(node)
-            is ContentNode.PageNode -> insertPage(node)
-            is ContentNode.PostNode -> insertPost(node)
-            is ContentNode.TemplateNode -> insertTemplate(node)
-        }
-    }
-
-    fun insertAll(nodes: List<ContentNode>) {
-        nodes.forEach { insert(it) }
-    }
-
-    fun insertTemplate(templateNode: ContentNode.TemplateNode) {
-        templates.add(templateNode)
-    }
-
-    fun deleteTemplate(templateNode: ContentNode.TemplateNode) {
-        templates.remove(templateNode)
-    }
-
-    fun insertFolder(folderNode: ContentNode.FolderNode) {
-        items.add(folderNode)
-    }
-
-    fun deleteFolder(folderNode: ContentNode.FolderNode) {
-        if (folderNode.children.isNotEmpty()) {
-            throw FolderNotEmptyException("Cannot delete a folder that contains children")
-        }
-        items.remove(folderNode)
-    }
-
-    fun insertPage(page: ContentNode.PageNode) {
-        items.add(page)
-        val parent = items.find { it.srcKey == page.parent } as ContentNode.FolderNode?
-        parent?.children?.add(page.srcKey).also {
-            if (page.isRoot) {
-                parent?.indexPage = page.srcKey
-            }
-        }
-    }
-
-    fun insertPage(page: ContentNode.PageNode, folder: ContentNode.FolderNode) {
-        items.add(page)
-        folder.children.add(page.srcKey)
-        page.parent = folder.srcKey
-        if (page.isRoot) {
-            folder.indexPage = page.srcKey
-        }
-    }
-
-    /**
-     * Update a page in the tree. This is used when a page is edited and saved.
-     * This does NOT update the parent folder, so if the page has been moved, the parent folder must be updated separately, or call reparentPage()
-     */
-    fun updatePage(page: ContentNode.PageNode) {
-        val existing = items.find { it.srcKey == page.srcKey } as ContentNode.PageNode?
-        if (existing != null) {
-            val existingParent = existing.parent
-            page.parent = existingParent
-            items.remove(existing)
-            items.add(page)
-        }
-    }
-
-    fun updatePost(post: ContentNode.PostNode) {
-        val existing = items.find { it.srcKey == post.srcKey } as ContentNode.PostNode?
-        if (existing != null) {
-            deletePost(existing)
-            insertPost(post)
-        }
-    }
-
-    fun deletePage(page: ContentNode.PageNode) {
-        items.remove(page)
-        val parent = items.find { it.srcKey == page.parent } as ContentNode.FolderNode?
-        parent?.children?.remove(page.srcKey)
-    }
-
-    fun reparentPage(pageNode: ContentNode.PageNode, newParent: ContentNode.FolderNode) {
-        val existing = items.find { it.srcKey == pageNode.srcKey } as ContentNode.PageNode?
-        if (existing != null) {
-            existing.parent?.let { existingParent ->
-                val existingParentNode = getNode(existingParent) as ContentNode.FolderNode?
-                existingParentNode?.children?.remove(pageNode.srcKey)
-                existingParentNode?.indexPage = null
-            }
-            pageNode.parent = newParent.srcKey
-            if (pageNode.isRoot) {
-                newParent.indexPage = pageNode.srcKey
-            }
-            newParent.children.add(pageNode.srcKey)
-        }
-    }
-
-    fun insertPost(post: ContentNode.PostNode) {
-        items.add(post)
-        val previous =
-            items.filterIsInstance<ContentNode.PostNode>().filter { it.date < post.date }.maxByOrNull { it.date }
-        val next =
-            items.filterIsInstance<ContentNode.PostNode>().filter { it.date > post.date }.minByOrNull { it.date }
-        post.prev = previous?.srcKey
-        post.next = next?.srcKey
-        previous?.next = post.srcKey
-        next?.prev = post.srcKey
-    }
-
-    fun deletePost(post: ContentNode.PostNode) {
-        items.remove(post)
-        val previous =
-            items.filterIsInstance<ContentNode.PostNode>().filter { it.date < post.date }.maxByOrNull { it.date }
-        val next =
-            items.filterIsInstance<ContentNode.PostNode>().filter { it.date > post.date }.minByOrNull { it.date }
-        previous?.next = next?.srcKey
-        next?.prev = previous?.srcKey
-    }
-
-    fun getNextPost(postKey: SrcKey): ContentNode.PostNode? {
-        val post = items.find { it.srcKey == postKey } as ContentNode.PostNode?
-        return post?.next?.let { nextKey ->
-            items.find { it.srcKey == nextKey } as ContentNode.PostNode?
-        }
-    }
-
-    fun getPrevPost(postKey: SrcKey): ContentNode.PostNode? {
-        val post = items.find { it.srcKey == postKey } as ContentNode.PostNode?
-        return post?.prev?.let { prevKey ->
-            items.find { it.srcKey == prevKey } as ContentNode.PostNode?
-        }
-    }
-
-    private fun getNode(srcKey: SrcKey): ContentNode? {
-        return items.find { it.srcKey == srcKey }
-    }
-
-    fun getPagesForTemplate(templateKey: String): List<ContentNode.PageNode> {
-        return items.filterIsInstance<ContentNode.PageNode>().filter { it.templateKey == templateKey }
-    }
-
-    fun getPostsForTemplate(templateKey: String): List<ContentNode.PostNode> {
-        return items.filterIsInstance<ContentNode.PostNode>().filter { it.templateKey == templateKey }
-    }
-}
-
-class NewModelsTest {
+class ContentTreeTest {
 
     private val pretty = Json { prettyPrint = true }
 
@@ -229,24 +22,24 @@ class NewModelsTest {
         srcKey = "sources/posts/2023/11/11/latest.md",
         title = "Latest Post",
         templateKey = "post",
-        url = "/posts/2023/11/11/latest",
-        date = LocalDate(2023, 11, 11).atStartOfDayIn(TimeZone.currentSystemDefault()),
+        slug = "/posts/2023/11/11/latest",
+        date = LocalDate(2023, 11, 11),
         attributes = mapOf("author" to "Liam", "tags" to "test"),
     )
     private val earliest = ContentNode.PostNode(
         srcKey = "sources/posts/2023/11/01/earliest.md",
         title = "Earliest Post",
         templateKey = "post",
-        url = "/posts/2023/01/11/earliest",
-        date = LocalDate(2023, 1, 11).atStartOfDayIn(TimeZone.currentSystemDefault()),
+        slug = "/posts/2023/01/11/earliest",
+        date = LocalDate(2023, 1, 11),
         attributes = mapOf("author" to "Mike", "tags" to "test"),
     )
     private val middle = ContentNode.PostNode(
         srcKey = "sources/posts/2023/04/11/middle.md",
         title = "Middle Post",
         templateKey = "post",
-        url = "/posts/2023/04/11/middle",
-        date = LocalDate(2023, 4, 11).atStartOfDayIn(TimeZone.currentSystemDefault()),
+        slug = "/posts/2023/04/11/middle",
+        date = LocalDate(2023, 4, 11),
         attributes = mapOf("author" to "Mike", "tags" to "test"),
     )
     private val bioFolder = ContentNode.FolderNode(
@@ -387,7 +180,7 @@ class NewModelsTest {
         items.insertPost(earliest)
         items.insertPost(middle)
 
-        val updatedMiddle = middle.copy(date = LocalDate(2024, 1, 11).atStartOfDayIn(TimeZone.currentSystemDefault()))
+        val updatedMiddle = middle.copy(date = LocalDate(2024, 1, 11))
         items.updatePost(updatedMiddle)
 
         val first = items.items.find { it.srcKey == earliest.srcKey } as ContentNode.PostNode

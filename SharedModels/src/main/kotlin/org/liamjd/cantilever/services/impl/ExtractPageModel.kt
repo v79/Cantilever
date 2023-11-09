@@ -15,6 +15,7 @@ import org.liamjd.cantilever.models.sqs.SqsMsgBody
  * ---
  * title: <title>
  * template: <templateName>
+ * isRoot: false
  * #customProperty: customValue
  * --- #namedSection
  * Section content
@@ -62,10 +63,17 @@ fun extractPageModel(key: String, source: String): SqsMsgBody.PageModelMsg {
         key
     }
 
+    val isRoot = if(metadata.contains("isRoot:")) {
+        metadata.substringAfter("isRoot:").substringBefore("\n").trim().toBoolean()
+    } else {
+        false
+    }
+
     return SqsMsgBody.PageModelMsg(
         title = title,
         srcKey = key,
         templateKey = template,
+        isRoot = isRoot,
         url = url,
         attributes = customAttributes.toMap(),
         sections = customSections
