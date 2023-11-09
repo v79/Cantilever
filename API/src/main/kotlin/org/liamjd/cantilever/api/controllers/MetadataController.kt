@@ -17,11 +17,15 @@ import org.liamjd.cantilever.services.impl.extractPageModel
 import org.liamjd.cantilever.services.impl.extractPostMetadata
 
 /**
- * Generate metadata across posts, pages, templates etc */
+ * Generate metadata across posts, pages, templates etc
+ **/
 class MetadataController(val sourceBucket: String) : KoinComponent, APIController {
 
     private val s3Service: S3Service by inject()
 
+    /**
+     * Perform a complete scan of the sources/ bucket and rebuild the metadata.json file in the generated/ folder
+     */
     fun rebuildFromSources(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         info("Rebuilding project metadata from sources")
         val contentTree = ContentTree()
@@ -87,6 +91,9 @@ class MetadataController(val sourceBucket: String) : KoinComponent, APIControlle
         return ResponseEntity.notImplemented(APIResult.Error(message = "Metadata generation is a WIP"))
     }
 
+    /**
+     * Build a [ContentNode.PostNode] from the given key
+     */
     private fun buildPostNode(postKey: String): ContentNode.PostNode {
         val postContents = s3Service.getObjectAsString(postKey, sourceBucket)
         val frontmatter = extractPostMetadata(postKey, postContents)
@@ -101,6 +108,9 @@ class MetadataController(val sourceBucket: String) : KoinComponent, APIControlle
         return post
     }
 
+    /**
+     * Build a [ContentNode.PageNode] from the given key
+     */
     private fun buildPageNode(pageKey: String): ContentNode.PageNode {
         val pageContents = s3Service.getObjectAsString(pageKey, sourceBucket)
         val frontmatter = extractPageModel(pageKey, pageContents)
@@ -118,6 +128,9 @@ class MetadataController(val sourceBucket: String) : KoinComponent, APIControlle
         return page
     }
 
+    /**
+     * Build a [ContentNode.TemplateNode] from the given key
+     */
     private fun buildTemplateNode(templateKey: String): ContentNode.TemplateNode {
         val templateContents = s3Service.getObjectAsString(templateKey, sourceBucket)
         val frontmatter = templateContents.getFrontMatter()
