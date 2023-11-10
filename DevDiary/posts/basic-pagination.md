@@ -1,6 +1,6 @@
 ---
 title: Navigation Between Pages and Posts
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-10-20
 slug: basic-pagination
 ---

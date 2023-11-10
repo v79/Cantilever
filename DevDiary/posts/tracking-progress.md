@@ -1,6 +1,6 @@
 ---
 title: Tracking progress
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-03-11
 slug: tracking-progress
 ---

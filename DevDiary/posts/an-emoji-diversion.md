@@ -1,6 +1,6 @@
 ---
 title: An Emoji Diversion
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-03-20
 slug: an-emoji-diversion
 ---

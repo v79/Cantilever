@@ -1,6 +1,6 @@
 ---
 title: Momentum lost
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-05-13
 slug: momentum-lost
 ---

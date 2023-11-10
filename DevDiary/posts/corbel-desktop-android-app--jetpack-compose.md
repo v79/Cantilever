@@ -1,6 +1,6 @@
 ---
 title: Corbel Desktop and Android App - Jetpack Compose
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-08-26
 slug: corbel-desktop-android-app--jetpack-compose
 ---

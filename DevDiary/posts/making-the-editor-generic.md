@@ -1,6 +1,6 @@
 ---
 title: Making the editor generic
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-04-10
 slug: making-the-editor-generic
 ---

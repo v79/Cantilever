@@ -1,6 +1,6 @@
 ---
 title: Typescript, Types, Classes and Interfaces - A Struggle
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-04-05
 slug: typescript-types-classes-and-interfaces-a-struggle
 ---

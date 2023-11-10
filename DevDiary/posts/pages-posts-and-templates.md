@@ -1,6 +1,6 @@
 ---
 title: Pages, posts and templates
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-03-25
 slug: pages-posts-and-templates
 ---

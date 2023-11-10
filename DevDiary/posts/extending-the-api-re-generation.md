@@ -1,6 +1,6 @@
 ---
 title: Extending the API - (Re)generation
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-02-28
 slug: extending-the-api-re-generation
 ---

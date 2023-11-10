@@ -1,6 +1,6 @@
 ---
 title: Jetpack Compose Theming Woes
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-09-10
 slug: corbel-authentication-and-ui
 ---

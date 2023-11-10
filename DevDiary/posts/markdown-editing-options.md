@@ -1,6 +1,6 @@
 ---
 title: Markdown editing
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-08-19
 slug: markdown-editing-options
 ---

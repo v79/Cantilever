@@ -1,6 +1,6 @@
 ---
 title: Adding static file support
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-09-18
 slug: adding-static-file-support
 ---

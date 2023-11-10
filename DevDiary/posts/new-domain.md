@@ -1,6 +1,6 @@
 ---
 title: A New Domain
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-03-15
 slug: new-domain
 ---

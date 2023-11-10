@@ -1,6 +1,6 @@
 ---
 title: Some progress at last
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-08-11
 slug: some-progress-at-last
 ---

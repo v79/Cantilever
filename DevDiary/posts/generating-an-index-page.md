@@ -1,6 +1,6 @@
 ---
 title: Generating an index page
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-02-27
 slug: posts-generating-an-index-page
 ---

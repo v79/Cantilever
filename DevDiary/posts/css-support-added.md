@@ -1,6 +1,6 @@
 ---
 title: CSS support added
-templateKey: sources/templates/post.html.hbs post
+templateKey: sources/templates/post.html.hbs
 date: 2023-09-24
 slug: css-support-added
 ---
