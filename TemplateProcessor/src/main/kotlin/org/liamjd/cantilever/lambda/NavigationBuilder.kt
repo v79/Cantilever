@@ -3,20 +3,18 @@ package org.liamjd.cantilever.lambda
 import com.amazonaws.services.lambda.runtime.LambdaLogger
 import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.S3_KEY
-import org.liamjd.cantilever.models.ContentMetaData
-import org.liamjd.cantilever.models.PostList
-import org.liamjd.cantilever.models.PostMeta
-import org.liamjd.cantilever.models.PostFrontmatter
+import org.liamjd.cantilever.models.*
 import org.liamjd.cantilever.services.S3Service
 
+/**
 context(LambdaLogger)
 class NavigationBuilder(private val s3Service: S3Service) {
 
     /**
-     * Return a useful map of [PostMeta] objects
+     * Return a useful map of [ContentNode.PostNode] objects
      */
-    fun getPostNavigationObjects(currentPost: ContentMetaData.PostContentMeta, sourceBucket: String): Map<String, PostMeta?> {
-        val navMap: MutableMap<String, PostMeta?> = mutableMapOf()
+    fun getPostNavigationObjects(currentPost: ContentNode.PostNode, sourceBucket: String): Map<String, ContentNode.PostNode?> {
+        val navMap: MutableMap<String, ContentNode.PostNode?> = mutableMapOf()
         if (s3Service.objectExists(S3_KEY.postsKey, sourceBucket)) {
             val postListJson = s3Service.getObjectAsString(S3_KEY.postsKey, sourceBucket)
             val postList = Json.decodeFromString<PostList>(postListJson)
@@ -33,7 +31,7 @@ class NavigationBuilder(private val s3Service: S3Service) {
     /**
      * Posts are sorted most recent first, so the previous should be further down the list
      */
-    private fun getPrevPost(currentPost: ContentMetaData.PostContentMeta, posts: List<PostMeta>): PostMeta? {
+    private fun getPrevPost(currentPost: ContentNode.PostNode, posts: List<PostMeta>): PostMeta? {
         val currentPostInList = posts.find { it.url == currentPost.slug }
         return if (currentPostInList != null) {
             val index = posts.indexOf(currentPostInList)
@@ -51,7 +49,7 @@ class NavigationBuilder(private val s3Service: S3Service) {
     /**
      * Posts are sorted most recent first, so the previous should be further up the list
      */
-    private fun getNextPost(currentPost: ContentMetaData.PostContentMeta, posts: List<PostMeta>): PostMeta? {
+    private fun getNextPost(currentPost: ContentNode.PostNode, posts: List<PostMeta>): PostMeta? {
         val currentPostInList = posts.find { it.url == currentPost.slug }
         return if (currentPostInList != null) {
             val index = posts.indexOf(currentPostInList)
@@ -80,3 +78,5 @@ class NavigationBuilder(private val s3Service: S3Service) {
         return posts.firstOrNull()
     }
 }
+
+ */

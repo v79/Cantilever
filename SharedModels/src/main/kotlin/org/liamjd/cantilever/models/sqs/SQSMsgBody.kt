@@ -5,7 +5,7 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
-import org.liamjd.cantilever.models.ContentMetaData
+import org.liamjd.cantilever.models.ContentNode
 
 typealias MarkdownSection = String
 
@@ -18,7 +18,7 @@ sealed class SqsMsgBody {
      * Data class representing a message sent whenever a markdown file is uploaded to the source bucket
      */
     @Serializable
-    data class MarkdownPostUploadMsg(val metadata: ContentMetaData.PostContentMeta, val markdownText: String) : SqsMsgBody()
+    data class MarkdownPostUploadMsg(val metadata: ContentNode.PostNode, val markdownText: String) : SqsMsgBody()
 
     /**
      * A repeat of the [PageMeta] class
@@ -63,5 +63,5 @@ sealed class SqsMsgBody {
      * so that the complete web page can be generated
      */
     @Serializable
-    data class HTMLFragmentReadyMsg(val fragmentKey: String, val metadata: ContentMetaData.PostContentMeta) : SqsMsgBody()
+    data class HTMLFragmentReadyMsg(val fragmentKey: String, val metadata: ContentNode.PostNode) : SqsMsgBody()
 }

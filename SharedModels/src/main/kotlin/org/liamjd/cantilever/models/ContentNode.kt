@@ -3,6 +3,8 @@ package org.liamjd.cantilever.models
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -16,6 +18,7 @@ typealias SrcKey = String // an S3 bucket object key
  * A ContentNode is a representation of a file in the S3 bucket. It is used to build the ContentTree, which is used to generate the metadata representation of the site
  */
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 sealed class ContentNode {
     abstract val srcKey: SrcKey
     abstract val lastUpdated: Instant
@@ -54,19 +57,57 @@ sealed class ContentNode {
     }
 
     /**
-     *
+     * ---
+     * title: Exploring authentication of routes
+     * templateKey: sources/templates/post.html.hbs
+     * date: 2023-01-31
+     * slug: exploring-route-authentication
+     * ---
      */
     @Serializable
     @SerialName("post")
     data class PostNode(
-        override val srcKey: String,
         override val lastUpdated: Instant = Clock.System.now(),
         val title: String,
         val templateKey: String,
         val date: LocalDate,
         val slug: String,
-        val attributes: Map<String, String>
+        @EncodeDefault
+        val attributes: Map<String, String> = emptyMap()
     ) : ContentNode() {
+
+        /**
+         * secondary constructor for when we know the srcKey
+         */
+        constructor(
+            srcKey: String,
+            title: String,
+            templateKey: String,
+            date: LocalDate,
+            slug: String,
+            attributes: Map<String, String> = emptyMap()
+        ) : this(
+            title = title,
+            templateKey = templateKey,
+            date = date,
+            slug = slug,
+            attributes = attributes
+        ) {
+            this.srcKey = srcKey
+        }
+
+        /**
+         * secondary constructor to convert a temporary [PostYaml] object into a [PostNode]
+         */
+        internal constructor(postYaml: PostYaml) : this(
+            title = postYaml.title,
+            templateKey = postYaml.templateKey,
+            date = postYaml.date,
+            slug = postYaml.slug,
+            attributes = postYaml.attributes
+        )
+
+        override lateinit var srcKey: String
         var next: SrcKey? = null
         var prev: SrcKey? = null
     }
@@ -102,6 +143,19 @@ sealed class ContentNode {
  * Exception thrown when attempting to delete a folder which contains children
  */
 class FolderNotEmptyException(message: String) : Exception(message)
+
+/**
+ * This is a utility class because [ContentNode.PostNode] requires the `srcKey` property, which will not exist in the yaml frontmatter for a post.
+ * I had hoped to avoid this duplication of classes, but I can't see a way around it because making `srcKey` abstract in [ContentNode] does not work.
+ */
+@Serializable
+internal class PostYaml(
+    val title: String,
+    val templateKey: String,
+    val date: LocalDate,
+    val slug: String,
+    val attributes: Map<String, String> = emptyMap()
+)
 
 /**
  * A ContentTree is a representation of the entire site, as a tree of ContentNodes

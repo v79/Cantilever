@@ -179,7 +179,7 @@ class ContentTreeTest {
         items.insertPost(earliest)
         items.insertPost(middle)
 
-        val updatedMiddle = middle.copy(date = LocalDate(2024, 1, 11))
+        val updatedMiddle = middle.copy(date = LocalDate(2024, 1, 11)).apply { srcKey = middle.srcKey }
         items.updatePost(updatedMiddle)
 
         val first = items.items.find { it.srcKey == earliest.srcKey } as ContentNode.PostNode

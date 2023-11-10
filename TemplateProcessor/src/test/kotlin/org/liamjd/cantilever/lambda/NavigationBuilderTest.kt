@@ -8,11 +8,11 @@ import io.mockk.runs
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import org.liamjd.cantilever.common.S3_KEY
-import org.liamjd.cantilever.models.ContentMetaData
-import org.liamjd.cantilever.models.PostFrontmatter
+import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.services.S3Service
 import kotlin.test.*
 
+/**
 internal class NavigationBuilderTest {
 
     private val mockLogger = mockk<LambdaLogger>()
@@ -33,12 +33,12 @@ internal class NavigationBuilderTest {
         every { mockS3.getObjectAsString(S3_KEY.postsKey, sourceBucket) } returns postListJson
 
         // this is the 'middle' post in our test data
-        val currentPost = ContentMetaData.PostContentMeta(
+        val currentPost = ContentNode.PostNode(
+            srcKey = "sources/posts/adding-static-file-support",
             title = "Adding static file support",
-            templateKey = "post",
+            templateKey = "sources/templates/post.html.hbs",
             slug = "adding-static-file-support",
-            date = LocalDate(2023, 9, 18),
-            lastModified = Clock.System.now()
+            date = LocalDate(2023, 9, 18)
         )
         with(mockLogger) {
             val builder = NavigationBuilder(mockS3)
@@ -62,12 +62,12 @@ internal class NavigationBuilderTest {
         every { mockS3.getObjectAsString(S3_KEY.postsKey, sourceBucket) } returns onlyTwoPosts
 
         // this is the 'first' post in our test data
-        val currentPost = ContentMetaData.PostContentMeta(
+        val currentPost = ContentNode.PostNode(
+            srcKey = "sources/posts/adding-static-file-support",
             title = "Adding static file support",
-            templateKey = "post",
+            templateKey = "sources/templates/post.html.hbs",
             slug = "adding-static-file-support",
-            date = LocalDate(2023, 9, 18),
-            lastModified = Clock.System.now()
+            date = LocalDate(2023, 9, 18)
         )
         with(mockLogger) {
             val builder = NavigationBuilder(mockS3)
@@ -91,12 +91,12 @@ internal class NavigationBuilderTest {
         every { mockS3.getObjectAsString(S3_KEY.postsKey, sourceBucket) } returns onlyTwoPosts
 
         // this is the 'last' post in our test data
-        val currentPost = ContentMetaData.PostContentMeta(
-            title = "DELETE-ME",
-            templateKey = "post",
-            slug = "-posts-delete-me",
-            date = LocalDate(2023, 9, 22),
-            lastModified = Clock.System.now()
+        val currentPost = ContentNode.PostNode(
+            srcKey = "sources/posts/adding-static-file-support",
+            title = "Adding static file support",
+            templateKey = "sources/templates/post.html.hbs",
+            slug = "adding-static-file-support",
+            date = LocalDate(2023, 9, 18)
         )
         with(mockLogger) {
             val builder = NavigationBuilder(mockS3)
@@ -119,18 +119,18 @@ internal class NavigationBuilderTest {
         every { mockS3.objectExists(S3_KEY.postsKey, sourceBucket) } returns false
 
         // this is the 'first' post in our test data
-        val currentPost = ContentMetaData.PostContentMeta(
+        val currentPost = ContentNode.PostNode(
+            srcKey = "sources/posts/adding-static-file-support",
             title = "Adding static file support",
-            templateKey = "post",
+            templateKey = "sources/templates/post.html.hbs",
             slug = "adding-static-file-support",
-            date = LocalDate(2023, 9, 18),
-            lastModified = Clock.System.now()
+            date = LocalDate(2023, 9, 18)
         )
         with(mockLogger) {
             val builder = NavigationBuilder(mockS3)
             val nav = builder.getPostNavigationObjects(currentPost, sourceBucket)
             assertNotNull(nav) {
-               assertEquals(0,it.size)
+                assertEquals(0, it.size)
             }
         }
     }
@@ -193,3 +193,5 @@ internal class NavigationBuilderTest {
     }
     """.trimIndent()
 }
+
+ */

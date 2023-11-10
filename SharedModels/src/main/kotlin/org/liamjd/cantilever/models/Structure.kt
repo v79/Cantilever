@@ -44,6 +44,7 @@ data class TemplateList(val count: Int = 0, val lastUpdated: Instant, val templa
  * @property lastUpdated internal property updated whenever the post is saved
  * @property templateKey the leaf of the S3 key for the template this post is based on (e.g. if the full template key is /sources/templates/myTemplate.hbs then this value will be 'myTemplate'
  */
+@Deprecated(message = "Use ContentNode.PostNode instead")
 @Serializable
 data class PostMeta(
     val title: String,

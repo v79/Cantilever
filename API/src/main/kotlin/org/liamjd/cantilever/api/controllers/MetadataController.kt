@@ -142,4 +142,8 @@ class MetadataController(val sourceBucket: String) : KoinComponent, APIControlle
         )
         return template
     }
+
+    override fun info(message: String) = println("INFO: MetadataController: $message")
+    override fun warn(message: String) = println("WARN: MetadataController: $message")
+    override fun error(message: String) = println("ERROR: MetadataController: $message")
 }

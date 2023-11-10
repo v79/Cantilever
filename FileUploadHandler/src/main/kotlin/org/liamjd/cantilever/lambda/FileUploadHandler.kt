@@ -14,7 +14,6 @@ import org.liamjd.cantilever.services.SQSService
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import org.liamjd.cantilever.services.impl.SQSServiceImpl
 import org.liamjd.cantilever.services.impl.extractPageModel
-import org.liamjd.cantilever.services.impl.extractPostMetadata
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
@@ -119,7 +118,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             // extract metadata
-            val metadata = ContentMetaDataBuilder.PostBuilder.buildFromYamlString(sourceString.getFrontMatter())
+            val metadata = ContentMetaDataBuilder.PostBuilder.buildFromYamlString(sourceString.getFrontMatter(), srcKey)
             logger.info("Extracted metadata: $metadata")
             // extract body
             val markdownBody = sourceString.stripFrontMatter()

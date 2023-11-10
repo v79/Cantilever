@@ -23,6 +23,7 @@ import org.liamjd.cantilever.models.sqs.SqsMsgBody
  * More section content
  * ---
  */
+@Deprecated("Use PageBuilder instead")
 fun extractPageModel(key: String, source: String): SqsMsgBody.PageModelMsg {
     val metadata = source.getFrontMatter().trim()
     val sectionRegex = Regex("(\n-{3} #)")

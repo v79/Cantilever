@@ -136,6 +136,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     /**
      * Rebuild the generated/posts.json file which contains the metadata for all the [PostMeta]s in the project.
      */
+    @Deprecated("This will be replaced with [MetadataController.rebuildFromSources]")
     fun rebuildPostList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val posts = s3Service.listObjects(postsPrefix, sourceBucket)
         info("Rebuilding all posts from sources in '$postsPrefix'. ${posts.keyCount()} posts found.")
@@ -188,6 +189,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     /**
      * Rebuild the generated/pages.json file which contains the metadata for all the Pages and Page folders in the project.
      */
+    @Deprecated("This will be replaced with [MetadataController.rebuildFromSources]")
     fun rebuildPageTree(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val objectsResponse = s3Service.listObjects(pagesPrefix, sourceBucket)
         info("Rebuilding all pages from sources in '$pagesPrefix'. ${objectsResponse.keyCount()} pages found.")
@@ -277,6 +279,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     /**
      * Rebuild the generated/templates.json file which contains the metadata for all the Templates in the project.
      */
+    @Deprecated("This will be replaced with [MetadataController.rebuildFromSources]")
     fun rebuildTemplateList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val templates = s3Service.listObjects(templatesPrefix, sourceBucket)
         info("Rebuilding all templates from sources in '$pagesPrefix'. ${templates.keyCount()} templates found.")

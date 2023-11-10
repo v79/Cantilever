@@ -29,7 +29,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
     private val s3Service: S3Service
     private lateinit var logger: LambdaLogger
-    private lateinit var navigationBuilder: NavigationBuilder
+//    private lateinit var navigationBuilder: NavigationBuilder
 
     init {
         s3Service = S3ServiceImpl(Region.EU_WEST_2)
@@ -43,9 +43,9 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         val destinationBucket = System.getenv("destination_bucket")
         val project: CantileverProject = getProjectModel(sourceBucket)
 
-        with(logger) {
-            navigationBuilder = NavigationBuilder(s3Service)
-        }
+//        with(logger) {
+//            navigationBuilder = NavigationBuilder(s3Service)
+//        }
         logger.info("${event.records.size} records received for processing...")
 
         event.records.forEach { eventRecord ->
@@ -194,10 +194,10 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         model["date"] = postMsg.metadata.date
 
         val html = with(logger) {
-            val nav = navigationBuilder.getPostNavigationObjects(postMsg.metadata, sourceBucket)
-            nav.entries.forEach {
-                model[it.key] = it.value
-            }
+//            val nav = navigationBuilder.getPostNavigationObjects(postMsg.metadata, sourceBucket)
+//            nav.entries.forEach {
+//                model[it.key] = it.value
+//            }
 
             val renderer = HandlebarsRenderer()
             renderer.render(model = model, template = templateString)
