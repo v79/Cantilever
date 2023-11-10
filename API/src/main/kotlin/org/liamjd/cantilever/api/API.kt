@@ -3,7 +3,6 @@ package org.liamjd.cantilever.api
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 import org.liamjd.cantilever.api.controllers.*
-import org.liamjd.cantilever.api.services.StructureService
 import org.liamjd.cantilever.auth.CognitoJWTAuthorizer
 import org.liamjd.cantilever.routing.*
 import org.liamjd.cantilever.services.S3Service
@@ -18,7 +17,6 @@ import software.amazon.awssdk.regions.Region
 val appModule = module {
     single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
     single<SQSService> { SQSServiceImpl(Region.EU_WEST_2) }
-    single { StructureService() }
 }
 
 /**

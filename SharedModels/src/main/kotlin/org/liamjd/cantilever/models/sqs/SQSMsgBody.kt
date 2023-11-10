@@ -15,7 +15,7 @@ typealias MarkdownSection = String
 @Serializable
 sealed class SqsMsgBody {
     /**
-     * Data class representing a message sent whenever a markdown file is uploaded to the source bucket
+     * Data class representing a message sent whenever a markdown [ContentNode.PostNode] file is uploaded to the source bucket
      */
     @Serializable
     data class MarkdownPostUploadMsg(val metadata: ContentNode.PostNode, val markdownText: String) : SqsMsgBody()

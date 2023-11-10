@@ -26,7 +26,6 @@ export class Template {
 	}
 }
 
-
 /**
  * Yaml frontmatter for Templates
  */
@@ -134,14 +133,14 @@ export abstract class MetadataItem {
 	title: string;
 	srcKey: string;
 	templateKey: string;
-	url: string;
+	slug: string;
 	lastUpdated: Date;
 
-	constructor(title: string, srcKey: string, templateKey: string, url: string, lastUpdated: Date) {
+	constructor(title: string, srcKey: string, templateKey: string, slug: string, lastUpdated: Date) {
 		this.title = title;
 		this.srcKey = srcKey;
 		this.templateKey = templateKey;
-		this.url = url;
+		this.slug = slug;
 		this.lastUpdated = new Date(lastUpdated);
 	}
 
@@ -208,7 +207,7 @@ export class Page implements MetadataItem, TreeNode {
 	title: string;
 	srcKey: string;
 	templateKey: string;
-	url: string;
+	slug: string;
 	lastUpdated: Date;
 	attributes: Map<string, string>;
 	sections: Map<string, string>;
@@ -218,7 +217,7 @@ export class Page implements MetadataItem, TreeNode {
 		title: string,
 		srcKey: string,
 		templateKey: string,
-		url: string,
+		slug: string,
 		lastUpdated: Date,
 		attributes: Map<string, string>,
 		sections: Map<string, string>
@@ -227,7 +226,7 @@ export class Page implements MetadataItem, TreeNode {
 		this.title = title;
 		this.srcKey = srcKey;
 		this.templateKey = templateKey;
-		this.url = url;
+		this.slug = slug;
 		this.lastUpdated = lastUpdated;
 		this.attributes = attributes;
 		this.sections = sections;

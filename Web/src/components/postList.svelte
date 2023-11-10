@@ -122,12 +122,12 @@
 				}
 				var tmpPost = new MarkdownContent(
 					new Post(
-						data.data.metadata.title,
-						data.data.metadata.srcKey,
-						data.data.metadata.templateKey,
-						data.data.metadata.url,
-						data.data.metadata.lastUpdated,
-						data.data.metadata.date
+						data.data.title,
+						data.data.srcKey,
+						data.data.templateKey,
+						data.data.slug,
+						data.data.lastUpdated,
+						data.data.date
 					),
 					data.data.body
 				);
@@ -136,7 +136,7 @@
 				$activeStore.isNewFile = false;
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
-				$activeStore.newSlug = $markdownStore.metadata?.url ?? '';
+				$activeStore.newSlug = $markdownStore.metadata?.slug ?? '';
 				$activeStore.fileType = FileType.Post;
 				$activeStore.folder = new FolderNode('folder', 'sources/posts/', 0, []);
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
@@ -194,7 +194,7 @@
 			metadata: new Post(
 				'',
 				'',
-				'post',
+				'sources/templates/post.html.hbs',
 				'',
 				//@ts-ignore
 				'', // I know this is invalid, but I want a 'null' date here
@@ -239,14 +239,7 @@
 				spinnerStore.set({ shown: true, message: 'Rebuilding project metadata...' });
 				tick().then(() => rebuildAll());
 			}}>Meta rebuild</button>
-			<br />
-		<button
-			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
-			on:click={(e) => {
-				console.log('Show spinner');
-				spinnerStore.set({ shown: true, message: 'Rebuilding project...' });
-				tick().then(() => rebuild());
-			}}>Rebuild</button>
+		<br />
 		<button
 			class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {

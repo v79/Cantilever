@@ -6,6 +6,7 @@ import org.liamjd.cantilever.models.PostMeta
 /**
  * REST API model wrapping a [PostMeta] metadata object and the source string. This is what is edited/saved.
  */
+@Deprecated("Use PostNodeRestDTO instead")
 @Serializable
 class MarkdownPost(val metadata: PostMeta) {
     var body: String = ""

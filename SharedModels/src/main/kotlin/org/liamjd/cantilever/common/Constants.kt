@@ -6,6 +6,7 @@ package org.liamjd.cantilever.common
 object S3_KEY {
     const val sources = "sources"
     const val generated = "generated"
+    const val sourcesPrefix = "$sources/"
     const val postsPrefix = "$sources/posts/"
     const val pagesPrefix = "$sources/pages/"
     const val templatesPrefix = "${sources}/templates/"

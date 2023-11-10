@@ -35,10 +35,20 @@
 	});
 
 	function saveFile() {
-		// TODO: This needs to change
 		console.log('Saving file ', $markdownStore.metadata?.srcKey);
-		let postJson = JSON.stringify($markdownStore);
+		// unwrap the metadata object and store it in a new object with the body
+		let objectToSave = {
+			title: $markdownStore.metadata?.title,
+			templateKey: $markdownStore.metadata?.templateKey,
+			srcKey: $markdownStore.metadata?.srcKey,
+			slug: $markdownStore.metadata?.slug,
+			//@ts-ignore
+			date: $markdownStore.metadata?.date,
+			body: $markdownStore.body
+		};
 
+		let postJson = JSON.stringify(objectToSave);
+		console.log(postJson);
 		fetch('https://api.cantilevers.org/posts/', {
 			method: 'POST',
 			headers: {

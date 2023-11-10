@@ -14,6 +14,9 @@ sealed interface ContentMetaDataBuilder {
     fun buildFromYamlString(yamlString: String, srcKey: SrcKey): ContentNode
 
     object PostBuilder : ContentMetaDataBuilder {
+        /**
+         * We use the temporary [PostYaml] class to decode the YAML front matter, then build a [ContentNode.PostNode] from it
+         */
         override fun buildFromYamlString(yamlString: String, srcKey: SrcKey): ContentNode.PostNode {
             val postYaml = Yaml.default.decodeFromString(PostYaml.serializer(), yamlString)
             return ContentNode.PostNode(postYaml).apply { this.srcKey = srcKey }

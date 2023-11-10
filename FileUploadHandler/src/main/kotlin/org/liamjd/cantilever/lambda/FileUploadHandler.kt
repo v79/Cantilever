@@ -122,7 +122,6 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             logger.info("Extracted metadata: $metadata")
             // extract body
             val markdownBody = sourceString.stripFrontMatter()
-
             val postModelMsg = SqsMsgBody.MarkdownPostUploadMsg(metadata, markdownBody)
             sendMessage(queueUrl, postModelMsg, srcKey)
         } catch (qdne: QueueDoesNotExistException) {

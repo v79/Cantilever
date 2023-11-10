@@ -108,6 +108,7 @@ sealed class ContentNode {
         )
 
         override lateinit var srcKey: String
+        var body: String = ""
         var next: SrcKey? = null
         var prev: SrcKey? = null
     }

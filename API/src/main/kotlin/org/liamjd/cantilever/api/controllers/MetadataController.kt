@@ -3,18 +3,18 @@ package org.liamjd.cantilever.api.controllers
 import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
-import org.liamjd.cantilever.services.S3Service
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.getFrontMatter
+import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.ContentTree
 import org.liamjd.cantilever.models.TemplateMetadata
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
+import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.extractPageModel
-import org.liamjd.cantilever.services.impl.extractPostMetadata
 
 /**
  * Generate metadata across posts, pages, templates etc
@@ -31,33 +31,35 @@ class MetadataController(val sourceBucket: String) : KoinComponent, APIControlle
         val contentTree = ContentTree()
         var filesProcessed = 0
         // TODO: this only returns 1000 items, need to paginate
-        val items = s3Service.listObjects("sources/", sourceBucket)
+        val items = s3Service.listObjects(S3_KEY.sourcesPrefix, sourceBucket)
         if (items.hasContents()) {
             // Special cases are 'sources/', 'sources/posts/', 'sources/pages/', 'sources/templates/' - these should be ignored
-            val ignoreList = listOf("sources/posts/", "sources/pages/", "sources/templates/", "sources/")
+            val ignoreList =
+                listOf(S3_KEY.postsPrefix, S3_KEY.pagesPrefix, S3_KEY.templatesPrefix, S3_KEY.sourcesPrefix)
             items.contents().forEach {
                 if (it.key() !in ignoreList) {
+                    info("Processing ${it.key()}")
                     if (it.key().endsWith("/")) {
                         val folder = ContentNode.FolderNode(it.key())
                         contentTree.insertFolder(folder)
                         filesProcessed++
                     } else {
-                        if (it.key().startsWith("sources/posts/") && it.key() != "sources/posts/") {
+                        if (it.key().startsWith(S3_KEY.postsPrefix) && it.key() != S3_KEY.postsPrefix) {
                             val post = buildPostNode(it.key())
                             contentTree.insertPost(post)
                             filesProcessed++
                         }
-                        if (it.key().startsWith("sources/pages/") && it.key() != "sources/pages/") {
+                        if (it.key().startsWith(S3_KEY.pagesPrefix) && it.key() != S3_KEY.pagesPrefix) {
                             val page = buildPageNode(it.key())
                             contentTree.insertPage(page)
                             filesProcessed++
                         }
-                        if (it.key().startsWith("sources/templates/") && it.key() != "sources/templates/") {
+                        if (it.key().startsWith(S3_KEY.templatesPrefix) && it.key() != S3_KEY.templatesPrefix) {
                             val template = buildTemplateNode(it.key())
                             contentTree.insertTemplate(template)
                             filesProcessed++
                         }
-                        if (it.key().startsWith("sources/statics/") && it.key() != "sources/statics/") {
+                        if (it.key().startsWith(S3_KEY.staticsPrefix) && it.key() != S3_KEY.staticsPrefix) {
                             val static = ContentNode.StaticNode(it.key())
                             static.fileType = it.key().substringAfterLast(".")
                             contentTree.insertStatic(static)
@@ -96,16 +98,7 @@ class MetadataController(val sourceBucket: String) : KoinComponent, APIControlle
      */
     private fun buildPostNode(postKey: String): ContentNode.PostNode {
         val postContents = s3Service.getObjectAsString(postKey, sourceBucket)
-        val frontmatter = extractPostMetadata(postKey, postContents)
-        val post = ContentNode.PostNode(
-            srcKey = postKey,
-            title = frontmatter.title,
-            templateKey = frontmatter.template,
-            date = frontmatter.date,
-            slug = frontmatter.slug,
-            attributes = mapOf("customattributes" to "notsupportedyet-forposts")
-        )
-        return post
+        return ContentMetaDataBuilder.PostBuilder.buildFromYamlString(postContents.getFrontMatter(), postKey)
     }
 
     /**
