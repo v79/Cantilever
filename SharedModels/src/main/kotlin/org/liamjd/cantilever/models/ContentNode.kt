@@ -278,7 +278,7 @@ class ContentTree {
     }
 
     /**
-     *
+     * Delete a page from the tree. This also updates the parent folder.
      */
     fun deletePage(page: ContentNode.PageNode) {
         items.remove(page)
@@ -334,6 +334,14 @@ class ContentTree {
     }
 
     /**
+     * Delete a post from the tree. This also updates the prev and next links for all sibling posts.
+     */
+    fun deletePost(srcKey: SrcKey) {
+        val post = getNode(srcKey) as ContentNode.PostNode?
+        post?.let { deletePost(it) }
+    }
+
+    /**
      * Get the next post in the tree, based on the current post's srcKey
      */
     fun getNextPost(postKey: SrcKey): ContentNode.PostNode? {
@@ -372,5 +380,14 @@ class ContentTree {
      */
     fun getPostsForTemplate(templateKey: String): List<ContentNode.PostNode> {
         return items.filterIsInstance<ContentNode.PostNode>().filter { it.templateKey == templateKey }
+    }
+
+    /**
+     * Clear the tree in advance of re-loading all the data from the S3 bucket
+     */
+    fun clear() {
+        items.clear()
+        templates.clear()
+        statics.clear()
     }
 }

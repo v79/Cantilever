@@ -1,11 +1,15 @@
 package org.liamjd.cantilever.api.controllers
 
+import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
+import org.liamjd.cantilever.models.ContentTree
+import org.liamjd.cantilever.models.rest.PostListDTO
 import org.liamjd.cantilever.models.rest.PostNodeRestDTO
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
@@ -14,10 +18,12 @@ import java.net.URLDecoder
 import java.nio.charset.Charset
 
 /**
- * Load, save and delete Posts from the S3 bucket
+ * Load, save and delete Posts from the S3 bucket. Operations will update the content tree.
  */
 class PostController(val sourceBucket: String) : KoinComponent, APIController {
     private val s3Service: S3Service by inject()
+
+    private val contentTree: ContentTree = ContentTree()
 
     /**
      * Load a markdown file with the specified `srcKey` and return it as [ContentNode.PostNode] response
@@ -25,14 +31,14 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
     fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<ContentNode.PostNode>> {
         val markdownSource = request.pathParameters["srcKey"]
         return if (markdownSource != null) {
-            val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
-            info("Loading Markdown file $decoded")
-            return if (s3Service.objectExists(decoded, sourceBucket)) {
-                val mdPost = buildPostNode(decoded)
+            val srcKey = URLDecoder.decode(markdownSource, Charset.defaultCharset())
+            info("Loading Markdown file $srcKey")
+            return if (s3Service.objectExists(srcKey, sourceBucket)) {
+                val mdPost = buildPostNode(srcKey)
                 ResponseEntity.ok(body = APIResult.Success(mdPost))
             } else {
-                error("File '$decoded' not found")
-                ResponseEntity.notFound(body = APIResult.Error("Markdown file $decoded not found in bucket $sourceBucket"))
+                error("File '$srcKey' not found")
+                ResponseEntity.notFound(body = APIResult.Error("Markdown file $srcKey not found in bucket $sourceBucket"))
             }
         } else {
             ResponseEntity.badRequest(body = APIResult.Error("Invalid request for null source file"))
@@ -46,15 +52,18 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
         info("saveMarkdownPost")
         val postToSave = request.body
         val srcKey = URLDecoder.decode(postToSave.srcKey, Charset.defaultCharset())
-
-        // this if statement is a bit pointless just now as both routes do the same thing
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
+            loadContentTree()
             info("Updating existing file '${postToSave.srcKey}'")
             val length = s3Service.putObject(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
+            contentTree.updatePost(postToSave.toPostNode())
+            saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
             val length = s3Service.putObject(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
+            contentTree.insertPost(postToSave.toPostNode())
+            saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
     }
@@ -64,13 +73,14 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
      */
     fun deleteMarkdownPost(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val markdownSource = request.pathParameters["srcKey"]
-
         return if (markdownSource != null) {
+            loadContentTree()
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
-            info("Deleting Markdown file $decoded")
             return if (s3Service.objectExists(decoded, sourceBucket)) {
-                info("Deleting file $decoded")
+                info("Deleting Markdown file $decoded")
                 s3Service.deleteObject(decoded, sourceBucket)
+                contentTree.deletePost(markdownSource)
+                saveContentTree()
                 ResponseEntity.ok(body = APIResult.OK("Source $decoded deleted"))
             } else {
                 error("Could not delete $decoded; object not found")
@@ -79,6 +89,29 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
         } else {
             error("Could not delete null markdownSource")
             ResponseEntity.ok(body = APIResult.Error("Could not delete null markdownSource"))
+        }
+    }
+
+    /**
+     * Return a list of all the posts in the content tree
+     * @return [PostListDTO] object containing the list of posts, a count and the last updated date/time
+     */
+    fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostListDTO>> {
+        return if (s3Service.objectExists("generated/metadata.json", sourceBucket)) {
+            loadContentTree()
+            info("Fetching all posts from metadata.json")
+            val lastUpdated = s3Service.getUpdatedTime("generated/metadata.json", sourceBucket)
+            val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
+            val sorted = posts.sortedByDescending { it.date }
+            val postList = PostListDTO(
+                count = sorted.size,
+                lastUpdated = lastUpdated,
+                posts = sorted
+            )
+            ResponseEntity.ok(body = APIResult.Success(value = postList))
+        } else {
+            error("Cannot find file 'generated/metadata.json' in bucket $sourceBucket")
+            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file 'generated/metadata.json' in bucket $sourceBucket"))
         }
     }
 
@@ -92,6 +125,32 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
         val metadata = ContentMetaDataBuilder.PostBuilder.buildFromYamlString(markdown.getFrontMatter(), srcKey)
         val body = markdown.substringAfter("---").substringAfter("---").trim()
         return metadata.apply { this.body = body }
+    }
+
+    /**
+     * Load the content tree from the S3 bucket
+     */
+    private fun loadContentTree() {
+        if (s3Service.objectExists("generated/metadata.json", sourceBucket)) {
+            info("Reading metadata.json from bucket $sourceBucket")
+            contentTree.clear()
+            val metadata = s3Service.getObjectAsString("generated/metadata.json", sourceBucket)
+            val newTree = Json.decodeFromString(ContentTree.serializer(), metadata)
+            contentTree.items.addAll(newTree.items)
+            contentTree.templates.addAll(newTree.templates)
+            contentTree.statics.addAll(newTree.statics)
+        } else {
+            warn("No metadata.json file found in bucket $sourceBucket; creating new empty tree")
+        }
+    }
+
+    /**
+     * Save the content tree to the S3 bucket
+     */
+    private fun saveContentTree() {
+        val pretty = Json { prettyPrint = true }
+        val metadata = pretty.encodeToString(ContentTree.serializer(), contentTree)
+        s3Service.putObject("generated/metadata.json", sourceBucket, metadata, "application/json")
     }
 
     override fun info(message: String) = println("INFO: PostController: $message")

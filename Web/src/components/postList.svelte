@@ -15,7 +15,7 @@
 
 	// onMount(async () => {});
 
-	function rebuildAll() {
+	async function rebuildAll() {
 		console.log('Testing new metadata rebuild');
 		let token = $userStore.token;
 		notificationStore.set({ shown: false, message: '', type: 'info' });
@@ -31,7 +31,12 @@
 			.then((response) => response.text())
 			.then((data) => {
 				console.log(data);
-				$spinnerStore.shown = false;
+				notificationStore.set({
+					message: data,
+					shown: true,
+					type: 'success'
+				});
+				loadAllPosts();
 			})
 			.catch((error) => {
 				console.log(error);
@@ -53,7 +58,7 @@
 		console.log('Loading all posts json...');
 		let token = $userStore.token;
 		notificationStore.set({ shown: false, message: '', type: 'info' });
-		fetch('https://api.cantilevers.org/project/posts', {
+		fetch('https://api.cantilevers.org/posts', {
 			method: 'GET',
 			headers: {
 				Accept: 'application/json',
@@ -73,19 +78,18 @@
 							p.title,
 							p.srcKey,
 							p.templateKey,
-							p.url,
+							p.slug,
 							new Date(p.lastUpdated),
 							new Date(p.date)
 						)
 					);
 				}
-				// allPostsStore.set(data.data);
 				allPostsStore.set({
 					count: tempPosts.length,
 					lastUpdated: data.lastUpdated,
 					posts: tempPosts
 				});
-				$notificationStore.message = 'Loaded all posts ' + $activeStore.activeFile;
+				$notificationStore.message = 'Loaded all posts: ' + data.data.posts.length;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
 			})
@@ -154,6 +158,7 @@
 			});
 	}
 
+	//@deprecated
 	async function rebuild() {
 		let token = $userStore.token;
 		console.log('Regenerating project posts file...');

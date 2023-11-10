@@ -1,5 +1,6 @@
 package org.liamjd.cantilever.services
 
+import kotlinx.datetime.Instant
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.DeleteObjectResponse
 import software.amazon.awssdk.services.s3.model.GetObjectResponse
@@ -77,4 +78,13 @@ interface S3Service {
      * @return list of common prefixes, or an  empty list of none found
      */
     fun listFolders(prefix: String, bucket: String): List<String>
+
+    /**
+     * Return the last updated time for the given object
+     * @param key the object to check
+     * @param bucket the s3 bucket name
+     * @return the last updated time as an [Instant]
+     */
+    fun getUpdatedTime(key: String, bucket: String): Instant
+
 }

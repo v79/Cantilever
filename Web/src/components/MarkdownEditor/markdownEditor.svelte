@@ -49,7 +49,7 @@
 
 		let postJson = JSON.stringify(objectToSave);
 		console.log(postJson);
-		fetch('https://api.cantilevers.org/posts/', {
+		fetch('https://api.cantilevers.org/posts/save', {
 			method: 'POST',
 			headers: {
 				Accept: 'text/plain',
@@ -178,9 +178,11 @@
 				on:click={(e) => {
 					let srcKey = 'sources/posts/' + saveNewFileSlug + '.md';
 					spinnerStore.set({ message: 'Saving ' + srcKey, shown: true });
-					$markdownStore.metadata.srcKey = srcKey;
-					$markdownStore.metadata.url = saveNewFileSlug;
-					$markdownStore.metadata.lastUpdated = new Date().toISOString();
+					if ($markdownStore.metadata) {
+						$markdownStore.metadata.srcKey = srcKey;
+						$markdownStore.metadata.slug = saveNewFileSlug;
+						$markdownStore.metadata.lastUpdated = new Date();
+					}
 					saveFile();
 				}}>Save</Button>
 		{/if}

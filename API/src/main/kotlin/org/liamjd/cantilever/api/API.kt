@@ -74,7 +74,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                     )
                 )
                 group("/posts") {
-                    get("", projectController::getPosts)
+//                    get("", projectController::getPosts)
                     put(
                         "/rebuild", projectController::rebuildPostList
                     )
@@ -94,11 +94,12 @@ class LambdaRouter : RequestHandlerWrapper() {
 
         auth(cognitoJWTAuthorizer) {
             group("/posts") {
+                get("", postController::getPosts)
                 get("/$SRCKEY", postController::loadMarkdownSource)
                 get("/preview/$SRCKEY") { request: Request<Unit> -> ResponseEntity.notImplemented(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!") }.supplies(
                     setOf(MimeType.html)
                 )
-                post("/", postController::saveMarkdownPost).supplies(
+                post("/save", postController::saveMarkdownPost).supplies(
                     setOf(MimeType.plainText)
                 )
                 delete("/$SRCKEY", postController::deleteMarkdownPost).supplies(setOf(MimeType.plainText))
