@@ -15,6 +15,7 @@ object S3_KEY {
     const val postsKey = "$generated/posts.json"
     const val pagesKey = "$generated/pages.json"
     const val templatesKey = "$generated/templates.json"
+    const val defaultPostTemplateKey = "$templatesPrefix/post.hbs"
 }
 
 /**

@@ -9,11 +9,9 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.FILES.INDEX_HTML
 import org.liamjd.cantilever.common.FILES.INDEX_MD
-import org.liamjd.cantilever.common.FILE_TYPE.HTML_HBS
 import org.liamjd.cantilever.common.FILE_TYPE.MD
 import org.liamjd.cantilever.common.S3_KEY.fragments
 import org.liamjd.cantilever.common.S3_KEY.projectKey
-import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
 import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.PageTree
@@ -182,7 +180,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         logger.info("Loaded body fragment from '${fragments + postMsg.fragmentKey}: ${body.take(100)}'")
 
         // load template file as specified by metadata
-        val template = templatesPrefix + postMsg.metadata.template + "." + HTML_HBS
+        val template = postMsg.metadata.templateKey
         logger.info("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
         val sourceString = s3Service.getObjectAsString(template, sourceBucket)
         // templates now have frontmatter; strip it out

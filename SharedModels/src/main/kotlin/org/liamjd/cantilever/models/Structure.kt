@@ -6,6 +6,9 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
 /**
+ * TODO: replace this with a metadata interface with implementations for Post, Page, Template
+ */
+/**
  * Wrapper around the list of all posts. This represents posts.json
  * @property count total number of posts
  * @property lastUpdated last updated date/time for the posts.json file

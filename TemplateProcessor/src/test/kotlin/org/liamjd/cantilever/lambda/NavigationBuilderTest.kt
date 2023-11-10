@@ -8,6 +8,7 @@ import io.mockk.runs
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import org.liamjd.cantilever.common.S3_KEY
+import org.liamjd.cantilever.models.ContentMetaData
 import org.liamjd.cantilever.models.PostFrontmatter
 import org.liamjd.cantilever.services.S3Service
 import kotlin.test.*
@@ -32,9 +33,9 @@ internal class NavigationBuilderTest {
         every { mockS3.getObjectAsString(S3_KEY.postsKey, sourceBucket) } returns postListJson
 
         // this is the 'middle' post in our test data
-        val currentPost = PostFrontmatter(
+        val currentPost = ContentMetaData.PostContentMeta(
             title = "Adding static file support",
-            template = "post",
+            templateKey = "post",
             slug = "adding-static-file-support",
             date = LocalDate(2023, 9, 18),
             lastModified = Clock.System.now()
@@ -61,9 +62,9 @@ internal class NavigationBuilderTest {
         every { mockS3.getObjectAsString(S3_KEY.postsKey, sourceBucket) } returns onlyTwoPosts
 
         // this is the 'first' post in our test data
-        val currentPost = PostFrontmatter(
+        val currentPost = ContentMetaData.PostContentMeta(
             title = "Adding static file support",
-            template = "post",
+            templateKey = "post",
             slug = "adding-static-file-support",
             date = LocalDate(2023, 9, 18),
             lastModified = Clock.System.now()
@@ -90,9 +91,9 @@ internal class NavigationBuilderTest {
         every { mockS3.getObjectAsString(S3_KEY.postsKey, sourceBucket) } returns onlyTwoPosts
 
         // this is the 'last' post in our test data
-        val currentPost = PostFrontmatter(
+        val currentPost = ContentMetaData.PostContentMeta(
             title = "DELETE-ME",
-            template = "post",
+            templateKey = "post",
             slug = "-posts-delete-me",
             date = LocalDate(2023, 9, 22),
             lastModified = Clock.System.now()
@@ -118,9 +119,9 @@ internal class NavigationBuilderTest {
         every { mockS3.objectExists(S3_KEY.postsKey, sourceBucket) } returns false
 
         // this is the 'first' post in our test data
-        val currentPost = PostFrontmatter(
+        val currentPost = ContentMetaData.PostContentMeta(
             title = "Adding static file support",
-            template = "post",
+            templateKey = "post",
             slug = "adding-static-file-support",
             date = LocalDate(2023, 9, 18),
             lastModified = Clock.System.now()

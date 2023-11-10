@@ -14,6 +14,7 @@ import org.liamjd.cantilever.models.PostFrontmatter
  * @param filename the leaf file name, which should end in '.md'
  * @param source the entire contents of the markdown file
  */
+@Deprecated("Use MetaData::PostMeta::buildFromYamlString instead")
 fun extractPostMetadata(filename: String, source: String): PostFrontmatter {
     val metadataString = source.getFrontMatter()
     if (metadataString.isNotEmpty()) {

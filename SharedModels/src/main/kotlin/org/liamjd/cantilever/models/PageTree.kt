@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
 /**
  * The pages tree will be composed of 'folders' (shared prefixes in S3) and actual Pages
  */
+@Deprecated("Use ContentNode instead")
 @Serializable
 sealed class PageTreeNode {
 
@@ -56,5 +57,6 @@ sealed class PageTreeNode {
  * @property lastUpdated generated date for pages.json
  * @property container the main folder that contains the tree
  */
+@Deprecated("Use ContentTree instead")
 @Serializable
 class PageTree(val lastUpdated: Instant, val container: PageTreeNode.FolderNode)

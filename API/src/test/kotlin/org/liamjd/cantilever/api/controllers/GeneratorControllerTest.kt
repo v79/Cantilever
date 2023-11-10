@@ -80,7 +80,12 @@ class GeneratorControllerTest : KoinTest {
     fun `responds to request to regenerate post and sends to markdown queue`() {
         val mockSqsResponse = mockk<SendMessageResponse>()
         declareMock<S3Service> {
-            every { mockS3.getObjectAsString("sources/posts/my-holiday-post.md", sourceBucket) } returns ""
+            every { mockS3.getObjectAsString("sources/posts/my-holiday-post.md", sourceBucket) } returns """
+                title: My holiday post
+                templateKey: post
+                slug: my-holiday-post
+                date: 2023-10-20
+            """.trimIndent()
         }
         declareMock<SQSService> {
             every { mockSQS.sendMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
@@ -243,16 +248,24 @@ class GeneratorControllerTest : KoinTest {
             every { mockS3.objectExists(any(), sourceBucket) } returns true
             every { mockS3.getObjectAsString("generated/pages.json", sourceBucket) } returns mockPageJson
             every { mockS3.getObjectAsString("generated/posts.json", sourceBucket) } returns mockPostJson
-            every { mockS3.getObjectAsString("sources/pages/bio/about-me.md", sourceBucket)} returns mockTodoPage
+            every { mockS3.getObjectAsString("sources/pages/bio/about-me.md", sourceBucket) } returns mockTodoPage
             every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns mockTodoPage
-            every { mockS3.getObjectAsString("sources/templates/about.html.hbs",sourceBucket)} returns mockTemplateText
+            every {
+                mockS3.getObjectAsString(
+                    "sources/templates/about.html.hbs",
+                    sourceBucket
+                )
+            } returns mockTemplateText
         }
         declareMock<SQSService> {
             every { mockSQS.sendMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "2345"
         val controller = GeneratorController(sourceBucket)
-        val request = buildRequest(path = "/generate/template/sources%252Ftemplates%252Fabout.html.hbs", pathPattern = "/generate/template/{templateKey}")
+        val request = buildRequest(
+            path = "/generate/template/sources%252Ftemplates%252Fabout.html.hbs",
+            pathPattern = "/generate/template/{templateKey}"
+        )
 
         val response = controller.generateTemplate(request)
 

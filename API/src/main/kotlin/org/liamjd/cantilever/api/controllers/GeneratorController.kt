@@ -10,6 +10,7 @@ import org.liamjd.cantilever.common.S3_KEY.pagesKey
 import org.liamjd.cantilever.common.S3_KEY.pagesPrefix
 import org.liamjd.cantilever.common.S3_KEY.postsKey
 import org.liamjd.cantilever.common.S3_KEY.postsPrefix
+import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.PageTree
 import org.liamjd.cantilever.models.PageTreeNode
 import org.liamjd.cantilever.models.PostList
@@ -108,7 +109,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
             val postSrcKey = srcKey.removePrefix(postsPrefix)
-            val postMetadata = extractPostMetadata(postSrcKey, sourceString)
+            val postMetadata = ContentMetaDataBuilder.PostBuilder.buildFromYamlString(sourceString.getFrontMatter())
             val markdownBody = sourceString.stripFrontMatter()
             val message = SqsMsgBody.MarkdownPostUploadMsg(postMetadata, markdownBody)
             info("Built post metadata: $postMetadata")
@@ -243,7 +244,7 @@ class GeneratorController(val sourceBucket: String) : KoinComponent, APIControll
      */
     private fun queuePostRegeneration(postSrcKey: String, sourceString: String) {
         // extract post model
-        val metadata = extractPostMetadata(filename = postSrcKey, source = sourceString)
+        val metadata = ContentMetaDataBuilder.PostBuilder.buildFromYamlString(sourceString.getFrontMatter())
         // extract body
         val markdownBody = sourceString.stripFrontMatter()
 

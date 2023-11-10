@@ -7,6 +7,7 @@ import com.amazonaws.services.lambda.runtime.events.S3Event
 import kotlinx.serialization.SerializationException
 import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.common.SOURCE_TYPE.*
+import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
@@ -118,7 +119,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             // extract metadata
-            val metadata = extractPostMetadata(filename = srcKey, source = sourceString)
+            val metadata = ContentMetaDataBuilder.PostBuilder.buildFromYamlString(sourceString.getFrontMatter())
             logger.info("Extracted metadata: $metadata")
             // extract body
             val markdownBody = sourceString.stripFrontMatter()

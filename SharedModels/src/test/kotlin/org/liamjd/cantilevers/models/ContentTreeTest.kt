@@ -13,7 +13,6 @@ import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.ContentTree
 import org.liamjd.cantilever.models.FolderNotEmptyException
 
-
 class ContentTreeTest {
 
     private val pretty = Json { prettyPrint = true }
