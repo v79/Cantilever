@@ -51,7 +51,7 @@ class ContentTreeTest {
         srcKey = "sources/pages/biography/bio.md",
         title = "Biography",
         templateKey = "page",
-        url = "/biography/index",
+        slug = "/biography/index",
         isRoot = true,
         attributes = mapOf("author" to "Liam", "tags" to "test"),
         sections = mapOf("bio" to "This is my biography")
@@ -60,7 +60,7 @@ class ContentTreeTest {
         srcKey = "sources/pages/books/books.md",
         title = "Books",
         templateKey = "sources/templates/myTemplate.hbs",
-        url = "/books/index",
+        slug = "/books/index",
         isRoot = true,
         attributes = mapOf("author" to "Liam", "tags" to "test"),
         sections = mapOf("books" to "This is my books page")
@@ -69,7 +69,7 @@ class ContentTreeTest {
         srcKey = "sources/pages/books/favourite.md",
         title = "Favourite Book",
         templateKey = "page",
-        url = "/books/favourite",
+        slug = "/books/favourite",
         isRoot = false,
         attributes = mapOf("author" to "Liam", "tags" to "test"),
         sections = mapOf("book" to "This is my favourite book")

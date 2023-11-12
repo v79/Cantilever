@@ -9,7 +9,9 @@ import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.now
 import org.liamjd.cantilever.common.toSlug
 
-
+/**
+ * Parses the YAML front matter of a markdown file and returns a [ContentNode] object
+ */
 sealed interface ContentMetaDataBuilder {
     fun buildFromYamlString(yamlString: String, srcKey: SrcKey): ContentNode
 
@@ -87,7 +89,7 @@ sealed interface ContentMetaDataBuilder {
                 srcKey = srcKey,
                 templateKey = template,
                 isRoot = isRoot,
-                url = url,
+                slug = url,
                 attributes = customAttributes.toMap(),
                 sections = customSections
             )

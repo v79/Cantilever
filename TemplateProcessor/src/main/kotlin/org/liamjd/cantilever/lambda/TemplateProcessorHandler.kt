@@ -14,6 +14,7 @@ import org.liamjd.cantilever.common.S3_KEY.fragments
 import org.liamjd.cantilever.common.S3_KEY.projectKey
 import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.CantileverProject
+import org.liamjd.cantilever.models.ContentTree
 import org.liamjd.cantilever.models.PageTree
 import org.liamjd.cantilever.models.PostList
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
@@ -55,12 +56,21 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
                 logger.info("Decoded message body: $sqsMsgBody")
                 when (sqsMsgBody) {
-                    is SqsMsgBody.HTMLFragmentReadyMsg -> {
+                    is SqsMsgBody.PostReadyToRenderMsg -> {
                         renderPost(sqsMsgBody, sourceBucket, project, destinationBucket)
                     }
 
                     is SqsMsgBody.PageHandlebarsModelMsg -> {
+                        logger.error("PageHandlebarsModelMsg is obsolete")
                         renderPage(sqsMsgBody, sourceBucket, project, destinationBucket)
+                    }
+
+                    is SqsMsgBody.PageReadyToRenderMsg -> {
+                        renderPage(sqsMsgBody, sourceBucket, project, destinationBucket)
+                    }
+
+                    is SqsMsgBody.MarkdownPageUploadMsg -> {
+                        // do nothing, these messages are not valid in this context
                     }
 
                     is SqsMsgBody.CssMsg -> renderCSS(sqsMsgBody, sourceBucket, project, destinationBucket)
@@ -116,6 +126,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
      * @param project the overall project model
      * @param destinationBucket destination S3 bucket TODO: move this to an environment variable
      */
+    @Deprecated("Use PageReadyToRenderMsg instead")
     private fun renderPage(
         pageMsg: SqsMsgBody.PageHandlebarsModelMsg,
         sourceBucket: String,
@@ -164,6 +175,56 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
     }
 
     /**
+     * Load the templates and html fragments for the specified page and combine them into the final HTML file
+     * @param pageMsg the handlebars model
+     * @param sourceBucket the sources for the fragments and metadata json TODO: move this to an environment variable for the processor
+     * @param project the overall project model
+     * @param destinationBucket destination S3 bucket TODO: move this to an environment variable
+     */
+    private fun renderPage(
+        pageMsg: SqsMsgBody.PageReadyToRenderMsg,
+        sourceBucket: String,
+        project: CantileverProject,
+        destinationBucket: String
+    ) {
+        val contentTreeJson = s3Service.getObjectAsString("generated/contentTree.json", sourceBucket)
+        val contentTree = Json.decodeFromString<ContentTree>(contentTreeJson)
+
+        val pageTemplateKey = pageMsg.metadata.templateKey
+
+        // load the page.html.hbs template
+        logger.info("Loading template $pageTemplateKey")
+        val sourceString = s3Service.getObjectAsString(pageTemplateKey, sourceBucket)
+        // templates now have frontmatter; strip it out
+        val templateString = sourceString.stripFrontMatter()
+        val model = mutableMapOf<String, Any?>()
+        model["key"] = pageMsg.metadata.srcKey
+        model["url"] = pageMsg.metadata.slug
+        model["project"] = project
+        model["title"] = pageMsg.metadata.title
+        model["lastModified"] = pageMsg.metadata.lastUpdated
+        model.putAll(pageMsg.metadata.attributes)
+
+        pageMsg.metadata.sections.forEach { (name, objectKey) ->
+            val html = s3Service.getObjectAsString(objectKey, sourceBucket)
+            logger.info("Adding section $name to model from $objectKey")
+            model[name] = html
+        }
+
+
+        logger.info("Final page model keys: ${model.keys}")
+        val html = with(logger) {
+            val renderer = HandlebarsRenderer()
+            renderer.render(model = model, template = templateString)
+        }
+
+        // TODO: this is a hack!
+        val outputFilename = calculateFilename(pageMsg)
+        s3Service.putObject(outputFilename, destinationBucket, html, "text/html")
+        logger.info("Written final HTML file to '$outputFilename'")
+    }
+
+    /**
      * Load the templates and html fragments for the specified post and combine them into the final HTML file
      * @param postMsg the handlebars model
      * @param sourceBucket the sources for the fragments and metadata json TODO: move this to an environment variable for the processor
@@ -171,7 +232,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
      * @param destinationBucket destination S3 bucket TODO: move this to an environment variable
      */
     private fun renderPost(
-        postMsg: SqsMsgBody.HTMLFragmentReadyMsg,
+        postMsg: SqsMsgBody.PostReadyToRenderMsg,
         sourceBucket: String,
         project: CantileverProject,
         destinationBucket: String
@@ -224,7 +285,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                 if (message.key.endsWith(INDEX_MD)) INDEX_HTML else message.key.substringBefore(".$MD")
                     .substringAfterLast("pages/")
 
-            is SqsMsgBody.HTMLFragmentReadyMsg -> { // not relevant here
+            is SqsMsgBody.PostReadyToRenderMsg -> { // not relevant here
                 message.metadata.slug
             }
 
@@ -232,8 +293,16 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                 message.metadata.slug
             }
 
+            is SqsMsgBody.PageReadyToRenderMsg -> {
+                message.metadata.slug
+            }
+
             is SqsMsgBody.PageModelMsg -> { // not relevant here
                 ""
+            }
+
+            is SqsMsgBody.MarkdownPageUploadMsg -> { // not relevant here
+                message.metadata.slug
             }
 
             is SqsMsgBody.CssMsg -> {

@@ -48,7 +48,7 @@ sealed class ContentNode {
         override val lastUpdated: Instant = Clock.System.now(),
         val title: String,
         val templateKey: String,
-        val url: String,
+        val slug: String,
         val isRoot: Boolean,
         val attributes: Map<String, String>,
         val sections: Map<String, String>,

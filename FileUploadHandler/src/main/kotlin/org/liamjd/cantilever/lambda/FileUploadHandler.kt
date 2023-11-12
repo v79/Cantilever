@@ -144,8 +144,10 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             val pageSrcKey = srcKey.removePrefix(S3_KEY.pagesPrefix) // just want the actual file name
             // extract page model
-            val pageModelMsg = extractPageModel(pageSrcKey, sourceString)
-            logger.info("Built page model for: ${pageModelMsg.srcKey}")
+            val metadata = ContentMetaDataBuilder.PageBuilder.buildFromYamlString(sourceString.getFrontMatter(), pageSrcKey)
+            val markdownBody = sourceString.stripFrontMatter()
+            val pageModelMsg = SqsMsgBody.MarkdownPageUploadMsg(metadata, markdownBody)
+            logger.info("Built page model for: ${pageModelMsg.metadata.srcKey}")
 
             sendMessage(queueUrl, pageModelMsg, srcKey)
         } catch (qdne: QueueDoesNotExistException) {

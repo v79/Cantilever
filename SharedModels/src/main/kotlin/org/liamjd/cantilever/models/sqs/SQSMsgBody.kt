@@ -9,6 +9,7 @@ import org.liamjd.cantilever.models.ContentNode
 
 typealias MarkdownSection = String
 
+// TODO: Split these into different classes, one for each queue
 /**
  * An SqsMsgBody must be serializable to Json. These classes represent messages sent to the AWS SQS queue. Not all messages are appropriate to all queues; I may be better to split them at some point.
  */
@@ -19,6 +20,9 @@ sealed class SqsMsgBody {
      */
     @Serializable
     data class MarkdownPostUploadMsg(val metadata: ContentNode.PostNode, val markdownText: String) : SqsMsgBody()
+
+    @Serializable
+    data class MarkdownPageUploadMsg(val metadata: ContentNode.PageNode, val markdownText: String) : SqsMsgBody()
 
     /**
      * A repeat of the [PageMeta] class
@@ -38,7 +42,7 @@ sealed class SqsMsgBody {
     /**
      * Another repeat of the [PageMeta] class? Rationalize these!
      */
-    @Deprecated("Use ??? instead")
+    @Deprecated("Use PageReadyToRenderMsg instead")
     @OptIn(ExperimentalSerializationApi::class)
     @Serializable
     data class PageModelMsg(
@@ -60,8 +64,15 @@ sealed class SqsMsgBody {
 
     /**
      * Once markdown processing is complete, it sends this message to the handlebars template engine
-     * so that the complete web page can be generated
+     * so that the complete web page can be generated for the given Post
      */
     @Serializable
-    data class HTMLFragmentReadyMsg(val fragmentKey: String, val metadata: ContentNode.PostNode) : SqsMsgBody()
+    data class PostReadyToRenderMsg(val fragmentKey: String, val metadata: ContentNode.PostNode) : SqsMsgBody()
+
+    /**
+     * Once markdown processing is complete, it sends this message to the handlebars template engine
+     * so that the complete web page can be generated for the given Page
+     */
+    @Serializable
+    data class PageReadyToRenderMsg(val fragmentKey: String, val metadata: ContentNode.PageNode) : SqsMsgBody()
 }

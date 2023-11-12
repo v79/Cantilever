@@ -112,7 +112,7 @@ class MetadataController(val sourceBucket: String) : KoinComponent, APIControlle
             srcKey = pageKey,
             title = frontmatter.title,
             templateKey = frontmatter.templateKey,
-            url = frontmatter.url,
+            slug = frontmatter.url,
             isRoot = frontmatter.isRoot,
             attributes = frontmatter.attributes,
             sections = frontmatter.sections.keys.associateWith { "" }
