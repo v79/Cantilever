@@ -17,7 +17,6 @@ import org.liamjd.cantilever.models.PostList
 import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
-import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
 import org.liamjd.cantilever.services.impl.extractPageModel
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
@@ -106,7 +105,7 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
             val postSrcKey = srcKey.removePrefix(postsPrefix)
-            val postMetadata = ContentMetaDataBuilder.PostBuilder.buildFromYamlString(sourceString.getFrontMatter(), srcKey)
+            val postMetadata = ContentMetaDataBuilder.PostBuilder.buildFromSourceString(sourceString.getFrontMatter(), srcKey)
             val markdownBody = sourceString.stripFrontMatter()
             val message = SqsMsgBody.MarkdownPostUploadMsg(postMetadata, markdownBody)
             info("Built post metadata: $postMetadata")
@@ -241,7 +240,7 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
      */
     private fun queuePostRegeneration(postSrcKey: String, sourceString: String) {
         // extract post model
-        val metadata = ContentMetaDataBuilder.PostBuilder.buildFromYamlString(sourceString.getFrontMatter(), postSrcKey)
+        val metadata = ContentMetaDataBuilder.PostBuilder.buildFromSourceString(sourceString.getFrontMatter(), postSrcKey)
         // extract body
         val markdownBody = sourceString.stripFrontMatter()
 

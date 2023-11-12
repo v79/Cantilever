@@ -3,13 +3,12 @@ package org.liamjd.cantilever.api.controllers
 import org.koin.core.component.KoinComponent
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.toS3Key
+import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
-import org.liamjd.cantilever.models.PageTreeNode
-import org.liamjd.cantilever.models.rest.MarkdownPage
+import org.liamjd.cantilever.models.rest.MarkdownPageDTO
 import org.liamjd.cantilever.models.rest.PageListDTO
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
-import org.liamjd.cantilever.services.impl.extractPageModel
 import java.net.URLDecoder
 import java.nio.charset.Charset
 
@@ -44,9 +43,9 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
     }
 
     /**
-     * Load a markdown file with the specified `srcKey` and return it as [MarkdownPage] response
+     * Load a markdown file with the specified `srcKey` and return it as [MarkdownPageDTO] response
      */
-    fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<MarkdownPage>> {
+    fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<MarkdownPageDTO>> {
         val markdownSource = request.pathParameters["srcKey"]
         return if (markdownSource != null) {
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
@@ -89,28 +88,18 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
     }
 
     /**
-     * Build a [MarkdownPage] object from the source specified
+     * Build a [MarkdownPageDTO] object from the source specified
      */
-    private fun buildMarkdownPage(srcKey: String): MarkdownPage {
+    private fun buildMarkdownPage(srcKey: String): MarkdownPageDTO {
         val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
-        val metadata = extractPageModel(key = srcKey, source = markdown)
-        val pageMeta = PageTreeNode.PageMeta(
-            nodeType = "page",
-            title = metadata.title,
-            templateKey = metadata.templateKey,
-            srcKey = srcKey,
-            url = metadata.url,
-            attributes = metadata.attributes,
-            sections = metadata.sections
-        )
-
-        return MarkdownPage(pageMeta)
+        val pageMeta = ContentMetaDataBuilder.PageBuilder.buildFromSourceString(markdown, srcKey)
+        return MarkdownPageDTO(pageMeta)
     }
 
     /**
-     * Save a [MarkdownPage] to the sources bucket
+     * Save a [MarkdownPageDTO] to the sources bucket
      */
-    fun saveMarkdownPageSource(request: Request<MarkdownPage>): ResponseEntity<APIResult<String>> {
+    fun saveMarkdownPageSource(request: Request<MarkdownPageDTO>): ResponseEntity<APIResult<String>> {
         info("saveMarkdownPageSource")
         val pageToSave = request.body
         pageToSave.also {

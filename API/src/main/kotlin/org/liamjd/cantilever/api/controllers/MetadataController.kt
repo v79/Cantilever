@@ -3,7 +3,6 @@ package org.liamjd.cantilever.api.controllers
 import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.getFrontMatter
@@ -13,7 +12,6 @@ import org.liamjd.cantilever.models.ContentTree
 import org.liamjd.cantilever.models.TemplateMetadata
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
-import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.extractPageModel
 
 /**
@@ -96,7 +94,7 @@ class MetadataController(sourceBucket: String) : KoinComponent, APIController(so
      */
     private fun buildPostNode(postKey: String): ContentNode.PostNode {
         val postContents = s3Service.getObjectAsString(postKey, sourceBucket)
-        return ContentMetaDataBuilder.PostBuilder.buildFromYamlString(postContents.getFrontMatter(), postKey)
+        return ContentMetaDataBuilder.PostBuilder.buildFromSourceString(postContents.getFrontMatter(), postKey)
     }
 
     /**

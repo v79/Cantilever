@@ -216,6 +216,7 @@ export class Page implements MetadataItem, TreeNode {
 	lastUpdated: Date;
 	attributes: Map<string, string>;
 	sections: Map<string, string>;
+	isRoot: boolean;
 	parent: string | FolderNode | null;
 
 	constructor(
@@ -227,6 +228,7 @@ export class Page implements MetadataItem, TreeNode {
 		lastUpdated: Date,
 		attributes: Map<string, string>,
 		sections: Map<string, string>,
+		isRoot: boolean,
 		parent: string | FolderNode | null
 	) {
 		this.type = nodeType;
@@ -237,6 +239,7 @@ export class Page implements MetadataItem, TreeNode {
 		this.lastUpdated = lastUpdated;
 		this.attributes = attributes;
 		this.sections = sections;
+		this.isRoot = isRoot;
 		this.parent = parent;
 	}
 

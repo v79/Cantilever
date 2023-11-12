@@ -13,7 +13,6 @@ import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import org.liamjd.cantilever.services.impl.SQSServiceImpl
-import org.liamjd.cantilever.services.impl.extractPageModel
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
@@ -118,7 +117,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             // extract metadata
-            val metadata = ContentMetaDataBuilder.PostBuilder.buildFromYamlString(sourceString.getFrontMatter(), srcKey)
+            val metadata = ContentMetaDataBuilder.PostBuilder.buildFromSourceString(sourceString.getFrontMatter(), srcKey)
             logger.info("Extracted metadata: $metadata")
             // extract body
             val markdownBody = sourceString.stripFrontMatter()
@@ -144,7 +143,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             val pageSrcKey = srcKey.removePrefix(S3_KEY.pagesPrefix) // just want the actual file name
             // extract page model
-            val metadata = ContentMetaDataBuilder.PageBuilder.buildFromYamlString(sourceString.getFrontMatter(), pageSrcKey)
+            val metadata = ContentMetaDataBuilder.PageBuilder.buildFromSourceString(sourceString.getFrontMatter(), pageSrcKey)
             val markdownBody = sourceString.stripFrontMatter()
             val pageModelMsg = SqsMsgBody.MarkdownPageUploadMsg(metadata, markdownBody)
             logger.info("Built page model for: ${pageModelMsg.metadata.srcKey}")

@@ -2,9 +2,7 @@ package org.liamjd.cantilever.api.controllers
 
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
@@ -13,7 +11,6 @@ import org.liamjd.cantilever.models.rest.PostListDTO
 import org.liamjd.cantilever.models.rest.PostNodeRestDTO
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
-import org.liamjd.cantilever.services.S3Service
 import java.net.URLDecoder
 import java.nio.charset.Charset
 
@@ -119,7 +116,7 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
         srcKey: String
     ): ContentNode.PostNode {
         val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
-        val metadata = ContentMetaDataBuilder.PostBuilder.buildFromYamlString(markdown.getFrontMatter(), srcKey)
+        val metadata = ContentMetaDataBuilder.PostBuilder.buildFromSourceString(markdown.getFrontMatter(), srcKey)
         val body = markdown.substringAfter("---").substringAfter("---").trim()
         return metadata.apply { this.body = body }
     }

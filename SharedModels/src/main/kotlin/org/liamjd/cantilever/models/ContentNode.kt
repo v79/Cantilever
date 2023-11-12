@@ -7,6 +7,7 @@ import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /**
  * A SrcKey is a String representation of the S3 bucket object key
@@ -54,6 +55,10 @@ sealed class ContentNode {
         val sections: Map<String, String>,
     ) : ContentNode() {
         var parent: SrcKey? = null
+
+        @Transient
+        val type: String? =
+            null // this is used by the front end to determine if it's a page or a post, but is  not needed here
     }
 
     /**

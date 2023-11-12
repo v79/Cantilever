@@ -52,17 +52,11 @@
 			.then((response) => response.json())
 			.then((data) => {
 				console.log('Loaded all pages json');
-				console.dir(data);
+				// console.dir(data);
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
-
-				//data.data.count
-				//data.data.lastUpdated
-				//data.data.pages[]
-				//data.data.folders[]
-
-				var rootFolder = new FolderNode('folder', 'sources/pages', new Array<TreeNode>(), null);
+				var rootFolder = new FolderNode('folder', 'sources/pages/', new Array<TreeNode>(), null);
 				addFoldersToRoot(rootFolder, data.data.folders, data.data.pages);
 				// addNodesToContainer(rootFolder, data.data.pages);
 				var pageTree = new PageTree(data.data.lastUpdated, rootFolder);
@@ -83,42 +77,10 @@
 			});
 	}
 
-	/**
-	 * Recursive function which loops round the 'toAdd' array, and checks to see if the element is a Page or a Folder.
-	 * If it is a page, it adds it to the container.
-	 * If it is a folder, it creates a new sub-container (based on the folder), and calls this function recursively.
-	 * @param container a FolderNode in the tree
-	 * @param toAdd array of TreeNodes, which may be FolderNode or Page
-	 */
-	function addNodesToContainer(container: FolderNode, toAdd: Array<TreeNode>) {
-		if (toAdd) {
-			for (const node of toAdd) {
-				if (node.type === 'page') {
-					var page = node as Page;
-					if (container.children == undefined) {
-						container.children = new Array<TreeNode>();
-					}
-					container.children.push(page);
-				}
-				if (node.type === 'folder') {
-					var folder = node as FolderNode;
-					if (folder.children) {
-						//@ts-ignore
-						var newFolder = new FolderNode('folder', folder.srcKey, folder.count, null);
-						container.children.push(newFolder);
-						addNodesToContainer(newFolder, folder.children);
-					} else {
-						//@ts-ignore
-						var newFolder = new FolderNode('folder', folder.srcKey, 0, []);
-						container.children.push(newFolder);
-					}
-				}
-			}
-		}
-	}
-
+	
 	/**
 	 * Loop through all the folders and add them to the root folder. Then find the pages which match the children of the folder, and add them
+	 * This is not recursive, so it only adds the first level of folders.
 	 * @param root
 	 * @param folders
 	 * @param pages
@@ -129,20 +91,17 @@
 				console.log('Adding folder ' + node.srcKey + ' to root');
 				var folder = node as FolderNode;
 				node.type = 'folder';
-				console.dir(folder);
 				// we are given just the srcKeys of the child pages, so we need to find and convert these to Page objects
-				let childKeys = folder.children;
+				// these are strings, NOT TreeNodes
+				let childKeys: string[] = folder.children.map((child) => child.toString());
 				folder.children = [];
-
-				for (const child of childKeys) {
-					pages.find((pageNode) => {
-						if (pageNode.srcKey == child.srcKey) {
-							console.log('Adding page ' + pageNode.srcKey + ' to folder');
-							folder.children.push(pageNode);
-							folder.count++;
-						}
-					});
+				for (const childKey of childKeys) {
+					let childPage = pages.find((page) => page.srcKey === childKey);
+					if (childPage) {
+						folder.children.push(childPage);
+					}
 				}
+	
 				if (root.children == undefined) {
 					root.children = new Array<TreeNode>();
 				}
@@ -157,10 +116,7 @@
 				if (root.children == undefined) {
 					root.children = new Array<TreeNode>();
 				}
-				console.dir(page);
 				if (page.parent === 'sources/pages') {
-					console.log('Adding page ' + node.srcKey + ' to root');
-
 					root.children.push(page);
 					root.count++;
 				}
@@ -197,11 +153,13 @@
 						data.data.metadata.title,
 						data.data.metadata.srcKey,
 						data.data.metadata.templateKey,
-						data.data.metadata.url,
+						data.data.metadata.slug,
 						data.data.metadata.lastUpdated,
 						new Map<string, string>(Object.entries(data.data.metadata.attributes)),
-						new Map<string, string>(Object.entries(data.data.metadata.sections))
-					),
+						new Map<string, string>(Object.entries(data.data.metadata.sections)),
+						data.data.metadata.isRoot,
+						data.data.metadata.parent
+						),
 					''
 				);
 				markdownStore.set(tmpPage);
@@ -305,7 +263,9 @@
 				'',
 				new Date(),
 				new Map<string, string>(),
-				new Map(metadata.sections.map((obj) => [obj, '']))
+				new Map(metadata.sections.map((obj) => [obj, ''])),
+				false,
+				''
 			)
 		};
 		$markdownStore.metadata = newMDPage.metadata;
@@ -330,6 +290,9 @@
 			let result = <FolderNode[]>(
 				$pageTreeStore.rootFolder.children.filter((value) => value.type == 'folder')
 			);
+			result.push($pageTreeStore.rootFolder);
+		    // sort the result by the length of the srcKey, so that the root folder is first
+			result.sort((a, b) => a.srcKey.length - b.srcKey.length);
 			return result;
 		}
 		return [];
@@ -458,7 +421,6 @@
 	</div>
 	<div class="px-8">
 		{#if $pageTreeStore && $pageTreeStore.rootFolder}
-			{@const rootFolder = $pageTreeStore.rootFolder}
 			<h4 class="text-right text-sm text-slate-900">{$pageTreeStore.rootFolder.count} pages</h4>
 			<div class="justify-left flex py-2">
 				<PageTreeView {rootFolder} onClickFn={loadMarkdown} />
