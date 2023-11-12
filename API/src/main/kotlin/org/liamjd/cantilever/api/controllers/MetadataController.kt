@@ -19,9 +19,7 @@ import org.liamjd.cantilever.services.impl.extractPageModel
 /**
  * Generate metadata across posts, pages, templates etc
  **/
-class MetadataController(val sourceBucket: String) : KoinComponent, APIController {
-
-    private val s3Service: S3Service by inject()
+class MetadataController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
 
     /**
      * Perform a complete scan of the sources/ bucket and rebuild the metadata.json file in the generated/ folder

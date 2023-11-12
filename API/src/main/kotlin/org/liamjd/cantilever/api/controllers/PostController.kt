@@ -20,10 +20,7 @@ import java.nio.charset.Charset
 /**
  * Load, save and delete Posts from the S3 bucket. Operations will update the content tree.
  */
-class PostController(val sourceBucket: String) : KoinComponent, APIController {
-    private val s3Service: S3Service by inject()
-
-    private val contentTree: ContentTree = ContentTree()
+class PostController( sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
 
     /**
      * Load a markdown file with the specified `srcKey` and return it as [ContentNode.PostNode] response
@@ -127,22 +124,7 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
         return metadata.apply { this.body = body }
     }
 
-    /**
-     * Load the content tree from the S3 bucket
-     */
-    private fun loadContentTree() {
-        if (s3Service.objectExists("generated/metadata.json", sourceBucket)) {
-            info("Reading metadata.json from bucket $sourceBucket")
-            contentTree.clear()
-            val metadata = s3Service.getObjectAsString("generated/metadata.json", sourceBucket)
-            val newTree = Json.decodeFromString(ContentTree.serializer(), metadata)
-            contentTree.items.addAll(newTree.items)
-            contentTree.templates.addAll(newTree.templates)
-            contentTree.statics.addAll(newTree.statics)
-        } else {
-            warn("No metadata.json file found in bucket $sourceBucket; creating new empty tree")
-        }
-    }
+
 
     /**
      * Save the content tree to the S3 bucket

@@ -27,15 +27,13 @@ import java.nio.charset.Charset
 /**
  * Handle routes relating to document generation. Mostly this will be done by sending messages to the appropriate queues.
  */
-class GeneratorController(val sourceBucket: String) : KoinComponent, APIController {
+class GeneratorController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
 
     companion object {
         const val error_NO_RESPONSE = "No response received for message"
     }
 
-    private val s3Service: S3Service by inject()
     private val sqsService: SQSService by inject()
-
     private val markdownQueue: String = System.getenv(QUEUE.MARKDOWN) ?: "markdown_processing_queue"
 
     /**

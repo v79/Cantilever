@@ -18,9 +18,7 @@ import org.liamjd.cantilever.services.S3Service
 import java.net.URLDecoder
 import java.nio.charset.Charset
 
-class TemplateController(val sourceBucket: String) : KoinComponent, APIController {
-
-    private val s3Service: S3Service by inject()
+class TemplateController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
 
     /**
      * Load a handlebars template file with the specified 'srcKey' and return it as a [HandlebarsTemplate] response
@@ -41,7 +39,8 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
                     val template = Template(
                         handlebarSource,
                         templateObj.lastModified().toKotlinInstant(),
-                        metadata)
+                        metadata
+                    )
                     val handlebarsTemplate = HandlebarsTemplate(template, body.stripFrontMatter())
                     ResponseEntity.ok(body = APIResult.Success(handlebarsTemplate))
                 } else {

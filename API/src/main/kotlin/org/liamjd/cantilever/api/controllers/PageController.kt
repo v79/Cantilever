@@ -6,8 +6,10 @@ import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.toS3Key
 import org.liamjd.cantilever.common.toSlug
+import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.PageTreeNode
 import org.liamjd.cantilever.models.rest.MarkdownPage
+import org.liamjd.cantilever.models.rest.PostListDTO
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.S3Service
@@ -18,9 +20,30 @@ import java.nio.charset.Charset
 /**
  * Load, save and delete Pages from the S3 bucket
  */
-class PageController(val sourceBucket: String) : KoinComponent, APIController {
+class PageController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
 
-    private val s3Service: S3Service by inject()
+    /**
+     * Return a list of all the pages in the content tree
+     * @return [PostListDTO] object containing the list of posts, a count and the last updated date/time
+     */
+    fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostListDTO>> {
+        return if (s3Service.objectExists("generated/metadata.json", sourceBucket)) {
+            loadContentTree()
+            info("Fetching all posts from metadata.json")
+            val lastUpdated = s3Service.getUpdatedTime("generated/metadata.json", sourceBucket)
+            val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
+            val sorted = posts.sortedByDescending { it.date }
+            val postList = PostListDTO(
+                count = sorted.size,
+                lastUpdated = lastUpdated,
+                posts = sorted
+            )
+            ResponseEntity.ok(body = APIResult.Success(value = postList))
+        } else {
+            error("Cannot find file 'generated/metadata.json' in bucket $sourceBucket")
+            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file 'generated/metadata.json' in bucket $sourceBucket"))
+        }
+    }
 
     /**
      * Load a markdown file with the specified `srcKey` and return it as [MarkdownPage] response
@@ -54,7 +77,7 @@ class PageController(val sourceBucket: String) : KoinComponent, APIController {
             info("Creating folder '$slugged'")
             if (!s3Service.objectExists(slugged, sourceBucket)) {
                 val result = s3Service.createFolder(slugged, sourceBucket)
-                if(result != 0) {
+                if (result != 0) {
                     ResponseEntity.serverError(body = APIResult.Error("Folder '$slugged' was not created"))
                 }
                 ResponseEntity.ok(body = APIResult.OK("Folder '$slugged' created"))

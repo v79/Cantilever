@@ -31,9 +31,7 @@ private const val APP_JSON = "application/json"
  * Manages all the project-wide configuration and json models
  * TODO: there is a lot of duplication in this class
  */
-class ProjectController(val sourceBucket: String) : KoinComponent, APIController {
-
-    private val s3Service: S3Service by inject()
+class ProjectController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
 
     /**
      * Return the 'cantilever.yaml' project definition file, in yaml format.
@@ -107,6 +105,7 @@ class ProjectController(val sourceBucket: String) : KoinComponent, APIController
     /**
      * Return a list of all the [PageMeta]s
      */
+    @Deprecated("Replaced with [PageController.getPages]")
     fun getPages(request: Request<Unit>): ResponseEntity<APIResult<PageTree>> {
         info("Retrieving all pages")
         return if (s3Service.objectExists(pagesKey, sourceBucket)) {

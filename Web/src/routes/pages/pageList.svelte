@@ -158,7 +158,7 @@
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
 				$activeStore.fileType = FileType.Page;
-				$activeStore.newSlug = $markdownStore.metadata!!.url;
+				$activeStore.newSlug = $markdownStore.metadata!!.slug;
 				let leafIndex = $activeStore.activeFile.lastIndexOf('/');
 				let folderString = '';
 				if(leafIndex >= pagesFolder.length) {
