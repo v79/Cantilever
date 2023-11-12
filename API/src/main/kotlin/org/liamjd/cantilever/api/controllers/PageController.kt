@@ -1,18 +1,14 @@
 package org.liamjd.cantilever.api.controllers
 
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.toS3Key
-import org.liamjd.cantilever.common.toSlug
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.PageTreeNode
 import org.liamjd.cantilever.models.rest.MarkdownPage
-import org.liamjd.cantilever.models.rest.PostListDTO
+import org.liamjd.cantilever.models.rest.PageListDTO
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
-import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.extractPageModel
 import java.net.URLDecoder
 import java.nio.charset.Charset
@@ -24,21 +20,23 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
 
     /**
      * Return a list of all the pages in the content tree
-     * @return [PostListDTO] object containing the list of posts, a count and the last updated date/time
+     * @return [PageListDTO] object containing the list of Pages and Folders, a count and the last updated date/time
      */
-    fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostListDTO>> {
+    fun getPages(request: Request<Unit>): ResponseEntity<APIResult<PageListDTO>> {
         return if (s3Service.objectExists("generated/metadata.json", sourceBucket)) {
             loadContentTree()
-            info("Fetching all posts from metadata.json")
+            info("Fetching all pages from metadata.json")
             val lastUpdated = s3Service.getUpdatedTime("generated/metadata.json", sourceBucket)
-            val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
-            val sorted = posts.sortedByDescending { it.date }
-            val postList = PostListDTO(
+            val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
+            val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>()
+            val sorted = pages.sortedByDescending { it.srcKey }
+            val pageList = PageListDTO(
                 count = sorted.size,
                 lastUpdated = lastUpdated,
-                posts = sorted
+                pages = pages,
+                folders = folders
             )
-            ResponseEntity.ok(body = APIResult.Success(value = postList))
+            ResponseEntity.ok(body = APIResult.Success(value = pageList))
         } else {
             error("Cannot find file 'generated/metadata.json' in bucket $sourceBucket")
             ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file 'generated/metadata.json' in bucket $sourceBucket"))

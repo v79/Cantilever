@@ -80,33 +80,45 @@ export enum FileType {
  */
 export class PageTree {
 	lastUpdated: Date;
-	container: FolderNode;
+	rootFolder: FolderNode;
 
-	constructor(lastUpdated: Date, containerNode: FolderNode) {
+	constructor(lastUpdated: Date, rootFolder: FolderNode) {
 		this.lastUpdated = lastUpdated;
-		this.container = containerNode;
+		this.rootFolder = rootFolder;
 	}
 }
+
+
+/**
+ * Common interface for Pages and FolderNodes so they can be valid children of FolderNodes
+ */
+export interface TreeNode {
+	type: string;
+	srcKey: string;
+}
+
 
 /**
  * FolderNode represents a folder, or more accurately a shared prefix in S3
  */
 export class FolderNode implements TreeNode {
-	nodeType: string;
+	type: string;
 	srcKey: string;
 	count: number;
+	indexPage: string | null;
 	children: TreeNode[];
 
-	constructor(type: string, srcKey: string, count: number, children: TreeNode[]) {
-		this.nodeType = type;
+	constructor(type: string, srcKey: string, children: TreeNode[], indexPage: string | null) {
+		this.type = type;
 		this.srcKey = srcKey;
-		this.count = count;
+		this.count = children.length;
 		this.children = children;
+		this.indexPage = indexPage;
 	}
 
 	depthSort() {
 		return this.children.sort((a: TreeNode, b: TreeNode) => {
-			if (a.nodeType === 'folder' && b.nodeType === 'folder') {
+			if (a.type === 'folder' && b.type === 'folder') {
 				const aFolder = a as FolderNode;
 				const bFolder = b as FolderNode;
 				if (aFolder.srcKey.split('/').length > bFolder.srcKey.split('/').length) return 1;
@@ -116,13 +128,6 @@ export class FolderNode implements TreeNode {
 			return 0;
 		});
 	}
-}
-
-/**
- * Common interface for Pages and FolderNodes so they can be valid children of FolderNodes
- */
-export interface TreeNode {
-	nodeType: string;
 }
 
 /**
@@ -203,7 +208,7 @@ export class Post extends MetadataItem {
  * This is metadata only, it does not contain the body content.
  */
 export class Page implements MetadataItem, TreeNode {
-	nodeType: string;
+	type: string;
 	title: string;
 	srcKey: string;
 	templateKey: string;
@@ -211,6 +216,7 @@ export class Page implements MetadataItem, TreeNode {
 	lastUpdated: Date;
 	attributes: Map<string, string>;
 	sections: Map<string, string>;
+	parent: string | FolderNode | null;
 
 	constructor(
 		nodeType: string,
@@ -220,9 +226,10 @@ export class Page implements MetadataItem, TreeNode {
 		slug: string,
 		lastUpdated: Date,
 		attributes: Map<string, string>,
-		sections: Map<string, string>
+		sections: Map<string, string>,
+		parent: string | FolderNode | null
 	) {
-		this.nodeType = nodeType;
+		this.type = nodeType;
 		this.title = title;
 		this.srcKey = srcKey;
 		this.templateKey = templateKey;
@@ -230,6 +237,7 @@ export class Page implements MetadataItem, TreeNode {
 		this.lastUpdated = lastUpdated;
 		this.attributes = attributes;
 		this.sections = sections;
+		this.parent = parent;
 	}
 
 	getDateString(): string {
