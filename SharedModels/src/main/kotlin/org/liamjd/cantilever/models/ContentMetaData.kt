@@ -37,8 +37,11 @@ sealed interface ContentMetaDataBuilder {
     }
 
     object PageBuilder : ContentMetaDataBuilder {
+        /**
+         * I can't use the Yaml.decodeFromString() extension function here, as page metadata is not, technically, valid YAML
+         * It's a series of key:value pairs, followed by named sections, each of which is a markdown block
+         */
         override fun buildFromSourceString(sourceString: String, srcKey: SrcKey): ContentNode.PageNode {
-            // I can't use the Yaml.decodeFromString() extension function here, as page metadata is not, technically, valid YAML
 
             val sectionRegex = Regex("(\n-{3} #)")
             val customSections = if (sectionRegex.containsMatchIn(sourceString)) {

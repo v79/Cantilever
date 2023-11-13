@@ -12,7 +12,6 @@ import org.liamjd.cantilever.models.ContentTree
 import org.liamjd.cantilever.models.TemplateMetadata
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
-import org.liamjd.cantilever.services.impl.extractPageModel
 
 /**
  * Generate metadata across posts, pages, templates etc
@@ -102,19 +101,13 @@ class MetadataController(sourceBucket: String) : KoinComponent, APIController(so
      */
     private fun buildPageNode(pageKey: String): ContentNode.PageNode {
         val pageContents = s3Service.getObjectAsString(pageKey, sourceBucket)
-        val frontmatter = extractPageModel(pageKey, pageContents)
-        val parentFolder = pageKey.substringBeforeLast("/")
-        val page = ContentNode.PageNode(
-            srcKey = pageKey,
-            title = frontmatter.title,
-            templateKey = frontmatter.templateKey,
-            slug = frontmatter.url,
-            isRoot = frontmatter.isRoot,
-            attributes = frontmatter.attributes,
-            sections = frontmatter.sections.keys.associateWith { "" }
+        val metadata = ContentMetaDataBuilder.PageBuilder.buildFromSourceString(
+            sourceString = pageContents,
+            srcKey = pageKey
         )
-        page.parent = parentFolder
-        return page
+        val parentFolder = pageKey.substringBeforeLast("/")
+        metadata.parent = parentFolder
+        return metadata
     }
 
     /**

@@ -73,16 +73,9 @@ class LambdaRouter : RequestHandlerWrapper() {
                         MimeType.json
                     )
                 )
-                group("/posts") {
-//                    get("", projectController::getPosts)
-                    put(
-                        "/rebuild", projectController::rebuildPostList
-                    )
-                }
                 group("/pages") {
                     get("", pageController::getPages)
                     post("/", pageController::saveMarkdownPageSource).supplies(setOf(MimeType.plainText))
-                    put("/rebuild", projectController::rebuildPageTree)
                     get("/$SRCKEY", pageController::loadMarkdownSource)
                     put("/folder/new/{folderName}", pageController::createFolder).supplies(setOf(MimeType.plainText))
                 }
