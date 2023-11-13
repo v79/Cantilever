@@ -34,7 +34,7 @@ data class ResponseEntity<T : Any>(
 
         /**
          * 202
-         * @param body will be ignored as no content is sent with the HTTP 204 message
+         * @param body will be ignored as no content is sent with the HTTP 202 message
          */
         inline fun <reified T : Any> accepted(
             body: T? = null,

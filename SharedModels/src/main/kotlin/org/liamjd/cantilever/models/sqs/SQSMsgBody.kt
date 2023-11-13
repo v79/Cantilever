@@ -18,9 +18,11 @@ sealed class SqsMsgBody {
     /**
      * Data class representing a message sent whenever a markdown [ContentNode.PostNode] file is uploaded to the source bucket
      */
+    @Deprecated("Use MarkdownSQSMessage.PostUploadMsg instead")
     @Serializable
     data class MarkdownPostUploadMsg(val metadata: ContentNode.PostNode, val markdownText: String) : SqsMsgBody()
 
+    @Deprecated("Use MarkdownSQSMessage.PageUploadMsg instead")
     @Serializable
     data class MarkdownPageUploadMsg(val metadata: ContentNode.PageNode, val markdownText: String) : SqsMsgBody()
 
@@ -59,6 +61,7 @@ sealed class SqsMsgBody {
     /**
      * Message to send to the handlebars template engine when a .css file is uploaded.
      */
+    @Deprecated("Use TemplateSQSMessage.StaticRenderMsg instead")
     @Serializable
     data class CssMsg(val srcKey: String, val destinationKey: String) : SqsMsgBody()
 
@@ -66,6 +69,7 @@ sealed class SqsMsgBody {
      * Once markdown processing is complete, it sends this message to the handlebars template engine
      * so that the complete web page can be generated for the given Post
      */
+    @Deprecated("Use TemplateSQSMessage.RenderPostMsg instead")
     @Serializable
     data class PostReadyToRenderMsg(val fragmentKey: String, val metadata: ContentNode.PostNode) : SqsMsgBody()
 
@@ -73,6 +77,7 @@ sealed class SqsMsgBody {
      * Once markdown processing is complete, it sends this message to the handlebars template engine
      * so that the complete web page can be generated for the given Page
      */
+    @Deprecated("Use TemplateSQSMessage.RenderPageMsg instead")
     @Serializable
     data class PageReadyToRenderMsg(val fragmentKey: String, val metadata: ContentNode.PageNode) : SqsMsgBody()
 }
