@@ -62,7 +62,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
                     is SqsMsgBody.PageHandlebarsModelMsg -> {
                         logger.error("PageHandlebarsModelMsg is obsolete")
-                        renderPage(sqsMsgBody, sourceBucket, project, destinationBucket)
+//                        renderPage(sqsMsgBody, sourceBucket, project, destinationBucket)
                     }
 
                     is SqsMsgBody.PageReadyToRenderMsg -> {
@@ -133,8 +133,6 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         project: CantileverProject,
         destinationBucket: String
     ) {
-
-
         val pageTemplateKey = pageMsg.template
 
         // load the page.html.hbs template
@@ -156,8 +154,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             model[name] = html
         }
 
-        model["pages"] = navigationBuilder.filterPages()
-        model["posts"] = navigationBuilder.filterPosts()
+
 
         logger.info("Final page model keys: ${model.keys}")
         val html = with(logger) {
@@ -184,9 +181,6 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         project: CantileverProject,
         destinationBucket: String
     ) {
-        val contentTreeJson = s3Service.getObjectAsString("generated/contentTree.json", sourceBucket)
-        val contentTree = Json.decodeFromString<ContentTree>(contentTreeJson)
-
         val pageTemplateKey = pageMsg.metadata.templateKey
 
         // load the page.html.hbs template
@@ -201,6 +195,9 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         model["title"] = pageMsg.metadata.title
         model["lastModified"] = pageMsg.metadata.lastUpdated
         model.putAll(pageMsg.metadata.attributes)
+
+        model["pages"] = navigationBuilder.filterPages()
+        model["posts"] = navigationBuilder.filterPosts()
 
         pageMsg.metadata.sections.forEach { (name, objectKey) ->
             val html = s3Service.getObjectAsString(objectKey, sourceBucket)

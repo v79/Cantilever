@@ -44,6 +44,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         logger.info("Received ${event.records.size} events received for Markdown processing")
 
         event.records.forEach { eventRecord ->
+            logger.info("Event record: ${eventRecord.body}")
             when (val sqsMsgBody = Json.decodeFromString<SqsMsgBody>(eventRecord.body)) {
                 is SqsMsgBody.MarkdownPostUploadMsg -> {
                     processPostUpload(sqsMsgBody, sourceBucket, handlebarQueueUrl)
