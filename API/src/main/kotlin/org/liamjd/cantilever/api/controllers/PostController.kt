@@ -122,8 +122,6 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
         return metadata.apply { this.body = body }
     }
 
-
-
     /**
      * Save the content tree to the S3 bucket
      */

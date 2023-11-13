@@ -64,7 +64,7 @@ fun extractPageModel(key: String, source: String): SqsMsgBody.PageModelMsg {
         key
     }
 
-    val isRoot = if(metadata.contains("isRoot:")) {
+    val isRoot = if (metadata.contains("isRoot:")) {
         metadata.substringAfter("isRoot:").substringBefore("\n").trim().toBoolean()
     } else {
         false

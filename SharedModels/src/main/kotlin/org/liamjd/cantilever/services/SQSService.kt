@@ -1,7 +1,6 @@
 package org.liamjd.cantilever.services
 
 import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
-import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.models.sqs.TemplateSQSMessage
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue
@@ -12,19 +11,6 @@ import software.amazon.awssdk.services.sqs.model.SendMessageResponse
  */
 interface SQSService {
     val region: Region
-
-    /**
-     * Send a message to the given queue
-     * @param toQueue the name of the SQS queue
-     * @param body the message body, which will be serialized to Json
-     * @param messageAttributes a map of [MessageAttributeValue], or an empty map
-     * @return AWS [SendMessageResponse] or null
-     */
-    fun sendMessage(
-        toQueue: String,
-        body: SqsMsgBody,
-        messageAttributes: Map<String, MessageAttributeValue> = emptyMap()
-    ): SendMessageResponse?
 
     /**
      * Send a message to the given queue which converts Markdown to HTML fragments

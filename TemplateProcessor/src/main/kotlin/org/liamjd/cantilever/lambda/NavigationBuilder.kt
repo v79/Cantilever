@@ -17,8 +17,7 @@ class NavigationBuilder(s3Service: S3Service, sourceBucket: String) {
      * Return a useful map of [ContentNode.PostNode] objects
      */
     fun getPostNavigationObjects(
-        currentPost: ContentNode.PostNode,
-        sourceBucket: String
+        currentPost: ContentNode.PostNode
     ): Map<String, ContentNode.PostNode?> {
         val navMap: MutableMap<String, ContentNode.PostNode?> = mutableMapOf()
         val postList = filterPosts()
@@ -73,17 +72,17 @@ class NavigationBuilder(s3Service: S3Service, sourceBucket: String) {
     }
 
     /**
-     * Return a useful map of [ContentNode.PostNode] objects
+     * Return a useful map of [ContentNode.PostNode] objects, sorted by date
      */
     fun filterPosts(): List<ContentNode.PostNode> {
-        return contentTree.items.filterIsInstance<ContentNode.PostNode>()
+        return contentTree.items.filterIsInstance<ContentNode.PostNode>().sortedByDescending { it.date }
     }
 
     /**
-     * Return a useful map of [ContentNode.PageNode] objects
+     * Return a useful map of [ContentNode.PageNode] objects, sorted by lastUpdated date
      */
     fun filterPages(): List<ContentNode.PageNode> {
-        return contentTree.items.filterIsInstance<ContentNode.PageNode>()
+        return contentTree.items.filterIsInstance<ContentNode.PageNode>().sortedByDescending { it.lastUpdated }
     }
 
     /**

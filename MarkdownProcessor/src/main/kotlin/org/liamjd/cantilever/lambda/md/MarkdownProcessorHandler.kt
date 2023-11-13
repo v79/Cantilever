@@ -11,7 +11,6 @@ import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.QUEUE
 import org.liamjd.cantilever.common.S3_KEY.fragments
 import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
-import org.liamjd.cantilever.models.sqs.SqsMsgBody
 import org.liamjd.cantilever.models.sqs.TemplateSQSMessage
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
@@ -72,7 +71,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         sourceBucket: String,
         handlebarQueueUrl: String
     ): String {
-        val fragmentPrefix = fragments + sqsMsgBody.metadata.srcKey + "/"
+        val fragmentPrefix = fragments + sqsMsgBody.metadata.slug + "/"
         val sectionMap = mutableMapOf<String, String>()
         var bytesWritten = 0
         var responseString = "200 OK"
