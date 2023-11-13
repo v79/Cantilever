@@ -3,6 +3,7 @@ package org.liamjd.cantilever.api.controllers
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.models.ContentTree
 import org.liamjd.cantilever.services.S3Service
 
@@ -15,16 +16,16 @@ abstract class APIController(val sourceBucket: String) : KoinComponent {
      * Load the content tree from the S3 bucket
      */
     fun loadContentTree() {
-        if (s3Service.objectExists("generated/metadata.json", sourceBucket)) {
+        if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
             info("Reading metadata.json from bucket $sourceBucket")
             contentTree.clear()
-            val metadata = s3Service.getObjectAsString("generated/metadata.json", sourceBucket)
+            val metadata = s3Service.getObjectAsString(S3_KEY.metadataKey, sourceBucket)
             val newTree = Json.decodeFromString(ContentTree.serializer(), metadata)
             contentTree.items.addAll(newTree.items)
             contentTree.templates.addAll(newTree.templates)
             contentTree.statics.addAll(newTree.statics)
         } else {
-            warn("No metadata.json file found in bucket $sourceBucket; creating new empty tree")
+            warn("No '${S3_KEY.metadataKey}' file found in bucket $sourceBucket; creating new empty tree")
         }
     }
 

@@ -2,6 +2,7 @@ package org.liamjd.cantilever.api.controllers
 
 import org.koin.core.component.KoinComponent
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.toS3Key
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
@@ -22,10 +23,10 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * @return [PageListDTO] object containing the list of Pages and Folders, a count and the last updated date/time
      */
     fun getPages(request: Request<Unit>): ResponseEntity<APIResult<PageListDTO>> {
-        return if (s3Service.objectExists("generated/metadata.json", sourceBucket)) {
+        return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
             loadContentTree()
             info("Fetching all pages from metadata.json")
-            val lastUpdated = s3Service.getUpdatedTime("generated/metadata.json", sourceBucket)
+            val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
             val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
             val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>()
             val sorted = pages.sortedByDescending { it.srcKey }
@@ -37,8 +38,8 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             )
             ResponseEntity.ok(body = APIResult.Success(value = pageList))
         } else {
-            error("Cannot find file 'generated/metadata.json' in bucket $sourceBucket")
-            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file 'generated/metadata.json' in bucket $sourceBucket"))
+            error("Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
         }
     }
 

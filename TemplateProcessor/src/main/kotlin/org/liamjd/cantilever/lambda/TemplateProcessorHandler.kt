@@ -30,7 +30,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
     private val s3Service: S3Service
     private lateinit var logger: LambdaLogger
-//    private lateinit var navigationBuilder: NavigationBuilder
+    private lateinit var navigationBuilder: NavigationBuilder
 
     init {
         s3Service = S3ServiceImpl(Region.EU_WEST_2)
@@ -44,9 +44,9 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         val destinationBucket = System.getenv("destination_bucket")
         val project: CantileverProject = getProjectModel(sourceBucket)
 
-//        with(logger) {
-//            navigationBuilder = NavigationBuilder(s3Service)
-//        }
+        with(logger) {
+            navigationBuilder = NavigationBuilder(s3Service, sourceBucket)
+        }
         logger.info("${event.records.size} records received for processing...")
 
         event.records.forEach { eventRecord ->
@@ -133,10 +133,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         project: CantileverProject,
         destinationBucket: String
     ) {
-        val pagesFile = s3Service.getObjectAsString("generated/pages.json", sourceBucket)
-        val postsFile = s3Service.getObjectAsString("generated/posts.json", sourceBucket)
-        val pageTree = Json.decodeFromString<PageTree>(pagesFile)
-        val postList = Json.decodeFromString<PostList>(postsFile)
+
 
         val pageTemplateKey = pageMsg.template
 
@@ -159,8 +156,8 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             model[name] = html
         }
 
-        model["pages"] = pageTree.container // TODO: WRONG
-        model["posts"] = postList.posts
+        model["pages"] = navigationBuilder.filterPages()
+        model["posts"] = navigationBuilder.filterPosts()
 
         logger.info("Final page model keys: ${model.keys}")
         val html = with(logger) {
@@ -240,6 +237,8 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         val body = s3Service.getObjectAsString(postMsg.fragmentKey, sourceBucket)
         logger.info("Loaded body fragment from '${fragments + postMsg.fragmentKey}: ${body.take(100)}'")
 
+
+
         // load template file as specified by metadata
         val template = postMsg.metadata.templateKey
         logger.info("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
@@ -255,10 +254,10 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         model["date"] = postMsg.metadata.date
 
         val html = with(logger) {
-//            val nav = navigationBuilder.getPostNavigationObjects(postMsg.metadata, sourceBucket)
-//            nav.entries.forEach {
-//                model[it.key] = it.value
-//            }
+            val nav = navigationBuilder.getPostNavigationObjects(postMsg.metadata, sourceBucket)
+            nav.entries.forEach {
+                model[it.key] = it.value
+            }
 
             val renderer = HandlebarsRenderer()
             renderer.render(model = model, template = templateString)

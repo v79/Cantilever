@@ -29,7 +29,7 @@ class MarkdownPageDTOTest {
         val lines = result.lines()
         assertEquals(separator,lines[0])
         assertEquals("title: Page", lines[1])
-        assertEquals("template: templateKey",lines[2])
+        assertEquals("templateKey: templateKey",lines[2])
         assertEquals(3,lines.size)
     }
 
@@ -53,7 +53,7 @@ class MarkdownPageDTOTest {
         val lines = result.lines()
         assertEquals(separator,lines[0])
         assertEquals("title: Page", lines[1])
-        assertEquals("template: templateKey",lines[2])
+        assertEquals("templateKey: templateKey",lines[2])
         assertEquals(5,lines.size)
     }
 
@@ -77,7 +77,7 @@ class MarkdownPageDTOTest {
         val lines = result.lines()
         assertEquals(separator,lines[0])
         assertEquals("title: Page", lines[1])
-        assertEquals("template: templateKey",lines[2])
+        assertEquals("templateKey: templateKey",lines[2])
         assertEquals(7,lines.size)
     }
 }

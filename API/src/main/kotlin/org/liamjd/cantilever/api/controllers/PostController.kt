@@ -3,6 +3,7 @@ package org.liamjd.cantilever.api.controllers
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
@@ -91,10 +92,10 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
      * @return [PostListDTO] object containing the list of posts, a count and the last updated date/time
      */
     fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostListDTO>> {
-        return if (s3Service.objectExists("generated/metadata.json", sourceBucket)) {
+        return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
             loadContentTree()
             info("Fetching all posts from metadata.json")
-            val lastUpdated = s3Service.getUpdatedTime("generated/metadata.json", sourceBucket)
+            val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
             val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
             val sorted = posts.sortedByDescending { it.date }
             val postList = PostListDTO(
@@ -104,8 +105,8 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
             )
             ResponseEntity.ok(body = APIResult.Success(value = postList))
         } else {
-            error("Cannot find file 'generated/metadata.json' in bucket $sourceBucket")
-            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file 'generated/metadata.json' in bucket $sourceBucket"))
+            error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
+            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
         }
     }
 
@@ -129,7 +130,7 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
     private fun saveContentTree() {
         val pretty = Json { prettyPrint = true }
         val metadata = pretty.encodeToString(ContentTree.serializer(), contentTree)
-        s3Service.putObject("generated/metadata.json", sourceBucket, metadata, "application/json")
+        s3Service.putObject(S3_KEY.metadataKey, sourceBucket, metadata, "application/json")
     }
 
     override fun info(message: String) = println("INFO: PostController: $message")
