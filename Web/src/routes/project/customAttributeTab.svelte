@@ -1,11 +1,10 @@
 <script lang="ts">
-	import { readable, readonly } from 'svelte/store';
 	import AttributeEdit from './attributeEdit.svelte';
 	import { projectStore } from './projectStore.svelte';
 
-	let addingNewAttribute: boolean = false;
-	let newAttributeKey: string = '';
-	let newAttributeValue: string = '';
+	let addingNewAttribute = false;
+	let newAttributeKey = '';
+	let newAttributeValue = '';
 
 	$: attributeCount = $projectStore.attributes.size;
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { activeStore } from '../stores/appStatusStore.svelte';
-	const none: string = 'none';
+	const none = 'none';
 </script>
 
 <h3 class="px-4 py-4 text-center text-2xl font-bold text-slate-200">Current file</h3>

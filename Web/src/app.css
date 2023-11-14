@@ -3,17 +3,17 @@
 @tailwind utilities;
 
 div.preview h2 {
-    @apply text-xl;
+	@apply text-xl;
 }
 div.preview h3 {
-    @apply text-lg;
+	@apply text-lg;
 }
 div.preview a {
-    text-decoration: underline;
+	text-decoration: underline;
 }
 div.preview ul > li {
-    @apply list-disc list-inside pl-4;
+	@apply list-inside list-disc pl-4;
 }
 div.preview li > ul > li {
-    @apply list-disc list-inside pl-4;
+	@apply list-inside list-disc pl-4;
 }

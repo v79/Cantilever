@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import type { FolderNode } from '../../models/structure';
 
 	export let rootFolder: FolderNode;

@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { Badge } from 'flowbite-svelte';
 	import type { HandlebarsTemplate } from '../../models/structure';
-	import { templateStore } from '../../stores/templateStore.svelte';
 	import TextInput from '../forms/textInput.svelte';
 
 	export let hbTemplate: HandlebarsTemplate;
-	export let body: string = '';
+	export let body = '';
 </script>
 
 <div class="relative mt-5 md:col-span-2 md:mt-0">
@@ -35,7 +34,7 @@
 						<div class="col-span-6 flex items-center justify-center space-x-4">
 							{#each hbTemplate.template.metadata.sections as section}
 								<Badge
-									class="bg-primary-100 dark:bg-primary-900 inline-flex items-center justify-center divide-gray-200 rounded-md border-gray-200 py-0.5  px-2.5 text-lg font-medium text-slate-200 dark:divide-gray-700 dark:border-gray-700 dark:text-slate-800 border-2"
+									class="bg-primary-100 dark:bg-primary-900 inline-flex items-center justify-center divide-gray-200 rounded-md border-2 border-gray-200  px-2.5 py-0.5 text-lg font-medium text-slate-200 dark:divide-gray-700 dark:border-gray-700 dark:text-slate-800"
 									>{section}</Badge>
 							{/each}
 						</div>

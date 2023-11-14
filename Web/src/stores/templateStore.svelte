@@ -1,10 +1,6 @@
 <script lang="ts" context="module">
 	import { writable } from 'svelte/store';
-	import {
-		type AllTemplates,
-		type HandlebarsTemplate as HBTemplateType,
-		TemplateMetadata
-	} from '../models/structure';
+	import { type AllTemplates, TemplateMetadata } from '../models/structure';
 	import { Template, HandlebarsTemplate } from '../models/structure';
 
 	export const allTemplatesStore = writable<AllTemplates>({

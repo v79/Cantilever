@@ -1,7 +1,7 @@
 <script lang="ts">
-    import {slide} from 'svelte/transition';
-    import {notificationStore} from '../../stores/notificationStore.svelte';
-    import {Toast} from 'flowbite-svelte';
+	import { slide } from 'svelte/transition';
+	import { notificationStore } from '../../stores/notificationStore.svelte';
+	import { Toast } from 'flowbite-svelte';
 </script>
 
 <Toast

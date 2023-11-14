@@ -7,7 +7,7 @@
 	import Viditor from '../Viditor.svelte';
 
 	export let metadata: Post;
-	export let body: string = '';
+	export let body = '';
 	export let previewModal = false;
 </script>
 

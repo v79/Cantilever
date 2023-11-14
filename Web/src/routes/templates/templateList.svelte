@@ -2,7 +2,7 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import HandlebarListItem from '../../components/handlebarListItem.svelte';
 	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import { FileType, FolderNode, HandlebarsItem, HandlebarsTemplate, Post, Template } from '../../models/structure';
+	import { FileType, FolderNode, HandlebarsItem, HandlebarsTemplate } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import {
@@ -108,14 +108,16 @@
 				$activeStore.isNewFile = false;
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
-				$activeStore.newSlug = "";
+				$activeStore.newSlug = '';
 				$activeStore.fileType = FileType.Template;
-				$activeStore.folder = new FolderNode("folder","sources/templates/",0,[]);
+				$activeStore.folder = new FolderNode('folder', 'sources/templates/', 0, []);
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
 			} else {
-				console.log('Failed to fetch template ' + key + ' and no error was returned; perhaps wrong type?');
+				console.log(
+					'Failed to fetch template ' + key + ' and no error was returned; perhaps wrong type?'
+				);
 			}
 		});
 	}

@@ -17,7 +17,7 @@
 	import { Spinner } from 'flowbite-svelte';
 	import { writable } from 'svelte/store';
 	import { fade } from 'svelte/transition';
-	export let spinnerID: string = 'globalSpinner';
+	export let spinnerID = 'globalSpinner';
 </script>
 
 {#if $spinnerStore.shown}

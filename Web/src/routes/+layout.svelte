@@ -1,10 +1,10 @@
 <script lang="ts">
-    import '../app.css';
-    import {onMount} from 'svelte';
-    import {Footer, FooterCopyright, FooterLink, FooterLinkGroup} from 'flowbite-svelte';
-    import Navigation from '../components/navigation.svelte';
+	import '../app.css';
+	import { onMount } from 'svelte';
+	import { Footer, FooterCopyright, FooterLink, FooterLinkGroup } from 'flowbite-svelte';
+	import Navigation from '../components/navigation.svelte';
 
-    export const warmTimer = 60 * 1000;
+	export const warmTimer = 60 * 1000;
 
 	onMount(async () => {
 		async function warm() {

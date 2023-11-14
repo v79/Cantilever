@@ -19,7 +19,7 @@
 	var postsPage: boolean,
 		templatesPage: boolean,
 		projectPage: boolean,
-		pagesPage: boolean = false;
+		pagesPage = false;
 	var title = 'Cantilever Editor';
 
 	onMount(() => {});
