@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.9.10"
+    kotlin("jvm") version "1.9.20"
     application
     `maven-publish`
     id("org.sonarqube") version "4.4.1.3373"
@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "org.liamjd"
-version = "0.0.7"
+version = "0.0.8"
 
 repositories {
     mavenCentral()
