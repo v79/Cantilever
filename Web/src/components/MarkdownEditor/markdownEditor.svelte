@@ -35,11 +35,21 @@
 	});
 
 	function saveFile() {
-		// TODO: This needs to change
 		console.log('Saving file ', $markdownStore.metadata?.srcKey);
-		let postJson = JSON.stringify($markdownStore);
+		// unwrap the metadata object and store it in a new object with the body
+		let objectToSave = {
+			title: $markdownStore.metadata?.title,
+			templateKey: $markdownStore.metadata?.templateKey,
+			srcKey: $markdownStore.metadata?.srcKey,
+			slug: $markdownStore.metadata?.slug,
+			//@ts-ignore
+			date: $markdownStore.metadata?.date,
+			body: $markdownStore.body
+		};
 
-		fetch('https://api.cantilevers.org/posts/', {
+		let postJson = JSON.stringify(objectToSave);
+		console.log(postJson);
+		fetch('https://api.cantilevers.org/posts/save', {
 			method: 'POST',
 			headers: {
 				Accept: 'text/plain',
@@ -168,9 +178,11 @@
 				on:click={(e) => {
 					let srcKey = 'sources/posts/' + saveNewFileSlug + '.md';
 					spinnerStore.set({ message: 'Saving ' + srcKey, shown: true });
-					$markdownStore.metadata.srcKey = srcKey;
-					$markdownStore.metadata.url = saveNewFileSlug;
-					$markdownStore.metadata.lastUpdated = new Date().toISOString();
+					if ($markdownStore.metadata) {
+						$markdownStore.metadata.srcKey = srcKey;
+						$markdownStore.metadata.slug = saveNewFileSlug;
+						$markdownStore.metadata.lastUpdated = new Date();
+					}
 					saveFile();
 				}}>Save</Button>
 		{/if}

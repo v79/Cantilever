@@ -3,78 +3,81 @@ package org.liamjd.cantilevers.models.rest
 import org.junit.jupiter.api.Test
 
 import org.junit.jupiter.api.Assertions.*
-import org.liamjd.cantilever.models.PageTreeNode
-import org.liamjd.cantilever.models.rest.MarkdownPage
+import org.liamjd.cantilever.models.ContentNode
+import org.liamjd.cantilever.models.rest.MarkdownPageDTO
 
-class MarkdownPageTest {
+class MarkdownPageDTOTest {
 
     private val separator = "---"
 
     @Test
     fun `should create simplest page with no custom parts`() {
-        val pageMeta = PageTreeNode.PageMeta(
+        val pageMeta = ContentNode.PageNode(
             title = "Page",
             srcKey = "page.md",
             templateKey = "templateKey",
-            url = "",
+            slug = "",
             attributes = emptyMap(),
-            sections = emptyMap()
+            sections = emptyMap(),
+            isRoot = false
         )
 
-        val markdownPage = MarkdownPage(metadata = pageMeta)
+        val markdownPageDTO = MarkdownPageDTO(metadata = pageMeta)
 
-        val result = markdownPage.toString()
+        val result = markdownPageDTO.toString()
         println(result)
         val lines = result.lines()
         assertEquals(separator,lines[0])
         assertEquals("title: Page", lines[1])
-        assertEquals("template: templateKey",lines[2])
+        assertEquals("templateKey: templateKey",lines[2])
         assertEquals(3,lines.size)
     }
 
     @Test
     fun `should create simplest page with custom attributes`() {
         val attributes = mapOf("name" to "Bob", "Age" to "43")
-        val pageMeta = PageTreeNode.PageMeta(
+        val pageMeta = ContentNode.PageNode(
             title = "Page",
             srcKey = "page.md",
             templateKey = "templateKey",
-            url = "",
+            slug = "",
             attributes = attributes,
-            sections = emptyMap()
+            sections = emptyMap(),
+            isRoot = false
         )
 
-        val markdownPage = MarkdownPage(metadata = pageMeta)
+        val markdownPageDTO = MarkdownPageDTO(metadata = pageMeta)
 
-        val result = markdownPage.toString()
+        val result = markdownPageDTO.toString()
         println(result)
         val lines = result.lines()
         assertEquals(separator,lines[0])
         assertEquals("title: Page", lines[1])
-        assertEquals("template: templateKey",lines[2])
+        assertEquals("templateKey: templateKey",lines[2])
         assertEquals(5,lines.size)
     }
 
     @Test
     fun `should create simplest page with custom sections`() {
         val sections = mapOf("apples" to "Green and red", "Berries" to "Blue and straw")
-        val pageMeta = PageTreeNode.PageMeta(
+        val pageMeta = ContentNode.PageNode(
             title = "Page",
             srcKey = "page.md",
             templateKey = "templateKey",
-            url = "",
+            slug = "",
             attributes = emptyMap(),
-            sections = sections
+            sections = sections,
+            isRoot = false
         )
 
-        val markdownPage = MarkdownPage(metadata = pageMeta)
+        val markdownPageDTO = MarkdownPageDTO(metadata = pageMeta)
 
-        val result = markdownPage.toString()
+        val result = markdownPageDTO.toString()
         println(result)
         val lines = result.lines()
         assertEquals(separator,lines[0])
         assertEquals("title: Page", lines[1])
-        assertEquals("template: templateKey",lines[2])
+        assertEquals("templateKey: templateKey",lines[2])
         assertEquals(7,lines.size)
     }
 }

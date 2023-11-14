@@ -6,15 +6,24 @@ package org.liamjd.cantilever.common
 object S3_KEY {
     const val sources = "sources"
     const val generated = "generated"
+    const val sourcesPrefix = "$sources/"
     const val postsPrefix = "$sources/posts/"
     const val pagesPrefix = "$sources/pages/"
     const val templatesPrefix = "${sources}/templates/"
     const val staticsPrefix = "${sources}/statics/"
     const val projectKey = "$sources/cantilever.yaml"
     const val fragments = "$generated/htmlFragments/"
+
+    @Deprecated("Use metadataKey instead")
     const val postsKey = "$generated/posts.json"
+
+    @Deprecated("Use metadataKey instead")
     const val pagesKey = "$generated/pages.json"
+
+    @Deprecated("Use metadataKey instead")
     const val templatesKey = "$generated/templates.json"
+    const val defaultPostTemplateKey = "$templatesPrefix/post.hbs"
+    const val metadataKey = "$generated/metadata.json"
 }
 
 /**
@@ -50,7 +59,8 @@ enum class SOURCE_TYPE(val folder: String) {
          * Return a [SOURCE_TYPE] for the given folder name
          * @param folderName should be "posts", "pages", "templates" or "statics"
          */
-        fun fromFolderName(folderName: String): SOURCE_TYPE = SOURCE_TYPE.entries.first { it.folder == folderName.lowercase() }
+        fun fromFolderName(folderName: String): SOURCE_TYPE =
+            SOURCE_TYPE.entries.first { it.folder == folderName.lowercase() }
     }
 }
 

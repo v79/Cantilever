@@ -1,8 +1,11 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
-import io.mockk.*
+import io.mockk.every
 import io.mockk.junit5.MockKExtension
+import io.mockk.mockk
+import io.mockk.mockkClass
+import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -64,7 +67,7 @@ class GeneratorControllerTest : KoinTest {
             every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns ""
         }
         declareMock<SQSService> {
-            every { mockSQS.sendMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
+            every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "1234"
         val controller = GeneratorController(sourceBucket)
@@ -80,10 +83,15 @@ class GeneratorControllerTest : KoinTest {
     fun `responds to request to regenerate post and sends to markdown queue`() {
         val mockSqsResponse = mockk<SendMessageResponse>()
         declareMock<S3Service> {
-            every { mockS3.getObjectAsString("sources/posts/my-holiday-post.md", sourceBucket) } returns ""
+            every { mockS3.getObjectAsString("sources/posts/my-holiday-post.md", sourceBucket) } returns """
+                title: My holiday post
+                templateKey: post
+                slug: my-holiday-post
+                date: 2023-10-20
+            """.trimIndent()
         }
         declareMock<SQSService> {
-            every { mockSQS.sendMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
+            every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "1234"
         val controller = GeneratorController(sourceBucket)
@@ -236,30 +244,127 @@ class GeneratorControllerTest : KoinTest {
   ]
 }
         """.trimIndent()
+
+        val mockMetaJson = """
+{
+  "items": [
+    {
+      "type": "page",
+      "srcKey": "sources/pages/about.md",
+      "lastUpdated": "2023-11-12T15:24:05.563049390Z",
+      "title": "About Cantilever",
+      "templateKey": "sources/templates/about.html.hbs",
+      "slug": "about",
+      "isRoot": false,
+      "attributes": {
+        "siteName": "Cantilever",
+        "author": "Liam Davison"
+      },
+      "sections": {
+        "body": ""
+      },
+      "parent": "sources/pages"
+    },
+    {
+      "type": "page",
+      "srcKey": "sources/pages/bio/about-me.md",
+      "lastUpdated": "2023-11-12T15:24:05.627497495Z",
+      "title": "About me",
+      "templateKey": "sources/templates/about.html.hbs",
+      "slug": "bio/about-me",
+      "isRoot": true,
+      "attributes": {
+      },
+      "sections": {
+        "body": ""
+      },
+      "parent": "sources/pages/bio"
+    },
+    {
+      "type": "page",
+      "srcKey": "sources/pages/dynamodb-design-thoughts.md",
+      "lastUpdated": "2023-11-12T15:24:05.735423913Z",
+      "title": "DynamoDB Design Thoughts",
+      "templateKey": "sources/templates/about.html.hbs",
+      "slug": "dynamodb-design-thoughts",
+      "isRoot": false,
+      "attributes": {
+      },
+      "sections": {
+        "body": ""
+      },
+      "parent": "sources/pages"
+    },
+    {
+      "type": "page",
+      "srcKey": "sources/pages/index.md",
+      "lastUpdated": "2023-11-12T15:24:05.768820097Z",
+      "title": "Cantilever",
+      "templateKey": "sources/templates/index.html.hbs",
+      "slug": "index",
+      "isRoot": false,
+      "attributes": {
+        "siteName": "Cantilever",
+        "author": "Liam John Davison"
+      },
+      "sections": {
+        "body": "",
+        "links": ""
+      },
+      "parent": "sources/pages"
+    },
+    {
+      "type": "page",
+      "srcKey": "sources/pages/new-approach.md",
+      "lastUpdated": "2023-11-12T15:24:05.819663508Z",
+      "title": "New Approach",
+      "templateKey": "sources/templates/about.html.hbs",
+      "slug": "new-approach",
+      "isRoot": false,
+      "attributes": {
+      },
+      "sections": {
+        "body": ""
+      },
+      "parent": "sources/pages"
+    }
+]
+}
+            """.trimIndent()
         val mockTodoPage = ""
         val mockTemplateText = ""
 
         declareMock<S3Service> {
             every { mockS3.objectExists(any(), sourceBucket) } returns true
-            every { mockS3.getObjectAsString("generated/pages.json", sourceBucket) } returns mockPageJson
-            every { mockS3.getObjectAsString("generated/posts.json", sourceBucket) } returns mockPostJson
-            every { mockS3.getObjectAsString("sources/pages/bio/about-me.md", sourceBucket)} returns mockTodoPage
+            every { mockS3.getObjectAsString("generated/metadata.json", sourceBucket) } returns mockMetaJson
+            every { mockS3.getObjectAsString("sources/pages/dynamodb-design-thoughts.md", sourceBucket) } returns mockTodoPage
+            every { mockS3.getObjectAsString("sources/pages/bio/about-me.md", sourceBucket) } returns mockTodoPage
             every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns mockTodoPage
-            every { mockS3.getObjectAsString("sources/templates/about.html.hbs",sourceBucket)} returns mockTemplateText
+            every { mockS3.getObjectAsString("sources/pages/new-approach.md", sourceBucket) } returns mockTodoPage
+
+            every {
+                mockS3.getObjectAsString(
+                    "sources/templates/about.html.hbs",
+                    sourceBucket
+                )
+            } returns mockTemplateText
         }
         declareMock<SQSService> {
-            every { mockSQS.sendMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
+            every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "2345"
         val controller = GeneratorController(sourceBucket)
-        val request = buildRequest(path = "/generate/template/sources%252Ftemplates%252Fabout.html.hbs", pathPattern = "/generate/template/{templateKey}")
+        val request = buildRequest(
+            path = "/generate/template/sources%252Ftemplates%252Fabout.html.hbs",
+            pathPattern = "/generate/template/{templateKey}"
+        )
 
         val response = controller.generateTemplate(request)
 
         assertNotNull(response)
         println(response)
         assertEquals(202, response.statusCode)
-        verify(exactly = 5) { mockSQS.sendMessage(any(), any(), any()) }
+        verify(exactly = 4) { mockSQS.sendMarkdownMessage(any(), any(), any()) }
     }
 
     @Test
@@ -275,7 +380,7 @@ class GeneratorControllerTest : KoinTest {
             every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns ""
         }
         declareMock<SQSService> {
-            every { mockSQS.sendMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
+            every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "3456"
         val controller = GeneratorController(sourceBucket)

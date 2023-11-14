@@ -7,13 +7,14 @@ import com.amazonaws.services.lambda.runtime.events.S3Event
 import kotlinx.serialization.SerializationException
 import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.common.SOURCE_TYPE.*
-import org.liamjd.cantilever.models.sqs.SqsMsgBody
+import org.liamjd.cantilever.models.ContentMetaDataBuilder
+import org.liamjd.cantilever.models.SrcKey
+import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
+import org.liamjd.cantilever.models.sqs.TemplateSQSMessage
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import org.liamjd.cantilever.services.impl.SQSServiceImpl
-import org.liamjd.cantilever.services.impl.extractPageModel
-import org.liamjd.cantilever.services.impl.extractPostMetadata
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
@@ -40,18 +41,18 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
     override fun handleRequest(event: S3Event, context: Context): String {
         logger = context.logger
         var response = "200 OK"
+        val markdownQueueURL = System.getenv(QUEUE.MARKDOWN)
+        val handlebarQueueURL = System.getenv(QUEUE.HANDLEBARS)
 
         logger.info("${event.records.size} upload events received")
 
         try {
-            val eventRecord = event.records[0]
+            val eventRecord = event.records[0] // TODO: No, this is wrong, we need to process all records
             val srcKey = eventRecord.s3.`object`.urlDecodedKey
             val srcBucket = eventRecord.s3.bucket.name
             val folderName =
                 srcKey.substringAfter('/').substringBefore('/') // the folder determines the type, POST, PAGE, STATICS
             val uploadFolder = SourceHelper.fromFolderName(folderName)
-            val markdownQueueURL = System.getenv(QUEUE.MARKDOWN)
-            val handlebarQueueURL = System.getenv(QUEUE.HANDLEBARS)
 
             logger.info("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
 
@@ -77,14 +78,14 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                     }
 
                     Templates -> {
-                        logger.info("No action defined for TEMPLATE upload")
+                        logger.warn("No action defined for TEMPLATE upload")
                     }
 
                     Statics -> {
                         logger.info("Analysing file type for static file upload")
                         when (fileType) {
                             FILE_TYPE.CSS -> {
-                                processCSSUpload(srcKey, srcBucket, handlebarQueueURL)
+                                processCSSUpload(srcKey, handlebarQueueURL)
                             }
                         }
                     }
@@ -118,13 +119,13 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             // extract metadata
-            val metadata = extractPostMetadata(filename = srcKey, source = sourceString)
+            val metadata =
+                ContentMetaDataBuilder.PostBuilder.buildFromSourceString(sourceString.getFrontMatter(), srcKey)
             logger.info("Extracted metadata: $metadata")
             // extract body
             val markdownBody = sourceString.stripFrontMatter()
-
-            val postModelMsg = SqsMsgBody.MarkdownPostUploadMsg(metadata, markdownBody)
-            sendMessage(queueUrl, postModelMsg, srcKey)
+            val postModelMsg = MarkdownSQSMessage.PostUploadMsg(metadata, markdownBody)
+            sendMarkdownMessage(queueUrl, postModelMsg, srcKey)
         } catch (qdne: QueueDoesNotExistException) {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
@@ -145,10 +146,12 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             val pageSrcKey = srcKey.removePrefix(S3_KEY.pagesPrefix) // just want the actual file name
             // extract page model
-            val pageModelMsg = extractPageModel(pageSrcKey, sourceString)
-            logger.info("Built page model for: ${pageModelMsg.srcKey}")
-
-            sendMessage(queueUrl, pageModelMsg, srcKey)
+            val metadata =
+                ContentMetaDataBuilder.PageBuilder.buildFromSourceString(sourceString, pageSrcKey)
+            val markdownBody = sourceString.stripFrontMatter()
+            val pageModelMsg = MarkdownSQSMessage.PageUploadMsg(metadata, markdownBody)
+            logger.info("Built page model for: ${pageModelMsg.metadata.srcKey}")
+            sendMarkdownMessage(queueUrl, pageModelMsg, srcKey)
         } catch (qdne: QueueDoesNotExistException) {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
@@ -161,31 +164,40 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
      */
     private fun processCSSUpload(
         srcKey: String,
-        srcBucket: String,
         queueUrl: String,
     ) {
         try {
             val destinationKey = "css/" + srcKey.removePrefix(S3_KEY.staticsPrefix)
-            val cssMsg = SqsMsgBody.CssMsg(srcKey, destinationKey)
+            val cssMsg = TemplateSQSMessage.StaticRenderMsg(srcKey, destinationKey)
             logger.info("Sending message to Handlebars queue for $cssMsg")
-            sendMessage(queueUrl, cssMsg, srcKey)
+            val msgResponse = sqsService.sendTemplateMessage(
+                toQueue = queueUrl,
+                body = cssMsg
+            )
+            if (msgResponse != null) {
+                logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+            } else {
+                logger.warn("No response received for message")
+            }
         } catch (qdne: QueueDoesNotExistException) {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         }
     }
 
     /**
-     * Send a message to the specified queue
+     * Send a message to the specified queue, for conversion to HTML
      * @param queueUrl the SQS queue
+     * @param markdownMsg the message to send
+     * @param srcKey the source key of the file
      */
-    private fun sendMessage(
+    private fun sendMarkdownMessage(
         queueUrl: String,
-        pageModelMsg: SqsMsgBody,
-        srcKey: String
+        markdownMsg: MarkdownSQSMessage,
+        srcKey: SrcKey
     ) {
-        val msgResponse = sqsService.sendMessage(
+        val msgResponse = sqsService.sendMarkdownMessage(
             toQueue = queueUrl,
-            body = pageModelMsg
+            body = markdownMsg
         )
         if (msgResponse != null) {
             logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")

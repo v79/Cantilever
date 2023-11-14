@@ -6,9 +6,7 @@
 		PageTree,
 		FolderNode,
 		TemplateMetadata,
-
 		FileType
-
 	} from '../../models/structure';
 	import type { Template, TreeNode } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
@@ -22,8 +20,9 @@
 	import { Modal } from 'flowbite-svelte';
 	import TextInput from '../../components/forms/textInput.svelte';
 	import { fetchTemplates } from '../../stores/templateStore.svelte';
+	import { root } from 'postcss';
 
-	$: rootFolder = $pageTreeStore.container;
+	$: rootFolder = $pageTreeStore.rootFolder;
 
 	let newFolderModal: boolean = false;
 	let newFolderName: string = '';
@@ -52,18 +51,15 @@
 		})
 			.then((response) => response.json())
 			.then((data) => {
-				console.dir(data);
+				console.log('Loaded all pages json');
+				// console.dir(data);
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
-				var rootFolder = new FolderNode(
-					'folder',
-					'sources/pages',
-					data.data.container.count,
-					new Array<TreeNode>()
-				);
+				var rootFolder = new FolderNode('folder', 'sources/pages/', new Array<TreeNode>(), null);
+				addFoldersToRoot(rootFolder, data.data.folders, data.data.pages);
+				// addNodesToContainer(rootFolder, data.data.pages);
 				var pageTree = new PageTree(data.data.lastUpdated, rootFolder);
-				addNodesToContainer(rootFolder, data.data.container.children);
 				pageTreeStore.set(pageTree);
 				$notificationStore.message = 'Loaded all pages ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
@@ -81,40 +77,52 @@
 			});
 	}
 
+	
 	/**
-	 * Recursive function which loops round the 'toAdd' array, and checks to see if the element is a Page or a Folder.
-	 * If it is a page, it adds it to the container.
-	 * If it is a folder, it creates a new sub-container (based on the folder), and calls this function recursively.
-	 * @param container a FolderNode in the tree
-	 * @param toAdd array of TreeNodes, which may be FolderNode or Page
+	 * Loop through all the folders and add them to the root folder. Then find the pages which match the children of the folder, and add them
+	 * This is not recursive, so it only adds the first level of folders.
+	 * @param root
+	 * @param folders
+	 * @param pages
 	 */
-	function addNodesToContainer(container: FolderNode, toAdd: Array<TreeNode>) {
-		if (toAdd) {
-			for (const node of toAdd) {
-				if (node.nodeType === 'page') {
-					var page = node as Page;
-					if (container.children == undefined) {
-						container.children = new Array<TreeNode>();
+	function addFoldersToRoot(root: FolderNode, folders: Array<TreeNode>, pages: Array<TreeNode>) {
+		if (folders) {
+			for (const node of folders) {
+				console.log('Adding folder ' + node.srcKey + ' to root');
+				var folder = node as FolderNode;
+				node.type = 'folder';
+				// we are given just the srcKeys of the child pages, so we need to find and convert these to Page objects
+				// these are strings, NOT TreeNodes
+				let childKeys: string[] = folder.children.map((child) => child.toString());
+				folder.children = [];
+				for (const childKey of childKeys) {
+					let childPage = pages.find((page) => page.srcKey === childKey);
+					if (childPage) {
+						folder.children.push(childPage);
 					}
-					container.children.push(page);
 				}
-				if (node.nodeType === 'folder') {
-					var folder = node as FolderNode;
-					if (folder.children) {
-						//@ts-ignore
-						var newFolder = new FolderNode('folder', folder.srcKey, folder.count, null);
-						container.children.push(newFolder);
-						addNodesToContainer(newFolder, folder.children);
-					} else {
-						//@ts-ignore
-						var newFolder = new FolderNode('folder', folder.srcKey, 0, []);
-						container.children.push(newFolder);
-					}
+	
+				if (root.children == undefined) {
+					root.children = new Array<TreeNode>();
+				}
+				root.children.push(folder);
+				root.count++;
+			}
+		}
+		if (pages) {
+			for (const node of pages) {
+				var page = node as Page;
+				page.type = 'page';
+				if (root.children == undefined) {
+					root.children = new Array<TreeNode>();
+				}
+				if (page.parent === 'sources/pages') {
+					root.children.push(page);
+					root.count++;
 				}
 			}
 		}
 	}
-
 	/**
 	 * Load the markdown for the specified page srcKey.
 	 * @param srcKey
@@ -145,11 +153,13 @@
 						data.data.metadata.title,
 						data.data.metadata.srcKey,
 						data.data.metadata.templateKey,
-						data.data.metadata.url,
+						data.data.metadata.slug,
 						data.data.metadata.lastUpdated,
 						new Map<string, string>(Object.entries(data.data.metadata.attributes)),
-						new Map<string, string>(Object.entries(data.data.metadata.sections))
-					),
+						new Map<string, string>(Object.entries(data.data.metadata.sections)),
+						data.data.metadata.isRoot,
+						data.data.metadata.parent
+						),
 					''
 				);
 				markdownStore.set(tmpPage);
@@ -158,18 +168,13 @@
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
 				$activeStore.fileType = FileType.Page;
-				$activeStore.newSlug = $markdownStore.metadata!!.url;
+				$activeStore.newSlug = $markdownStore.metadata!!.slug;
 				let leafIndex = $activeStore.activeFile.lastIndexOf('/');
 				let folderString = '';
-				if(leafIndex >= pagesFolder.length) {
-					folderString =  $activeStore.activeFile.substring(pagesFolder.length,leafIndex)
+				if (leafIndex >= pagesFolder.length) {
+					folderString = $activeStore.activeFile.substring(pagesFolder.length, leafIndex);
 				}
-				let folder = new FolderNode(
-					'folder',
-					pagesFolder + folderString,
-					0,
-					[]
-				);
+				let folder = new FolderNode('folder', pagesFolder + folderString, [], null);
 				$activeStore.folder = folder;
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
@@ -258,7 +263,9 @@
 				'',
 				new Date(),
 				new Map<string, string>(),
-				new Map(metadata.sections.map((obj) => [obj, '']))
+				new Map(metadata.sections.map((obj) => [obj, ''])),
+				false,
+				''
 			)
 		};
 		$markdownStore.metadata = newMDPage.metadata;
@@ -279,10 +286,13 @@
 	 * Return just the folders in the pageTreeStore
 	 */
 	function getFolders() {
-		if ($pageTreeStore.container.children) {
+		if ($pageTreeStore.rootFolder.children) {
 			let result = <FolderNode[]>(
-				$pageTreeStore.container.children.filter((value) => value.nodeType == 'folder')
+				$pageTreeStore.rootFolder.children.filter((value) => value.type == 'folder')
 			);
+			result.push($pageTreeStore.rootFolder);
+		    // sort the result by the length of the srcKey, so that the root folder is first
+			result.sort((a, b) => a.srcKey.length - b.srcKey.length);
 			return result;
 		}
 		return [];
@@ -410,8 +420,8 @@
 			>New Page</button>
 	</div>
 	<div class="px-8">
-		{#if $pageTreeStore && $pageTreeStore.container}
-			<h4 class="text-right text-sm text-slate-900">{$pageTreeStore.container.count} pages</h4>
+		{#if $pageTreeStore && $pageTreeStore.rootFolder}
+			<h4 class="text-right text-sm text-slate-900">{$pageTreeStore.rootFolder.count} pages</h4>
 			<div class="justify-left flex py-2">
 				<PageTreeView {rootFolder} onClickFn={loadMarkdown} />
 			</div>

@@ -1,37 +1,39 @@
 package org.liamjd.cantilever.api.controllers
 
+import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.models.rest.MarkdownPost
-import org.liamjd.cantilever.models.PostMeta
+import org.liamjd.cantilever.common.S3_KEY
+import org.liamjd.cantilever.common.getFrontMatter
+import org.liamjd.cantilever.models.ContentMetaDataBuilder
+import org.liamjd.cantilever.models.ContentNode
+import org.liamjd.cantilever.models.ContentTree
+import org.liamjd.cantilever.models.rest.PostListDTO
+import org.liamjd.cantilever.models.rest.PostNodeRestDTO
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
-import org.liamjd.cantilever.services.S3Service
-import org.liamjd.cantilever.services.impl.extractPostMetadata
 import java.net.URLDecoder
 import java.nio.charset.Charset
 
 /**
- * Load, save and delete Posts from the S3 bucket
+ * Load, save and delete Posts from the S3 bucket. Operations will update the content tree.
  */
-class PostController(val sourceBucket: String) : KoinComponent, APIController {
-    private val s3Service: S3Service by inject()
+class PostController( sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
 
     /**
-     * Load a markdown file with the specified `srcKey` and return it as [MarkdownPost] response
+     * Load a markdown file with the specified `srcKey` and return it as [ContentNode.PostNode] response
      */
-    fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<MarkdownPost>> {
+    fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<ContentNode.PostNode>> {
         val markdownSource = request.pathParameters["srcKey"]
         return if (markdownSource != null) {
-            val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
-            info("Loading Markdown file $decoded")
-            return if (s3Service.objectExists(decoded, sourceBucket)) {
-                val mdPost = buildMarkdownPost(decoded)
+            val srcKey = URLDecoder.decode(markdownSource, Charset.defaultCharset())
+            info("Loading Markdown file $srcKey")
+            return if (s3Service.objectExists(srcKey, sourceBucket)) {
+                val mdPost = buildPostNode(srcKey)
                 ResponseEntity.ok(body = APIResult.Success(mdPost))
             } else {
-                error("File '$decoded' not found")
-                ResponseEntity.notFound(body = APIResult.Error("Markdown file $decoded not found in bucket $sourceBucket"))
+                error("File '$srcKey' not found")
+                ResponseEntity.notFound(body = APIResult.Error("Markdown file $srcKey not found in bucket $sourceBucket"))
             }
         } else {
             ResponseEntity.badRequest(body = APIResult.Error("Invalid request for null source file"))
@@ -39,21 +41,24 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
     }
 
     /**
-     * Save a [MarkdownPost] to the sources bucket
+     * Receive a [PostNodeRestDTO] and convert it to a [ContentNode.PostNode] and save it to the S3 bucket
      */
-    fun saveMarkdownPost(request: Request<MarkdownPost>): ResponseEntity<APIResult<String>> {
+    fun saveMarkdownPost(request: Request<PostNodeRestDTO>): ResponseEntity<APIResult<String>> {
         info("saveMarkdownPost")
         val postToSave = request.body
-        val srcKey = URLDecoder.decode(postToSave.metadata.srcKey, Charset.defaultCharset())
-
-        // this if statement is a bit pointless just now as both routes do the same thing
+        val srcKey = URLDecoder.decode(postToSave.srcKey, Charset.defaultCharset())
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
-            info("Updating existing file '${postToSave.metadata.srcKey}'")
+            loadContentTree()
+            info("Updating existing file '${postToSave.srcKey}'")
             val length = s3Service.putObject(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
+            contentTree.updatePost(postToSave.toPostNode())
+            saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
             val length = s3Service.putObject(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
+            contentTree.insertPost(postToSave.toPostNode())
+            saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
     }
@@ -63,13 +68,14 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
      */
     fun deleteMarkdownPost(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val markdownSource = request.pathParameters["srcKey"]
-
         return if (markdownSource != null) {
+            loadContentTree()
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
-            info("Deleting Markdown file $decoded")
             return if (s3Service.objectExists(decoded, sourceBucket)) {
-                info("Deleting file $decoded")
+                info("Deleting Markdown file $decoded")
                 s3Service.deleteObject(decoded, sourceBucket)
+                contentTree.deletePost(markdownSource)
+                saveContentTree()
                 ResponseEntity.ok(body = APIResult.OK("Source $decoded deleted"))
             } else {
                 error("Could not delete $decoded; object not found")
@@ -82,27 +88,47 @@ class PostController(val sourceBucket: String) : KoinComponent, APIController {
     }
 
     /**
-     * Build a [MarkdownPost] object from the source specified
+     * Return a list of all the posts in the content tree
+     * @return [PostListDTO] object containing the list of posts, a count and the last updated date/time
      */
-    private fun buildMarkdownPost(
-        srcKey: String
-    ): MarkdownPost {
-        val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
-        val metadata = extractPostMetadata(filename = srcKey, source = markdown)
-
-        info("Returning MarkdownPost from $metadata")
-        val mdPostMeta = MarkdownPost(
-            PostMeta(
-                title = metadata.title,
-                srcKey = srcKey,
-                url = metadata.slug,
-                templateKey = metadata.template,
-                date = metadata.date,
-                lastUpdated = metadata.lastModified
+    fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostListDTO>> {
+        return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
+            loadContentTree()
+            info("Fetching all posts from metadata.json")
+            val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
+            val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
+            val sorted = posts.sortedByDescending { it.date }
+            val postList = PostListDTO(
+                count = sorted.size,
+                lastUpdated = lastUpdated,
+                posts = sorted
             )
-        )
-        mdPostMeta.body = markdown.substringAfter("---").substringAfter("---").trim()
-        return mdPostMeta
+            ResponseEntity.ok(body = APIResult.Success(value = postList))
+        } else {
+            error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
+            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
+        }
+    }
+
+    /**
+     * Build a [ContentNode.PostNode] object from the source specified, and add the full body text
+     */
+    private fun buildPostNode(
+        srcKey: String
+    ): ContentNode.PostNode {
+        val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
+        val metadata = ContentMetaDataBuilder.PostBuilder.buildFromSourceString(markdown.getFrontMatter(), srcKey)
+        val body = markdown.substringAfter("---").substringAfter("---").trim()
+        return metadata.apply { this.body = body }
+    }
+
+    /**
+     * Save the content tree to the S3 bucket
+     */
+    private fun saveContentTree() {
+        val pretty = Json { prettyPrint = true }
+        val metadata = pretty.encodeToString(ContentTree.serializer(), contentTree)
+        s3Service.putObject(S3_KEY.metadataKey, sourceBucket, metadata, "application/json")
     }
 
     override fun info(message: String) = println("INFO: PostController: $message")

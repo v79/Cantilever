@@ -1,6 +1,6 @@
 ---
 title: Generating an index page
-template: post
+templateKey: sources/templates/post.html.hbs
 date: 2023-02-27
 slug: posts-generating-an-index-page
 ---
@@ -12,7 +12,7 @@ Whereas a _post_ will really just contain one block of content, a _page_ may be 
 
 ```markdown
 ---
-template: page
+templateKey: sources/templates/post.html.hbs page
 #author: Liam
 --- #section-one
 This is the body of the page, the main section if you well.
@@ -40,4 +40,4 @@ In order to display the home page list of posts, the `index.html.hbs` template n
 
 ## And the terribly wrong thing...?
 
-All those triple-dash separators inside the sample markdown block where playing havoc with my metadata parser. I may need to consider a different separator. Something weird. Maybe ▶�
+All those triple-dash separators inside the sample markdown block where playing havoc with my metadata parser. I may need to consider a different separator. Something weird. Maybe ▶�

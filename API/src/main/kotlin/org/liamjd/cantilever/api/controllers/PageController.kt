@@ -1,31 +1,52 @@
 package org.liamjd.cantilever.api.controllers
 
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.toS3Key
-import org.liamjd.cantilever.common.toSlug
-import org.liamjd.cantilever.models.PageTreeNode
-import org.liamjd.cantilever.models.rest.MarkdownPage
+import org.liamjd.cantilever.models.ContentMetaDataBuilder
+import org.liamjd.cantilever.models.ContentNode
+import org.liamjd.cantilever.models.rest.MarkdownPageDTO
+import org.liamjd.cantilever.models.rest.PageListDTO
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
-import org.liamjd.cantilever.services.S3Service
-import org.liamjd.cantilever.services.impl.extractPageModel
 import java.net.URLDecoder
 import java.nio.charset.Charset
 
 /**
  * Load, save and delete Pages from the S3 bucket
  */
-class PageController(val sourceBucket: String) : KoinComponent, APIController {
-
-    private val s3Service: S3Service by inject()
+class PageController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
 
     /**
-     * Load a markdown file with the specified `srcKey` and return it as [MarkdownPage] response
+     * Return a list of all the pages in the content tree
+     * @return [PageListDTO] object containing the list of Pages and Folders, a count and the last updated date/time
      */
-    fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<MarkdownPage>> {
+    fun getPages(request: Request<Unit>): ResponseEntity<APIResult<PageListDTO>> {
+        return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
+            loadContentTree()
+            info("Fetching all pages from metadata.json")
+            val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
+            val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
+            val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>()
+            val sorted = pages.sortedByDescending { it.srcKey }
+            val pageList = PageListDTO(
+                count = sorted.size,
+                lastUpdated = lastUpdated,
+                pages = pages,
+                folders = folders
+            )
+            ResponseEntity.ok(body = APIResult.Success(value = pageList))
+        } else {
+            error("Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
+        }
+    }
+
+    /**
+     * Load a markdown file with the specified `srcKey` and return it as [MarkdownPageDTO] response
+     */
+    fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<MarkdownPageDTO>> {
         val markdownSource = request.pathParameters["srcKey"]
         return if (markdownSource != null) {
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
@@ -54,7 +75,7 @@ class PageController(val sourceBucket: String) : KoinComponent, APIController {
             info("Creating folder '$slugged'")
             if (!s3Service.objectExists(slugged, sourceBucket)) {
                 val result = s3Service.createFolder(slugged, sourceBucket)
-                if(result != 0) {
+                if (result != 0) {
                     ResponseEntity.serverError(body = APIResult.Error("Folder '$slugged' was not created"))
                 }
                 ResponseEntity.ok(body = APIResult.OK("Folder '$slugged' created"))
@@ -68,28 +89,18 @@ class PageController(val sourceBucket: String) : KoinComponent, APIController {
     }
 
     /**
-     * Build a [MarkdownPage] object from the source specified
+     * Build a [MarkdownPageDTO] object from the source specified
      */
-    private fun buildMarkdownPage(srcKey: String): MarkdownPage {
+    private fun buildMarkdownPage(srcKey: String): MarkdownPageDTO {
         val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
-        val metadata = extractPageModel(key = srcKey, source = markdown)
-        val pageMeta = PageTreeNode.PageMeta(
-            nodeType = "page",
-            title = metadata.title,
-            templateKey = metadata.templateKey,
-            srcKey = srcKey,
-            url = metadata.url,
-            attributes = metadata.attributes,
-            sections = metadata.sections
-        )
-
-        return MarkdownPage(pageMeta)
+        val pageMeta = ContentMetaDataBuilder.PageBuilder.buildFromSourceString(markdown, srcKey)
+        return MarkdownPageDTO(pageMeta)
     }
 
     /**
-     * Save a [MarkdownPage] to the sources bucket
+     * Save a [MarkdownPageDTO] to the sources bucket
      */
-    fun saveMarkdownPageSource(request: Request<MarkdownPage>): ResponseEntity<APIResult<String>> {
+    fun saveMarkdownPageSource(request: Request<MarkdownPageDTO>): ResponseEntity<APIResult<String>> {
         info("saveMarkdownPageSource")
         val pageToSave = request.body
         pageToSave.also {

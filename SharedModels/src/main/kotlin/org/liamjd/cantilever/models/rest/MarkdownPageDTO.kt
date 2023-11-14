@@ -1,28 +1,24 @@
 package org.liamjd.cantilever.models.rest
 
 import kotlinx.serialization.Serializable
-import org.liamjd.cantilever.models.PageTreeNode
+import org.liamjd.cantilever.models.ContentNode
 
 /**
- * REST API model wrapping a [PageMeta] metadata object and the sources of each named section. This what is edited/saved.
+ * REST API model wrapping a [ContentNode.PageNode] metadata object and the sources of each named section. This what is edited/saved.
  */
 @Serializable
-class MarkdownPage(
-    val metadata: PageTreeNode.PageMeta,
-    val body: String = ""
-) {
-    // the front-end sends a body in its MarkdownContent class, but is not needed for a Page
+class MarkdownPageDTO(val metadata: ContentNode.PageNode, val body: String = "", val type: String? = null) {
     override fun toString(): String {
         val sBuilder = StringBuilder()
         sBuilder.apply {
-            appendLine(separator)
+            appendLine(SEPARATOR)
             appendLine("title: ${metadata.title}")
-            appendLine("template: ${metadata.templateKey}")
+            appendLine("templateKey: ${metadata.templateKey}")
             metadata.attributes.forEach {
                 appendLine("#${it.key}: ${it.value}")
             }
             metadata.sections.forEach {
-                appendLine("$separator #${it.key}")
+                appendLine("$SEPARATOR #${it.key}")
                 appendLine(it.value)
             }
         }
@@ -30,6 +26,6 @@ class MarkdownPage(
     }
 
     companion object {
-        const val separator = "---"
+        const val SEPARATOR = "---"
     }
 }

@@ -15,6 +15,41 @@
 
 	// onMount(async () => {});
 
+	async function rebuildAll() {
+		console.log('Testing new metadata rebuild');
+		let token = $userStore.token;
+		notificationStore.set({ shown: false, message: '', type: 'info' });
+		fetch('https://api.cantilevers.org/metadata/rebuild', {
+			method: 'PUT',
+			headers: {
+				Accept: 'application/json',
+				Authorization: 'Bearer ' + token,
+				'X-Content-Length': '0'
+			},
+			mode: 'cors'
+		})
+			.then((response) => response.text())
+			.then((data) => {
+				console.log(data);
+				notificationStore.set({
+					message: data,
+					shown: true,
+					type: 'success'
+				});
+				loadAllPosts();
+			})
+			.catch((error) => {
+				console.log(error);
+				notificationStore.set({
+					message: error,
+					shown: true,
+					type: 'error'
+				});
+				$spinnerStore.shown = false;
+				return {};
+			});
+	}
+
 	function loadAllPosts() {
 		// https://qs0pkrgo1f.execute-api.eu-west-2.amazonaws.com/prod/
 		// https://api.cantilevers.org/structure
@@ -23,7 +58,7 @@
 		console.log('Loading all posts json...');
 		let token = $userStore.token;
 		notificationStore.set({ shown: false, message: '', type: 'info' });
-		fetch('https://api.cantilevers.org/project/posts', {
+		fetch('https://api.cantilevers.org/posts', {
 			method: 'GET',
 			headers: {
 				Accept: 'application/json',
@@ -43,19 +78,18 @@
 							p.title,
 							p.srcKey,
 							p.templateKey,
-							p.url,
+							p.slug,
 							new Date(p.lastUpdated),
 							new Date(p.date)
 						)
 					);
 				}
-				// allPostsStore.set(data.data);
 				allPostsStore.set({
 					count: tempPosts.length,
 					lastUpdated: data.lastUpdated,
 					posts: tempPosts
 				});
-				$notificationStore.message = 'Loaded all posts ' + $activeStore.activeFile;
+				$notificationStore.message = 'Loaded all posts: ' + data.data.posts.length;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
 			})
@@ -92,12 +126,12 @@
 				}
 				var tmpPost = new MarkdownContent(
 					new Post(
-						data.data.metadata.title,
-						data.data.metadata.srcKey,
-						data.data.metadata.templateKey,
-						data.data.metadata.url,
-						data.data.metadata.lastUpdated,
-						data.data.metadata.date
+						data.data.title,
+						data.data.srcKey,
+						data.data.templateKey,
+						data.data.slug,
+						data.data.lastUpdated,
+						data.data.date
 					),
 					data.data.body
 				);
@@ -106,9 +140,9 @@
 				$activeStore.isNewFile = false;
 				$activeStore.hasChanged = false;
 				$activeStore.isValid = true;
-				$activeStore.newSlug = $markdownStore.metadata?.url ?? '';
+				$activeStore.newSlug = $markdownStore.metadata?.slug ?? '';
 				$activeStore.fileType = FileType.Post;
-				$activeStore.folder = new FolderNode("folder","sources/posts/",0,[]);
+				$activeStore.folder = new FolderNode('folder', 'sources/posts/', 0, []);
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
@@ -124,6 +158,7 @@
 			});
 	}
 
+	//@deprecated
 	async function rebuild() {
 		let token = $userStore.token;
 		console.log('Regenerating project posts file...');
@@ -164,7 +199,7 @@
 			metadata: new Post(
 				'',
 				'',
-				'post',
+				'sources/templates/post.html.hbs',
 				'',
 				//@ts-ignore
 				'', // I know this is invalid, but I want a 'null' date here
@@ -206,9 +241,10 @@
 			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {
 				console.log('Show spinner');
-				spinnerStore.set({ shown: true, message: 'Rebuilding project...' });
-				tick().then(() => rebuild());
-			}}>Rebuild</button>
+				spinnerStore.set({ shown: true, message: 'Rebuilding project metadata...' });
+				tick().then(() => rebuildAll());
+			}}>Meta rebuild</button>
+		<br />
 		<button
 			class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {

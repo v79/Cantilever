@@ -1,6 +1,6 @@
 ---
 title: Nearly self-hosting
-template: post
+templateKey: sources/templates/post.html.hbs
 date: 2023-02-25
 slug: nearly-self-hosting
 ---

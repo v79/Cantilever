@@ -3,7 +3,6 @@ package org.liamjd.cantilever.api
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 import org.liamjd.cantilever.api.controllers.*
-import org.liamjd.cantilever.api.services.StructureService
 import org.liamjd.cantilever.auth.CognitoJWTAuthorizer
 import org.liamjd.cantilever.routing.*
 import org.liamjd.cantilever.services.S3Service
@@ -18,7 +17,6 @@ import software.amazon.awssdk.regions.Region
 val appModule = module {
     single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
     single<SQSService> { SQSServiceImpl(Region.EU_WEST_2) }
-    single { StructureService() }
 }
 
 /**
@@ -43,6 +41,7 @@ class LambdaRouter : RequestHandlerWrapper() {
     private val generatorController =
         GeneratorController(sourceBucket = sourceBucket)
     private val projectController = ProjectController(sourceBucket = sourceBucket)
+    private val metadataController = MetadataController(sourceBucket = sourceBucket)
 
     private val cognitoJWTAuthorizer = CognitoJWTAuthorizer(
         mapOf(
@@ -74,16 +73,9 @@ class LambdaRouter : RequestHandlerWrapper() {
                         MimeType.json
                     )
                 )
-                group("/posts") {
-                    get("", projectController::getPosts)
-                    put(
-                        "/rebuild", projectController::rebuildPostList
-                    )
-                }
                 group("/pages") {
-                    get("", projectController::getPages)
+                    get("", pageController::getPages)
                     post("/", pageController::saveMarkdownPageSource).supplies(setOf(MimeType.plainText))
-                    put("/rebuild", projectController::rebuildPageTree)
                     get("/$SRCKEY", pageController::loadMarkdownSource)
                     put("/folder/new/{folderName}", pageController::createFolder).supplies(setOf(MimeType.plainText))
                 }
@@ -95,11 +87,12 @@ class LambdaRouter : RequestHandlerWrapper() {
 
         auth(cognitoJWTAuthorizer) {
             group("/posts") {
+                get("", postController::getPosts)
                 get("/$SRCKEY", postController::loadMarkdownSource)
                 get("/preview/$SRCKEY") { request: Request<Unit> -> ResponseEntity.notImplemented(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!") }.supplies(
                     setOf(MimeType.html)
                 )
-                post("/", postController::saveMarkdownPost).supplies(
+                post("/save", postController::saveMarkdownPost).supplies(
                     setOf(MimeType.plainText)
                 )
                 delete("/$SRCKEY", postController::deleteMarkdownPost).supplies(setOf(MimeType.plainText))
@@ -132,6 +125,12 @@ class LambdaRouter : RequestHandlerWrapper() {
                 get("/post/$SRCKEY") { request: Request<Unit> ->
                     ResponseEntity.notImplemented(body = "Received request to return the HTML form of ${request.pathParameters["srcKey"]}")
                 }
+            }
+        }
+
+        auth(cognitoJWTAuthorizer) {
+            group("/metadata") {
+                put("/rebuild", metadataController::rebuildFromSources)
             }
         }
 

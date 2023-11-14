@@ -1,5 +1,7 @@
 package org.liamjd.cantilever.services.impl
 
+import kotlinx.datetime.Instant
+import kotlinx.datetime.toKotlinInstant
 import org.liamjd.cantilever.services.S3Service
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
@@ -61,8 +63,9 @@ class S3ServiceImpl(region: Region) : S3Service {
     }
 
     override fun listFolders(prefix: String, bucket: String): List<String> {
-        val request =  s3Client.listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).delimiter("/").build())
-        if(request.hasCommonPrefixes()) {
+        val request =
+            s3Client.listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).delimiter("/").build())
+        if (request.hasCommonPrefixes()) {
             return request.commonPrefixes().map { it.prefix() }.toList()
         }
         return emptyList()
@@ -84,5 +87,14 @@ class S3ServiceImpl(region: Region) : S3Service {
             .build()
         s3Client.putObject(requestBuilder, RequestBody.empty())
         return 0
+    }
+
+    override fun getUpdatedTime(key: String, bucket: String): Instant {
+        val request = HeadObjectRequest.builder()
+            .key(key)
+            .bucket(bucket)
+            .build()
+        val response = s3Client.headObject(request)
+        return response.lastModified().toKotlinInstant()
     }
 }

@@ -36,12 +36,12 @@
 		if ($markdownStore.metadata === null) {
 			throw new Error('Cannot save a page with no metadata');
 		} else {
-			if ($markdownStore.metadata.srcKey) {
-				$markdownStore.metadata.srcKey = $activeStore.folder?.srcKey + $activeStore.newSlug + '.md';
-			}
 			console.log('Saving page file ', $markdownStore.metadata?.srcKey);
 		}
-		let pageJson = JSON.stringify($markdownStore, mapReplacer);
+		var pageToSave = $markdownStore;
+		delete pageToSave.metadata.type;
+		delete pageToSave.metadata.body;
+		let pageJson = JSON.stringify(pageToSave, mapReplacer);
 		console.log(pageJson);
 		fetch('https://api.cantilevers.org/project/pages/', {
 			method: 'POST',

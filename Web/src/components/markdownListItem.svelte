@@ -26,5 +26,5 @@
 	<span class="absolute right-4 top-0"
 		><small class="text-sm text-slate-400">({item.getDateString()}) </small></span>
 	<br />
-	<span class="text sm text-slate-400">{item.url} </span>
+	<span class="text sm text-slate-400">{item.slug} </span>
 </li>

@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.charleskorn.kaml.Yaml
+import com.charleskorn.kaml.YamlConfiguration
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.SerializationException
 import org.koin.core.component.KoinComponent
@@ -17,9 +18,7 @@ import org.liamjd.cantilever.services.S3Service
 import java.net.URLDecoder
 import java.nio.charset.Charset
 
-class TemplateController(val sourceBucket: String) : KoinComponent, APIController {
-
-    private val s3Service: S3Service by inject()
+class TemplateController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
 
     /**
      * Load a handlebars template file with the specified 'srcKey' and return it as a [HandlebarsTemplate] response
@@ -34,12 +33,14 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
                 if (templateObj != null) {
                     val body = s3Service.getObjectAsString(decoded, sourceBucket)
                     val frontmatter = body.getFrontMatter()
+                    // TODO: this throws exception if a value is missing from the frontmatter, even though it should encode the default
                     val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
                     info("Handlebar frontmatter: $metadata")
                     val template = Template(
                         handlebarSource,
                         templateObj.lastModified().toKotlinInstant(),
-                        metadata)
+                        metadata
+                    )
                     val handlebarsTemplate = HandlebarsTemplate(template, body.stripFrontMatter())
                     ResponseEntity.ok(body = APIResult.Success(handlebarsTemplate))
                 } else {
@@ -108,7 +109,7 @@ class TemplateController(val sourceBucket: String) : KoinComponent, APIControlle
         sBuilder.append("---\n")
         sBuilder.append("name: ${template.metadata.name}\n")
         sBuilder.append("sections:\n")
-        template.metadata.sections.forEach {
+        template.metadata.sections?.forEach {
             sBuilder.append(" - $it\n")
         }
         sBuilder.append("---\n")

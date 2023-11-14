@@ -1,6 +1,6 @@
 ---
 title: Further work on page regeneration
-template: post
+templateKey: sources/templates/post.html.hbs
 date: 2023-03-01
 slug: further-work-on-page-regeneration
 ---
