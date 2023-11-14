@@ -48,8 +48,9 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
         event.records.forEach { eventRecord ->
             try {
-                logger.info("EventRecord: ${eventRecord.body}")
+//                logger.info("EventRecord: ${eventRecord.body}")
                 val sqsMsg = Json.decodeFromString<TemplateSQSMessage>(eventRecord.body)
+                logger.info(sqsMsg.toString())
                 when (sqsMsg) {
                     is TemplateSQSMessage.RenderPostMsg -> {
                         renderPost(sqsMsg, sourceBucket, project, destinationBucket)
@@ -138,8 +139,8 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         project: CantileverProject,
         destinationBucket: String
     ) {
-        val body = s3Service.getObjectAsString(postMsg.metadata.srcKey, sourceBucket)
-        logger.info("Loaded body fragment from '${fragments + postMsg.metadata.srcKey}: ${body.take(100)}'")
+        val body = s3Service.getObjectAsString(postMsg.fragmentSrcKey, sourceBucket)
+        logger.info("Loaded body fragment from '${postMsg.fragmentSrcKey}: ${body.take(100)}'")
 
         // load template file as specified by metadata
         val template = postMsg.metadata.templateKey

@@ -41,6 +41,8 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
     override fun handleRequest(event: S3Event, context: Context): String {
         logger = context.logger
         var response = "200 OK"
+        val markdownQueueURL = System.getenv(QUEUE.MARKDOWN)
+        val handlebarQueueURL = System.getenv(QUEUE.HANDLEBARS)
 
         logger.info("${event.records.size} upload events received")
 
@@ -51,8 +53,6 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val folderName =
                 srcKey.substringAfter('/').substringBefore('/') // the folder determines the type, POST, PAGE, STATICS
             val uploadFolder = SourceHelper.fromFolderName(folderName)
-            val markdownQueueURL = System.getenv(QUEUE.MARKDOWN)
-            val handlebarQueueURL = System.getenv(QUEUE.HANDLEBARS)
 
             logger.info("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
 

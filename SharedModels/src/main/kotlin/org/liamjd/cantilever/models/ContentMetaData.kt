@@ -49,7 +49,7 @@ sealed interface ContentMetaDataBuilder {
                     .associate {
                         val sectionName = it.substringBefore("\n").trim()
                         val sectionContent = it.substringAfter(sectionName).trim()
-                        sectionName to sectionContent
+                        sectionName to ""
                     }.filter { it.key.isNotEmpty() && !it.key.startsWith("=") }
             } else {
                 emptyMap()
