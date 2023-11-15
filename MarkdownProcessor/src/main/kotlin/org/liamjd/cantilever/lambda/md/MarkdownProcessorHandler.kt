@@ -108,6 +108,8 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
             // [ContentNode.PageNode.sections] is a Map<String, String>, which is fine, but we need to store a Map<String,SrcKey> (which is a typealias for String anyway)
 
             val updatedPageNode = sqsMsgBody.metadata.copy(sections = sectionMap.toMap())
+            // I don't like the number of times I have to force this value.
+            updatedPageNode.parent = sqsMsgBody.metadata.srcKey.substringBeforeLast("/") + "/"
 
             val message = TemplateSQSMessage.RenderPageMsg(
                 fragmentSrcKey = fragmentPrefix + updatedPageNode.srcKey,

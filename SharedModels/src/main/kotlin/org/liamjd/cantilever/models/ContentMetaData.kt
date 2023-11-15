@@ -65,7 +65,7 @@ sealed interface ContentMetaDataBuilder {
             val template = if (frontmatter.contains("templateKey:")) {
                 frontmatter.substringAfter("templateKey:").substringBefore("\n").trim()
             } else {
-                ""
+                "~~~templateKey wasn't found for ${srcKey}???~~~"
             }
 
             val pageFile = srcKey.substringAfter(S3_KEY.pagesPrefix) // strip /sources/pages from the filename
@@ -96,7 +96,7 @@ sealed interface ContentMetaDataBuilder {
                 slug = url,
                 attributes = customAttributes.toMap(),
                 sections = customSections
-            )
+            ).apply { parent = srcKey.substringBeforeLast("/") + "/" }
         }
 
         fun extractSectionsFromSource(
