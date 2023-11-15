@@ -10,6 +10,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.QUEUE
 import org.liamjd.cantilever.common.S3_KEY.fragments
+import org.liamjd.cantilever.models.ContentMetaDataBuilder.PageBuilder.extractSectionsFromSource
 import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
 import org.liamjd.cantilever.models.sqs.TemplateSQSMessage
 import org.liamjd.cantilever.services.S3Service
@@ -75,7 +76,9 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         val sectionMap = mutableMapOf<String, String>()
         var bytesWritten = 0
         var responseString = "200 OK"
-        sqsMsgBody.metadata.sections.forEach {
+        val fullSourceText = s3Service.getObjectAsString(sqsMsgBody.metadata.srcKey, sourceBucket)
+        val sections = extractSectionsFromSource(fullSourceText, true)
+        sections.forEach {
             try {
                 logger.info("Writing ${it.key} to ${fragmentPrefix}${it.key}")
                 val html = convertMDToHTML(it.value)

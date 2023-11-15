@@ -93,7 +93,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      */
     private fun buildMarkdownPage(srcKey: String): MarkdownPageDTO {
         val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
-        val pageMeta = ContentMetaDataBuilder.PageBuilder.buildFromSourceString(markdown, srcKey)
+        val pageMeta = ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(markdown, srcKey)
         return MarkdownPageDTO(pageMeta)
     }
 

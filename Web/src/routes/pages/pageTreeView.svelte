@@ -25,6 +25,7 @@
 				on:click={() => onClickFn(page.srcKey)}
 				class="border-grey-400 relative w-full cursor-pointer border-b px-10 py-2
 hover:bg-slate-200">
+				{#if page.isRoot}🏠{/if}
 				{page.title}
 			</li>
 		{/if}
