@@ -69,7 +69,8 @@ sealed interface ContentMetaDataBuilder {
             }
 
             val pageFile = srcKey.substringAfter(S3_KEY.pagesPrefix) // strip /sources/pages from the filename
-            val url = if (frontmatter.contains("slug:")) {
+
+            val slug = if (frontmatter.contains("slug:")) {
                 pageFile + frontmatter.substringAfter("slug:").substringBefore("\n").trim()
             } else {
                 pageFile.substringBefore(".${FILE_TYPE.MD}")
@@ -88,15 +89,17 @@ sealed interface ContentMetaDataBuilder {
                 false
             }
 
+            val parentPath = srcKey.substringBeforeLast("/" + "/")
+
             return ContentNode.PageNode(
                 title = title,
                 srcKey = srcKey,
                 templateKey = template,
                 isRoot = isRoot,
-                slug = url,
+                slug = slug,
                 attributes = customAttributes.toMap(),
                 sections = customSections
-            ).apply { parent = srcKey.substringBeforeLast("/") + "/" }
+            ).apply { parent = parentPath }
         }
 
         fun extractSectionsFromSource(

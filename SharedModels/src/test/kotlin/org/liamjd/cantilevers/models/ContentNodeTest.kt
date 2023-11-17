@@ -3,6 +3,7 @@ package org.liamjd.cantilevers.models
 import kotlinx.datetime.LocalDate
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
 
 class ContentNodeTest {
@@ -79,5 +80,21 @@ class ContentNodeTest {
         ).apply { parent = "sources/pages/bio/" }
         val url = page.url
         assertEquals("bio/index.html", url)
+    }
+
+    @Test
+    fun `build index node with no slug from source`() {
+        val source = """
+            ---
+            title: "Home"
+            templateKey: "sources/templates/index.html.hbs"
+            isRoot: true
+            --- #body
+            Home page content here
+        """.trimIndent()
+
+        val indexNode = ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(source, "sources/pages/index.md")
+        indexNode.parent = "sources/pages/"
+        assertEquals("index.html", indexNode.url)
     }
 }

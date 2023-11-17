@@ -166,7 +166,7 @@ sealed class ContentNode {
     ) : ContentNode(
     ) {
         var fileType: String? = null
-        override val url = srcKey.removePrefix(S3_KEY.sources)
+        override val url = srcKey.removePrefix(S3_KEY.sources) + "/"
     }
 }
 
