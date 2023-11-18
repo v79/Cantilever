@@ -66,8 +66,8 @@
 
 	function regenerateAllPosts() {
 		console.log('Triggering regeneration of all posts');
-
-		fetch('https://api.cantilevers.org/project/posts/rebuild', {
+		// not yet implemented
+		fetch('https://api.cantilevers.org/generate/posts/*', {
 			method: 'PUT',
 			headers: {
 				Accept: 'application/json',
@@ -91,18 +91,18 @@
 	function regenerateAllPages() {
 		console.log('Triggering regeneration of all pages');
 
-		fetch('https://api.cantilevers.org/project/pages/rebuild', {
+		fetch('https://api.cantilevers.org/generate/page/*', {
 			method: 'PUT',
 			headers: {
-				Accept: 'application/json',
+				Accept: 'text/plain',
 				Authorization: 'Bearer ' + $userStore.token,
 				'X-Content-Length': '0'
 			},
 			mode: 'cors'
 		})
-			.then((response) => response.json())
+			.then((response) => response.text())
 			.then((data) => {
-				notificationStore.set({ message: data.data, shown: true, type: 'success' });
+				notificationStore.set({ message: data, shown: true, type: 'success' });
 				spinnerStore.set({ shown: false, message: '' });
 			})
 			.catch((error) => {
@@ -136,29 +136,28 @@
 		{#if $userStore !== undefined}
 			<NavLi id="generate-menu" nonActiveClass="text-grey-200" class="cursor-pointer"
 				>Generate</NavLi>
-		{/if}
-		<NavLi
-			nonActiveClass="text-grey-200"
-			activeClass="text-grey-200 font-bold"
-			active={postsPage}
-			href="/">Posts</NavLi>
-		<NavLi
-			nonActiveClass="text-grey-200"
-			activeClass="text-grey-200 font-bold"
-			active={pagesPage}
-			href="/pages">Pages</NavLi>
-		<NavLi
-			nonActiveClass="text-grey-200"
-			activeClass="text-grey-200 font-bold"
-			active={templatesPage}
-			href="/templates">Templates</NavLi>
-		<NavLi
-			nonActiveClass="text-grey-200"
-			activeClass="text-grey-200 font-bold"
-			active={projectPage}
-			href="/project">Project</NavLi>
 
-		{#if $userStore !== undefined}
+			<NavLi
+				nonActiveClass="text-grey-200"
+				activeClass="text-grey-200 font-bold"
+				active={postsPage}
+				href="/">Posts</NavLi>
+			<NavLi
+				nonActiveClass="text-grey-200"
+				activeClass="text-grey-200 font-bold"
+				active={pagesPage}
+				href="/pages">Pages</NavLi>
+			<NavLi
+				nonActiveClass="text-grey-200"
+				activeClass="text-grey-200 font-bold"
+				active={templatesPage}
+				href="/templates">Templates</NavLi>
+			<NavLi
+				nonActiveClass="text-grey-200"
+				activeClass="text-grey-200 font-bold"
+				active={projectPage}
+				href="/project">Project</NavLi>
+
 			<Dropdown triggeredBy="#generate-menu">
 				<DropdownItem on:click={(e) => (regenAllPostsModal = true)}>Rebuild all posts</DropdownItem>
 				<DropdownItem on:click={(e) => (regenAllPagesModal = true)}>Rebuild all pages</DropdownItem>
@@ -174,7 +173,8 @@
 <CToast />
 
 <Modal title="Regenerate all posts?" bind:open={regenAllPostsModal} autoclose size="sm">
-	<p>Regenerating all {$allPostsStore.count} posts may take some time. Continue?</p>
+	<p><s>Regenerating all {$allPostsStore.count} posts may take some time. Continue?</s></p>
+	<p><em>Not yet implemented</em></p>
 
 	<svelte:fragment slot="footer">
 		<button
@@ -183,6 +183,7 @@
 			>Cancel</button>
 		<button
 			type="button"
+			disabled
 			on:click={(e) => {
 				spinnerStore.set({ message: 'Regenerating...', shown: true });
 				regenerateAllPosts();
