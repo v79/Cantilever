@@ -9,6 +9,7 @@
 
 	import Viditor from '../Viditor.svelte';
 	import TextInput from '../forms/textInput.svelte';
+	import CheckBox from '../forms/checkBox.svelte';
 
 	export let metadata: Page;
 	export let previewModal = false;
@@ -57,8 +58,11 @@
 							required />
 					</div>
 
-					<div class="col-span-6">
+					<div class="sm:call-span-5 col-span-5 lg:col-span-5">
 						<TextInput bind:value={metadata.title} required name="Title" label="Title" />
+					</div>
+					<div class="sm:call-span-1 col-span-1 lg:col-span-1">
+						<CheckBox bind:value={metadata.isRoot} name="draft" label="Is Root" />
 					</div>
 					{#if metadata.attributes}
 						<div class="col-span-5">

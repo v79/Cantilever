@@ -32,7 +32,7 @@ sealed class ContentNode {
     @Serializable
     @SerialName("folder")
     data class FolderNode(
-        override val srcKey: String,
+        override val srcKey: SrcKey,
         override val lastUpdated: Instant = Clock.System.now(),
         val children: MutableList<SrcKey> = mutableListOf(),
         var indexPage: SrcKey? = null,
@@ -49,16 +49,16 @@ sealed class ContentNode {
     @Serializable
     @SerialName("page")
     data class PageNode(
-        override val srcKey: String,
+        override val srcKey: SrcKey,
         override val lastUpdated: Instant = Clock.System.now(),
         val title: String,
-        val templateKey: String,
+        val templateKey: SrcKey,
         val slug: String,
         val isRoot: Boolean,
         val attributes: Map<String, String>,
         val sections: Map<String, String>,
+        var parent: SrcKey = ""
     ) : ContentNode() {
-        lateinit var parent: SrcKey
 
         @Transient
         val type: String? =
@@ -89,7 +89,7 @@ sealed class ContentNode {
     data class PostNode(
         override val lastUpdated: Instant = Clock.System.now(),
         val title: String,
-        val templateKey: String,
+        val templateKey: SrcKey,
         val date: LocalDate,
         val slug: String,
         @EncodeDefault
@@ -147,7 +147,7 @@ sealed class ContentNode {
     @Serializable
     @SerialName("template")
     data class TemplateNode(
-        override val srcKey: String,
+        override val srcKey: SrcKey,
         override val lastUpdated: Instant = Clock.System.now(),
         val title: String,
         val sections: List<String> = emptyList(),
@@ -161,7 +161,7 @@ sealed class ContentNode {
     @Serializable
     @SerialName("static")
     data class StaticNode(
-        override val srcKey: String,
+        override val srcKey: SrcKey,
         override val lastUpdated: Instant = Clock.System.now(),
     ) : ContentNode(
     ) {

@@ -122,15 +122,6 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
         return metadata.apply { this.body = body }
     }
 
-    /**
-     * Save the content tree to the S3 bucket
-     */
-    private fun saveContentTree() {
-        val pretty = Json { prettyPrint = true }
-        val metadata = pretty.encodeToString(ContentTree.serializer(), contentTree)
-        s3Service.putObject(S3_KEY.metadataKey, sourceBucket, metadata, "application/json")
-    }
-
     override fun info(message: String) = println("INFO: PostController: $message")
     override fun warn(message: String) = println("WARN: PostController: $message")
     override fun error(message: String) = println("ERROR: PostController: $message")

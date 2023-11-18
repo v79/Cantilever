@@ -98,8 +98,9 @@ sealed interface ContentMetaDataBuilder {
                 isRoot = isRoot,
                 slug = slug,
                 attributes = customAttributes.toMap(),
-                sections = customSections
-            ).apply { parent = parentPath }
+                sections = customSections,
+                parent = parentPath
+            )
         }
 
         fun extractSectionsFromSource(

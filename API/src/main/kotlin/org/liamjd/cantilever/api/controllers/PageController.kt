@@ -28,8 +28,9 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             info("Fetching all pages from metadata.json")
             val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
             val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
-            val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>()
+            val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
             val sorted = pages.sortedByDescending { it.srcKey }
+            sorted.forEach { println(it.srcKey) }
             val pageList = PageListDTO(
                 count = sorted.size,
                 lastUpdated = lastUpdated,
@@ -78,6 +79,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
                 if (result != 0) {
                     ResponseEntity.serverError(body = APIResult.Error("Folder '$slugged' was not created"))
                 }
+                contentTree.insertFolder(ContentNode.FolderNode(folderName)).also { saveContentTree() }
                 ResponseEntity.ok(body = APIResult.OK("Folder '$slugged' created"))
             } else {
                 warn("Folder '$slugged' already exists")
@@ -86,15 +88,6 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
         } else {
             ResponseEntity.badRequest(body = APIResult.Error("Cannot create a folder with no name"))
         }
-    }
-
-    /**
-     * Build a [MarkdownPageDTO] object from the source specified
-     */
-    private fun buildMarkdownPage(srcKey: String): MarkdownPageDTO {
-        val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
-        val pageMeta = ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(markdown, srcKey)
-        return MarkdownPageDTO(pageMeta)
     }
 
     /**
@@ -110,12 +103,23 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             info("Updating existing file '${pageToSave.metadata.srcKey}'")
             val length = s3Service.putObject(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
+            contentTree.updatePage(pageToSave.metadata).also { saveContentTree() }
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
             val length = s3Service.putObject(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
+            contentTree.insertPage(pageToSave.metadata).also { saveContentTree() }
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
+    }
+
+    /**
+     * Build a [MarkdownPageDTO] object from the source specified
+     */
+    private fun buildMarkdownPage(srcKey: String): MarkdownPageDTO {
+        val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
+        val pageMeta = ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(markdown, srcKey)
+        return MarkdownPageDTO(pageMeta)
     }
 
     override fun info(message: String) = println("INFO: PageController: $message")

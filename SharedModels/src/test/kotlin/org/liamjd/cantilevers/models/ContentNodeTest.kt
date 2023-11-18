@@ -31,8 +31,9 @@ class ContentNodeTest {
             slug = "biography",
             isRoot = false,
             attributes = mapOf("author" to "Liam", "tags" to "test"),
-            sections = mapOf("bio" to "This is my biography")
-        ).apply { parent = "sources/pages/" }
+            sections = mapOf("bio" to "This is my biography"),
+            parent = "sources/pages/"
+        )
         val url = page.url
         assertEquals("biography", url)
     }
@@ -46,8 +47,9 @@ class ContentNodeTest {
             slug = "biography",
             isRoot = true,
             attributes = mapOf("author" to "Liam", "tags" to "test"),
-            sections = mapOf("bio" to "This is my biography")
-        ).apply { parent = "sources/pages/" }
+            sections = mapOf("bio" to "This is my biography"),
+            parent = "sources/pages/"
+        )
         val url = page.url
         assertEquals("index.html", url)
     }
@@ -61,8 +63,9 @@ class ContentNodeTest {
             slug = "favourite-books",
             isRoot = false,
             attributes = mapOf("author" to "Liam", "tags" to "test"),
-            sections = mapOf("bio" to "This is my biography")
-        ).apply { parent = "sources/pages/books/" }
+            sections = mapOf("bio" to "This is my biography"),
+            parent = "sources/pages/books/"
+        )
         val url = page.url
         assertEquals("books/favourite-books", url)
     }
@@ -76,8 +79,9 @@ class ContentNodeTest {
             slug = "bio/about-me",
             isRoot = true,
             attributes = mapOf("author" to "Liam", "tags" to "test"),
-            sections = mapOf("bio" to "This is my biography")
-        ).apply { parent = "sources/pages/bio/" }
+            sections = mapOf("bio" to "This is my biography"),
+            parent = "sources/pages/bio/"
+        )
         val url = page.url
         assertEquals("bio/index.html", url)
     }
@@ -93,7 +97,8 @@ class ContentNodeTest {
             Home page content here
         """.trimIndent()
 
-        val indexNode = ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(source, "sources/pages/index.md")
+        val indexNode =
+            ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(source, "sources/pages/index.md")
         indexNode.parent = "sources/pages/"
         assertEquals("index.html", indexNode.url)
     }

@@ -54,8 +54,9 @@ class ContentTreeTest {
         slug = "/biography/index",
         isRoot = true,
         attributes = mapOf("author" to "Liam", "tags" to "test"),
-        sections = mapOf("bio" to "This is my biography")
-    ).apply { parent = bioFolder.srcKey }
+        sections = mapOf("bio" to "This is my biography"),
+        parent = bioFolder.srcKey
+    )
     private val booksPage = ContentNode.PageNode(
         srcKey = "sources/pages/books/books.md",
         title = "Books",
@@ -63,8 +64,9 @@ class ContentTreeTest {
         slug = "/books/index",
         isRoot = true,
         attributes = mapOf("author" to "Liam", "tags" to "test"),
-        sections = mapOf("books" to "This is my books page")
-    ).apply { parent = bookFolder.srcKey }
+        sections = mapOf("books" to "This is my books page"),
+        parent = bookFolder.srcKey
+    )
     private val favouriteBook = ContentNode.PageNode(
         srcKey = "sources/pages/books/favourite.md",
         title = "Favourite Book",
@@ -72,8 +74,9 @@ class ContentTreeTest {
         slug = "/books/favourite",
         isRoot = false,
         attributes = mapOf("author" to "Liam", "tags" to "test"),
-        sections = mapOf("book" to "This is my favourite book")
-    ).apply { parent = bookFolder.srcKey }
+        sections = mapOf("book" to "This is my favourite book"),
+        parent = bookFolder.srcKey
+    )
 
     @Test
     fun `show posts as json`() {

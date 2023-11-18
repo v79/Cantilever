@@ -112,7 +112,7 @@
 				if (root.children == undefined) {
 					root.children = new Array<TreeNode>();
 				}
-				if (page.parent === 'sources/pages') {
+				if (page.parent === 'sources/pages/') {
 					root.children.push(page);
 					root.count++;
 				}
