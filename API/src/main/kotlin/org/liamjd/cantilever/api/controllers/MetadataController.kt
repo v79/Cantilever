@@ -105,7 +105,7 @@ class MetadataController(sourceBucket: String) : KoinComponent, APIController(so
             sourceString = pageContents,
             srcKey = pageKey
         )
-        val parentFolder = pageKey.substringBeforeLast("/")
+        val parentFolder = pageKey.substringBeforeLast("/") + "/"
         metadata.parent = parentFolder
         return metadata
     }

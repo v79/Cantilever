@@ -39,10 +39,11 @@
 			console.log('Saving page file ', $markdownStore.metadata?.srcKey);
 		}
 		var pageToSave = $markdownStore;
+		// these two properties are not needed in the API
 		delete pageToSave.metadata.type;
 		delete pageToSave.metadata.body;
 		let pageJson = JSON.stringify(pageToSave, mapReplacer);
-		console.log(pageJson);
+		// console.log(pageJson);
 		fetch('https://api.cantilevers.org/project/pages/', {
 			method: 'POST',
 			headers: {

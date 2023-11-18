@@ -67,7 +67,6 @@ class LocalDateFormatter(private val inputFormat: String = "dd/MM/yyyy") : Helpe
 
                     else -> {
                         try {
-                            println("Custom format ($format) supplied")
                             DateTimeFormatter.ofPattern(format)
                         } catch (iae: IllegalArgumentException) {
                             println("Could not parse localDate format string '$format'; reverting to ISO_LOCAL_DATE")

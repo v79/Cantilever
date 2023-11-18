@@ -3,8 +3,8 @@
 	import { ImgRes } from '../../models/structure';
 	import { projectStore } from './projectStore.svelte';
 
-	let addingNewImageRes: boolean = false;
-	let newImageResKey: string = '';
+	let addingNewImageRes = false;
+	let newImageResKey = '';
 	let newImageRes: ImgRes = new ImgRes(640, 480);
 
 	$: resCount = $projectStore.imageResolutions.size;

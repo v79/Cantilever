@@ -20,6 +20,7 @@ class RouterTest {
     private val acceptText = mapOf("accept" to "text/plain")
     private val contentJson = mapOf("Content-Type" to "application/json")
     private val acceptHtml = mapOf("accept" to "text/html")
+    private val xContentZero = mapOf("X-Content-Length" to "0")
 
     @Test
     fun `can get a basic route`() {
@@ -300,6 +301,15 @@ class RouterTest {
         assertEquals(400, response.statusCode)
         assertTrue(response.body.startsWith("Could not deserialize body."))
     }
+
+    @Test
+    fun `can match a route with an asterix path parameter`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/posts/save/*").withHttpMethod("PUT").withHeaders(acceptJson + contentJson + xContentZero)
+        val response = testR.handleRequest(event)
+        assertEquals(200, response.statusCode)
+
+    }
 }
 
 /**
@@ -354,6 +364,7 @@ class TestRouter : RequestHandlerWrapper() {
 
         group("/posts") {
             get("/load/{key}") { request: Request<Unit> -> ResponseEntity.ok("Request for /posts/load/${request.pathParameters["key"]} received") }
+            put("/save/{key}") { request: Request<Unit> -> ResponseEntity.ok("Request for /posts/save/${request.pathParameters["key"]} received") }
         }
 
         /**

@@ -8,12 +8,12 @@
 	export let index: number;
 	export let key: string;
 	export let res: ImgRes;
-	export let readonly: boolean = true;
+	export let readonly = true;
 	export let onUpdate = (oldKey: string, newKey: string, newRes: ImgRes) => {};
 	export let onDelete = (key: string) => {};
 
 	let deleteImageRes = false;
-	let editing: boolean = false;
+	let editing = false;
 	let newKey = key;
 	$: editSave = editing ? 'Update' : 'Edit';
 

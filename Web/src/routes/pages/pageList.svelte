@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, onMount, tick } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 	import {
 		MarkdownContent,
 		Page,
@@ -20,13 +20,12 @@
 	import { Modal } from 'flowbite-svelte';
 	import TextInput from '../../components/forms/textInput.svelte';
 	import { fetchTemplates } from '../../stores/templateStore.svelte';
-	import { root } from 'postcss';
 
 	$: rootFolder = $pageTreeStore.rootFolder;
 
-	let newFolderModal: boolean = false;
-	let newFolderName: string = '';
-	let newPageModal: boolean = false;
+	let newFolderModal = false;
+	let newFolderName = '';
+	let newPageModal = false;
 	let folders: FolderNode[] = [];
 	let templates: Template[] = [];
 	let selectedParentFolder: FolderNode | undefined = undefined;
@@ -34,8 +33,6 @@
 
 	$: newFolderValid = selectedParentFolder && newFolderName !== '';
 	$: newPageValid = selectedParentFolder && selectedTemplate;
-
-	onMount(async () => {});
 
 	function loadAllPages() {
 		console.log('Loading all pages json...');
@@ -77,7 +74,6 @@
 			});
 	}
 
-	
 	/**
 	 * Loop through all the folders and add them to the root folder. Then find the pages which match the children of the folder, and add them
 	 * This is not recursive, so it only adds the first level of folders.
@@ -101,7 +97,7 @@
 						folder.children.push(childPage);
 					}
 				}
-	
+
 				if (root.children == undefined) {
 					root.children = new Array<TreeNode>();
 				}
@@ -116,7 +112,7 @@
 				if (root.children == undefined) {
 					root.children = new Array<TreeNode>();
 				}
-				if (page.parent === 'sources/pages') {
+				if (page.parent === 'sources/pages/') {
 					root.children.push(page);
 					root.count++;
 				}
@@ -159,7 +155,7 @@
 						new Map<string, string>(Object.entries(data.data.metadata.sections)),
 						data.data.metadata.isRoot,
 						data.data.metadata.parent
-						),
+					),
 					''
 				);
 				markdownStore.set(tmpPage);
@@ -291,7 +287,7 @@
 				$pageTreeStore.rootFolder.children.filter((value) => value.type == 'folder')
 			);
 			result.push($pageTreeStore.rootFolder);
-		    // sort the result by the length of the srcKey, so that the root folder is first
+			// sort the result by the length of the srcKey, so that the root folder is first
 			result.sort((a, b) => a.srcKey.length - b.srcKey.length);
 			return result;
 		}

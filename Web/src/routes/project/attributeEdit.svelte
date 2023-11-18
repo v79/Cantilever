@@ -6,12 +6,12 @@
 	export let index: number;
 	export let key: string;
 	export let value: string;
-	export let readonly: boolean = true;
+	export let readonly = true;
 	export let onUpdate = (oldKey: string, newKey: string, newValue: string) => {};
 	export let onDelete = (key: string) => {};
 
-	let editing: boolean = false;
-	let deleteAttribute: boolean = false;
+	let editing = false;
+	let deleteAttribute = false;
 	let newKey = key;
 	let newValue = value;
 	$: editSave = editing ? 'Update' : 'Edit';

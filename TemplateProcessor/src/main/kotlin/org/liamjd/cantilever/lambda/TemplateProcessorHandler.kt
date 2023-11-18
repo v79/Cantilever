@@ -48,13 +48,11 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
         event.records.forEach { eventRecord ->
             try {
-//                logger.info("EventRecord: ${eventRecord.body}")
                 val sqsMsg = Json.decodeFromString<TemplateSQSMessage>(eventRecord.body)
                 logger.info(sqsMsg.toString())
                 when (sqsMsg) {
                     is TemplateSQSMessage.RenderPostMsg -> {
                         renderPost(sqsMsg, sourceBucket, project, destinationBucket)
-
                     }
 
                     is TemplateSQSMessage.RenderPageMsg -> {
@@ -98,7 +96,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         val templateString = sourceString.stripFrontMatter()
         val model = mutableMapOf<String, Any?>()
         model["key"] = pageMsg.metadata.srcKey
-        model["url"] = pageMsg.metadata.slug
+        model["url"] = pageMsg.metadata.url
         model["project"] = project
         model["title"] = pageMsg.metadata.title
         model["lastModified"] = pageMsg.metadata.lastUpdated
@@ -113,17 +111,14 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             model[name] = html
         }
 
-
         logger.info("Final page model keys: ${model.keys}")
         val html = with(logger) {
             val renderer = HandlebarsRenderer()
             renderer.render(model = model, template = templateString)
         }
 
-        // TODO: this is a hack!
-        val outputFilename = calculateFilename(pageMsg)
-        s3Service.putObject(outputFilename, destinationBucket, html, "text/html")
-        logger.info("Written final HTML file to '$outputFilename'")
+        s3Service.putObject(pageMsg.metadata.url, destinationBucket, html, "text/html")
+        logger.info("Written final HTML file to '${pageMsg.metadata.url}'")
     }
 
     /**
@@ -166,9 +161,8 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         }
 
         // save to S3
-        val outputFilename = calculateFilename(postMsg)
-        s3Service.putObject(outputFilename, destinationBucket, html, "text/html")
-        logger.info("Written final HTML file to '${outputFilename}'")
+        s3Service.putObject(postMsg.metadata.url, destinationBucket, html, "text/html")
+        logger.info("Written final HTML file to '${postMsg.metadata.url}'")
     }
 
     /**
@@ -209,6 +203,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
      * - For the home page (i.e. for page index.md) this needs to be index.html
      * - For all other pages, this should be the source file name minus the extension
      */
+    @Deprecated("Now URL is a calculated property of the ContentNode")
     private fun calculateFilename(message: TemplateSQSMessage): String {
         logger.info("Calculating final file name for $message")
         return when (message) {

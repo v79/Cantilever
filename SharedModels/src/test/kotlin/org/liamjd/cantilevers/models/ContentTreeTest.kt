@@ -54,7 +54,8 @@ class ContentTreeTest {
         slug = "/biography/index",
         isRoot = true,
         attributes = mapOf("author" to "Liam", "tags" to "test"),
-        sections = mapOf("bio" to "This is my biography")
+        sections = mapOf("bio" to "This is my biography"),
+        parent = bioFolder.srcKey
     )
     private val booksPage = ContentNode.PageNode(
         srcKey = "sources/pages/books/books.md",
@@ -63,7 +64,8 @@ class ContentTreeTest {
         slug = "/books/index",
         isRoot = true,
         attributes = mapOf("author" to "Liam", "tags" to "test"),
-        sections = mapOf("books" to "This is my books page")
+        sections = mapOf("books" to "This is my books page"),
+        parent = bookFolder.srcKey
     )
     private val favouriteBook = ContentNode.PageNode(
         srcKey = "sources/pages/books/favourite.md",
@@ -72,7 +74,8 @@ class ContentTreeTest {
         slug = "/books/favourite",
         isRoot = false,
         attributes = mapOf("author" to "Liam", "tags" to "test"),
-        sections = mapOf("book" to "This is my favourite book")
+        sections = mapOf("book" to "This is my favourite book"),
+        parent = bookFolder.srcKey
     )
 
     @Test

@@ -88,7 +88,6 @@ export class PageTree {
 	}
 }
 
-
 /**
  * Common interface for Pages and FolderNodes so they can be valid children of FolderNodes
  */
@@ -96,7 +95,6 @@ export interface TreeNode {
 	type: string;
 	srcKey: string;
 }
-
 
 /**
  * FolderNode represents a folder, or more accurately a shared prefix in S3
@@ -345,8 +343,8 @@ export class ImgRes {
  * @returns an [ImgRes] object with the appropriate dimensions. If a dimension is not found, it will be returned as NaN.
  */
 export function parseResString(resString: string) {
-	let xS: string = resString.substring(0, resString.indexOf('x'));
-	let yS: string = resString.substring(resString.indexOf('x') + 1);
+	const xS: string = resString.substring(0, resString.indexOf('x'));
+	const yS: string = resString.substring(resString.indexOf('x') + 1);
 	return new ImgRes(parseInt(xS), parseInt(yS));
 }
 

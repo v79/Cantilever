@@ -16,8 +16,8 @@
 	}
 
 	const CONFIRM_DELETE = 'delete';
-	let confirmed: boolean = false;
-	let confirmInput: string = '';
+	let confirmed = false;
+	let confirmInput = '';
 
 	function deleteFile() {
 		spinnerStore.set({ message: 'Deleting... ' + $markdownStore.metadata?.srcKey, shown: true });

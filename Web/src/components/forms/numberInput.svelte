@@ -1,12 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-
-	export let disabled: boolean = false;
+	export let disabled = false;
 	export let name: string;
 	export let value: string;
 	export let label: string;
-	export let required: boolean = false;
-	export let readonly: boolean = false;
+	export let required = false;
+	export let readonly = false;
 	export let onChange = (e: Event) => {};
 	export let classes = 'mt-1 block w-full rounded-md border-gray-300 sm:text-sm';
 
@@ -16,7 +14,7 @@
 			value = (target as HTMLInputElement).value;
 		}
 	};
-	let classesToApply: string = '';
+	let classesToApply = '';
 	$: if (readonly) {
 		classesToApply = classes + ' bg-slate-200 text-slate-500 focus:border-gray-300';
 	} else {

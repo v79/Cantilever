@@ -1,17 +1,15 @@
 <script lang="ts">
-	export let disabled = false;
 	export let name: string;
-	export let value: string;
+	export let value: boolean;
 	export let label: string;
-	export let required = false;
 	export let readonly = false;
 	export let onChange = (e: Event) => {};
-	export let classes = 'mt-1 block w-full rounded-md border-gray-300 sm:text-sm';
+	export let classes = 'ms-2 text-sm font-medium text-gray-900 dark:text-gray-300';
 
 	export let onInput: (e: Event) => void = (e: Event) => {
 		const { target } = e;
 		if (target) {
-			value = (target as HTMLInputElement).value;
+			value = (target as HTMLInputElement).checked;
 		}
 	};
 
@@ -25,19 +23,11 @@
 
 <label for={name} class="block text-sm font-medium text-slate-200">{label}</label>
 <input
-	{value}
-	type="text"
+	type="checkbox"
+	checked={value}
 	{name}
-	{disabled}
 	id={name}
-	{required}
-	readonly={readonly || null}
-	autocomplete={name}
+	disabled={readonly || null}
 	on:change={onChange}
 	on:input={onInput}
 	class={classesToApply} />
-{#if required}
-	{#if value === ''}
-		<span class="text-sm text-yellow-200">{label} must not be blank</span>
-	{/if}
-{/if}

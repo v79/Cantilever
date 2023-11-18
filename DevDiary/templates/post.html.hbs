@@ -1,5 +1,6 @@
 ---
 name: Blog post
+sections:
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -10,7 +11,7 @@ name: Blog post
     <meta name="author" content="{{author}}">
     <meta name="generator" content="cantilevers">
     <title>{{ project.projectName }} - {{ title }}</title>
-    <link rel="stylesheet" href="/css/pico.css">
+    <link rel="stylesheet" href="/css/pico.min.css">
 </head>
 <body>
 <header class="container">
@@ -23,11 +24,11 @@ name: Blog post
 <main class="container">
     {{{ body }}}
 
-{{#if @next}}
-Next: <a href="{{@next.url}}">{{@next.title}}</a>
-{{/if}}
 {{#if @prev}}
-Prev: <a href="{{@prev.url}}">{{@prev.title}}</a>
+Prev: <a href="/{{@prev.url}}">{{@prev.title}}</a>
+{{/if}}
+{{#if @next}}
+Next: <a href="/{{@next.url}}">{{@next.title}}</a>
 {{/if}}
 
 </main>

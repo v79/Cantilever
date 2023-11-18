@@ -8,6 +8,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import org.liamjd.cantilever.common.S3_KEY
 
 /**
  * A SrcKey is a String representation of the S3 bucket object key
@@ -23,6 +24,7 @@ typealias SrcKey = String // an S3 bucket object key
 sealed class ContentNode {
     abstract val srcKey: SrcKey
     abstract val lastUpdated: Instant
+    abstract val url: String
 
     /**
      * A folder is a node in the tree which contains other nodes
@@ -30,13 +32,15 @@ sealed class ContentNode {
     @Serializable
     @SerialName("folder")
     data class FolderNode(
-        override val srcKey: String,
+        override val srcKey: SrcKey,
         override val lastUpdated: Instant = Clock.System.now(),
         val children: MutableList<SrcKey> = mutableListOf(),
         var indexPage: SrcKey? = null,
     ) : ContentNode() {
         val count: Int
             get() = children.size
+
+        override val url = srcKey.removePrefix(S3_KEY.pagesPrefix)
     }
 
     /**
@@ -45,20 +49,31 @@ sealed class ContentNode {
     @Serializable
     @SerialName("page")
     data class PageNode(
-        override val srcKey: String,
+        override val srcKey: SrcKey,
         override val lastUpdated: Instant = Clock.System.now(),
         val title: String,
-        val templateKey: String,
+        val templateKey: SrcKey,
         val slug: String,
         val isRoot: Boolean,
         val attributes: Map<String, String>,
         val sections: Map<String, String>,
+        var parent: SrcKey = ""
     ) : ContentNode() {
-        var parent: SrcKey? = null
 
         @Transient
         val type: String? =
             null // this is used by the front end to determine if it's a page or a post, but is  not needed here
+
+        // I might actually want to generate both index.html and the slug version of the file but for now let's just do index.html or slug
+        override val url: String
+            get() {
+                val parentFolder = parent.removePrefix(S3_KEY.pagesPrefix)
+                return if (isRoot) {
+                    "${parentFolder}index.html"
+                } else {
+                    "$parentFolder$slug"
+                }
+            }
     }
 
     /**
@@ -74,12 +89,20 @@ sealed class ContentNode {
     data class PostNode(
         override val lastUpdated: Instant = Clock.System.now(),
         val title: String,
-        val templateKey: String,
+        val templateKey: SrcKey,
         val date: LocalDate,
         val slug: String,
         @EncodeDefault
         val attributes: Map<String, String> = emptyMap()
     ) : ContentNode() {
+
+        // I'd like to make this configurable, but lets try a folder structure based on the date
+        override val url: String
+            get() {
+                val year = date.year.toString()
+                val month = date.monthNumber.toString().padStart(2, '0')
+                return "posts/$year/$month/$slug"
+            }
 
         /**
          * secondary constructor for when we know the srcKey
@@ -124,11 +147,13 @@ sealed class ContentNode {
     @Serializable
     @SerialName("template")
     data class TemplateNode(
-        override val srcKey: String,
+        override val srcKey: SrcKey,
         override val lastUpdated: Instant = Clock.System.now(),
         val title: String,
         val sections: List<String> = emptyList(),
-    ) : ContentNode()
+    ) : ContentNode() {
+        override val url = "" // irrelevant for templates
+    }
 
     /**
      * A static is a node in the tree which represents a static file, such as a .css file. It is copied to the generated bucket without modification
@@ -136,12 +161,12 @@ sealed class ContentNode {
     @Serializable
     @SerialName("static")
     data class StaticNode(
-        override val srcKey: String,
+        override val srcKey: SrcKey,
         override val lastUpdated: Instant = Clock.System.now(),
     ) : ContentNode(
-
     ) {
         var fileType: String? = null
+        override val url = srcKey.removePrefix(S3_KEY.sources) + "/"
     }
 }
 
@@ -297,7 +322,7 @@ class ContentTree {
     fun reparentPage(pageNode: ContentNode.PageNode, newParent: ContentNode.FolderNode) {
         val existing = items.find { it.srcKey == pageNode.srcKey } as ContentNode.PageNode?
         if (existing != null) {
-            existing.parent?.let { existingParent ->
+            existing.parent.let { existingParent ->
                 val existingParentNode = getNode(existingParent) as ContentNode.FolderNode?
                 existingParentNode?.children?.remove(pageNode.srcKey)
                 existingParentNode?.indexPage = null

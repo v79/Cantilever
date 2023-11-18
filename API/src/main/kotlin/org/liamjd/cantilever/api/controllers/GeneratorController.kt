@@ -124,7 +124,7 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
         val contentTree = Json.decodeFromString(ContentTree.serializer(), contentTreeJson)
         var count = 0
 
-        // We don't know if the template is for a Page or a Post. This is less than ideal as I have to check both.
+        // We don't know if the template is for a Page or a Post. This is less than ideal as I have to check both. But I could short-circuit the second check if the first one succeeds?
         try {
             contentTree.getPagesForTemplate(templateKey).forEach { page ->
                 info("Regenerating page ${page.srcKey} because it has template ${page.templateKey}")

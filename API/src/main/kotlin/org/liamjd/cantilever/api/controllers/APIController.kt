@@ -5,6 +5,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.models.ContentTree
+import org.liamjd.cantilever.routing.MimeType
 import org.liamjd.cantilever.services.S3Service
 
 abstract class APIController(val sourceBucket: String) : KoinComponent {
@@ -27,6 +28,16 @@ abstract class APIController(val sourceBucket: String) : KoinComponent {
         } else {
             warn("No '${S3_KEY.metadataKey}' file found in bucket $sourceBucket; creating new empty tree")
         }
+    }
+
+    /**
+     * Save the content tree to the S3 bucket after a change
+     */
+    fun saveContentTree() {
+        info("Saving content tree to bucket $sourceBucket")
+        val json = Json { prettyPrint = true }
+        val metadata = json.encodeToString(ContentTree.serializer(), contentTree)
+        s3Service.putObject(S3_KEY.metadataKey, sourceBucket, metadata, MimeType.json.toString() )
     }
 
     /**

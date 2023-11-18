@@ -120,9 +120,7 @@
 						class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 disabled:hover:bg-purple-600"
 						>Save</button>
 				</div>
-				<TemplateEditorForm
-					bind:hbTemplate={$currentTemplate}
-					bind:body={$currentTemplate.body} />
+				<TemplateEditorForm bind:hbTemplate={$currentTemplate} bind:body={$currentTemplate.body} />
 			{:else}
 				<h3 class="px-8 text-center text-lg text-slate-200">
 					Load an existing file or create a new one to get started
