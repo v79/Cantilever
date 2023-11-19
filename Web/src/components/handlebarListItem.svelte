@@ -8,9 +8,9 @@
 </script>
 
 <li
-	id={item.key}
+	id={item.srcKey}
 	class="border-grey-400 relative w-full cursor-pointer border-b px-6 py-2 hover:bg-slate-200 {$activeStore.activeFile ===
-	item.key
+	item.srcKey
 		? 'bg-slate-100'
 		: ''} "
 	on:mouseover={() => {
@@ -20,8 +20,8 @@
 		hovering = false;
 	}}
 	on:focus={null}
-	on:keyup={() => onClickFn(item.key)}
-	on:click={() => onClickFn(item.key)}>
+	on:keyup={() => onClickFn(item.srcKey)}
+	on:click={() => onClickFn(item.srcKey)}>
 	{item.name}
 	<br />
 	<span class="text sm text-slate-400">{item.shortName}</span>

@@ -28,9 +28,9 @@ class MetadataController(sourceBucket: String) : KoinComponent, APIController(so
         // TODO: this only returns 1000 items, need to paginate
         val items = s3Service.listObjects(S3_KEY.sourcesPrefix, sourceBucket)
         if (items.hasContents()) {
-            // Special cases are 'sources/', 'sources/posts/', 'sources/pages/', 'sources/templates/' - these should be ignored
+            // Special cases are 'sources/', 'sources/posts/', 'sources/pages/' - these should be ignored
             val ignoreList =
-                listOf(S3_KEY.postsPrefix, S3_KEY.pagesPrefix, S3_KEY.templatesPrefix, S3_KEY.sourcesPrefix)
+                listOf(S3_KEY.postsPrefix, S3_KEY.pagesPrefix, S3_KEY.sourcesPrefix)
             items.contents().forEach {
                 if (it.key() !in ignoreList) {
                     info("Processing ${it.key()}")
@@ -117,12 +117,11 @@ class MetadataController(sourceBucket: String) : KoinComponent, APIController(so
         val templateContents = s3Service.getObjectAsString(templateKey, sourceBucket)
         val frontmatter = templateContents.getFrontMatter()
         val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
-        val template = ContentNode.TemplateNode(
+        return ContentNode.TemplateNode(
             srcKey = templateKey,
             title = metadata.name,
             sections = metadata.sections ?: emptyList()
         )
-        return template
     }
 
     override fun info(message: String) = println("INFO: MetadataController: $message")

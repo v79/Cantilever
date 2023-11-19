@@ -9,12 +9,10 @@
 		allTemplatesStore,
 		currentTemplate,
 		fetchHandlebarTemplate,
+		fetchTemplates,
 		templateStore
 	} from '../../stores/templateStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
-	import { fetchTemplates } from '../../stores/templateStore.svelte';
-	import { Modal } from 'flowbite-svelte';
-	import type { TemplateNode } from 'svelte/types/compiler/interfaces';
 
 	$: templatesSorted = $templateStore.sort((a, b) => {
 		if (a.key < b.key) return -1;
@@ -77,38 +75,7 @@
 			currentTemplate.set(newHBTemplate);
 	}
 
-	async function rebuild() {
-		let token = $userStore.token;
-		console.log('Regenerating project templates file...');
-		fetch('https://api.cantilevers.org/project/templates/rebuild', {
-			method: 'PUT',
-			headers: {
-				Accept: 'application/json',
-				Authorization: 'Bearer ' + token,
-				'X-Content-Length': '0'
-			},
-			mode: 'cors'
-		})
-			.then((response) => response.json())
-			.then((data) => {
-				console.log(data);
-				notificationStore.set({
-					message: data.data,
-					shown: true,
-					type: 'success'
-				});
-				loadAllTemplates();
-			})
-			.catch((error) => {
-				console.log(error);
-				notificationStore.set({
-					message: error,
-					shown: true,
-					type: 'error'
-				});
-				$spinnerStore.shown = false;
-			});
-	}
+	
 
 	/**
 	 * Load the handlebars template file into the currentTemplate store
@@ -169,13 +136,6 @@
 	<div class="px-8"><p class="text-warning text-lg">Login to see templates</p></div>
 {:else}
 	<div class="flex items-center justify-center" role="group">
-		<button
-			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
-			on:click={(e) => {
-				console.log('Show spinner');
-				spinnerStore.set({ shown: true, message: 'Rebuilding project...' });
-				tick().then(() => rebuild());
-			}}>Rebuild</button>
 		<button
 			class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {

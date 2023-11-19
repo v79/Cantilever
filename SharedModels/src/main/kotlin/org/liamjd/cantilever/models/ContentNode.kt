@@ -308,6 +308,17 @@ class ContentTree {
     }
 
     /**
+     * Update a template in the tree. This does a delete then insert
+     */
+    fun updateTemplate(template: ContentNode.TemplateNode) {
+        val existing = templates.find { it.srcKey == template.srcKey } as ContentNode.TemplateNode?
+        if (existing != null) {
+            deleteTemplate(existing)
+            insertTemplate(template)
+        }
+    }
+
+    /**
      * Delete a page from the tree. This also updates the parent folder.
      */
     fun deletePage(page: ContentNode.PageNode) {

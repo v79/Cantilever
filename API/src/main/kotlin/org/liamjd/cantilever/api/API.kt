@@ -79,8 +79,6 @@ class LambdaRouter : RequestHandlerWrapper() {
                     get("/$SRCKEY", pageController::loadMarkdownSource)
                     put("/folder/new/{folderName}", pageController::createFolder).supplies(setOf(MimeType.plainText))
                 }
-                get("/templates", projectController::getTemplates)
-                put("/templates/rebuild", projectController::rebuildTemplateList)
                 get("/templates/{templateKey}", templateController::getTemplateMetadata)
             }
         }
@@ -101,6 +99,7 @@ class LambdaRouter : RequestHandlerWrapper() {
 
         auth(cognitoJWTAuthorizer) {
             group("/templates") {
+                get("", templateController::getTemplates)
                 get("/$SRCKEY", templateController::loadHandlebarsSource)
                 post("/", templateController::saveTemplate).supplies(setOf(MimeType.plainText))
             }

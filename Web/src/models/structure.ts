@@ -155,16 +155,16 @@ export abstract class MetadataItem {
  * A handlebars item is different from a MetadataItem as it does not contain markdown content; it will be an HTML file (other types may follow) in the Handlebars templating format
  */
 export class HandlebarsItem {
-	key: string;
+	srcKey: string;
 	name: string;
 	shortName: string;
 	lastUpdated: Date;
 
-	constructor(key: string, name: string, lastUpdated: Date) {
-		this.key = key;
+	constructor(srcKey: string, name: string, lastUpdated: Date) {
+		this.srcKey = srcKey;
 		this.name = name;
 		this.lastUpdated = new Date(lastUpdated);
-		this.shortName = key.split('/').slice(-1).join();
+		this.shortName = srcKey.split('/').slice(-1).join();
 	}
 
 	getDateString(): string {
