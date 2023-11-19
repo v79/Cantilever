@@ -2,7 +2,7 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import HandlebarListItem from '../../components/handlebarListItem.svelte';
 	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import { FileType, FolderNode, HandlebarsItem, HandlebarsTemplate } from '../../models/structure';
+	import { FileType, FolderNode, HandlebarsItem, HandlebarsTemplate, Template, TemplateMetadata } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import {
@@ -13,6 +13,8 @@
 	} from '../../stores/templateStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
 	import { fetchTemplates } from '../../stores/templateStore.svelte';
+	import { Modal } from 'flowbite-svelte';
+	import type { TemplateNode } from 'svelte/types/compiler/interfaces';
 
 	$: templatesSorted = $templateStore.sort((a, b) => {
 		if (a.key < b.key) return -1;
@@ -47,7 +49,32 @@
 	}
 
 	function createNewTemplate() {
-		console.log('Create new template');
+		const rawHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="author" content="{{author}}">
+    <meta name="generator" content="cantilevers">
+    <title>{{ project.projectName }} - {{ title }}</title>
+    <link rel="stylesheet" href="/css/pico.min.css">
+</head>
+<body>
+</body>
+</html>
+		`;
+		var newTemplate = new Template('/sources/templates/',new Date(), new TemplateMetadata('new template', Array<string>()));
+		
+			$activeStore.activeFile = '';
+			$activeStore.isNewFile = true;
+			$activeStore.isValid = false;
+			$activeStore.newSlug = '';
+			$activeStore.hasChanged = false;
+
+		var newHBTemplate = new HandlebarsTemplate(newTemplate,rawHTML);
+			console.log('Creating new template');
+			currentTemplate.set(newHBTemplate);
 	}
 
 	async function rebuild() {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Badge } from 'flowbite-svelte';
 	import type { HandlebarsTemplate } from '../../models/structure';
-	import TextInput from '../forms/textInput.svelte';
+	import TextInput from '../../components/forms/textInput.svelte';
 
 	export let hbTemplate: HandlebarsTemplate;
 	export let body = '';
