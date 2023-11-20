@@ -6,9 +6,12 @@ import kotlin.reflect.KType
 /**
  * A RequestPredicate is descriptor of a route set up in the router
  * @param method the HTTP method (GET, PUT, etc.)
- * @param pathPattern the string representing the route, e.g. /customers/get/{id}
+ * @param pathPattern the string representing the route, e.g. `/customers/get/{id}`
  * @param consumes a set of Mime Types it accepts
  * @param produces a set of Mime Types it replies with
+ * @property accepts is an alias for consumes
+ * @property supplies is an alias for produces
+ * @property kType is the Kotlin type of the request body, or null
  */
 data class RequestPredicate(
     val method: String,
@@ -22,8 +25,14 @@ data class RequestPredicate(
     val supplies
         get() = produces
 
+    private val routeParts
+        get() = pathPattern.split("/")
+
+    val pathVariables: List<String>
+        get() = routeParts.filter { it.startsWith("{") && it.endsWith("}") }.map { it.removeSurrounding("{", "}") }
+
     fun match(request: APIGatewayProxyRequestEvent) =
-        RequestMatchResult(matchPath = pathMatches(request.path, pathPattern),
+        RequestMatchResult(matchPath = pathMatches(request.path),
             matchMethod = methodMatches(request),
             matchAcceptType = acceptMatches(request, produces),
             matchContentType = when {
@@ -37,10 +46,7 @@ data class RequestPredicate(
                 }
             })
 
-    // I need to remove the UriTemplate stuff because I don't understand it
-    private fun pathMatches(inputPath: String, routePath: String): Boolean {
-        // WAS request.path?.let { UriTemplate.from(pathPattern).matches(it) } ?: false,
-        val routeParts = routePath.split("/")
+    private fun pathMatches(inputPath: String): Boolean {
         val inputParts = inputPath.split("/")
 
         if (routeParts.size != inputParts.size) {
@@ -72,6 +78,9 @@ data class RequestPredicate(
     fun matchedAcceptType(acceptedMediaTypes: List<MimeType>): MimeType? =
         produces.firstOrNull { acceptedMediaTypes.any { acceptedType -> it.isCompatibleWith(acceptedType) } }
 
+    /**
+     * Override the default consumes mime type
+     */
     fun expects(mimeTypes: Set<MimeType>?): RequestPredicate {
         mimeTypes?.let {
             consumes = mimeTypes
@@ -79,6 +88,9 @@ data class RequestPredicate(
         return this
     }
 
+    /**
+     * Override the default produces mime type
+     */
     fun supplies(mimeTypes: Set<MimeType>?): RequestPredicate {
         mimeTypes?.let {
             produces = mimeTypes

@@ -1,0 +1,56 @@
+openapi: 3.0.3
+info:
+  title: Cantilever
+  description: Cantilever site generator
+  version: 0.0.8
+servers:
+  - url: 'https://api.cantilevers.org'
+    description: 'Production server for the Cantilever static site generator'
+tags:
+  - name: General
+    description: General endpoints about the API
+  - name: Project
+    description: Endpoints for project configuration
+paths:
+  /showAllRoutes:
+    get:
+      tags:
+        - General
+      summary: Show all valid routes
+      description: 'This endpoint returns a complete list of the supported routes. I really should secure it!'
+      responses:
+        '200':
+          description: "List of routes"
+          content:
+            application/json:
+              schema:
+                type: string
+                example: 'List of routes'
+  /warm:
+    get:
+      tags:
+        - General
+      summary: Warm up the server
+      description: 'This endpoint is used to warm up the the router function and hence the server'
+      responses:
+        '200':
+          description: "warming"
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: 'Warming'
+
+  /project:
+    get:
+      tags:
+        - Project
+      summary: 'Get the project configuration file'
+      description: 'This endpoint is used to retrieve the project configuration file'
+      responses:
+        '200':
+          description: "Project configuration file"
+          content:
+            application/json:
+              schema:
+                type: object

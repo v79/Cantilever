@@ -133,10 +133,16 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
+        get("/openAPI") { _: Request<Unit> ->
+            val openAPI = this.openAPI()
+            ResponseEntity.ok(openAPI)
+        }.supplies(
+            setOf(MimeType.json)
+        )
         get("/showAllRoutes") { _: Request<Unit> ->
             val routeList = this.listRoutes()
             ResponseEntity.ok(routeList)
-        }
+        }.supplies(setOf(MimeType.plainText))
     }
 }
 

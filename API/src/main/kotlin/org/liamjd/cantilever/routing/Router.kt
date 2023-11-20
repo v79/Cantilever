@@ -9,6 +9,7 @@ import kotlin.reflect.typeOf
  * It provides the functions responding to the HTTP request methods (GET, POST) etc. and matches them to
  * a [HandlerFunction] provided by the library user
  * Use the function [lambdaRouter] to create a new router, rather than the direct constructor
+ * @property routes a map of all the routes which have been declared
  */
 class Router internal constructor() {
 
@@ -39,7 +40,7 @@ class Router internal constructor() {
         pattern: String, noinline handlerFunction: HandlerFunction<I, T>
     ): RequestPredicate {
         val requestPredicate = defaultRequestPredicate(
-            pattern = pattern, method = "POST", consuming = emptySet(), handlerFunction = handlerFunction
+            pattern = pattern, method = "POST", consuming = consumeByDefault, handlerFunction = handlerFunction
         ).also {
             it.kType = typeOf<I>()
             routes[it] = RouterFunction(it, handlerFunction)
@@ -54,7 +55,7 @@ class Router internal constructor() {
         pattern: String, noinline handlerFunction: HandlerFunction<I, T>
     ): RequestPredicate {
         val requestPredicate = defaultRequestPredicate(
-            pattern = pattern, method = "PUT", consuming = emptySet(), handlerFunction = handlerFunction
+            pattern = pattern, method = "PUT", consuming = consumeByDefault, handlerFunction = handlerFunction
         ).also {
             it.kType = typeOf<I>()
             routes[it] = RouterFunction(it, handlerFunction)
@@ -91,6 +92,11 @@ class Router internal constructor() {
         return requestPredicate
     }
 
+    /**
+     * The default request predicate forms the basis of all the HTTP methods.
+     * It sets a default set of [MimeType]s for consuming and producing, and creates a [RequestPredicate] object.
+     * The defaults are `application/json` for both consuming and producing but these can be overridden with the `supplies` and `consumes` modifiers.
+     */
     inline fun <reified I, T : Any> defaultRequestPredicate(
         pattern: String,
         method: String,
@@ -110,6 +116,70 @@ class Router internal constructor() {
             println("${route.value.requestPredicate.method} ${route.value.requestPredicate.pathPattern} <consumes: ${route.value.requestPredicate.accepts} (${route.value.requestPredicate.kType}) -> produces: ${route.value.requestPredicate.supplies}>")
         }
         return routes.values.joinToString(separator = " ;\n") { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern}  <${it.requestPredicate.accepts} (${it.requestPredicate.kType}) -> ${it.requestPredicate.supplies}>" }
+    }
+
+    /**
+     * Function to build an OpenAPI 3.0.1 specification from the routes which have been declared.
+     * This really needs to be broken up and rationalize.
+     */
+    @OptIn(ExperimentalStdlibApi::class)
+    fun openAPI(): String {
+        val sb = StringBuilder()
+        sb.append("openapi: 3.0.1\n")
+        sb.append("info:\n")
+        sb.append("  title: Cantilever API\n")
+        sb.append("  description: API for Cantilever\n")
+        sb.append("  version: 0.0.8\n")
+        sb.append("servers:\n")
+        sb.append("  - url: https://api.cantilevers.org\n")
+        sb.append("paths:\n")
+        routes.forEach { route ->
+            sb.append("  ${route.key.pathPattern}:\n")
+            sb.append("    ${route.key.method.lowercase()}:\n")
+            if (route.key.pathVariables.isNotEmpty()) {
+                sb.append("      parameters:\n")
+                route.key.pathVariables.forEach { variable ->
+                    sb.append("        - name: $variable\n")
+                    sb.append("          in: path\n")
+                    sb.append("          required: true\n")
+                    sb.append("          schema:\n")
+                    sb.append("            type: string\n") // TODO: I wonder if I can specify the type of the path variable?
+                }
+            }
+            when (route.key.method) {
+                "PUT", "POST" -> {
+                    // in my API, PUT may not have a body if the X-Content-Length header is zero
+                    sb.append("      requestBody:\n")
+                    sb.append("        content:\n")
+                    route.key.accepts.forEach { accepts ->
+                        sb.append("          ${accepts.toString().lowercase()}:\n")
+                        sb.append("            schema:\n")
+                        // TODO: I need to figure out how to get the type of the body
+                        // This should be schema: object, and then use reflection to interrogate the class?
+                        // but for now, all I have is a kType, which I can't use to get the class
+                        // perhas using a reference like  $ref: '#/components/schemas/Order'   ?
+                        sb.append("              type: string\n") // this is misleading, because I will accept an empty body in some cases
+                    }
+                }
+            }
+            sb.append("      responses:\n")
+            sb.append("        200:\n")
+            sb.append("          description: OK\n")
+            sb.append("          content:\n")
+            route.key.supplies.forEach { supplies ->
+                sb.append("            ${supplies.toString().lowercase()}:\n")
+                sb.append("              schema:\n")
+                sb.append("                type: string\n")
+            }
+
+            // TODO: authorization here, see https://spec.openapis.org/oas/v3.1.0#security-scheme-object
+            if (route.value.authorizer != null) {
+                sb.append("      security:\n")
+                sb.append("        - ${route.value.authorizer!!.simpleName}:\n")
+                sb.append("            - ${route.value.authorizer!!.simpleName}:\n")
+            }
+        }
+        return sb.toString()
     }
 
     companion object {
@@ -163,7 +233,9 @@ typealias HandlerFunction<I, T> = (request: Request<I>) -> ResponseEntity<T>
  * A RouterFunction combines a [RequestPredicate] (the HTTP method, the path, and the accept/return types, with the [HandlerFunction] which responds to the [Request] and returns a [ResponseEntity]
  */
 data class RouterFunction<I, T : Any>(
-    val requestPredicate: RequestPredicate, val handler: HandlerFunction<I, T>, var authorizer: Authorizer? = null
+    val requestPredicate: RequestPredicate,
+    val handler: HandlerFunction<I, T>,
+    var authorizer: Authorizer? = null
     // this could be a place to store the optional SWAGGER definition data?
 )
 

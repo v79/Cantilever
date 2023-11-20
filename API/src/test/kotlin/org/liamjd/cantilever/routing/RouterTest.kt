@@ -18,8 +18,10 @@ class RouterTest {
 
     private val acceptJson = mapOf("accept" to "application/json")
     private val acceptText = mapOf("accept" to "text/plain")
-    private val contentJson = mapOf("Content-Type" to "application/json")
+    private val acceptYaml = mapOf("accept" to "application/yaml")
     private val acceptHtml = mapOf("accept" to "text/html")
+    private val contentJson = mapOf("Content-Type" to "application/json")
+    private val contentText = mapOf("Content-Type" to "text/plain")
     private val xContentZero = mapOf("X-Content-Length" to "0")
 
     @Test
@@ -27,7 +29,7 @@ class RouterTest {
         val testR = TestRouter()
         val event = APIGatewayProxyRequestEvent().withPath("/").withHttpMethod("GET").withHeaders(acceptJson)
         val response = testR.handleRequest(event)
-
+        println(testR.router.listRoutes())
         assertNotNull(response)
         assertEquals(200, response.statusCode)
     }
@@ -41,6 +43,28 @@ class RouterTest {
 
         assertNotNull(response)
         assertEquals(404, response.statusCode)
+    }
+
+    @Test
+    fun `defaults to accepting and consuming application_json content when not specified`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/postSimple").withHttpMethod("POST")
+            .withBody(Json.encodeToString(SimpleClass("This is a simple class"))).withHeaders(contentJson + acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertNotNull(response)
+        assertEquals(200, response.statusCode)
+    }
+
+    @Test
+    fun `can override the default content type`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/postText").withHttpMethod("POST")
+            .withBody("This is a simple class").withHeaders(contentText + acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertNotNull(response)
+        assertEquals(200, response.statusCode)
     }
 
     @Test
@@ -257,7 +281,8 @@ class RouterTest {
     fun `match a post route and deserialize a valid object`() {
         val testR = TestRouter()
         val postThing = PostThis(name = "Grapefruit", count = 23)
-        val event = APIGatewayProxyRequestEvent().withPath("/postThing").withHttpMethod("POST").withBody(Json.encodeToString(postThing))
+        val event = APIGatewayProxyRequestEvent().withPath("/postThing").withHttpMethod("POST")
+            .withBody(Json.encodeToString(postThing))
             .withHeaders(acceptText + contentJson)
         val response = testR.handleRequest(event)
 
@@ -283,18 +308,22 @@ class RouterTest {
     fun `bad request when no body supplied but was expected for POST`() {
         val testR = TestRouter()
         val event = APIGatewayProxyRequestEvent().withPath("/postThing").withHttpMethod("POST")
-            .withHeaders(acceptText)
+            .withHeaders(acceptText + contentJson)
         val response = testR.handleRequest(event)
 
         assertEquals(400, response.statusCode)
-        assertEquals("No body received but org.liamjd.cantilever.routing.PostThis was expected. If there is legitimately no body, add a X-Content-Length header with value '0'.",response.body)
+        assertEquals(
+            "No body received but org.liamjd.cantilever.routing.PostThis was expected. If there is legitimately no body, add a X-Content-Length header with value '0'.",
+            response.body
+        )
     }
 
     @Test
     fun `throw appropriate error when entirely wrong object type is supplied`() {
         val testR = TestRouter()
         val postThing = DontPostThis(year = 1923L, truth = false)
-        val event = APIGatewayProxyRequestEvent().withPath("/postThing").withHttpMethod("POST").withBody(Json.encodeToString(postThing))
+        val event = APIGatewayProxyRequestEvent().withPath("/postThing").withHttpMethod("POST")
+            .withBody(Json.encodeToString(postThing))
             .withHeaders(acceptText + contentJson)
         val response = testR.handleRequest(event)
 
@@ -305,10 +334,21 @@ class RouterTest {
     @Test
     fun `can match a route with an asterix path parameter`() {
         val testR = TestRouter()
-        val event = APIGatewayProxyRequestEvent().withPath("/posts/save/*").withHttpMethod("PUT").withHeaders(acceptJson + contentJson + xContentZero)
+        val event = APIGatewayProxyRequestEvent().withPath("/posts/save/*").withHttpMethod("PUT")
+            .withHeaders(acceptJson + contentJson + xContentZero)
         val response = testR.handleRequest(event)
         assertEquals(200, response.statusCode)
+    }
 
+    @Test
+    fun `can return an OpenAPI 3_0_1 spec`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/openAPI").withHttpMethod("GET")
+            .withHeaders(acceptText)
+        val response = testR.handleRequest(event)
+        assertEquals(200, response.statusCode)
+        println(response.body)
+        assertTrue(response.body.contains("openapi: 3.0.1"))
     }
 }
 
@@ -367,13 +407,35 @@ class TestRouter : RequestHandlerWrapper() {
             put("/save/{key}") { request: Request<Unit> -> ResponseEntity.ok("Request for /posts/save/${request.pathParameters["key"]} received") }
         }
 
+        get("/openAPI") { _: Request<Unit> ->
+            ResponseEntity.ok(body = this.openAPI())
+        }.supplies(setOf(MimeType.plainText))
+
         /**
          * Post and serialization of input body
          */
+        post("/postSimple") { request: Request<SimpleClass> ->
+            val obj = request.body
+            ResponseEntity.ok("Received post for object message=${obj.message}")
+        }
+
         post("/postThing") { request: Request<PostThis> ->
             val obj = request.body
-            ResponseEntity.ok("Received post for object name=${obj.name}, count=${obj.count}")  }.supplies(setOf(
-            MimeType.plainText))
+            ResponseEntity.ok("Received post for object name=${obj.name}, count=${obj.count}")
+        }.supplies(
+            setOf(
+                MimeType.plainText
+            )
+        )
+
+        post("/postText") { request: Request<String> ->
+            val obj = request.body
+            ResponseEntity.ok("Received post for object message=${obj}")
+        }.expects(
+            setOf(
+                MimeType.plainText
+            )
+        )
     }
 }
 

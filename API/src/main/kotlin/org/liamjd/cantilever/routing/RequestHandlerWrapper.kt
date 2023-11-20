@@ -13,7 +13,7 @@ import kotlinx.serialization.serializer
 import org.liamjd.cantilever.routing.Router.Companion.CONTENT_TYPE
 
 /**
- * Implementing the AWS API Gateway [RequestHandler] interface, this class looks for a route which matches the incoming request
+ * Implementing the AWS API Gateway [RequestHandler] interface, this class looks for a route which matches the incoming request.
  * If a route exists, it generates a response by calling the [HandlerFunction] declared in the route, parsing and deserializing the body
  * if it exists.
  * @param corsDomain The website domain name, required for CORS
