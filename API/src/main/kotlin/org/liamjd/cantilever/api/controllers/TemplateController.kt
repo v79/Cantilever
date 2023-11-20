@@ -1,20 +1,20 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.charleskorn.kaml.Yaml
-import com.charleskorn.kaml.YamlConfiguration
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.SerializationException
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.common.stripFrontMatter
+import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.Template
 import org.liamjd.cantilever.models.TemplateMetadata
 import org.liamjd.cantilever.models.rest.HandlebarsTemplate
+import org.liamjd.cantilever.models.rest.TemplateListDTO
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
-import org.liamjd.cantilever.services.S3Service
 import java.net.URLDecoder
 import java.nio.charset.Charset
 
@@ -68,10 +68,27 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             info("Updating existing file '${handlebarsContent.template.key}'")
             val length = writeTemplateFile(handlebarsContent, srcKey)
-            ResponseEntity.ok(body = APIResult.OK("Updated file ${handlebarsContent.template.key}, $length bytes"))
+            contentTree.updateTemplate(
+                ContentNode.TemplateNode(
+                    srcKey = handlebarsContent.template.key,
+                    title = handlebarsContent.template.metadata.name,
+                    sections = handlebarsContent.template.metadata.sections?.toMutableList() ?: mutableListOf()
+                )
+            )
+            ResponseEntity.ok(
+                body =
+                APIResult.OK("Updated file ${handlebarsContent.template.key}, $length bytes")
+            )
         } else {
             info("Creating new file '${handlebarsContent.template.key}'")
             val length = writeTemplateFile(handlebarsContent, srcKey)
+            contentTree.insertTemplate(
+                ContentNode.TemplateNode(
+                    srcKey = handlebarsContent.template.key,
+                    title = handlebarsContent.template.metadata.name,
+                    sections = handlebarsContent.template.metadata.sections?.toMutableList() ?: mutableListOf()
+                )
+            )
             ResponseEntity.ok(body = APIResult.OK("Updated file ${handlebarsContent.template.key}, $length bytes"))
         }
     }
@@ -98,6 +115,27 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
             }
         } else {
             ResponseEntity.badRequest(body = APIResult.Error("Invalid template key"))
+        }
+    }
+
+    /**
+     * Return the list of templates
+     */
+    fun getTemplates(request: Request<Unit>): ResponseEntity<APIResult<TemplateListDTO>> {
+        return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
+            loadContentTree()
+            info("Fetching all posts from metadata.json")
+            val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
+            val templates = contentTree.templates.sortedBy { it.title }
+            val templateList = TemplateListDTO(
+                count = templates.size,
+                lastUpdated = lastUpdated,
+                templates = templates
+            )
+            ResponseEntity.ok(body = APIResult.Success(value = templateList))
+        } else {
+            error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
+            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
         }
     }
 

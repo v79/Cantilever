@@ -115,6 +115,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
     /**
      * Return a list of all the [Template]s
      */
+    @Deprecated("Replaced with [TemplateController.getTemplates]")
     fun getTemplates(request: Request<Unit>): ResponseEntity<APIResult<TemplateList>> {
         info("Retrieving templates pages")
         return if (s3Service.objectExists(templatesKey, sourceBucket)) {

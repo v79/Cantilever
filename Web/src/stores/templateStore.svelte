@@ -16,7 +16,7 @@
 	 * @param token authentication token
 	 */
 	export function fetchTemplates(token: string): Error | undefined {
-		fetch('https://api.cantilevers.org/project/templates', {
+		fetch('https://api.cantilevers.org/templates', {
 			method: 'GET',
 			headers: {
 				Accept: 'application/json',
@@ -29,15 +29,16 @@
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
+				console.log('Loaded templates');
 				console.dir(data.data);
 				// deserialize
 				var tempTemplates = new Array<Template>();
 				for (const t of data.data.templates) {
 					tempTemplates.push(
 						new Template(
-							t.key,
+							t.srcKey,
 							t.lastUpdated,
-							new TemplateMetadata(t.metadata.name, t.metadata.sections)
+							new TemplateMetadata(t.title, t.sections)
 						)
 					);
 				}
@@ -77,6 +78,7 @@
 			})
 				.then((response) => response.json())
 				.then((data) => {
+					console.dir(data);
 					if (data === undefined) {
 						throw new Error(data.message);
 					}

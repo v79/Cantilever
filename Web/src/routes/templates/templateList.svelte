@@ -2,17 +2,17 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import HandlebarListItem from '../../components/handlebarListItem.svelte';
 	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import { FileType, FolderNode, HandlebarsItem, HandlebarsTemplate } from '../../models/structure';
+	import { FileType, FolderNode, HandlebarsItem, HandlebarsTemplate, Template, TemplateMetadata } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import {
 		allTemplatesStore,
 		currentTemplate,
 		fetchHandlebarTemplate,
+		fetchTemplates,
 		templateStore
 	} from '../../stores/templateStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
-	import { fetchTemplates } from '../../stores/templateStore.svelte';
 
 	$: templatesSorted = $templateStore.sort((a, b) => {
 		if (a.key < b.key) return -1;
@@ -47,41 +47,35 @@
 	}
 
 	function createNewTemplate() {
-		console.log('Create new template');
+		const rawHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="author" content="{{author}}">
+    <meta name="generator" content="cantilevers">
+    <title>{{ project.projectName }} - {{ title }}</title>
+    <link rel="stylesheet" href="/css/pico.min.css">
+</head>
+<body>
+</body>
+</html>
+		`;
+		var newTemplate = new Template('/sources/templates/',new Date(), new TemplateMetadata('new template', Array<string>()));
+		
+			$activeStore.activeFile = '';
+			$activeStore.isNewFile = true;
+			$activeStore.isValid = false;
+			$activeStore.newSlug = '';
+			$activeStore.hasChanged = false;
+
+		var newHBTemplate = new HandlebarsTemplate(newTemplate,rawHTML);
+			console.log('Creating new template');
+			currentTemplate.set(newHBTemplate);
 	}
 
-	async function rebuild() {
-		let token = $userStore.token;
-		console.log('Regenerating project templates file...');
-		fetch('https://api.cantilevers.org/project/templates/rebuild', {
-			method: 'PUT',
-			headers: {
-				Accept: 'application/json',
-				Authorization: 'Bearer ' + token,
-				'X-Content-Length': '0'
-			},
-			mode: 'cors'
-		})
-			.then((response) => response.json())
-			.then((data) => {
-				console.log(data);
-				notificationStore.set({
-					message: data.data,
-					shown: true,
-					type: 'success'
-				});
-				loadAllTemplates();
-			})
-			.catch((error) => {
-				console.log(error);
-				notificationStore.set({
-					message: error,
-					shown: true,
-					type: 'error'
-				});
-				$spinnerStore.shown = false;
-			});
-	}
+	
 
 	/**
 	 * Load the handlebars template file into the currentTemplate store
@@ -142,13 +136,6 @@
 	<div class="px-8"><p class="text-warning text-lg">Login to see templates</p></div>
 {:else}
 	<div class="flex items-center justify-center" role="group">
-		<button
-			class="inline-block rounded-l bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
-			on:click={(e) => {
-				console.log('Show spinner');
-				spinnerStore.set({ shown: true, message: 'Rebuilding project...' });
-				tick().then(() => rebuild());
-			}}>Rebuild</button>
 		<button
 			class="inline-block bg-purple-800 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800"
 			on:click={(e) => {

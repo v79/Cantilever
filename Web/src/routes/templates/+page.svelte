@@ -4,12 +4,14 @@
 	import { AS_CLEAR, activeStore } from '../../stores/appStatusStore.svelte';
 	import TemplateList from './templateList.svelte';
 	import { currentTemplate } from '../../stores/templateStore.svelte';
-	import { HandlebarsTemplate, Template } from '../../models/structure';
+	import { HandlebarsTemplate } from '../../models/structure';
 	import { userStore } from '../../stores/userStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
-	import TemplateEditorForm from '../../components/HandlebarsEditor/templateEditorForm.svelte';
+	import TemplateEditorForm from './templateEditorForm.svelte';
 	import { Modal } from 'flowbite-svelte';
 	import ActiveStoreView from '../../components/activeStoreView.svelte';
+	import TextInput from '../../components/forms/textInput.svelte';
+	import { createSlug } from '../../functions/createSlug';
 
 	let deleteFileModal = false;
 	let saveExistingModal = false;
@@ -22,6 +24,9 @@
 	});
 
 	function saveFile() {
+		if($activeStore.isNewFile) {
+			$currentTemplate.template.key = 'sources/templates/' + saveNewFileSlug + '.html.hbs';
+		}
 		console.log('Saving template file ', $currentTemplate.template.key);
 		$currentTemplate.template.lastUpdated = new Date();
 		let templateJson = JSON.stringify($currentTemplate);
@@ -111,6 +116,9 @@
 						type="button"
 						on:click={() => {
 							if ($activeStore.isNewFile) {
+								saveNewFileSlug = createSlug($currentTemplate.template.metadata.name ?? '');
+								$activeStore.newSlug = saveNewFileSlug;
+								$activeStore.activeFile = saveNewFileSlug;
 								saveNewModal = true;
 							} else {
 								saveExistingModal = true;
@@ -139,6 +147,26 @@
 	<p>
 		Save changes to file <strong>{$activeStore.activeFile}</strong>?
 	</p>
+	<svelte:fragment slot="footer">
+		<button
+			type="button"
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Cancel</button>
+		<button
+			type="button"
+			on:click={saveFile}
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Save</button>
+	</svelte:fragment>
+</Modal>
+
+<Modal title="Save new template?" bind:open={saveNewModal} autoclose size="sm">
+	<p>Creating new template <strong>{$currentTemplate.template.metadata.name}. The template will be saved in the <code>templates</code> folder.</strong></p>
+	<p>The filename will be fixed after saving, so this is your last chance to change it.</p>
+	<form>
+		<TextInput bind:value={saveNewFileSlug} name="new-template-name" label="Filename" required/>
+	</form>
+	
 	<svelte:fragment slot="footer">
 		<button
 			type="button"

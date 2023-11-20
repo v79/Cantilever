@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { Badge } from 'flowbite-svelte';
 	import type { HandlebarsTemplate } from '../../models/structure';
-	import TextInput from '../forms/textInput.svelte';
-
+	import TextInput from '../../components/forms/textInput.svelte';
+	import { Modal } from 'flowbite-svelte';
+	import { currentTemplate } from '../../stores/templateStore.svelte';
 	export let hbTemplate: HandlebarsTemplate;
 	export let body = '';
+
+	let showEditSections = false;
 </script>
 
 <div class="relative mt-5 md:col-span-2 md:mt-0">
@@ -28,13 +31,16 @@
 						</div>
 						<div class="col-span-1">
 							<button
+								on:click={() => {
+									showEditSections = true;
+								}}
 								class="float-right text-right text-sm font-medium text-slate-200"
 								type="button">Edit...</button>
 						</div>
 						<div class="col-span-6 flex items-center justify-center space-x-4">
 							{#each hbTemplate.template.metadata.sections as section}
 								<Badge
-									class="bg-primary-100 dark:bg-primary-900 inline-flex items-center justify-center divide-gray-200 rounded-md border-2 border-gray-200  px-2.5 py-0.5 text-lg font-medium text-slate-200 dark:divide-gray-700 dark:border-gray-700 dark:text-slate-800"
+									class="bg-primary-100 dark:bg-primary-900 inline-flex divide-gray-200 rounded-md border-2 border-gray-200  px-2.5 py-0.5 text-lg font-medium text-slate-200 dark:divide-gray-700 dark:border-gray-700 dark:text-slate-800"
 									>{section}</Badge>
 							{/each}
 						</div>
@@ -54,3 +60,23 @@
 		</form>
 	</div>
 </div>
+
+<Modal title="Manage template sections" bind:open={showEditSections} autoclose size="sm">
+	<p>
+		A Page template may contain a number of distinct sections.<br />
+		Posts only contain a single section, <code>body</code>.
+	</p>
+	<div class="col-span-2 sm:col-span-2 lg:col-span-2">
+		<ul>
+			{#each $currentTemplate.template.metadata.sections as section}
+				<li>{section}</li>
+			{/each}
+		</ul>
+	</div>
+	<svelte:fragment slot="footer">
+		<button
+			type="button"
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Cancel</button>
+	</svelte:fragment>
+</Modal>
