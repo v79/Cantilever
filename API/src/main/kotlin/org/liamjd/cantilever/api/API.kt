@@ -111,7 +111,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                 put("/page/$SRCKEY", generatorController::generatePage).supplies(setOf(MimeType.plainText))
                 put(
                     "/template/{templateKey}", generatorController::generateTemplate
-                ).supplies(setOf(MimeType.plainText))
+                ).supplies(setOf(MimeType.plainText)).expects(emptySet())
             }
             group("/cache") {
                 delete("/posts") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Call to delete cache for posts") }
@@ -137,7 +137,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             val openAPI = this.openAPI()
             ResponseEntity.ok(openAPI)
         }.supplies(
-            setOf(MimeType.json)
+            setOf(MimeType.json, MimeType.yaml, MimeType.plainText)
         )
         get("/showAllRoutes") { _: Request<Unit> ->
             val routeList = this.listRoutes()

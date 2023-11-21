@@ -133,50 +133,53 @@ class Router internal constructor() {
         sb.append("servers:\n")
         sb.append("  - url: https://api.cantilevers.org\n")
         sb.append("paths:\n")
-        routes.forEach { route ->
-            sb.append("  ${route.key.pathPattern}:\n")
-            sb.append("    ${route.key.method.lowercase()}:\n")
-            if (route.key.pathVariables.isNotEmpty()) {
-                sb.append("      parameters:\n")
-                route.key.pathVariables.forEach { variable ->
-                    sb.append("        - name: $variable\n")
-                    sb.append("          in: path\n")
-                    sb.append("          required: true\n")
-                    sb.append("          schema:\n")
-                    sb.append("            type: string\n") // TODO: I wonder if I can specify the type of the path variable?
-                }
-            }
-            when (route.key.method) {
-                "PUT", "POST" -> {
-                    // in my API, PUT may not have a body if the X-Content-Length header is zero
-                    sb.append("      requestBody:\n")
-                    sb.append("        content:\n")
-                    route.key.accepts.forEach { accepts ->
-                        sb.append("          ${accepts.toString().lowercase()}:\n")
-                        sb.append("            schema:\n")
-                        // TODO: I need to figure out how to get the type of the body
-                        // This should be schema: object, and then use reflection to interrogate the class?
-                        // but for now, all I have is a kType, which I can't use to get the class
-                        // perhas using a reference like  $ref: '#/components/schemas/Order'   ?
-                        sb.append("              type: string\n") // this is misleading, because I will accept an empty body in some cases
+        routes.entries.groupBy { it.key.pathPattern }.forEach { path ->
+            // we don't want to repeat the same path pattern when there are routes with the same path but different methods
+            sb.append("  ${path.key}:\n")
+            path.value.forEach { route ->
+                sb.append("    ${route.key.method.lowercase()}:\n")
+                if (route.key.pathVariables.isNotEmpty()) {
+                    sb.append("      parameters:\n")
+                    route.key.pathVariables.forEach { variable ->
+                        sb.append("        - name: $variable\n")
+                        sb.append("          in: path\n")
+                        sb.append("          required: true\n")
+                        sb.append("          schema:\n")
+                        sb.append("            type: string\n") // TODO: I wonder if I can specify the type of the path variable?
                     }
                 }
-            }
-            sb.append("      responses:\n")
-            sb.append("        200:\n")
-            sb.append("          description: OK\n")
-            sb.append("          content:\n")
-            route.key.supplies.forEach { supplies ->
-                sb.append("            ${supplies.toString().lowercase()}:\n")
-                sb.append("              schema:\n")
-                sb.append("                type: string\n")
-            }
+                when (route.key.method) {
+                    "PUT", "POST" -> {
+                        // in my API, PUT may not have a body if the X-Content-Length header is zero
+                        sb.append("      requestBody:\n")
+                        sb.append("        content:\n")
+                        route.key.accepts.forEach { accepts ->
+                            sb.append("          ${accepts.toString().lowercase()}:\n")
+                            sb.append("            schema:\n")
+                            // TODO: I need to figure out how to get the type of the body
+                            // This should be schema: object, and then use reflection to interrogate the class?
+                            // but for now, all I have is a kType, which I can't use to get the class
+                            // perhas using a reference like  $ref: '#/components/schemas/Order'   ?
+                            sb.append("              type: string\n") // this is misleading, because I will accept an empty body in some cases
+                        }
+                    }
+                }
+                sb.append("      responses:\n")
+                sb.append("        200:\n")
+                sb.append("          description: OK\n")
+                sb.append("          content:\n")
+                route.key.supplies.forEach { supplies ->
+                    sb.append("            ${supplies.toString().lowercase()}:\n")
+                    sb.append("              schema:\n")
+                    sb.append("                type: string\n")
+                }
 
-            // TODO: authorization here, see https://spec.openapis.org/oas/v3.1.0#security-scheme-object
-            if (route.value.authorizer != null) {
-                sb.append("      security:\n")
-                sb.append("        - ${route.value.authorizer!!.simpleName}:\n")
-                sb.append("            - ${route.value.authorizer!!.simpleName}:\n")
+                // TODO: authorization here, see https://spec.openapis.org/oas/v3.1.0#security-scheme-object
+                if (route.value.authorizer != null) {
+                    sb.append("      security:\n")
+                    sb.append("        - ${route.value.authorizer!!.simpleName}:\n")
+                    sb.append("            - ${route.value.authorizer!!.simpleName}:\n")
+                }
             }
         }
         return sb.toString()
@@ -198,7 +201,7 @@ fun lambdaRouter(block: Router.() -> Unit): Router {
 }
 
 /**
- * Create a grouping of routes which share a common parent path
+ * Create a grouping of routes which share a common parent path.
  * It does this by creating a new instance of the Router, then copying its routes into the parent router, modifying the pathParameter of each
  */
 fun Router.group(parentPath: String, block: Router.() -> Unit) {

@@ -341,6 +341,19 @@ class RouterTest {
     }
 
     @Test
+    fun `can match a route with multiple valid methods`() {
+        val testR = TestRouter()
+        val getEvent = APIGatewayProxyRequestEvent().withPath("/multiple").withHttpMethod("GET")
+            .withHeaders(acceptJson)
+        val postEvent = APIGatewayProxyRequestEvent().withPath("/multiple").withHttpMethod("POST")
+            .withHeaders(acceptJson + xContentZero)
+        val getResponse = testR.handleRequest(getEvent)
+        assertEquals(200, getResponse.statusCode)
+        val postResponse = testR.handleRequest(postEvent)
+        assertEquals(200, postResponse.statusCode)
+    }
+
+    @Test
     fun `can return an OpenAPI 3_0_1 spec`() {
         val testR = TestRouter()
         val event = APIGatewayProxyRequestEvent().withPath("/openAPI").withHttpMethod("GET")
@@ -436,6 +449,10 @@ class TestRouter : RequestHandlerWrapper() {
                 MimeType.plainText
             )
         )
+
+        // multiple methods, same path
+        get("/multiple") { _: Request<Unit> -> ResponseEntity.ok(body = "GET /multiple") }
+        post("/multiple") { _: Request<Unit> -> ResponseEntity.ok(body = "POST /multiple") }.expects(emptySet())
     }
 }
 

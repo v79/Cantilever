@@ -18,7 +18,7 @@ import java.security.interfaces.RSAPublicKey
 /**
  * General interface for any Authorizer class
  * @property simpleName a user-friendly name for the authorizer; not functionally relevant
- * Only on method, `authorize`, which returns an [AuthResult]
+ * Only one method, `authorize`, which returns an [AuthResult]
  */
 interface Authorizer {
     val simpleName: String

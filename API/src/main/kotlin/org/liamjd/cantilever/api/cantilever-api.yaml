@@ -1,56 +1,413 @@
-openapi: 3.0.3
+openapi: 3.0.1
 info:
-  title: Cantilever
-  description: Cantilever site generator
+  title: Cantilever API
+  description: API for Cantilever
   version: 0.0.8
 servers:
-  - url: 'https://api.cantilevers.org'
-    description: 'Production server for the Cantilever static site generator'
-tags:
-  - name: General
-    description: General endpoints about the API
-  - name: Project
-    description: Endpoints for project configuration
+  - url: https://api.cantilevers.org
 paths:
-  /showAllRoutes:
-    get:
-      tags:
-        - General
-      summary: Show all valid routes
-      description: 'This endpoint returns a complete list of the supported routes. I really should secure it!'
-      responses:
-        '200':
-          description: "List of routes"
-          content:
-            application/json:
-              schema:
-                type: string
-                example: 'List of routes'
   /warm:
     get:
-      tags:
-        - General
-      summary: Warm up the server
-      description: 'This endpoint is used to warm up the the router function and hence the server'
       responses:
-        '200':
-          description: "warming"
+        200:
+          description: OK
           content:
             text/plain:
               schema:
                 type: string
-                example: 'Warming'
-
-  /project:
+  /project/:
     get:
-      tags:
-        - Project
-      summary: 'Get the project configuration file'
-      description: 'This endpoint is used to retrieve the project configuration file'
       responses:
-        '200':
-          description: "Project configuration file"
+        200:
+          description: OK
           content:
             application/json:
               schema:
-                type: object
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+    put:
+      requestBody:
+        content:
+          application/yaml:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /project/pages:
+    get:
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /project/pages/:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /project/pages/{srcKey}:
+    get:
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /project/pages/folder/new/{folderName}:
+    put:
+      parameters:
+        - name: folderName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /project/templates/{templateKey}:
+    get:
+      parameters:
+        - name: templateKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /posts:
+    get:
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /posts/{srcKey}:
+    get:
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+    delete:
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /posts/preview/{srcKey}:
+    get:
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/html:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /posts/save:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /templates:
+    get:
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /templates/{srcKey}:
+    get:
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /templates/:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /generate/post/{srcKey}:
+    put:
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /generate/page/{srcKey}:
+    put:
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /generate/template/{templateKey}:
+    put:
+      parameters:
+        - name: templateKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /cache/posts:
+    delete:
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /cache/pages:
+    delete:
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /get/post/{srcKey}:
+    get:
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /metadata/rebuild:
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+      security:
+        - CognitoJWT Bearer Token Authorizer:
+            - CognitoJWT Bearer Token Authorizer:
+  /openAPI:
+    get:
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+            application/yaml:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
+  /showAllRoutes:
+    get:
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+
+
