@@ -362,6 +362,8 @@ class RouterTest {
         assertEquals(200, response.statusCode)
         println(response.body)
         assertTrue(response.body.contains("openapi: 3.0.1"))
+        assertTrue(response.body.contains("paths:"))
+        assertTrue(response.body.contains("tags:"))
     }
 }
 
@@ -392,9 +394,10 @@ class TestRouter : RequestHandlerWrapper() {
          */
         group("/group") {
             post("/new") { req: Request<String> -> ResponseEntity.ok(body = "Created a new ${req.body}") }
-            get("/route") { req: Request<Any> -> ResponseEntity.ok(body = "Matching the nested route /route/") }
+            get("/route") { _: Request<Any> -> ResponseEntity.ok(body = "Matching the nested route /route/") }
+            get("/route/{thingy}") { _: Request<Any> -> ResponseEntity.ok(body = "Matching the nested route /route2/{thingy}") }
             group("/nested") {
-                get("/wow") { req: Request<Any> -> ResponseEntity.ok(body = "This is deeply nested route /group/nested/wow") }
+                get("/wow") { _: Request<Any> -> ResponseEntity.ok(body = "This is deeply nested route /group/nested/wow") }
             }
         }
 

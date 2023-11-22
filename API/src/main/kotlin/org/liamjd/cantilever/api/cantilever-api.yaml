@@ -5,6 +5,15 @@ info:
   version: 0.0.8
 servers:
   - url: https://api.cantilevers.org
+tags:
+  - name: /project
+  - name: /project/pages
+  - name: /posts
+  - name: /templates
+  - name: /generate
+  - name: /cache
+  - name: /get
+  - name: /metadata
 paths:
   /warm:
     get:
@@ -17,6 +26,8 @@ paths:
                 type: string
   /project/:
     get:
+      tags:
+        - /project
       responses:
         200:
           description: OK
@@ -28,6 +39,8 @@ paths:
         - CognitoJWT Bearer Token Authorizer:
             - CognitoJWT Bearer Token Authorizer:
     put:
+      tags:
+        - /project
       requestBody:
         content:
           application/yaml:
@@ -45,6 +58,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /project/pages:
     get:
+      tags:
+        - /project
       responses:
         200:
           description: OK
@@ -57,6 +72,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /project/pages/:
     post:
+      tags:
+        - /project/pages
       requestBody:
         content:
           application/json:
@@ -74,6 +91,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /project/pages/{srcKey}:
     get:
+      tags:
+        - /project/pages
       parameters:
         - name: srcKey
           in: path
@@ -92,6 +111,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /project/pages/folder/new/{folderName}:
     put:
+      tags:
+        - /project/pages
       parameters:
         - name: folderName
           in: path
@@ -115,6 +136,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /project/templates/{templateKey}:
     get:
+      tags:
+        - /project
       parameters:
         - name: templateKey
           in: path
@@ -145,6 +168,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /posts/{srcKey}:
     get:
+      tags:
+        - /posts
       parameters:
         - name: srcKey
           in: path
@@ -162,6 +187,8 @@ paths:
         - CognitoJWT Bearer Token Authorizer:
             - CognitoJWT Bearer Token Authorizer:
     delete:
+      tags:
+        - /posts
       parameters:
         - name: srcKey
           in: path
@@ -180,6 +207,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /posts/preview/{srcKey}:
     get:
+      tags:
+        - /posts
       parameters:
         - name: srcKey
           in: path
@@ -198,6 +227,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /posts/save:
     post:
+      tags:
+        - /posts
       requestBody:
         content:
           application/json:
@@ -227,6 +258,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /templates/{srcKey}:
     get:
+      tags:
+        - /templates
       parameters:
         - name: srcKey
           in: path
@@ -245,6 +278,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /templates/:
     post:
+      tags:
+        - /templates
       requestBody:
         content:
           application/json:
@@ -262,6 +297,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /generate/post/{srcKey}:
     put:
+      tags:
+        - /generate
       parameters:
         - name: srcKey
           in: path
@@ -285,6 +322,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /generate/page/{srcKey}:
     put:
+      tags:
+        - /generate
       parameters:
         - name: srcKey
           in: path
@@ -308,6 +347,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /generate/template/{templateKey}:
     put:
+      tags:
+        - /generate
       parameters:
         - name: templateKey
           in: path
@@ -328,6 +369,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /cache/posts:
     delete:
+      tags:
+        - /cache
       responses:
         200:
           description: OK
@@ -340,6 +383,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /cache/pages:
     delete:
+      tags:
+        - /cache
       responses:
         200:
           description: OK
@@ -352,6 +397,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /get/post/{srcKey}:
     get:
+      tags:
+        - /get
       parameters:
         - name: srcKey
           in: path
@@ -370,6 +417,8 @@ paths:
             - CognitoJWT Bearer Token Authorizer:
   /metadata/rebuild:
     put:
+      tags:
+        - /metadata
       requestBody:
         content:
           application/json:
@@ -409,5 +458,3 @@ paths:
             text/plain:
               schema:
                 type: string
-
-

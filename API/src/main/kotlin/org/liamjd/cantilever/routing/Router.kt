@@ -15,6 +15,7 @@ class Router internal constructor() {
 
     val routes: MutableMap<RequestPredicate, RouterFunction<*, *>> =
         mutableMapOf()
+    private val groups: MutableList<String> = mutableListOf()
 
     val consumeByDefault = setOf(MimeType.json)
     val produceByDefault = setOf(MimeType.json)
@@ -109,12 +110,41 @@ class Router internal constructor() {
     }
 
     /**
+     * Create a grouping of routes which share a common parent path.
+     * It does this by creating a new instance of the Router, then copying its routes into the parent router, modifying the pathParameter of each
+     */
+    fun group(parentPath: String, block: Router.() -> Unit) {
+        val childRouter = Router()
+        childRouter.block()
+        groups.add(parentPath)
+        childRouter.groups.forEach {
+            groups.add(parentPath + it)
+        }
+        childRouter.routes.forEach {
+            val routeCopy = it.key.copy(pathPattern = parentPath + it.key.pathPattern)
+            routes[routeCopy] =
+                it.value.copy().apply { it.value.requestPredicate.pathPattern = parentPath + it.key.pathPattern }
+        }
+    }
+
+    /**
+     * Create a grouping of routes which require authentication by the given authenticator or permission or role thingy
+     * It does this by creating a new instance of the Router, then copying its routes into the parent router, adding the role/permission requirement to each
+     */
+    fun auth(authorizer: Authorizer, block: Router.() -> Unit) {
+        val childRouter = Router()
+        childRouter.block()
+        childRouter.routes.forEach {
+            val routeCopy = it.value.copy(authorizer = authorizer)
+            routes[it.key] = routeCopy
+        }
+        groups.addAll(childRouter.groups)
+    }
+
+    /**
      * Utility function to list all the routes which have been declared. Useful for debugging.
      */
     fun listRoutes(): String {
-        routes.forEach { route ->
-            println("${route.value.requestPredicate.method} ${route.value.requestPredicate.pathPattern} <consumes: ${route.value.requestPredicate.accepts} (${route.value.requestPredicate.kType}) -> produces: ${route.value.requestPredicate.supplies}>")
-        }
         return routes.values.joinToString(separator = " ;\n") { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern}  <${it.requestPredicate.accepts} (${it.requestPredicate.kType}) -> ${it.requestPredicate.supplies}>" }
     }
 
@@ -122,7 +152,6 @@ class Router internal constructor() {
      * Function to build an OpenAPI 3.0.1 specification from the routes which have been declared.
      * This really needs to be broken up and rationalize.
      */
-    @OptIn(ExperimentalStdlibApi::class)
     fun openAPI(): String {
         val sb = StringBuilder()
         sb.append("openapi: 3.0.1\n")
@@ -132,12 +161,25 @@ class Router internal constructor() {
         sb.append("  version: 0.0.8\n")
         sb.append("servers:\n")
         sb.append("  - url: https://api.cantilevers.org\n")
+        if (groups.isNotEmpty()) {
+            sb.append("tags:\n")
+            groups.forEach { group ->
+                sb.append("  - name: $group\n")
+            }
+        } else {
+            sb.append("tags: []\n")
+        }
         sb.append("paths:\n")
         routes.entries.groupBy { it.key.pathPattern }.forEach { path ->
-            // we don't want to repeat the same path pattern when there are routes with the same path but different methods
             sb.append("  ${path.key}:\n")
             path.value.forEach { route ->
                 sb.append("    ${route.key.method.lowercase()}:\n")
+                if (groups.isNotEmpty()) {
+                    groups.findLast { group -> route.key.pathPattern.substringBeforeLast("/").startsWith(group) }?.let {
+                        sb.append("      tags:\n")
+                        sb.append("        - $it\n")
+                    }
+                }
                 if (route.key.pathVariables.isNotEmpty()) {
                     sb.append("      parameters:\n")
                     route.key.pathVariables.forEach { variable ->
@@ -159,7 +201,7 @@ class Router internal constructor() {
                             // TODO: I need to figure out how to get the type of the body
                             // This should be schema: object, and then use reflection to interrogate the class?
                             // but for now, all I have is a kType, which I can't use to get the class
-                            // perhas using a reference like  $ref: '#/components/schemas/Order'   ?
+                            // perhaps using a reference like  $ref: '#/components/schemas/Order'   ?
                             sb.append("              type: string\n") // this is misleading, because I will accept an empty body in some cases
                         }
                     }
@@ -198,33 +240,6 @@ fun lambdaRouter(block: Router.() -> Unit): Router {
     val router = Router()
     router.block()
     return router
-}
-
-/**
- * Create a grouping of routes which share a common parent path.
- * It does this by creating a new instance of the Router, then copying its routes into the parent router, modifying the pathParameter of each
- */
-fun Router.group(parentPath: String, block: Router.() -> Unit) {
-    val childRouter = Router()
-    childRouter.block()
-    childRouter.routes.forEach {
-        val routeCopy = it.key.copy(pathPattern = parentPath + it.key.pathPattern)
-        routes[routeCopy] =
-            it.value.copy().apply { it.value.requestPredicate.pathPattern = parentPath + it.key.pathPattern }
-    }
-}
-
-/**
- * Create a grouping of routes which require authentication by the given authenticator or permission or role thingy
- * It does this by creating a new instance of the Router, then copying its routes into the parent router, adding the role/permission requirement to each
- */
-fun Router.auth(authorizer: Authorizer, block: Router.() -> Unit) {
-    val childRouter = Router()
-    childRouter.block()
-    childRouter.routes.forEach {
-        val routeCopy = it.value.copy(authorizer = authorizer)
-        routes[it.key] = routeCopy
-    }
 }
 
 /**
