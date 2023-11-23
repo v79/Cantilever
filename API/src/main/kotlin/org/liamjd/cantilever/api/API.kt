@@ -65,9 +65,18 @@ class LambdaRouter : RequestHandlerWrapper() {
             setOf(MimeType.plainText)
         )
 
-        group("/project") {
+        group(
+            "/project", Spec.Tag(
+                name = "Project",
+                description = "Manage the overall project settings"
+            )
+        ) {
             auth(cognitoJWTAuthorizer) {
-                get("/", projectController::getProject)
+                get(
+                    "/",
+                    projectController::getProject,
+                    Spec.PathItem("Get project definition", "Returns the cantilever.yaml definition file")
+                )
                 put("/", projectController::updateProjectDefinition).expects(setOf(MimeType.yaml)).supplies(
                     setOf(
                         MimeType.json
@@ -83,8 +92,9 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
-        auth(cognitoJWTAuthorizer) {
-            group("/posts") {
+
+        group("/posts", Spec.Tag(name = "Posts", description = "Create, update and manage blog posts")) {
+            auth(cognitoJWTAuthorizer) {
                 get("", postController::getPosts)
                 get("/$SRCKEY", postController::loadMarkdownSource)
                 get("/preview/$SRCKEY") { request: Request<Unit> -> ResponseEntity.notImplemented(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!") }.supplies(
@@ -97,38 +107,34 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
-        auth(cognitoJWTAuthorizer) {
-            group("/templates") {
+        group("/templates", Spec.Tag(name = "Templates", description = "Create, update and manage templates")) {
+            auth(cognitoJWTAuthorizer) {
                 get("", templateController::getTemplates)
                 get("/$SRCKEY", templateController::loadHandlebarsSource)
                 post("/", templateController::saveTemplate).supplies(setOf(MimeType.plainText))
             }
         }
 
-        auth(cognitoJWTAuthorizer) {
-            group("/generate") {
+        group("/generate", Spec.Tag("Generation", "Trigger the regeneration of pages and blog posts")) {
+            auth(cognitoJWTAuthorizer) {
                 put("/post/$SRCKEY", generatorController::generatePost).supplies(setOf(MimeType.plainText))
                 put("/page/$SRCKEY", generatorController::generatePage).supplies(setOf(MimeType.plainText))
                 put(
                     "/template/{templateKey}", generatorController::generateTemplate
                 ).supplies(setOf(MimeType.plainText)).expects(emptySet())
             }
-            group("/cache") {
-                delete("/posts") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Call to delete cache for posts") }
-                delete("/pages") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Call to delete cache for pages") }
-            }
         }
 
-        auth(cognitoJWTAuthorizer) {
-            group("/get") {
+        group("/get") {
+            auth(cognitoJWTAuthorizer) {
                 get("/post/$SRCKEY") { request: Request<Unit> ->
                     ResponseEntity.notImplemented(body = "Received request to return the HTML form of ${request.pathParameters["srcKey"]}")
                 }
             }
         }
 
-        auth(cognitoJWTAuthorizer) {
-            group("/metadata") {
+        group("/metadata") {
+            auth(cognitoJWTAuthorizer) {
                 put("/rebuild", metadataController::rebuildFromSources)
             }
         }

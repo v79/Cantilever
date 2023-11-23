@@ -15,16 +15,39 @@ class Router internal constructor() {
 
     val routes: MutableMap<RequestPredicate, RouterFunction<*, *>> =
         mutableMapOf()
-    private val groups: MutableList<String> = mutableListOf()
+    private val groups: MutableSet<Group> = mutableSetOf()
 
     val consumeByDefault = setOf(MimeType.json)
     val produceByDefault = setOf(MimeType.json)
 
     /**
+     * A group is a collection of routes which share a common parent path.
+     */
+    class Group(
+        val pathPattern: String,
+        val spec: Spec.Tag? = null
+    ) {
+        constructor(pathPattern: String) : this(pathPattern, Spec.Tag(pathPattern, ""))
+    }
+
+    /**
      * HTTP GET
      */
     inline fun <reified I, T : Any> get(
-        pattern: String, noinline handlerFunction: HandlerFunction<I, T>
+        pattern: String, noinline handlerFunction: HandlerFunction<I, T>,
+
+        ): RequestPredicate {
+        val requestPredicate = defaultRequestPredicate(
+            pattern = pattern, method = "GET", consuming = emptySet(), handlerFunction = handlerFunction
+        ).also {
+            routes[it] = RouterFunction(it, handlerFunction)
+        }
+        return requestPredicate
+    }
+
+    inline fun <reified I, T : Any> get(
+        pattern: String, noinline handlerFunction: HandlerFunction<I, T>,
+        spec: Spec.PathItem? = null
     ): RequestPredicate {
         val requestPredicate = defaultRequestPredicate(
             pattern = pattern, method = "GET", consuming = emptySet(), handlerFunction = handlerFunction
@@ -113,12 +136,13 @@ class Router internal constructor() {
      * Create a grouping of routes which share a common parent path.
      * It does this by creating a new instance of the Router, then copying its routes into the parent router, modifying the pathParameter of each
      */
-    fun group(parentPath: String, block: Router.() -> Unit) {
+    fun group(parentPath: String, spec: Spec.Tag? = null, block: Router.() -> Unit) {
         val childRouter = Router()
         childRouter.block()
-        groups.add(parentPath)
-        childRouter.groups.forEach {
-            groups.add(parentPath + it)
+        if (spec != null) {
+            groups.add(Group(parentPath, spec))
+        } else {
+            groups.add(Group(parentPath))
         }
         childRouter.routes.forEach {
             val routeCopy = it.key.copy(pathPattern = parentPath + it.key.pathPattern)
@@ -145,7 +169,7 @@ class Router internal constructor() {
      * Utility function to list all the routes which have been declared. Useful for debugging.
      */
     fun listRoutes(): String {
-        return routes.values.joinToString(separator = " ;\n") { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern}  <${it.requestPredicate.accepts} (${it.requestPredicate.kType}) -> ${it.requestPredicate.supplies}>" }
+        return routes.values.joinToString(separator = " ;") { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern}  <${it.requestPredicate.accepts} (${it.requestPredicate.kType}) -> ${it.requestPredicate.supplies}>" }
     }
 
     /**
@@ -154,73 +178,84 @@ class Router internal constructor() {
      */
     fun openAPI(): String {
         val sb = StringBuilder()
-        sb.append("openapi: 3.0.1\n")
-        sb.append("info:\n")
-        sb.append("  title: Cantilever API\n")
-        sb.append("  description: API for Cantilever\n")
-        sb.append("  version: 0.0.8\n")
-        sb.append("servers:\n")
-        sb.append("  - url: https://api.cantilevers.org\n")
+        sb.appendLine("openapi: 3.0.1")
+        sb.appendLine("info:")
+        sb.appendLine("  title: Cantilever API")
+        sb.appendLine("  description: API for Cantilever")
+        sb.appendLine("  version: 0.0.8")
+        sb.appendLine("servers:")
+        sb.appendLine("  - url: https://api.cantilevers.org")
         if (groups.isNotEmpty()) {
-            sb.append("tags:\n")
+            sb.appendLine("tags:")
             groups.forEach { group ->
-                sb.append("  - name: $group\n")
+                group.spec?.also { spec ->
+                    sb.appendLine("  - name: ${spec.name}")
+                    spec.description.isNotEmpty().also {
+                        sb.appendLine("    description: ${spec.description}")
+                    }
+                } ?: sb.appendLine("  - name: ${group.pathPattern}")
             }
         } else {
-            sb.append("tags: []\n")
+            sb.appendLine("tags: []")
         }
-        sb.append("paths:\n")
+        sb.appendLine("paths:")
         routes.entries.groupBy { it.key.pathPattern }.forEach { path ->
-            sb.append("  ${path.key}:\n")
+            sb.appendLine("  ${path.key}:")
             path.value.forEach { route ->
-                sb.append("    ${route.key.method.lowercase()}:\n")
+                sb.appendLine("    ${route.key.method.lowercase()}:")
                 if (groups.isNotEmpty()) {
-                    groups.findLast { group -> route.key.pathPattern.substringBeforeLast("/").startsWith(group) }?.let {
-                        sb.append("      tags:\n")
-                        sb.append("        - $it\n")
+                    groups.findLast { group ->
+                        route.key.pathPattern.substringBeforeLast("/").startsWith(group.pathPattern)
+                    }?.let {
+                        sb.appendLine("      tags:")
+                        it.spec?.let { spec ->
+                            sb.appendLine("        - ${spec.name}")
+                        } ?: {
+                            sb.appendLine("        - ${it.pathPattern}")
+                        }
                     }
                 }
                 if (route.key.pathVariables.isNotEmpty()) {
-                    sb.append("      parameters:\n")
+                    sb.appendLine("      parameters:")
                     route.key.pathVariables.forEach { variable ->
-                        sb.append("        - name: $variable\n")
-                        sb.append("          in: path\n")
-                        sb.append("          required: true\n")
-                        sb.append("          schema:\n")
-                        sb.append("            type: string\n") // TODO: I wonder if I can specify the type of the path variable?
+                        sb.appendLine("        - name: $variable")
+                        sb.appendLine("          in: path")
+                        sb.appendLine("          required: true")
+                        sb.appendLine("          schema:")
+                        sb.appendLine("            type: string") // TODO: I wonder if I can specify the type of the path variable?
                     }
                 }
                 when (route.key.method) {
                     "PUT", "POST" -> {
                         // in my API, PUT may not have a body if the X-Content-Length header is zero
-                        sb.append("      requestBody:\n")
-                        sb.append("        content:\n")
+                        sb.appendLine("      requestBody:")
+                        sb.appendLine("        content:")
                         route.key.accepts.forEach { accepts ->
-                            sb.append("          ${accepts.toString().lowercase()}:\n")
-                            sb.append("            schema:\n")
+                            sb.appendLine("          ${accepts.toString().lowercase()}:")
+                            sb.appendLine("            schema:")
                             // TODO: I need to figure out how to get the type of the body
                             // This should be schema: object, and then use reflection to interrogate the class?
                             // but for now, all I have is a kType, which I can't use to get the class
                             // perhaps using a reference like  $ref: '#/components/schemas/Order'   ?
-                            sb.append("              type: string\n") // this is misleading, because I will accept an empty body in some cases
+                            sb.appendLine("              type: string") // this is misleading, because I will accept an empty body in some cases
                         }
                     }
                 }
-                sb.append("      responses:\n")
-                sb.append("        200:\n")
-                sb.append("          description: OK\n")
-                sb.append("          content:\n")
+                sb.appendLine("      responses:")
+                sb.appendLine("        200:")
+                sb.appendLine("          description: OK")
+                sb.appendLine("          content:")
                 route.key.supplies.forEach { supplies ->
-                    sb.append("            ${supplies.toString().lowercase()}:\n")
-                    sb.append("              schema:\n")
-                    sb.append("                type: string\n")
+                    sb.appendLine("            ${supplies.toString().lowercase()}:")
+                    sb.appendLine("              schema:")
+                    sb.appendLine("                type: string")
                 }
 
                 // TODO: authorization here, see https://spec.openapis.org/oas/v3.1.0#security-scheme-object
                 if (route.value.authorizer != null) {
-                    sb.append("      security:\n")
-                    sb.append("        - ${route.value.authorizer!!.simpleName}:\n")
-                    sb.append("            - ${route.value.authorizer!!.simpleName}:\n")
+                    sb.appendLine("      security:")
+                    sb.appendLine("        - ${route.value.authorizer!!.simpleName}:")
+                    sb.appendLine("            - ${route.value.authorizer!!.simpleName}:")
                 }
             }
         }
@@ -253,8 +288,9 @@ typealias HandlerFunction<I, T> = (request: Request<I>) -> ResponseEntity<T>
 data class RouterFunction<I, T : Any>(
     val requestPredicate: RequestPredicate,
     val handler: HandlerFunction<I, T>,
-    var authorizer: Authorizer? = null
+    var authorizer: Authorizer? = null,
     // this could be a place to store the optional SWAGGER definition data?
+    var spec: Spec? = null
 )
 
 /**
