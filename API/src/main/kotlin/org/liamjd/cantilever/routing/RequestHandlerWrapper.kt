@@ -57,6 +57,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                     ?: router.produceByDefault.first()
 
                 val entity: ResponseEntity<out Any> = processRoute(input, routerFunction)
+//                val headerOverride = routerFunction.requestPredicate.getHeaders()
                 return createResponse(entity, matchedAcceptType)
             }
             matchResult
@@ -194,6 +195,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         // with CORS enabled, I have to include Access-Control-Allow-Origin header to *
         // according to https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-cors-console.html
         // though this may only be allowed for non-authenticated requests
+        // if I wanted a particular route to be able to override this, I'd need to add a header to the route definition
         return APIGatewayProxyResponseEvent().withStatusCode(responseEntity.statusCode)
             .withHeaders(mapOf(CONTENT_TYPE to contentType, "Access-Control-Allow-Origin" to corsDomain))
             .withBody(body)

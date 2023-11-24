@@ -98,6 +98,11 @@ data class RequestPredicate(
         return this
     }
 
+    var headerOverrides = mutableMapOf<String, String>()
+    fun setHeader(header: String, value: String) {
+        headerOverrides[header] = value
+    }
+
 }
 
 /**

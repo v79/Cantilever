@@ -13,8 +13,7 @@ import kotlin.reflect.typeOf
  */
 class Router internal constructor() {
 
-    val routes: MutableMap<RequestPredicate, RouterFunction<*, *>> =
-        mutableMapOf()
+    val routes: MutableMap<RequestPredicate, RouterFunction<*, *>> = mutableMapOf()
     private val groups: MutableSet<Group> = mutableSetOf()
 
     val consumeByDefault = setOf(MimeType.json)
@@ -24,8 +23,7 @@ class Router internal constructor() {
      * A group is a collection of routes which share a common parent path.
      */
     class Group(
-        val pathPattern: String,
-        val spec: Spec.Tag? = null
+        val pathPattern: String, val spec: Spec.Tag? = null
     ) {
         constructor(pathPattern: String) : this(pathPattern, Spec.Tag(pathPattern, ""))
     }
@@ -46,8 +44,7 @@ class Router internal constructor() {
     }
 
     inline fun <reified I, T : Any> get(
-        pattern: String, noinline handlerFunction: HandlerFunction<I, T>,
-        spec: Spec.PathItem? = null
+        pattern: String, noinline handlerFunction: HandlerFunction<I, T>, spec: Spec.PathItem? = null
     ): RequestPredicate {
         val requestPredicate = defaultRequestPredicate(
             pattern = pattern, method = "GET", consuming = emptySet(), handlerFunction = handlerFunction
@@ -190,7 +187,7 @@ class Router internal constructor() {
             groups.forEach { group ->
                 group.spec?.also { spec ->
                     sb.appendLine("  - name: ${spec.name}")
-                    spec.description.isNotEmpty().also {
+                    if (spec.description.isNotEmpty()) {
                         sb.appendLine("    description: ${spec.description}")
                     }
                 } ?: sb.appendLine("  - name: ${group.pathPattern}")
@@ -237,6 +234,7 @@ class Router internal constructor() {
                             // This should be schema: object, and then use reflection to interrogate the class?
                             // but for now, all I have is a kType, which I can't use to get the class
                             // perhaps using a reference like  $ref: '#/components/schemas/Order'   ?
+                            // val first = (kType.classifier as KClass<*>).constructors.first().parameters.first().type.toString()
                             sb.appendLine("              type: string") // this is misleading, because I will accept an empty body in some cases
                         }
                     }
@@ -286,9 +284,7 @@ typealias HandlerFunction<I, T> = (request: Request<I>) -> ResponseEntity<T>
  * A RouterFunction combines a [RequestPredicate] (the HTTP method, the path, and the accept/return types, with the [HandlerFunction] which responds to the [Request] and returns a [ResponseEntity]
  */
 data class RouterFunction<I, T : Any>(
-    val requestPredicate: RequestPredicate,
-    val handler: HandlerFunction<I, T>,
-    var authorizer: Authorizer? = null,
+    val requestPredicate: RequestPredicate, val handler: HandlerFunction<I, T>, var authorizer: Authorizer? = null,
     // this could be a place to store the optional SWAGGER definition data?
     var spec: Spec? = null
 )
@@ -301,9 +297,7 @@ data class RouterFunction<I, T : Any>(
  * @property pathParameters a map of matching path parameters and their values, i.e. path /get/{id} with id = 3 becomes `map[id] = 3`
  */
 data class Request<I>(
-    val apiRequest: APIGatewayProxyRequestEvent,
-    val body: I,
-    val pathPattern: String
+    val apiRequest: APIGatewayProxyRequestEvent, val body: I, val pathPattern: String
 ) {
     val pathParameters: Map<String, String> by lazy {
         buildMap {
@@ -322,16 +316,13 @@ data class Request<I>(
  * Collection of useful HTTP codes I'm likely to need
  */
 enum class HttpCodes(val code: Int, val message: String) {
-    OK(200, "OK"),
-    CREATED(201, "Created"),
-    ACCEPTED(202, "Accepted"),
-    NO_CONTENT(204, "No Content"),
-    BAD_REQUEST(400, "Bad Request"),
-    UNAUTHORIZED(401, "Unauthorized"),
-    FORBIDDEN(403, "Forbidden"),
-    NOT_FOUND(404, "Not Found"),
-    METHOD_NOT_ALLOWED(405, "Method Not Allowed"),
-    TEAPOT(418, "I'm a teapot"),
-    SERVER_ERROR(500, "Internal Server Error"),
-    NOT_IMPLEMENTED(501, "Not Implemented"),
+    OK(200, "OK"), CREATED(201, "Created"), ACCEPTED(202, "Accepted"), NO_CONTENT(204, "No Content"), BAD_REQUEST(
+        400,
+        "Bad Request"
+    ),
+    UNAUTHORIZED(401, "Unauthorized"), FORBIDDEN(403, "Forbidden"), NOT_FOUND(404, "Not Found"), METHOD_NOT_ALLOWED(
+        405,
+        "Method Not Allowed"
+    ),
+    TEAPOT(418, "I'm a teapot"), SERVER_ERROR(500, "Internal Server Error"), NOT_IMPLEMENTED(501, "Not Implemented"),
 }

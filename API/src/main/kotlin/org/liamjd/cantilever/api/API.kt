@@ -66,10 +66,7 @@ class LambdaRouter : RequestHandlerWrapper() {
         )
 
         group(
-            "/project", Spec.Tag(
-                name = "Project",
-                description = "Manage the overall project settings"
-            )
+            "/project", Spec.Tag(name = "Project", description = "Manage the overall project settings")
         ) {
             auth(cognitoJWTAuthorizer) {
                 get(
@@ -133,24 +130,29 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
-        group("/metadata") {
+        group("/metadata", Spec.Tag("Metadata", "Manage the metadata.yaml file for the project")) {
             auth(cognitoJWTAuthorizer) {
                 put("/rebuild", metadataController::rebuildFromSources)
             }
         }
 
+        // it would be great if I could disable CORS for this route.
+        // something like:
+        // get("/openAPI") { _: Request<Unit> -> ResponseEntity.ok(this.openAPI()) }.setHeader("Access-Control-Allow-Origin", "*")
         get("/openAPI") { _: Request<Unit> ->
             val openAPI = this.openAPI()
             ResponseEntity.ok(openAPI)
         }.supplies(
             setOf(MimeType.json, MimeType.yaml, MimeType.plainText)
-        )
+        ).setHeader("Access-Control-Allow-Origin", "*")
+
         get("/showAllRoutes") { _: Request<Unit> ->
             val routeList = this.listRoutes()
             ResponseEntity.ok(routeList)
         }.supplies(setOf(MimeType.plainText))
     }
 }
+
 
 /**
  * Possible extension: custom Filters, like a logging filter, which intercepts a route, performs an action, then passes it on to the correct handler.
