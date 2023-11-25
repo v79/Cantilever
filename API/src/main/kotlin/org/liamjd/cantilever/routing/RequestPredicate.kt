@@ -31,6 +31,9 @@ data class RequestPredicate(
     val pathVariables: List<String>
         get() = routeParts.filter { it.startsWith("{") && it.endsWith("}") }.map { it.removeSurrounding("{", "}") }
 
+    var headerOverrides = mutableMapOf<String, String>()
+        private set
+
     fun match(request: APIGatewayProxyRequestEvent) =
         RequestMatchResult(matchPath = pathMatches(request.path),
             matchMethod = methodMatches(request),
@@ -98,9 +101,11 @@ data class RequestPredicate(
         return this
     }
 
-    var headerOverrides = mutableMapOf<String, String>()
-    fun setHeader(header: String, value: String) {
-        headerOverrides[header] = value
+    /**
+     * Add additional or overriding headers to this particular route
+     */
+    fun addHeaders(headers: Map<String,String>) {
+        headerOverrides.putAll(headers)
     }
 
 }

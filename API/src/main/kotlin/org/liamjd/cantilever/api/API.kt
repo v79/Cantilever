@@ -136,15 +136,12 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
-        // it would be great if I could disable CORS for this route.
-        // something like:
-        // get("/openAPI") { _: Request<Unit> -> ResponseEntity.ok(this.openAPI()) }.setHeader("Access-Control-Allow-Origin", "*")
         get("/openAPI") { _: Request<Unit> ->
             val openAPI = this.openAPI()
             ResponseEntity.ok(openAPI)
         }.supplies(
-            setOf(MimeType.json, MimeType.yaml, MimeType.plainText)
-        ).setHeader("Access-Control-Allow-Origin", "*")
+            setOf(MimeType.plainText)
+        ).addHeaders(mapOf("Access-Control-Allow-Origin" to "*"))
 
         get("/showAllRoutes") { _: Request<Unit> ->
             val routeList = this.listRoutes()
