@@ -74,11 +74,12 @@ class LambdaRouter : RequestHandlerWrapper() {
                     projectController::getProject,
                     Spec.PathItem("Get project definition", "Returns the cantilever.yaml definition file")
                 )
-                put("/", projectController::updateProjectDefinition).expects(setOf(MimeType.yaml)).supplies(
-                    setOf(
-                        MimeType.json
-                    )
-                )
+                put(
+                    "/",
+                    projectController::updateProjectDefinition,
+                    Spec.PathItem("Update project definition", "Supply an updated cantilever.yaml definition file")
+                ).expects(
+                    setOf(MimeType.yaml)).supplies(setOf(MimeType.json))
                 group("/pages") {
                     get("", pageController::getPages)
                     post("/", pageController::saveMarkdownPageSource).supplies(setOf(MimeType.plainText))

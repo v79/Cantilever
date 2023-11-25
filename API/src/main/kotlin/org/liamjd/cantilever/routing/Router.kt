@@ -30,11 +30,11 @@ class Router internal constructor() {
 
     /**
      * HTTP GET
+     * This only matches the embedded response Request<T> -> ResponseEntity.ok(T) route definition
      */
     inline fun <reified I, T : Any> get(
         pattern: String, noinline handlerFunction: HandlerFunction<I, T>,
-
-        ): RequestPredicate {
+    ): RequestPredicate {
         val requestPredicate = defaultRequestPredicate(
             pattern = pattern, method = "GET", consuming = emptySet(), handlerFunction = handlerFunction
         ).also {
@@ -43,11 +43,15 @@ class Router internal constructor() {
         return requestPredicate
     }
 
+    /**
+     * HTTP GET
+     * This allows the definition of the route in an external function, with an optional [Spec.PathItem] object to provide OpenAPI documentation
+     */
     inline fun <reified I, T : Any> get(
         pattern: String, noinline handlerFunction: HandlerFunction<I, T>, spec: Spec.PathItem? = null
     ): RequestPredicate {
         val requestPredicate = defaultRequestPredicate(
-            pattern = pattern, method = "GET", consuming = emptySet(), handlerFunction = handlerFunction
+            pattern = pattern, method = "GET", consuming = emptySet(), spec = spec, handlerFunction = handlerFunction
         ).also {
             routes[it] = RouterFunction(it, handlerFunction)
         }
@@ -70,13 +74,57 @@ class Router internal constructor() {
     }
 
     /**
+     * HTTP POST, used to create new data
+     * This allows the definition of the route in an external function, with an optional [Spec.PathItem] object to provide OpenAPI documentation
+     */
+    inline fun <reified I, T : Any> post(
+        pattern: String,
+        noinline handlerFunction: HandlerFunction<I, T>,
+        spec: Spec.PathItem? = null,
+    ): RequestPredicate {
+        val requestPredicate = defaultRequestPredicate(
+            pattern = pattern,
+            method = "POST",
+            consuming = consumeByDefault,
+            spec = spec,
+            handlerFunction = handlerFunction
+        ).also {
+            it.kType = typeOf<I>()
+            routes[it] = RouterFunction(it, handlerFunction)
+        }
+        return requestPredicate
+    }
+
+    /**
      * HTTP PUT, to update or replace existing data
      */
     inline fun <reified I, T : Any> put(
-        pattern: String, noinline handlerFunction: HandlerFunction<I, T>
+        pattern: String, noinline handlerFunction: HandlerFunction<I, T>,
     ): RequestPredicate {
         val requestPredicate = defaultRequestPredicate(
             pattern = pattern, method = "PUT", consuming = consumeByDefault, handlerFunction = handlerFunction
+        ).also {
+            it.kType = typeOf<I>()
+            routes[it] = RouterFunction(it, handlerFunction)
+        }
+        return requestPredicate
+    }
+
+    /**
+     * HTTP PUT, to update or replace existing data
+     * This allows the definition of the route in an external function, with an optional [Spec.PathItem] object to provide OpenAPI documentation
+     */
+    inline fun <reified I, T : Any> put(
+        pattern: String,
+        noinline handlerFunction: HandlerFunction<I, T>,
+        spec: Spec.PathItem? = null,
+    ): RequestPredicate {
+        val requestPredicate = defaultRequestPredicate(
+            pattern = pattern,
+            method = "PUT",
+            consuming = consumeByDefault,
+            spec = spec,
+            handlerFunction = handlerFunction
         ).also {
             it.kType = typeOf<I>()
             routes[it] = RouterFunction(it, handlerFunction)
@@ -122,11 +170,15 @@ class Router internal constructor() {
         pattern: String,
         method: String,
         consuming: Set<MimeType> = consumeByDefault,
+        spec: Spec.PathItem? = null,
         noinline handlerFunction: HandlerFunction<I, T>
     ) = RequestPredicate(
         method = method, pathPattern = pattern, consumes = consuming, produces = produceByDefault
     ).also { predicate ->
         routes[predicate] = RouterFunction(predicate, handlerFunction)
+        if (spec != null) {
+            predicate.addSpec(spec)
+        }
     }
 
     /**
@@ -142,7 +194,7 @@ class Router internal constructor() {
             groups.add(Group(parentPath))
         }
         childRouter.routes.forEach {
-            val routeCopy = it.key.copy(pathPattern = parentPath + it.key.pathPattern)
+            val routeCopy = it.key.copy(pathPattern = parentPath + it.key.pathPattern).apply { addSpecs(it.key.specs) }
             routes[routeCopy] =
                 it.value.copy().apply { it.value.requestPredicate.pathPattern = parentPath + it.key.pathPattern }
         }
@@ -182,6 +234,7 @@ class Router internal constructor() {
         sb.appendLine("  version: 0.0.8")
         sb.appendLine("servers:")
         sb.appendLine("  - url: https://api.cantilevers.org")
+        // add tags as defined by the route groups
         if (groups.isNotEmpty()) {
             sb.appendLine("tags:")
             groups.forEach { group ->
@@ -200,6 +253,7 @@ class Router internal constructor() {
             sb.appendLine("  ${path.key}:")
             path.value.forEach { route ->
                 sb.appendLine("    ${route.key.method.lowercase()}:")
+                // find matching Tags based on the containing group, if any
                 if (groups.isNotEmpty()) {
                     groups.findLast { group ->
                         route.key.pathPattern.substringBeforeLast("/").startsWith(group.pathPattern)
@@ -212,6 +266,14 @@ class Router internal constructor() {
                         }
                     }
                 }
+                // display summary and description, if any
+                route.key.specs.forEach { spec ->
+                    if (spec is Spec.PathItem) {
+                        sb.appendLine("      summary: ${spec.summary}")
+                        sb.appendLine("      description: ${spec.description}")
+                    }
+                }
+                // display path variables, if any
                 if (route.key.pathVariables.isNotEmpty()) {
                     sb.appendLine("      parameters:")
                     route.key.pathVariables.forEach { variable ->
@@ -222,6 +284,7 @@ class Router internal constructor() {
                         sb.appendLine("            type: string") // TODO: I wonder if I can specify the type of the path variable?
                     }
                 }
+                // display schema to consume, if any
                 when (route.key.method) {
                     "PUT", "POST" -> {
                         // in my API, PUT may not have a body if the X-Content-Length header is zero
@@ -239,6 +302,7 @@ class Router internal constructor() {
                         }
                     }
                 }
+                // display response options
                 sb.appendLine("      responses:")
                 sb.appendLine("        200:")
                 sb.appendLine("          description: OK")
@@ -251,12 +315,17 @@ class Router internal constructor() {
 
                 // TODO: authorization here, see https://spec.openapis.org/oas/v3.1.0#security-scheme-object
                 if (route.value.authorizer != null) {
-                    sb.appendLine("      security:")
-                    sb.appendLine("        - ${route.value.authorizer!!.simpleName}:")
-                    sb.appendLine("            - ${route.value.authorizer!!.simpleName}:")
+//                    sb.appendLine("      security:")
+//                    sb.appendLine("        type: apiKey")
+//                    sb.appendLine("        name: ")
+//                    sb.appendLine("        - ${route.value.authorizer!!.simpleName}")
                 }
             }
         }
+        // components:
+        //  schemas:
+        //  requestBodies:
+        //  securitySchemes:
         return sb.toString()
     }
 
@@ -285,8 +354,6 @@ typealias HandlerFunction<I, T> = (request: Request<I>) -> ResponseEntity<T>
  */
 data class RouterFunction<I, T : Any>(
     val requestPredicate: RequestPredicate, val handler: HandlerFunction<I, T>, var authorizer: Authorizer? = null,
-    // this could be a place to store the optional SWAGGER definition data?
-    var spec: Spec? = null
 )
 
 /**

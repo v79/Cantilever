@@ -365,6 +365,15 @@ class RouterTest {
         assertTrue(response.body.contains("paths:"))
         assertTrue(response.body.contains("tags:"))
     }
+
+    @Test
+    fun `can override response headers for a particular route`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/overrideHeaders").withHttpMethod("GET").withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+        assertEquals(200, response.statusCode)
+        assertEquals("*", response.headers["Access-Control-Allow-Origin"])
+    }
 }
 
 /**
@@ -456,7 +465,18 @@ class TestRouter : RequestHandlerWrapper() {
         // multiple methods, same path
         get("/multiple") { _: Request<Unit> -> ResponseEntity.ok(body = "GET /multiple") }
         post("/multiple") { _: Request<Unit> -> ResponseEntity.ok(body = "POST /multiple") }.expects(emptySet())
-    }
+
+        // overriding heaeders for a route
+        get("/overrideHeaders") { _: Request<Unit> -> ResponseEntity.ok(body = "GET /overrideHeaders") }.addHeaders(
+            mapOf(
+                "Access-Control-Allow-Origin" to "*"
+            )
+        )
+
+        // contains OpenAPI specifications
+        group("/specGroup") {
+        get("/spec", testController::hasSpecification, Spec.PathItem(summary = "This is a summary", description = "This is a description"))
+    }}
 }
 
 class TestController {
@@ -469,6 +489,11 @@ class TestController {
     fun returnJsonString(request: Request<Unit>): ResponseEntity<RawJsonString> {
         println("TestController returnJsonString")
         return ResponseEntity.ok(body = RawJsonString("""{ "colour": "red", "age": 23}"""))
+    }
+
+    fun hasSpecification(request: Request<Unit>): ResponseEntity<SimpleClass> {
+        println("TestController hasSpecification()")
+        return ResponseEntity.ok(body = SimpleClass(message = "TestController has a specification"))
     }
 }
 

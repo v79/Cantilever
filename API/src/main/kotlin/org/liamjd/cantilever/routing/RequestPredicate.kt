@@ -17,7 +17,7 @@ data class RequestPredicate(
     val method: String,
     var pathPattern: String,
     private var consumes: Set<MimeType>,
-    private var produces: Set<MimeType>
+    private var produces: Set<MimeType>,
 ) {
     var kType: KType? = null
     val accepts
@@ -33,6 +33,9 @@ data class RequestPredicate(
 
     var headerOverrides = mutableMapOf<String, String>()
         private set
+
+    // OpenAPI specifications
+    var specs: MutableSet<Spec> = mutableSetOf()
 
     fun match(request: APIGatewayProxyRequestEvent) =
         RequestMatchResult(matchPath = pathMatches(request.path),
@@ -71,8 +74,8 @@ data class RequestPredicate(
         return when {
             produces.isEmpty() && request.acceptedMediaTypes().isEmpty() -> true
             else -> produces.firstOrNull {
-                    request.acceptedMediaTypes().any { acceptedType -> it == acceptedType }
-                } != null
+                request.acceptedMediaTypes().any { acceptedType -> it == acceptedType }
+            } != null
         }
     }
 
@@ -104,10 +107,23 @@ data class RequestPredicate(
     /**
      * Add additional or overriding headers to this particular route
      */
-    fun addHeaders(headers: Map<String,String>) {
+    fun addHeaders(headers: Map<String, String>) {
         headerOverrides.putAll(headers)
     }
 
+    /**
+     * Add an OpenAPI specification to this route
+     */
+    fun addSpec(spec: Spec) {
+        specs.add(spec)
+    }
+
+    /**
+     * Add a set of OpenAPI specifications to this route
+     */
+    fun addSpecs(newSpecs: Set<Spec>) {
+        specs.addAll(newSpecs)
+    }
 }
 
 /**
