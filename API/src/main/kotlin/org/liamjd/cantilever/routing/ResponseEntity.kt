@@ -68,7 +68,7 @@ data class ResponseEntity<T : Any>(
         }
 
         /**
-        400
+        * 400
          */
         inline fun <reified T : Any> badRequest(
             body: T? = null,

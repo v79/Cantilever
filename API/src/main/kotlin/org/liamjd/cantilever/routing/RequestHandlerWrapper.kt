@@ -13,7 +13,7 @@ import kotlinx.serialization.serializer
 import org.liamjd.cantilever.routing.Router.Companion.CONTENT_TYPE
 
 /**
- * Implementing the AWS API Gateway [RequestHandler] interface, this class looks for a route which matches the incoming request
+ * Implementing the AWS API Gateway [RequestHandler] interface, this class looks for a route which matches the incoming request.
  * If a route exists, it generates a response by calling the [HandlerFunction] declared in the route, parsing and deserializing the body
  * if it exists.
  * @param corsDomain The website domain name, required for CORS
@@ -57,7 +57,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                     ?: router.produceByDefault.first()
 
                 val entity: ResponseEntity<out Any> = processRoute(input, routerFunction)
-                return createResponse(entity, matchedAcceptType)
+                return createResponse(entity, matchedAcceptType, routerFunction.requestPredicate.headerOverrides)
             }
             matchResult
 
@@ -159,19 +159,21 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
      * Create a response to return to the client. All fields will be serialized, even those with default values.
      * @param responseEntity the object being returned
      * @param mimeType the mime type of the response, typically application/json
+     * @param headerOverrides additional or replacement headers as specified by the route
      * @return an AWS [APIGatewayProxyResponseEvent] with the body of the response entity serialized in some way
      */
     private fun <T : Any> createResponse(
         responseEntity: ResponseEntity<T>,
-        mimeType: MimeType
+        mimeType: MimeType,
+        headerOverrides: Map<String, String> = emptyMap()
     ): APIGatewayProxyResponseEvent {
 
         var contentType = ""
         val jsonFormat = Json { prettyPrint = false; encodeDefaults = true }
         val body: String = when (mimeType) {
             MimeType.json -> {
-                responseEntity.kType?.let { ktype ->
-                    val kSerializer = serializer(ktype)
+                responseEntity.kType?.let { kType ->
+                    val kSerializer = serializer(kType)
                     contentType = mimeType.toString()
                     kSerializer.let {
                         jsonFormat.encodeToString(kSerializer, responseEntity.body as T)
@@ -191,11 +193,12 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                 "error"
             }
         }
-        // with CORS enabled, I have to include Access-Control-Allow-Origin header to *
-        // according to https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-cors-console.html
-        // though this may only be allowed for non-authenticated requests
+
+        val responseHeaders = mutableMapOf(CONTENT_TYPE to contentType, "Access-Control-Allow-Origin" to corsDomain)
+        // A route may supply additional or overriding headers
+        responseHeaders.putAll(headerOverrides)
         return APIGatewayProxyResponseEvent().withStatusCode(responseEntity.statusCode)
-            .withHeaders(mapOf(CONTENT_TYPE to contentType, "Access-Control-Allow-Origin" to corsDomain))
+            .withHeaders(responseHeaders)
             .withBody(body)
     }
 }
