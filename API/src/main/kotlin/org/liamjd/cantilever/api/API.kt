@@ -79,61 +79,107 @@ class LambdaRouter : RequestHandlerWrapper() {
                     projectController::updateProjectDefinition,
                     Spec.PathItem("Update project definition", "Supply an updated cantilever.yaml definition file")
                 ).expects(
-                    setOf(MimeType.yaml)).supplies(setOf(MimeType.json))
+                    setOf(MimeType.yaml)
+                ).supplies(setOf(MimeType.json))
                 group("/pages") {
-                    get("", pageController::getPages)
-                    post("/", pageController::saveMarkdownPageSource).supplies(setOf(MimeType.plainText))
-                    get("/$SRCKEY", pageController::loadMarkdownSource)
-                    put("/folder/new/{folderName}", pageController::createFolder).supplies(setOf(MimeType.plainText))
+                    get("", pageController::getPages, Spec.PathItem("Get pages", "Returns a list of all pages"))
+                    post(
+                        "/",
+                        pageController::saveMarkdownPageSource,
+                        Spec.PathItem("Save page", "Save markdown page source")
+                    ).supplies(setOf(MimeType.plainText))
+                    get(
+                        "/$SRCKEY",
+                        pageController::loadMarkdownSource,
+                        Spec.PathItem("Get page source", "Returns the markdown source for a page")
+                    )
+                    put(
+                        "/folder/new/{folderName}",
+                        pageController::createFolder,
+                        Spec.PathItem("Create folder", "Pages can be nested in folders")
+                    ).supplies(setOf(MimeType.plainText))
                 }
-                get("/templates/{templateKey}", templateController::getTemplateMetadata)
+                get(
+                    "/templates/{templateKey}",
+                    templateController::getTemplateMetadata,
+                    Spec.PathItem("Get template metadata", "Returns the metadata for a template")
+                )
             }
         }
 
 
         group("/posts", Spec.Tag(name = "Posts", description = "Create, update and manage blog posts")) {
             auth(cognitoJWTAuthorizer) {
-                get("", postController::getPosts)
-                get("/$SRCKEY", postController::loadMarkdownSource)
-                get("/preview/$SRCKEY") { request: Request<Unit> -> ResponseEntity.notImplemented(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!") }.supplies(
+                get("", postController::getPosts, Spec.PathItem("Get posts", "Returns a list of all posts"))
+                get(
+                    "/$SRCKEY",
+                    postController::loadMarkdownSource,
+                    Spec.PathItem("Get post source", "Returns the markdown source for a post")
+                )
+                get(pattern = "/preview/$SRCKEY") { request: Request<Unit> -> ResponseEntity.notImplemented(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!") }.supplies(
                     setOf(MimeType.html)
                 )
-                post("/save", postController::saveMarkdownPost).supplies(
+                post(
+                    "/save",
+                    postController::saveMarkdownPost,
+                    Spec.PathItem("Save post", "Save markdown post source")
+                ).supplies(
                     setOf(MimeType.plainText)
                 )
-                delete("/$SRCKEY", postController::deleteMarkdownPost).supplies(setOf(MimeType.plainText))
+                delete(
+                    "/$SRCKEY",
+                    postController::deleteMarkdownPost,
+                    Spec.PathItem("Delete post", "Delete a blog post")
+                ).supplies(setOf(MimeType.plainText))
             }
         }
 
         group("/templates", Spec.Tag(name = "Templates", description = "Create, update and manage templates")) {
             auth(cognitoJWTAuthorizer) {
-                get("", templateController::getTemplates)
-                get("/$SRCKEY", templateController::loadHandlebarsSource)
-                post("/", templateController::saveTemplate).supplies(setOf(MimeType.plainText))
+                get(
+                    "",
+                    templateController::getTemplates,
+                    Spec.PathItem("Get templates", "Returns a list of all templates")
+                )
+                get(
+                    "/$SRCKEY",
+                    templateController::loadHandlebarsSource,
+                    Spec.PathItem("Get template source", "Returns the handlebars source for a template")
+                )
+                post(
+                    "/",
+                    templateController::saveTemplate,
+                    Spec.PathItem("Save template", "Save handlebars template source")
+                ).supplies(setOf(MimeType.plainText))
             }
         }
 
         group("/generate", Spec.Tag("Generation", "Trigger the regeneration of pages and blog posts")) {
             auth(cognitoJWTAuthorizer) {
-                put("/post/$SRCKEY", generatorController::generatePost).supplies(setOf(MimeType.plainText))
-                put("/page/$SRCKEY", generatorController::generatePage).supplies(setOf(MimeType.plainText))
                 put(
-                    "/template/{templateKey}", generatorController::generateTemplate
+                    "/post/$SRCKEY",
+                    generatorController::generatePost,
+                    Spec.PathItem("Regenerate a post", "Trigger the regeneration of a post")
+                ).supplies(setOf(MimeType.plainText))
+                put(
+                    "/page/$SRCKEY",
+                    generatorController::generatePage,
+                    Spec.PathItem("Regenerate a page", "Trigger the regeneration of a page")
+                ).supplies(setOf(MimeType.plainText))
+                put(
+                    "/template/{templateKey}",
+                    generatorController::generateTemplate,
+                    Spec.PathItem(
+                        "Regenerate content based on a template",
+                        "Regenerate all the pages or posts that use this template"
+                    )
                 ).supplies(setOf(MimeType.plainText)).expects(emptySet())
-            }
-        }
-
-        group("/get") {
-            auth(cognitoJWTAuthorizer) {
-                get("/post/$SRCKEY") { request: Request<Unit> ->
-                    ResponseEntity.notImplemented(body = "Received request to return the HTML form of ${request.pathParameters["srcKey"]}")
-                }
             }
         }
 
         group("/metadata", Spec.Tag("Metadata", "Manage the metadata.yaml file for the project")) {
             auth(cognitoJWTAuthorizer) {
-                put("/rebuild", metadataController::rebuildFromSources)
+                put("/rebuild", metadataController::rebuildFromSources, Spec.PathItem("Rebuild metadata", "Rebuild the metadata.yaml file from the source files"))
             }
         }
 
