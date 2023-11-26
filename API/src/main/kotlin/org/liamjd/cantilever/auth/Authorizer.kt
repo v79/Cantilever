@@ -22,6 +22,7 @@ import java.security.interfaces.RSAPublicKey
  */
 interface Authorizer {
     val simpleName: String
+    val type: String
     fun authorize(request: APIGatewayProxyRequestEvent): AuthResult
 
     fun info(message: String) = println("INFO: Authorizer: $message")
@@ -44,6 +45,8 @@ class CognitoJWTAuthorizer(private val configuration: Map<String, String>) : Aut
 
     override val simpleName: String
         get() = "CognitoJWT Bearer Token Authorizer"
+    override val type: String
+        get() = "http"
 
     override fun authorize(request: APIGatewayProxyRequestEvent): AuthResult {
         val authHeader = request.getHeader("Authorization")

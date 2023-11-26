@@ -2,6 +2,7 @@ package org.liamjd.cantilever.routing
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import org.liamjd.cantilever.auth.Authorizer
+import org.liamjd.cantilever.common.toSlug
 import kotlin.reflect.typeOf
 
 /**
@@ -162,6 +163,28 @@ class Router internal constructor() {
     }
 
     /**
+     * HTTP DELETE
+     * This allows the definition of the route in an external function, with an optional [Spec.PathItem] object to provide OpenAPI documentation
+     */
+    inline fun <reified I, T : Any> delete(
+        pattern: String,
+        noinline handlerFunction: HandlerFunction<I, T>,
+        spec: Spec.PathItem? = null,
+    ): RequestPredicate {
+        val requestPredicate = defaultRequestPredicate(
+            pattern = pattern,
+            method = "DELETE",
+            consuming = consumeByDefault,
+            spec = spec,
+            handlerFunction = handlerFunction
+        ).also {
+            it.kType = typeOf<I>()
+            routes[it] = RouterFunction(it, handlerFunction)
+        }
+        return requestPredicate
+    }
+
+    /**
      * The default request predicate forms the basis of all the HTTP methods.
      * It sets a default set of [MimeType]s for consuming and producing, and creates a [RequestPredicate] object.
      * The defaults are `application/json` for both consuming and producing but these can be overridden with the `supplies` and `consumes` modifiers.
@@ -226,11 +249,15 @@ class Router internal constructor() {
      * This really needs to be broken up and rationalize.
      */
     fun openAPI(): String {
+
+        // build reference objects
+        val authorizers = routes.mapValues { it.value.authorizer }.values.distinct()
+
         val sb = StringBuilder()
-        sb.appendLine("openapi: 3.0.1")
+        sb.appendLine("openapi: 3.0.3")
         sb.appendLine("info:")
         sb.appendLine("  title: Cantilever API")
-        sb.appendLine("  description: API for Cantilever")
+        sb.appendLine("  description: API for Cantilever, providing methods for managing the content of a static website")
         sb.appendLine("  version: 0.0.8")
         sb.appendLine("servers:")
         sb.appendLine("  - url: https://api.cantilevers.org")
@@ -273,6 +300,11 @@ class Router internal constructor() {
                         sb.appendLine("      description: ${spec.description}")
                     }
                 }
+                // display authorization, if any
+                route.value.authorizer?.let { authorizer ->
+                    sb.appendLine("      security:")
+                    sb.appendLine("        - ${authorizer.simpleName.toSlug()}: []")
+                }
                 // display path variables, if any
                 if (route.key.pathVariables.isNotEmpty()) {
                     sb.appendLine("      parameters:")
@@ -312,20 +344,24 @@ class Router internal constructor() {
                     sb.appendLine("              schema:")
                     sb.appendLine("                type: string")
                 }
-
-                // TODO: authorization here, see https://spec.openapis.org/oas/v3.1.0#security-scheme-object
-                if (route.value.authorizer != null) {
-//                    sb.appendLine("      security:")
-//                    sb.appendLine("        type: apiKey")
-//                    sb.appendLine("        name: ")
-//                    sb.appendLine("        - ${route.value.authorizer!!.simpleName}")
-                }
             }
         }
         // components:
+        sb.appendLine("components:")
+        // display security schemes, if any
+        if (authorizers.isNotEmpty()) {
+            sb.appendLine("  securitySchemes:")
+            authorizers.forEach { authorizer ->
+                if (authorizer != null) {
+                    sb.appendLine("    ${authorizer.simpleName.toSlug()}:")
+                    sb.appendLine("      type: ${authorizer.type}")
+                    sb.appendLine("      scheme: bearer")
+                    sb.appendLine("      bearerFormat: JWT")
+                }
+            }
+        }
         //  schemas:
         //  requestBodies:
-        //  securitySchemes:
         return sb.toString()
     }
 

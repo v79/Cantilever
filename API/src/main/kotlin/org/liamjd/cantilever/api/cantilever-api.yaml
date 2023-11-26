@@ -1,437 +1,431 @@
-
-  openapi: 3.0.1
-  info:
-    title: Cantilever API
-    description: API for Cantilever
-    version: 0.0.8
-  servers:
-    - url: https://api.cantilevers.org
-  tags:
-    - name: Project
-      description: Manage the overall project settings
-    - name: Posts
-      description: Create, update and manage blog posts
-    - name: Templates
-      description: Create, update and manage templates
-    - name: Generation
-      description: Trigger the regeneration of pages and blog posts
-    - name: /get
-    - name: /metadata
-  paths:
-    /warm:
-      get:
-        responses:
-          200:
-            description: OK
-            content:
-              text/plain:
-                schema:
-                  type: string
-    /project/:
-      get:
-        tags:
-          - Project
-        responses:
-          200:
-            description: OK
-            content:
-              application/json:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-      put:
-        tags:
-          - Project
-        requestBody:
+openapi: 3.0.3
+info:
+  title: Cantilever API
+  description: API for Cantilever, providing methods for managing the content of a static website
+  version: 0.0.8
+servers:
+  - url: https://api.cantilevers.org
+tags:
+  - name: Project
+    description: Manage the overall project settings
+  - name: Posts
+    description: Create, update and manage blog posts
+  - name: Templates
+    description: Create, update and manage templates
+  - name: Generation
+    description: Trigger the regeneration of pages and blog posts
+  - name: Metadata
+    description: Manage the metadata.yaml file for the project
+paths:
+  /warm:
+    get:
+      responses:
+        200:
+          description: OK
           content:
-            application/yaml:
+            text/plain:
               schema:
                 type: string
-        responses:
-          200:
-            description: OK
-            content:
-              application/json:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /project/pages:
-      get:
-        tags:
-          - Project
-        responses:
-          200:
-            description: OK
-            content:
-              application/json:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /project/pages/:
-      post:
-        tags:
-          - Project
-        requestBody:
+  /project/:
+    get:
+      tags:
+        - Project
+      summary: Get project definition
+      description: Returns the cantilever.yaml definition file
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      responses:
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 type: string
-        responses:
-          200:
-            description: OK
-            content:
-              text/plain:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /project/pages/{srcKey}:
-      get:
-        tags:
-          - Project
-        parameters:
-          - name: srcKey
-            in: path
-            required: true
+    put:
+      tags:
+        - Project
+      summary: Update project definition
+      description: Supply an updated cantilever.yaml definition file
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      requestBody:
+        content:
+          application/yaml:
             schema:
               type: string
-        responses:
-          200:
-            description: OK
-            content:
-              application/json:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /project/pages/folder/new/{folderName}:
-      put:
-        tags:
-          - Project
-        parameters:
-          - name: folderName
-            in: path
-            required: true
-            schema:
-              type: string
-        requestBody:
+      responses:
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 type: string
-        responses:
-          200:
-            description: OK
-            content:
-              text/plain:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /project/templates/{templateKey}:
-      get:
-        tags:
-          - Project
-        parameters:
-          - name: templateKey
-            in: path
-            required: true
-            schema:
-              type: string
-        responses:
-          200:
-            description: OK
-            content:
-              application/json:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /posts:
-      get:
-        responses:
-          200:
-            description: OK
-            content:
-              application/json:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /posts/{srcKey}:
-      get:
-        tags:
-          - Posts
-        parameters:
-          - name: srcKey
-            in: path
-            required: true
-            schema:
-              type: string
-        responses:
-          200:
-            description: OK
-            content:
-              application/json:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-      delete:
-        tags:
-          - Posts
-        parameters:
-          - name: srcKey
-            in: path
-            required: true
-            schema:
-              type: string
-        responses:
-          200:
-            description: OK
-            content:
-              text/plain:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /posts/preview/{srcKey}:
-      get:
-        tags:
-          - Posts
-        parameters:
-          - name: srcKey
-            in: path
-            required: true
-            schema:
-              type: string
-        responses:
-          200:
-            description: OK
-            content:
-              text/html:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /posts/save:
-      post:
-        tags:
-          - Posts
-        requestBody:
+  /project/pages:
+    get:
+      tags:
+        - Project
+      summary: Get pages
+      description: Returns a list of all pages
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      responses:
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 type: string
-        responses:
-          200:
-            description: OK
-            content:
-              text/plain:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /templates:
-      get:
-        responses:
-          200:
-            description: OK
-            content:
-              application/json:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /templates/{srcKey}:
-      get:
-        tags:
-          - Templates
-        parameters:
-          - name: srcKey
-            in: path
-            required: true
+  /project/pages/:
+    post:
+      tags:
+        - Project
+      summary: Save page
+      description: Save markdown page source
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      requestBody:
+        content:
+          application/json:
             schema:
               type: string
-        responses:
-          200:
-            description: OK
-            content:
-              application/json:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /templates/:
-      post:
-        tags:
-          - Templates
-        requestBody:
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /project/pages/{srcKey}:
+    get:
+      tags:
+        - Project
+      summary: Get page source
+      description: Returns the markdown source for a page
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 type: string
-        responses:
-          200:
-            description: OK
-            content:
-              text/plain:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /generate/post/{srcKey}:
-      put:
-        tags:
-          - Generation
-        parameters:
-          - name: srcKey
-            in: path
-            required: true
+  /project/pages/folder/new/{folderName}:
+    put:
+      tags:
+        - Project
+      summary: Create folder
+      description: Pages can be nested in folders
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: folderName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
             schema:
               type: string
-        requestBody:
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /project/templates/{templateKey}:
+    get:
+      tags:
+        - Project
+      summary: Get template metadata
+      description: Returns the metadata for a template
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: templateKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 type: string
-        responses:
-          200:
-            description: OK
-            content:
-              text/plain:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /generate/page/{srcKey}:
-      put:
-        tags:
-          - Generation
-        parameters:
-          - name: srcKey
-            in: path
-            required: true
-            schema:
-              type: string
-        requestBody:
+  /posts:
+    get:
+      summary: Get posts
+      description: Returns a list of all posts
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      responses:
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 type: string
-        responses:
-          200:
-            description: OK
-            content:
-              text/plain:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /generate/template/{templateKey}:
-      put:
-        tags:
-          - Generation
-        parameters:
-          - name: templateKey
-            in: path
-            required: true
-            schema:
-              type: string
-        requestBody:
-          content:
-        responses:
-          200:
-            description: OK
-            content:
-              text/plain:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /get/post/{srcKey}:
-      get:
-        tags:
-          - /get
-        parameters:
-          - name: srcKey
-            in: path
-            required: true
-            schema:
-              type: string
-        responses:
-          200:
-            description: OK
-            content:
-              application/json:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /metadata/rebuild:
-      put:
-        tags:
-          - /metadata
-        requestBody:
+  /posts/{srcKey}:
+    get:
+      tags:
+        - Posts
+      summary: Get post source
+      description: Returns the markdown source for a post
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
           content:
             application/json:
               schema:
                 type: string
-        responses:
-          200:
-            description: OK
-            content:
-              application/json:
-                schema:
-                  type: string
-        security:
-          - CognitoJWT Bearer Token Authorizer:
-              - CognitoJWT Bearer Token Authorizer:
-    /openAPI:
-      get:
-        responses:
-          200:
-            description: OK
-            content:
-              application/json:
-                schema:
-                  type: string
-              application/yaml:
-                schema:
-                  type: string
-              text/plain:
-                schema:
-                  type: string
-    /showAllRoutes:
-      get:
-        responses:
-          200:
-            description: OK
-            content:
-              text/plain:
-                schema:
-                  type: string
-
-
+    delete:
+      tags:
+        - Posts
+      summary: Delete post
+      description: Delete a blog post
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /posts/preview/{srcKey}:
+    get:
+      tags:
+        - Posts
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/html:
+              schema:
+                type: string
+  /posts/save:
+    post:
+      tags:
+        - Posts
+      summary: Save post
+      description: Save markdown post source
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /templates:
+    get:
+      summary: Get templates
+      description: Returns a list of all templates
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+  /templates/{srcKey}:
+    get:
+      tags:
+        - Templates
+      summary: Get template source
+      description: Returns the handlebars source for a template
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+  /templates/:
+    post:
+      tags:
+        - Templates
+      summary: Save template
+      description: Save handlebars template source
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /generate/post/{srcKey}:
+    put:
+      tags:
+        - Generation
+      summary: Regenerate a post
+      description: Trigger the regeneration of a post
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /generate/page/{srcKey}:
+    put:
+      tags:
+        - Generation
+      summary: Regenerate a page
+      description: Trigger the regeneration of a page
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /generate/template/{templateKey}:
+    put:
+      tags:
+        - Generation
+      summary: Regenerate content based on a template
+      description: Regenerate all the pages or posts that use this template
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: templateKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /metadata/rebuild:
+    put:
+      tags:
+        - Metadata
+      summary: Rebuild metadata
+      description: Rebuild the metadata.yaml file from the source files
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+  /openAPI:
+    get:
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /showAllRoutes:
+    get:
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+components:
+  securitySchemes:
+    cognitojwt-bearer-token-authorizer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
