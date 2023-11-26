@@ -361,7 +361,7 @@ class RouterTest {
         val response = testR.handleRequest(event)
         assertEquals(200, response.statusCode)
         println(response.body)
-        assertTrue(response.body.contains("openapi: 3.0.1"))
+        assertTrue(response.body.contains("openapi: 3.0.3"))
         assertTrue(response.body.contains("paths:"))
         assertTrue(response.body.contains("tags:"))
     }
@@ -521,6 +521,8 @@ data class DontPostThis(val year: Long, val truth: Boolean)
 object FakeAuthorizer : Authorizer {
     override val simpleName: String
         get() = "Looks for an Authorize Header which starts with 'Bearer '"
+    override val type: String
+        get() = "http"
 
     override fun authorize(request: APIGatewayProxyRequestEvent): AuthResult {
         val authHead = request.getHeader("Authorization")
