@@ -1,0 +1,18 @@
+classes:
+  - className: "org.liamjd.cantilever.models.rest.PostNodeRestDTO"
+    properties:
+      - name: srcKey
+        type: string
+      - name: title
+        type: string
+      - name: templateKey
+        type: string
+      - name: date
+        type: kotlinx.datatime.LocalDate
+      - name: slug
+        type: string
+      - name: body
+        type: string
+      - name: attributes
+        type: Map<string, string>
+

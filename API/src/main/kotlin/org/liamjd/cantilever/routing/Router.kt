@@ -20,6 +20,8 @@ class Router internal constructor() {
     val consumeByDefault = setOf(MimeType.json)
     val produceByDefault = setOf(MimeType.json)
 
+    val schemaParser = OpenAPISchemaParser()
+
     /**
      * A group is a collection of routes which share a common parent path.
      */
@@ -250,6 +252,9 @@ class Router internal constructor() {
      */
     fun openAPI(): String {
 
+        // local schema definitions
+        val schemas = schemaParser.loadSchemaFile("APISchema.yaml")
+
         // build reference objects
         val authorizers = routes.mapValues { it.value.authorizer }.values.distinct()
 
@@ -361,6 +366,22 @@ class Router internal constructor() {
             }
         }
         //  schemas:
+        if (schemas != null) {
+            sb.appendLine("  schemas:")
+            schemas.classes.forEach { clazz ->
+                sb.appendLine("    ${clazz.className}:")
+                sb.appendLine("      type: object")
+                sb.appendLine("      properties:")
+                clazz.properties.forEach { property ->
+                    sb.appendLine("        ${property.name}:")
+                    if(OpenAPISchemaParser.VALID_TYPES.contains(property.type)) {
+                        sb.appendLine("          type: ${property.type}")
+                    } else {
+                        sb.appendLine("          type: object")
+                    }
+                }
+            }
+        }
         //  requestBodies:
         return sb.toString()
     }
