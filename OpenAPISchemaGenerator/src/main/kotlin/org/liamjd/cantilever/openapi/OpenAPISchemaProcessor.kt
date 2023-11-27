@@ -3,16 +3,20 @@ package org.liamjd.cantilever.openapi
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.validate
+import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSTypeAlias
 import kotlin.reflect.KClass
 
 class OpenAPISchemaProcessor(environment: SymbolProcessorEnvironment) : SymbolProcessor {
 
     private val logger = environment.logger
+    private val generator = environment.codeGenerator
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
 
-        val processedList = mutableListOf<KSAnnotated>()
+        val sBuilder = StringBuilder()
+
+        sBuilder.appendLine("classes:")
 
         val schemaClasses =
             resolver.getSymbolsWithAnnotation(annotationName = APISchema::class.qualifiedName!!, inDepth = false)
@@ -25,11 +29,21 @@ class OpenAPISchemaProcessor(environment: SymbolProcessorEnvironment) : SymbolPr
             schemaClasses.forEach {
                 val kClassDeclaration = it
                 logger.warn("Found class with @APISchema annotation: ${kClassDeclaration.simpleName.asString()}")
+                sBuilder.appendLine(" - className: ${kClassDeclaration.qualifiedName?.asString()}")
+                sBuilder.appendLine("   properties:")
                 kClassDeclaration.getAllProperties().forEach { property ->
-                    logger.warn("\tProperty: ${property.simpleName.asString()}: ${property.type.toString()}")
+                    logger.warn("\tProperty: ${property.simpleName.asString()}: ${property.type}")
+                    sBuilder.appendLine("    - name: ${property.simpleName.asString()}")
+                    val type = lookupType(property.type.resolve())
+                    sBuilder.appendLine("      type: $type")
                 }
-//                processedList.add(kClassDeclaration)
+
             }
+
+            val output =
+                generator.createNewFile(Dependencies.ALL_FILES, "org.liamjd.cantilevers.api", "api-schema", "yaml")
+            output.write(sBuilder.toString().toByteArray(Charsets.UTF_8))
+            logger.warn("Written output file")
         }
 
         return emptyList()
@@ -37,6 +51,31 @@ class OpenAPISchemaProcessor(environment: SymbolProcessorEnvironment) : SymbolPr
 
     private fun Resolver.findAnnotations(kClass: KClass<*>) =
         getSymbolsWithAnnotation(kClass.qualifiedName.toString()).filterIsInstance<KSClassDeclaration>()
+
+    /**
+     * Attempts to convert a Kotlin KSType into one of the valid Javascript primitives
+     * Possible values are:
+     * - null
+     * - string
+     * - boolean
+     * - number
+     * - array
+     * - object
+     * I won't be able to do a comprehensive mapping, so most things will default to 'object' or 'string'
+     */
+    private fun lookupType(propertyType: KSType): String {
+        val type = if (propertyType.declaration is KSTypeAlias) {
+            (propertyType.declaration as KSTypeAlias).type.resolve().toString()
+        } else {
+            propertyType.toString()
+        }
+        return when (type) {
+            "String" -> "string"
+            "Int", "Float", "Long" -> "number"
+            "Boolean" -> "boolean"
+            else -> "object($propertyType)"
+        }
+    }
 }
 
 class OpenAPISchemaProcessorProvider : SymbolProcessorProvider {

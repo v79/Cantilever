@@ -20,7 +20,7 @@ dependencies {
     implementation("com.charleskorn.kaml:kaml:0.55.0")
 
     // openAPI dependency scanning
-//    implementation(project(":OpenAPISchemaGenerator"))
+    implementation(project(":OpenAPISchemaAnnotations"))
     ksp(project(":OpenAPISchemaGenerator"))
 
     // multiplatform datetime library

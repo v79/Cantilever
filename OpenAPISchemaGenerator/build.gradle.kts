@@ -19,6 +19,7 @@ buildscript {
 
 dependencies {
     // shared elements
+    implementation(project(":OpenAPISchemaAnnotations"))
     implementation("com.google.devtools.ksp:symbol-processing-api:1.9.20-1.0.14")
 
     testImplementation(platform("org.junit:junit-bom:5.9.1"))

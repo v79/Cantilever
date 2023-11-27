@@ -8,7 +8,7 @@ classes:
       - name: templateKey
         type: string
       - name: date
-        type: kotlinx.datatime.LocalDate
+        type: kotlinx.datetime.LocalDate
       - name: slug
         type: string
       - name: body
