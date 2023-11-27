@@ -4,12 +4,13 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm") version "1.9.20"
     kotlin("plugin.serialization") version "1.9.0"
+    id("com.google.devtools.ksp") version "1.9.20-1.0.14"
     id("com.github.johnrengelman.shadow") version "7.1.2"
     id("org.jetbrains.kotlinx.kover") version "0.7.4"
 }
 
 group = "org.liamjd.cantilever"
-version = "0.0.8"
+version = "0.0.9"
 
 repositories {
     mavenCentral()
@@ -22,6 +23,10 @@ dependencies {
     // shared elements
     implementation(project(":SharedModels"))
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
+
+    // openAPI dependency scanning
+    implementation(project(":OpenAPISchemaGenerator"))
+    ksp(project(":OpenAPISchemaGenerator"))
 
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")

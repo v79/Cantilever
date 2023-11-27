@@ -1,5 +1,5 @@
-package org.liamjd.cantilever.models.rest
+package org.liamjd.cantilever.openapi
 
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
-annotation class APISchema()
+annotation class APISchema

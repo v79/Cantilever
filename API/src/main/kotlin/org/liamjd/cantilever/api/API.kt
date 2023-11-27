@@ -3,6 +3,7 @@ package org.liamjd.cantilever.api
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 import org.liamjd.cantilever.api.controllers.*
+import org.liamjd.cantilever.api.models.DummyClass
 import org.liamjd.cantilever.auth.CognitoJWTAuthorizer
 import org.liamjd.cantilever.routing.*
 import org.liamjd.cantilever.services.S3Service
@@ -179,7 +180,11 @@ class LambdaRouter : RequestHandlerWrapper() {
 
         group("/metadata", Spec.Tag("Metadata", "Manage the metadata.yaml file for the project")) {
             auth(cognitoJWTAuthorizer) {
-                put("/rebuild", metadataController::rebuildFromSources, Spec.PathItem("Rebuild metadata", "Rebuild the metadata.yaml file from the source files"))
+                put(
+                    "/rebuild",
+                    metadataController::rebuildFromSources,
+                    Spec.PathItem("Rebuild metadata", "Rebuild the metadata.yaml file from the source files")
+                )
             }
         }
 
@@ -193,6 +198,11 @@ class LambdaRouter : RequestHandlerWrapper() {
         get("/showAllRoutes") { _: Request<Unit> ->
             val routeList = this.listRoutes()
             ResponseEntity.ok(routeList)
+        }.supplies(setOf(MimeType.plainText))
+
+
+        get("/dummy") { request: Request<DummyClass> ->
+            ResponseEntity.ok(request.body.toString())
         }.supplies(setOf(MimeType.plainText))
     }
 }
