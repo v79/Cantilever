@@ -253,7 +253,7 @@ class Router internal constructor() {
     fun openAPI(): String {
 
         // local schema definitions
-        val schemas = schemaParser.loadSchemaFile("APISchema.yaml")
+        val schemas = schemaParser.loadSchemaFile("openapi/schema/api-schema.yaml")
 
         // build reference objects
         val authorizers = routes.mapValues { it.value.authorizer }.values.distinct()
@@ -378,6 +378,7 @@ class Router internal constructor() {
                         sb.appendLine("          type: ${property.type}")
                     } else {
                         sb.appendLine("          type: object")
+                        sb.appendLine("          description: ${property.type}")
                     }
                 }
             }

@@ -26,7 +26,6 @@ class OpenAPISchemaParser {
             println("No schema file found")
             return null
         }
-        println(yaml)
 
         return Yaml.default.decodeFromString(OpenAPISchema.serializer(), yaml)
     }

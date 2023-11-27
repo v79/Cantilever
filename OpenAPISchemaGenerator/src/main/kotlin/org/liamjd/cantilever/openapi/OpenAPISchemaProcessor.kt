@@ -5,8 +5,11 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeAlias
-import kotlin.reflect.KClass
 
+/**
+ * Searches for classes with the [APISchema] annotation, and generates a yaml file listing all matching classes, their properties and types.
+ * This isn't a comprehensive data model, as it only lists the simple primitive types. But it is a start.
+ */
 class OpenAPISchemaProcessor(environment: SymbolProcessorEnvironment) : SymbolProcessor {
 
     private val logger = environment.logger
@@ -15,7 +18,6 @@ class OpenAPISchemaProcessor(environment: SymbolProcessorEnvironment) : SymbolPr
     override fun process(resolver: Resolver): List<KSAnnotated> {
 
         val sBuilder = StringBuilder()
-
         sBuilder.appendLine("classes:")
 
         val schemaClasses =
@@ -26,8 +28,7 @@ class OpenAPISchemaProcessor(environment: SymbolProcessorEnvironment) : SymbolPr
             logger.warn("No classes found with @APISchema annotation")
             return emptyList()
         } else {
-            schemaClasses.forEach {
-                val kClassDeclaration = it
+            schemaClasses.forEach { kClassDeclaration ->
                 logger.warn("Found class with @APISchema annotation: ${kClassDeclaration.simpleName.asString()}")
                 sBuilder.appendLine(" - className: ${kClassDeclaration.qualifiedName?.asString()}")
                 sBuilder.appendLine("   properties:")
@@ -41,16 +42,13 @@ class OpenAPISchemaProcessor(environment: SymbolProcessorEnvironment) : SymbolPr
             }
 
             val output =
-                generator.createNewFile(Dependencies.ALL_FILES, "org.liamjd.cantilevers.api", "api-schema", "yaml")
+                generator.createNewFile(Dependencies.ALL_FILES, "openapi.schema", "api-schema", "yaml")
             output.write(sBuilder.toString().toByteArray(Charsets.UTF_8))
-            logger.warn("Written output file")
+            logger.warn("Written output file to build/generated/ksp/kotlin/main/openapi/schema/api-schema.yaml")
         }
 
         return emptyList()
     }
-
-    private fun Resolver.findAnnotations(kClass: KClass<*>) =
-        getSymbolsWithAnnotation(kClass.qualifiedName.toString()).filterIsInstance<KSClassDeclaration>()
 
     /**
      * Attempts to convert a Kotlin KSType into one of the valid Javascript primitives
@@ -59,7 +57,7 @@ class OpenAPISchemaProcessor(environment: SymbolProcessorEnvironment) : SymbolPr
      * - string
      * - boolean
      * - number
-     * - array
+     * - array - I could attempt to map List, Set, Map and Array to this type
      * - object
      * I won't be able to do a comprehensive mapping, so most things will default to 'object' or 'string'
      */
