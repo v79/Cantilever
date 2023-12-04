@@ -12,6 +12,7 @@ import kotlin.reflect.KType
  * @property accepts is an alias for consumes
  * @property supplies is an alias for produces
  * @property kType is the Kotlin type of the request body, or null
+ * @property specs a set of OpenAPI specifications for this route
  */
 data class RequestPredicate(
     val method: String,

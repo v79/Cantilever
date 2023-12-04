@@ -3,24 +3,26 @@ package org.liamjd.cantilever.routing
 import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.Serializable
 
-class OpenAPISchemaParser {
-
+interface APISchemaParser {
     /**
      * Attempts to load the OpenAPI schema file and parse it into a Kotlin class
      */
+    fun loadSchemaFile(schemaFile: String): OpenAPISchema?
+}
+
+class OpenAPISchemaParser : APISchemaParser {
 
     companion object {
-        @JvmStatic
+       /* @JvmStatic
         fun main(args: Array<String>) {
             val parser = OpenAPISchemaParser()
             parser.loadSchemaFile("APISchema.yaml")
-        }
+        }*/
 
         val VALID_TYPES = listOf("string", "number", "boolean", "array", "object", "null")
     }
 
-
-    fun loadSchemaFile(schemaFile: String): OpenAPISchema? {
+   override fun loadSchemaFile(schemaFile: String): OpenAPISchema? {
         val yaml = this.javaClass.classLoader.getResource(schemaFile)?.readText()
         if (yaml == null) {
             println("No schema file found")
