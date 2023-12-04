@@ -55,8 +55,6 @@ class LambdaRouter : RequestHandlerWrapper() {
 
     override val router = lambdaRouter {
 
-//        filter = loggingFilter()
-
         /**
         /warm is an attempt to pre-warm this lambda. /ping is an API Gateway reserved route
          */
@@ -116,23 +114,26 @@ class LambdaRouter : RequestHandlerWrapper() {
 
         group("/posts", Spec.Tag(name = "Posts", description = "Create, update and manage blog posts")) {
             auth(cognitoJWTAuthorizer) {
-                get("", postController::getPosts, Spec.PathItem("Get posts", "Returns a list of all posts"))
+                get("", postController::getPosts).spec(Spec.PathItem("Get posts", "Returns a list of all posts"))
+
                 get(
                     "/$SRCKEY",
                     postController::loadMarkdownSource,
-                    Spec.PathItem("Get post source", "Returns the markdown source for a post")
-                )
+                ).spec(Spec.PathItem("Get post source", "Returns the markdown source for a post"))
+
                 get(pattern = "/preview/$SRCKEY") { request: Request<Unit> -> ResponseEntity.notImplemented(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!") }.supplies(
                     setOf(MimeType.html)
                 )
+
                 post(
-                    "/save", postController::saveMarkdownPost, Spec.PathItem("Save post", "Save markdown post source")
+                    "/save", postController::saveMarkdownPost
                 ).supplies(
                     setOf(MimeType.plainText)
-                )
+                ).spec(Spec.PathItem("Save post", "Save markdown post source"))
+
                 delete(
-                    "/$SRCKEY", postController::deleteMarkdownPost, Spec.PathItem("Delete post", "Delete a blog post")
-                ).supplies(setOf(MimeType.plainText))
+                    "/$SRCKEY", postController::deleteMarkdownPost
+                ).supplies(setOf(MimeType.plainText)).spec(Spec.PathItem("Delete post", "Delete a blog post"))
             }
         }
 
@@ -141,18 +142,18 @@ class LambdaRouter : RequestHandlerWrapper() {
                 get(
                     "",
                     templateController::getTemplates,
-                    Spec.PathItem("Get templates", "Returns a list of all templates")
-                )
+                ).spec(Spec.PathItem("Get templates", "Returns a list of all templates"))
+
                 get(
                     "/$SRCKEY",
                     templateController::loadHandlebarsSource,
-                    Spec.PathItem("Get template source", "Returns the handlebars source for a template")
-                )
+                ).spec(Spec.PathItem("Get template source", "Returns the handlebars source for a template"))
+
                 post(
                     "/",
                     templateController::saveTemplate,
-                    Spec.PathItem("Save template", "Save handlebars template source")
                 ).supplies(setOf(MimeType.plainText))
+                    .spec(Spec.PathItem("Save template", "Save handlebars template source"))
             }
         }
 
@@ -161,19 +162,24 @@ class LambdaRouter : RequestHandlerWrapper() {
                 put(
                     "/post/$SRCKEY",
                     generatorController::generatePost,
-                    Spec.PathItem("Regenerate a post", "Trigger the regeneration of a post")
                 ).supplies(setOf(MimeType.plainText))
+                    .spec(Spec.PathItem("Regenerate a post", "Trigger the regeneration of a post"))
+
                 put(
                     "/page/$SRCKEY",
                     generatorController::generatePage,
-                    Spec.PathItem("Regenerate a page", "Trigger the regeneration of a page")
                 ).supplies(setOf(MimeType.plainText))
+                    .spec(Spec.PathItem("Regenerate a page", "Trigger the regeneration of a page"))
+
                 put(
-                    "/template/{templateKey}", generatorController::generateTemplate, Spec.PathItem(
-                        "Regenerate content based on a template",
-                        "Regenerate all the pages or posts that use this template"
-                    )
+                    "/template/{templateKey}", generatorController::generateTemplate
                 ).supplies(setOf(MimeType.plainText)).expects(emptySet())
+                    .spec(
+                        Spec.PathItem(
+                            "Regenerate content based on a template",
+                            "Regenerate all the pages or posts that use this template"
+                        )
+                    )
             }
         }
 
@@ -182,6 +188,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                 put(
                     "/rebuild",
                     metadataController::rebuildFromSources,
+                ).spec(
                     Spec.PathItem("Rebuild metadata", "Rebuild the metadata.yaml file from the source files")
                 )
             }
