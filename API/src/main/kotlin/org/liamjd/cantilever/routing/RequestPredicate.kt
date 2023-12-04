@@ -16,8 +16,8 @@ import kotlin.reflect.KType
 data class RequestPredicate(
     val method: String,
     var pathPattern: String,
-    private var consumes: Set<MimeType>,
-    private var produces: Set<MimeType>,
+    internal var consumes: Set<MimeType>,
+    internal var produces: Set<MimeType>,
 ) {
     var kType: KType? = null
     val accepts
@@ -84,32 +84,6 @@ data class RequestPredicate(
     fun matchedAcceptType(acceptedMediaTypes: List<MimeType>): MimeType? =
         produces.firstOrNull { acceptedMediaTypes.any { acceptedType -> it.isCompatibleWith(acceptedType) } }
 
-    /**
-     * Override the default consumes mime type
-     */
-    fun expects(mimeTypes: Set<MimeType>?): RequestPredicate {
-        mimeTypes?.let {
-            consumes = mimeTypes
-        }
-        return this
-    }
-
-    /**
-     * Override the default produces mime type
-     */
-    fun supplies(mimeTypes: Set<MimeType>?): RequestPredicate {
-        mimeTypes?.let {
-            produces = mimeTypes
-        }
-        return this
-    }
-
-    /**
-     * Add additional or overriding headers to this particular route
-     */
-    fun addHeaders(headers: Map<String, String>) {
-        headerOverrides.putAll(headers)
-    }
 
     /**
      * Add an OpenAPI specification to this route
@@ -124,6 +98,43 @@ data class RequestPredicate(
     fun addSpecs(newSpecs: Set<Spec>) {
         specs.addAll(newSpecs)
     }
+}
+
+
+/**
+ * Override the default consumes mime type
+ */
+fun RequestPredicate.expects(mimeTypes: Set<MimeType>?): RequestPredicate {
+    mimeTypes?.let {
+        this.consumes = mimeTypes
+    }
+    return this
+}
+
+/**
+ * Override the default produces mime type
+ */
+fun RequestPredicate.supplies(mimeTypes: Set<MimeType>?): RequestPredicate {
+    mimeTypes?.let {
+        produces = mimeTypes
+    }
+    return this
+}
+
+/**
+ * Add additional or overriding headers to this particular route
+ */
+fun RequestPredicate.addHeaders(headers: Map<String, String>): RequestPredicate {
+    headerOverrides.putAll(headers)
+    return this
+}
+
+/**
+ * Add an OpenAPI specification to this route, it may be a little cleaner than using the constructor
+ */
+fun RequestPredicate.spec(pathItem: Spec.PathItem): RequestPredicate {
+    this.addSpec(pathItem)
+    return this
 }
 
 /**

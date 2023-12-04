@@ -38,8 +38,7 @@ class LambdaRouter : RequestHandlerWrapper() {
     private val postController = PostController(sourceBucket = sourceBucket)
     private val pageController = PageController(sourceBucket = sourceBucket)
     private val templateController = TemplateController(sourceBucket = sourceBucket)
-    private val generatorController =
-        GeneratorController(sourceBucket = sourceBucket)
+    private val generatorController = GeneratorController(sourceBucket = sourceBucket)
     private val projectController = ProjectController(sourceBucket = sourceBucket)
     private val metadataController = MetadataController(sourceBucket = sourceBucket)
 
@@ -70,43 +69,50 @@ class LambdaRouter : RequestHandlerWrapper() {
         ) {
             auth(cognitoJWTAuthorizer) {
                 get(
-                    "/",
-                    projectController::getProject,
-                    Spec.PathItem("Get project definition", "Returns the cantilever.yaml definition file")
-                )
+                    "/", projectController::getProject
+                ).spec(Spec.PathItem("Get project definition", "Returns the cantilever.yaml definition file"))
+
                 put(
                     "/",
                     projectController::updateProjectDefinition,
-                    Spec.PathItem("Update project definition", "Supply an updated cantilever.yaml definition file")
                 ).expects(
                     setOf(MimeType.yaml)
-                ).supplies(setOf(MimeType.json))
+                ).supplies(setOf(MimeType.json)).spec(
+                    Spec.PathItem("Update project definition", "Supply an updated cantilever.yaml definition file")
+                )
+
                 group("/pages") {
-                    get("", pageController::getPages, Spec.PathItem("Get pages", "Returns a list of all pages"))
+                    get("", pageController::getPages).spec(Spec.PathItem("Get pages", "Returns a list of all pages"))
+
                     post(
                         "/",
                         pageController::saveMarkdownPageSource,
+                    ).supplies(setOf(MimeType.plainText)).spec(
                         Spec.PathItem("Save page", "Save markdown page source")
-                    ).supplies(setOf(MimeType.plainText))
+                    )
+
                     get(
                         "/$SRCKEY",
                         pageController::loadMarkdownSource,
+                    ).spec(
                         Spec.PathItem("Get page source", "Returns the markdown source for a page")
                     )
+
                     put(
                         "/folder/new/{folderName}",
                         pageController::createFolder,
+                    ).supplies(setOf(MimeType.plainText)).spec(
                         Spec.PathItem("Create folder", "Pages can be nested in folders")
-                    ).supplies(setOf(MimeType.plainText))
+                    )
                 }
                 get(
                     "/templates/{templateKey}",
                     templateController::getTemplateMetadata,
+                ).spec(
                     Spec.PathItem("Get template metadata", "Returns the metadata for a template")
                 )
             }
         }
-
 
         group("/posts", Spec.Tag(name = "Posts", description = "Create, update and manage blog posts")) {
             auth(cognitoJWTAuthorizer) {
@@ -120,16 +126,12 @@ class LambdaRouter : RequestHandlerWrapper() {
                     setOf(MimeType.html)
                 )
                 post(
-                    "/save",
-                    postController::saveMarkdownPost,
-                    Spec.PathItem("Save post", "Save markdown post source")
+                    "/save", postController::saveMarkdownPost, Spec.PathItem("Save post", "Save markdown post source")
                 ).supplies(
                     setOf(MimeType.plainText)
                 )
                 delete(
-                    "/$SRCKEY",
-                    postController::deleteMarkdownPost,
-                    Spec.PathItem("Delete post", "Delete a blog post")
+                    "/$SRCKEY", postController::deleteMarkdownPost, Spec.PathItem("Delete post", "Delete a blog post")
                 ).supplies(setOf(MimeType.plainText))
             }
         }
@@ -167,9 +169,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                     Spec.PathItem("Regenerate a page", "Trigger the regeneration of a page")
                 ).supplies(setOf(MimeType.plainText))
                 put(
-                    "/template/{templateKey}",
-                    generatorController::generateTemplate,
-                    Spec.PathItem(
+                    "/template/{templateKey}", generatorController::generateTemplate, Spec.PathItem(
                         "Regenerate content based on a template",
                         "Regenerate all the pages or posts that use this template"
                     )
@@ -193,15 +193,20 @@ class LambdaRouter : RequestHandlerWrapper() {
         }.supplies(
             setOf(MimeType.plainText)
         ).addHeaders(mapOf("Access-Control-Allow-Origin" to "*"))
+            .spec(Spec.PathItem("OpenAPI", "Returns the OpenAPI specification for this API"))
+
 
         get("/showAllRoutes") { _: Request<Unit> ->
             val routeList = this.listRoutes()
             ResponseEntity.ok(routeList)
-        }.supplies(setOf(MimeType.plainText))
+        }.supplies(setOf(MimeType.plainText)).spec(
+            Spec.PathItem(
+                "Show all routes", "Returns a list of all routes in the API, a rather clumsy text list."
+            )
+        )
 
     }
 }
-
 
 /**
  * Possible extension: custom Filters, like a logging filter, which intercepts a route, performs an action, then passes it on to the correct handler.

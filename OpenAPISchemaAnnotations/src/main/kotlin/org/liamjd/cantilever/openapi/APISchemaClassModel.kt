@@ -4,6 +4,9 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class APISchemaProperty(val name: String, val type: String)
+
 @Serializable
-data class APISchemaClassModel(val className: String, val properties: List<APISchemaProperty> = emptyList()) {
-}
+data class APISchemaClassModel(val className: String, val properties: List<APISchemaProperty> = emptyList())
+
+@Serializable
+data class APIClasses(val classes: List<APISchemaClassModel>)
