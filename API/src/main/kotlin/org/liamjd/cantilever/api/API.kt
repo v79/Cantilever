@@ -60,7 +60,7 @@ class LambdaRouter : RequestHandlerWrapper() {
          */
         get("/warm") { _: Request<Unit> -> println("Ping received; warming"); ResponseEntity.ok("warming") }.supplies(
             setOf(MimeType.plainText)
-        )
+        ).spec(Spec.PathItem("Warm", "Warms the lambda router"))
 
         group(
             "/project", Spec.Tag(name = "Project", description = "Manage the overall project settings")
@@ -123,7 +123,7 @@ class LambdaRouter : RequestHandlerWrapper() {
 
                 get(pattern = "/preview/$SRCKEY") { request: Request<Unit> -> ResponseEntity.notImplemented(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!") }.supplies(
                     setOf(MimeType.html)
-                )
+                ).spec(Spec.PathItem("Preview post", "When implemented, this will return a preview of a post"))
 
                 post(
                     "/save", postController::saveMarkdownPost
