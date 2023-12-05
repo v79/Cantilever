@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "org.liamjd.cantilever.lambda"
-version = "0.0.8"
+version = "0.0.9"
 
 repositories {
     mavenCentral()

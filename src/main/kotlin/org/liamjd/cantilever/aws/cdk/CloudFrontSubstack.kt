@@ -9,7 +9,7 @@ import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.BucketAccessControl
 import software.amazon.awscdk.services.s3.IBucket
 
-class CloudFrontSubstack {
+class CloudFrontSubstack(private val versionString: String) {
 
     // taken from https://johntipper.org/a-static-website-with-api-backend-using-aws-cdk-and-java/
 
@@ -33,7 +33,7 @@ class CloudFrontSubstack {
         destinationBucket: IBucket
     ): CloudFrontWebDistribution {
 
-        Tags.of(stack).add("Cantilever", "v0.0.8")
+        Tags.of(stack).add("Cantilever", versionString)
 
         val webOai = OriginAccessIdentity.Builder.create(stack, "WebOai").build()
         destinationBucket.grantRead(webOai)
@@ -63,14 +63,17 @@ class CloudFrontSubstack {
                 )
             )
             .priceClass(PriceClass.PRICE_CLASS_100)
-            .loggingConfig(LoggingConfiguration.builder()
-                .bucket(Bucket.Builder.create(stack, "cantilever-CloudFrontLogs")
-                    .accessControl(BucketAccessControl.LOG_DELIVERY_WRITE)
-                    .versioned(false)
-                    .removalPolicy(RemovalPolicy.DESTROY)
-                    .build())
-                .includeCookies(true)
-                .build()
+            .loggingConfig(
+                LoggingConfiguration.builder()
+                    .bucket(
+                        Bucket.Builder.create(stack, "cantilever-CloudFrontLogs")
+                            .accessControl(BucketAccessControl.LOG_DELIVERY_WRITE)
+                            .versioned(false)
+                            .removalPolicy(RemovalPolicy.DESTROY)
+                            .build()
+                    )
+                    .includeCookies(true)
+                    .build()
             )
             .viewerProtocolPolicy(ViewerProtocolPolicy.REDIRECT_TO_HTTPS)
             .errorConfigurations(

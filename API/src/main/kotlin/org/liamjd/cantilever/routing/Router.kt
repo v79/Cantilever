@@ -20,6 +20,8 @@ class Router internal constructor() {
     val consumeByDefault = setOf(MimeType.json)
     val produceByDefault = setOf(MimeType.json)
 
+    private val schemaParser: APISchemaParser = OpenAPISchemaParser()
+
     /**
      * A group is a collection of routes which share a common parent path.
      */
@@ -250,8 +252,11 @@ class Router internal constructor() {
      */
     fun openAPI(): String {
 
+        // local schema definitions
+        val schemas = schemaParser.loadSchemaFile("openapi/schema/api-schema.yaml")
+
         // build reference objects
-        val authorizers = routes.mapValues { it.value.authorizer }.values.distinct()
+        val authorizers = routes.mapNotNull { it.value.authorizer }.distinct()
 
         val sb = StringBuilder()
         sb.appendLine("openapi: 3.0.3")
@@ -313,7 +318,8 @@ class Router internal constructor() {
                         sb.appendLine("          in: path")
                         sb.appendLine("          required: true")
                         sb.appendLine("          schema:")
-                        sb.appendLine("            type: string") // TODO: I wonder if I can specify the type of the path variable?
+                        // TODO: this should the type and the format but my Request class doesn't have that information
+                        sb.appendLine("            type: string")
                     }
                 }
                 // display schema to consume, if any
@@ -330,7 +336,27 @@ class Router internal constructor() {
                             // but for now, all I have is a kType, which I can't use to get the class
                             // perhaps using a reference like  $ref: '#/components/schemas/Order'   ?
                             // val first = (kType.classifier as KClass<*>).constructors.first().parameters.first().type.toString()
-                            sb.appendLine("              type: string") // this is misleading, because I will accept an empty body in some cases
+                            route.value.requestPredicate.kType?.let { kType ->
+                                val typeString =
+                                    kType.toString().removeSuffix("(Kotlin reflection is not available)").trim()
+                                if (typeString != "kotlin.Unit") {
+                                    // here we insert a reference IF we have a schema for this type defined
+                                    if (schemas != null) {
+                                        val schema = schemas.classes.find { it.className == typeString }
+                                        if (schema != null) {
+                                            sb.appendLine("              ${'$'}ref: '#/components/schemas/$typeString'")
+                                        } else {
+                                            sb.appendLine("              type: object")
+                                            sb.appendLine("              description: $typeString")
+                                        }
+                                    } else {
+                                        sb.appendLine("              type: object")
+                                        sb.appendLine("              description: $typeString")
+                                    }
+                                } else {
+                                    sb.appendLine("              type: string") // fallback to string
+                                }
+                            }
                         }
                     }
                 }
@@ -361,6 +387,23 @@ class Router internal constructor() {
             }
         }
         //  schemas:
+        if (schemas != null) {
+            sb.appendLine("  schemas:")
+            schemas.classes.forEach { clazz ->
+                sb.appendLine("    ${clazz.className}:")
+                sb.appendLine("      type: object")
+                sb.appendLine("      properties:")
+                clazz.properties.forEach { property ->
+                    sb.appendLine("        ${property.name}:")
+                    if (OpenAPISchemaParser.VALID_TYPES.contains(property.type)) {
+                        sb.appendLine("          type: ${property.type}")
+                    } else {
+                        sb.appendLine("          type: object")
+                        sb.appendLine("          description: ${property.type}")
+                    }
+                }
+            }
+        }
         //  requestBodies:
         return sb.toString()
     }
@@ -402,6 +445,7 @@ data class RouterFunction<I, T : Any>(
 data class Request<I>(
     val apiRequest: APIGatewayProxyRequestEvent, val body: I, val pathPattern: String
 ) {
+    // TODO: Ideally, this should be Map<String, Any> but I can't figure out how to do that
     val pathParameters: Map<String, String> by lazy {
         buildMap {
             val inputParts = apiRequest.path.split("/")

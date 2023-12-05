@@ -4,11 +4,13 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.SrcKey
+import org.liamjd.cantilever.openapi.APISchema
 
 /**
  * Front end is unable to provide us with a [ContentNode.PostNode] object, so we need to create a DTO to pass back and forth
  */
 @Serializable
+@APISchema
 class PostNodeRestDTO(
     val srcKey: SrcKey,
     val title: String,

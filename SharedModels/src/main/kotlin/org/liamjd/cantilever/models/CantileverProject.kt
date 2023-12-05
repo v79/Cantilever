@@ -8,6 +8,7 @@ import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import org.liamjd.cantilever.openapi.APISchema
 
 /**
  * Project definition file. *Will change a lot*. Should be stored in a file called 'cantilever.yaml'. Although Cantilever does not yet support multiple projects, this metadata object is useful for page rendering.
@@ -19,6 +20,7 @@ import kotlinx.serialization.encoding.Encoder
  * @property imageResolutions a map of image resolutions; if empty uploaded images will not be scaled. Otherwise, images will be scaled and named according to this map. Written in the format "name: 320x260". Eg. if the map contains the key "square" and an [ImgRes] of x=320,y=320, then when an image is uploaded a scaled copy will be created with name '<original-name>-square.jpg`.
  * @property attributes a map of additional custom values which will be passed when rendering pages, posts etc.
  */
+@APISchema
 @Serializable
 data class CantileverProject @OptIn(ExperimentalSerializationApi::class) constructor(
     val projectName: String,
