@@ -20,7 +20,8 @@ import software.amazon.awscdk.services.s3.NotificationKeyFilter
 import software.amazon.awscdk.services.sqs.Queue
 import software.constructs.Construct
 
-class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(scope, id, props) {
+class CantileverStack(scope: Construct, id: String, props: StackProps?, versionString: String) :
+    Stack(scope, id, props) {
 
     enum class ENV {
         destination_bucket,
@@ -33,7 +34,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
     }
     // TODO: I suppose I'm going to need to set up a dev and production environment for this sort of thing. Boo.
 
-    constructor(scope: Construct, id: String) : this(scope, id, null)
+    constructor(scope: Construct, id: String) : this(scope, id, null, "vUnknown")
 
     init {
         // Get the "deploymentDomain" value from cdk.json, or default to the dev URL if not found
@@ -42,7 +43,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         val deploymentDomain = (env?.get("domainName")) ?: "http://localhost:5173"
         println("ENVIRONMENT: $env; deploymentDomain: $deploymentDomain")
 
-        Tags.of(this).add("Cantilever", "v0.0.8")
+        Tags.of(this).add("Cantilever", versionString)
 
         // Source bucket where Markdown, template files will be stored
         // I may wish to change the removal and deletion policies
@@ -135,7 +136,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         )
 
         println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
-        val cloudfrontSubstack = CloudFrontSubstack()
+        val cloudfrontSubstack = CloudFrontSubstack(versionString)
         cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
 
         // I suspect this isn't the most secure way to do this. Better a new IAM role?
@@ -237,7 +238,10 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         println("Registering app clients with Cognito identity pool")
         val appUrls = listOf("https://app.cantilevers.org/", "http://localhost:5173/")
         val corbelAppUrls =
-           listOf("http://localhost:44817/callback","corbelApp://auth") // port randomly chosen here, needs to match that in the Corbel application
+            listOf(
+                "http://localhost:44817/callback",
+                "corbelApp://auth"
+            ) // port randomly chosen here, needs to match that in the Corbel application
         pool.addClient(
             "cantilever-app",
             UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
@@ -248,8 +252,10 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?) : Stack(
         pool.addClient(
             "corbel-app",
             UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
-                OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(false).authorizationCodeGrant(true)
-                    .build()).scopes(listOf(OAuthScope.EMAIL, OAuthScope.OPENID, OAuthScope.COGNITO_ADMIN))
+                OAuthSettings.builder().flows(
+                    OAuthFlows.builder().implicitCodeGrant(false).authorizationCodeGrant(true)
+                        .build()
+                ).scopes(listOf(OAuthScope.EMAIL, OAuthScope.OPENID, OAuthScope.COGNITO_ADMIN))
                     .callbackUrls(corbelAppUrls).logoutUrls(corbelAppUrls).build()
             ).build()
         )
