@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test
 
 class MarkdownProcessorKtTest {
 
+    private val converter = FlexmarkMarkdownConverter()
     @Test
     fun `test convertMDToHTML`() {
         val mdSource = """
@@ -17,7 +18,7 @@ class MarkdownProcessorKtTest {
             <h2>This is a subheading</h2>
             <p>This is some text</p>
             """.trimIndent()
-        val actual = convertMDToHTML(mdSource)
+        val actual = converter.convertMDToHTML(mdSource)
         assertEquals(expected, actual.trim())
     }
 
@@ -29,7 +30,7 @@ class MarkdownProcessorKtTest {
         val expected = """
             <p><img src="/images/my-image.jpg" alt="image" title="image title here" /></p>
         """.trimIndent()
-        val actual = convertMDToHTML(mdSource)
+        val actual = converter.convertMDToHTML(mdSource)
         assertEquals(expected, actual.trim())
     }
 }
