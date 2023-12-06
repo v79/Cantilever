@@ -263,7 +263,7 @@ class Router internal constructor() {
         sb.appendLine("info:")
         sb.appendLine("  title: Cantilever API")
         sb.appendLine("  description: API for Cantilever, providing methods for managing the content of a static website")
-        sb.appendLine("  version: 0.0.8")
+        sb.appendLine("  version: 0.0.9")
         sb.appendLine("servers:")
         sb.appendLine("  - url: https://api.cantilevers.org")
         // add tags as defined by the route groups
