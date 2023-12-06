@@ -87,4 +87,21 @@ interface S3Service {
      */
     fun getUpdatedTime(key: String, bucket: String): Instant
 
+    /**
+     * Return the metadata for the given object
+     * @param key the object to check
+     * @param bucket the s3 bucket name
+     * @param metadataKey the key of the metadata to return
+     * @return the metadata as a String, or null if not found
+     */
+    fun getMetadata(key: String, bucket: String, metadataKey: String): String?
+
+    /**
+     * Return the content type for the given object
+     * @param key the object to check
+     * @param bucket the s3 bucket name
+     * @return the content type as a String, or null if not found
+     */
+    fun getContentType(key: String, bucket: String): String?
+
 }

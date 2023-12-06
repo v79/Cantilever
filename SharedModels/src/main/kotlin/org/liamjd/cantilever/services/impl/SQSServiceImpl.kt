@@ -2,6 +2,7 @@ package org.liamjd.cantilever.services.impl
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.liamjd.cantilever.models.sqs.ImageSQSMessage
 import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
 import org.liamjd.cantilever.models.sqs.TemplateSQSMessage
 import org.liamjd.cantilever.services.SQSService
@@ -31,6 +32,19 @@ class SQSServiceImpl(override val region: Region) : SQSService {
     override fun sendTemplateMessage(
         toQueue: String,
         body: TemplateSQSMessage,
+        messageAttributes: Map<String, MessageAttributeValue>
+    ): SendMessageResponse? {
+        val request = SendMessageRequest.builder()
+            .queueUrl(toQueue)
+            .messageAttributes(messageAttributes)
+            .messageBody(Json.encodeToString(body))
+            .build()
+        return client.sendMessage(request)
+    }
+
+    override fun sendImageMessage(
+        toQueue: String,
+        body: ImageSQSMessage,
         messageAttributes: Map<String, MessageAttributeValue>
     ): SendMessageResponse? {
         val request = SendMessageRequest.builder()

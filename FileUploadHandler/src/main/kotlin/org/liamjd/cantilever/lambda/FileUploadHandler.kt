@@ -9,6 +9,7 @@ import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.common.SOURCE_TYPE.*
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.SrcKey
+import org.liamjd.cantilever.models.sqs.ImageSQSMessage
 import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
 import org.liamjd.cantilever.models.sqs.TemplateSQSMessage
 import org.liamjd.cantilever.services.S3Service
@@ -43,6 +44,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         var response = "200 OK"
         val markdownQueueURL = System.getenv(QUEUE.MARKDOWN)
         val handlebarQueueURL = System.getenv(QUEUE.HANDLEBARS)
+        val imageQueueURL = System.getenv(QUEUE.IMAGES)
 
         logger.info("${event.records.size} upload events received")
 
@@ -88,6 +90,10 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                                 processCSSUpload(srcKey, handlebarQueueURL)
                             }
                         }
+                    }
+
+                    Images -> {
+                        processImageUpload(srcKey, srcBucket, imageQueueURL)
                     }
 
                     else -> {
@@ -179,6 +185,45 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             } else {
                 logger.warn("No response received for message")
             }
+        } catch (qdne: QueueDoesNotExistException) {
+            logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
+        }
+    }
+
+    /**
+     * Process the uploaded image file and send a message to the image processor queue.
+     * First check if it is supported file type.
+     */
+    private fun processImageUpload(srcKey: String, srcBucket: String, queueUrl: String) {
+        try {
+            // check if the image is a supported file type
+            val supportedContentTypes = listOf("image/jpeg", "image/png", "image/gif")
+
+            val mimeType = s3Service.getContentType(srcKey, srcBucket)
+            if (mimeType == null) {
+                logger.error("No Content-Type metadata for $srcKey")
+                throw Exception("No Content-Type metadata for $srcKey")
+            }
+            if (!supportedContentTypes.contains(mimeType)) {
+                logger.error("Unrecognised image type '$mimeType' for $srcKey")
+                throw Exception("Unrecognised image type '$mimeType' for $srcKey")
+            }
+
+            // OK, we know it's a valid image type, so send it to the image processor queue
+            val imageMsg = ImageSQSMessage.ResizeImageMsg(srcKey, mimeType)
+            logger.info("Sending message to Image processor queue for $imageMsg")
+            val msgResponse = sqsService.sendImageMessage(
+                toQueue = queueUrl,
+                body = imageMsg
+            )
+            if (msgResponse != null) {
+                logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+            } else {
+                logger.warn("No response received for message")
+            }
+
+        } catch (e: Exception) {
+            logger.error("Failed to process image upload for $srcKey; ${e.message}")
         } catch (qdne: QueueDoesNotExistException) {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         }

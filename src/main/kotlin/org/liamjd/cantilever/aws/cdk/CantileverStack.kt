@@ -28,6 +28,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         source_bucket,
         markdown_processing_queue,
         handlebar_template_queue,
+        image_processing_queue,
         cors_domain,
         cognito_region,
         cognito_user_pools_id
@@ -59,18 +60,15 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         // SQS for inter-lambda communication. The visibility timeout should be > the max processing time of the lambdas, so setting to 3
         println("Creating markdown processing queue")
         val markdownProcessingQueue =
-            SqsQueue.Builder.create(
-                Queue.Builder.create(this, "cantilever-markdown-to-html-queue").visibilityTimeout(
-                    Duration.minutes(3)
-                ).build()
-            ).build()
+            buildSQSQueue("cantilever-markdown-to-html-queue",3)
 
         println("Creating handlebar templating processing queue")
         val handlebarProcessingQueue =
-            SqsQueue.Builder.create(
-                Queue.Builder.create(this, "cantilever-html-handlebar-queue").visibilityTimeout(Duration.minutes(3))
-                    .build()
-            ).build()
+            buildSQSQueue("cantilever-html-handlebar-queue",3)
+
+        println("Creating image processing queue")
+        val imageProcessingQueue =
+            buildSQSQueue("cantilever-image-processing-queue",3)
 
         println("Creating FileUploadHandler Lambda function")
         val fileUploadLambda = createLambda(
@@ -83,7 +81,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
-                ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl
+                ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl,
+                ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl
             )
         )
 
@@ -129,6 +128,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
                 ENV.destination_bucket.name to destinationBucket.bucketName,
                 ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
                 ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl,
+                ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl,
                 ENV.cors_domain.name to deploymentDomain,
                 ENV.cognito_region.name to cr,
                 ENV.cognito_user_pools_id.name to cpool
@@ -183,6 +183,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         handlebarProcessingQueue.queue.grantSendMessages(markdownProcessorLambda)
         handlebarProcessingQueue.queue.grantConsumeMessages(templateProcessorLambda)
         handlebarProcessingQueue.queue.grantSendMessages(fileUploadLambda)
+        imageProcessingQueue.queue.grantSendMessages(fileUploadLambda)
 
         println("Creating API Gateway integrations")
         val certificate = Certificate.fromCertificateArn(
@@ -260,6 +261,12 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             ).build()
         )
     }
+
+    private fun buildSQSQueue(queueId: String, timeout: Int): SqsQueue = SqsQueue.Builder.create(
+        Queue.Builder.create(this, queueId).visibilityTimeout(
+            Duration.minutes(timeout)
+        ).build()
+    ).build()
 
     private fun createDestinationBucket(): Bucket = Bucket.Builder.create(this, "cantilever-website")
         .versioned(false)

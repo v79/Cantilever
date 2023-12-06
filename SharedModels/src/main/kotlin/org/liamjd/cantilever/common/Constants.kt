@@ -9,6 +9,7 @@ object S3_KEY {
     const val sourcesPrefix = "$sources/"
     const val postsPrefix = "$sources/posts/"
     const val pagesPrefix = "$sources/pages/"
+    const val imagesPrefix = "$sources/images/"
     const val templatesPrefix = "${sources}/templates/"
     const val staticsPrefix = "${sources}/statics/"
     const val projectKey = "$sources/cantilever.yaml"
@@ -52,7 +53,8 @@ enum class SOURCE_TYPE(val folder: String) {
     Pages("pages"),
     Posts("posts"),
     Templates("templates"),
-    Statics("statics"), ;
+    Statics("statics"),
+    Images("images");
 
     object SourceHelper {
         /**
@@ -70,4 +72,5 @@ enum class SOURCE_TYPE(val folder: String) {
 object QUEUE {
     const val MARKDOWN = "markdown_processing_queue"
     const val HANDLEBARS = "handlebar_template_queue"
+    const val IMAGES = "image_processing_queue"
 }

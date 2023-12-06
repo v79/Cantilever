@@ -97,4 +97,28 @@ class S3ServiceImpl(region: Region) : S3Service {
         val response = s3Client.headObject(request)
         return response.lastModified().toKotlinInstant()
     }
+
+    override fun getMetadata(key: String, bucket: String, metadataKey: String): String? {
+        val request = HeadObjectRequest.builder()
+            .key(key)
+            .bucket(bucket)
+            .build()
+        val response = s3Client.headObject(request)
+        if (response.hasMetadata()) {
+            val metadata = response.metadata()
+            if (metadata.containsKey(metadataKey)) {
+                return metadata[metadataKey]
+            }
+        }
+        return null
+    }
+
+    override fun getContentType(key: String, bucket: String): String? {
+        val request = HeadObjectRequest.builder()
+            .key(key)
+            .bucket(bucket)
+            .build()
+        val response = s3Client.headObject(request)
+        return response.contentType()
+    }
 }
