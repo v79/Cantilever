@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "org.liamjd.cantilever.lambda"
-version = "0.0.9"
+version = "0.0.10"
 
 repositories {
     mavenCentral()
@@ -33,11 +33,13 @@ dependencies {
     // lambda functions
     implementation("com.amazonaws:aws-lambda-java-core:1.2.3")
     implementation("com.amazonaws:aws-lambda-java-events:3.11.3")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
 
     runtimeOnly("com.amazonaws:aws-lambda-java-log4j2:1.6.0")
 
     // markdown processing
     implementation("com.vladsch.flexmark:flexmark-all:0.64.6")
+//    implementation("com.vladsch.flexmark:flexmark-test-util:0.64.6")
 
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
