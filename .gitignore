@@ -34,3 +34,5 @@ TemplateProcessor/build/
 /.idea/modules.xml
 /DevDiary/statics/css/pico-1.5.10/
 /.idea/inspectionProfiles/Project_Default.xml
+/OpenAPISchemaGenerator/build/
+/OpenAPISchemaAnnotations/build/

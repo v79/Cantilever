@@ -4,6 +4,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
+import org.liamjd.cantilever.openapi.APISchema
 
 /**
  * TODO: replace this with a metadata interface with implementations for Post, Page, Template
@@ -18,21 +19,13 @@ import kotlinx.serialization.Serializable
 data class PostList(val count: Int = 0, val lastUpdated: Instant, val posts: List<PostMeta>)
 
 /**
- * Wrapper around the list of all pages. This represents pages.json
- * @property count total number of pages
- * @property lastUpdated last updated date/time for the pages.json file
- * @property pages list of meta-data objects for each page
- */
-/*@Serializable
-data class PageList(val count: Int = 0, val lastUpdated: Instant, val pages: List<PageMeta>)*/
-
-/**
  * Wrapper around the list of all templates. This represents templates.json
  * @property count total number of templates
  * @property lastUpdated last updated date/time for the templates.json file
  * @property templates list of all meta-data objects for each template
  */
 @Serializable
+@APISchema
 data class TemplateList(val count: Int = 0, val lastUpdated: Instant, val templates: List<Template>)
 
 /**
@@ -62,6 +55,7 @@ data class PostMeta(
  * @property lastUpdated internal property updated whenever the template is saved.
  */
 @Serializable
+@APISchema
 data class Template(val key: String, val lastUpdated: Instant = Clock.System.now(), val metadata: TemplateMetadata)
 
 /**
@@ -70,6 +64,7 @@ data class Template(val key: String, val lastUpdated: Instant = Clock.System.now
  * @property sections list of custom section names for the template
  */
 @Serializable
+@APISchema
 data class TemplateMetadata(val name: String, val sections: List<String>? = emptyList())
 
 @Deprecated(message = "This is obsolete, not used.")

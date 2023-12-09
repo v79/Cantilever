@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test
 import org.liamjd.cantilever.api.models.RawJsonString
 import org.liamjd.cantilever.auth.AuthResult
 import org.liamjd.cantilever.auth.Authorizer
+import org.liamjd.cantilever.openapi.APISchema
 import java.net.URLEncoder
 import java.nio.charset.Charset
 
@@ -501,6 +502,7 @@ class TestController {
  * Test classes below to simplify testing without bringing in other dependencies
  */
 @Serializable
+@APISchema
 data class SimpleClass(val message: String)
 
 @Serializable(with = ServiceResultSerializer::class)
@@ -513,9 +515,11 @@ sealed class ServiceResult<out T : Any> {
 }
 
 @Serializable
+@APISchema
 data class PostThis(val name: String, val count: Int)
 
 @Serializable
+@APISchema
 data class DontPostThis(val year: Long, val truth: Boolean)
 
 object FakeAuthorizer : Authorizer {
