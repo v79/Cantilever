@@ -18,6 +18,7 @@ interface S3Service {
      * @param key the S3 object key
      * @param bucket the S3 bucket name
      * @return the object response
+     * This isn't particularly useful, as you can't get the bytes from the response
      */
     fun getObject(key: String, bucket: String): GetObjectResponse?
 
@@ -28,6 +29,15 @@ interface S3Service {
      * @return the contents of the file as a String, or an empty String if failed
      */
     fun getObjectAsString(key: String, bucket: String): String
+
+
+    /**
+     * Get an S3 Object, read its bytestream, and return it as a ByteArray
+     * @param key the S3 object key
+     * @param bucket the S3 bucket name
+     * @return the contents of the file as a ByteArray, or an empty ByteArray if failed
+     */
+    fun getObjectAsBytes(key: String, bucket: String): ByteArray
 
     /**
      * Write a string to an S3 bucket

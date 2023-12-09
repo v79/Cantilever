@@ -36,28 +36,28 @@ data class CantileverProject @OptIn(ExperimentalSerializationApi::class) constru
  * Represents an image resolution in pixels.
  * If one of the dimensions is null, then aspect ratio should be maintained.
  * If both are null, it's a bit broken. *Don't do this* but I can't prevent you.
- * @property x the width of the resolution, in pixels. If null, the width will not be changed.
- * @property y the height of the resolution, in pixels. If null, the height will not be changed.
+ * @property w the width of the resolution, in pixels. If null, the width will not be changed.
+ * @property h the height of the resolution, in pixels. If null, the height will not be changed.
  */
 @Serializable(with = ImgResSerializer::class)
-data class ImgRes(val x: Int?, val y: Int?)
+data class ImgRes(val w: Int?, val h: Int?)
 
 /**
- * Converts the X and Y values into a string of the format "XxY" (where that middle 'x' would be read as 'by').
+ * Converts the width and height values into a string of the format "WxH" (where that middle 'x' would be read as 'by').
  */
 object ImgResSerializer : KSerializer<ImgRes> {
     override val descriptor = PrimitiveSerialDescriptor("ImgRes", PrimitiveKind.STRING)
     override fun serialize(encoder: Encoder, value: ImgRes) {
-        val xString = value.x ?: ""
-        val yString = value.y ?: ""
-        val string = "${xString}x${yString}"
+        val wString = value.w ?: ""
+        val hString = value.h ?: ""
+        val string = "${wString}x${hString}"
         encoder.encodeString(string)
     }
 
     override fun deserialize(decoder: Decoder): ImgRes {
         val string = decoder.decodeString()
-        val x: Int? = string.substringBefore('x').toIntOrNull()
-        val y: Int? = string.substringAfter('x').toIntOrNull()
-        return ImgRes(x, y)
+        val w: Int? = string.substringBefore('x').toIntOrNull()
+        val h: Int? = string.substringAfter('x').toIntOrNull()
+        return ImgRes(w, h)
     }
 }

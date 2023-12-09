@@ -45,6 +45,14 @@ class S3ServiceImpl(region: Region) : S3Service {
         return s3Client.getObject(request).response()
     }
 
+    override fun getObjectAsBytes(key: String, bucket: String): ByteArray {
+        val request = GetObjectRequest.builder()
+            .key(key)
+            .bucket(bucket)
+            .build()
+        return s3Client.getObjectAsBytes(request).asByteArray()
+    }
+
     override fun objectExists(key: String, bucket: String): Boolean {
         var exists = true
         try {

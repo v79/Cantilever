@@ -60,15 +60,15 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         // SQS for inter-lambda communication. The visibility timeout should be > the max processing time of the lambdas, so setting to 3
         println("Creating markdown processing queue")
         val markdownProcessingQueue =
-            buildSQSQueue("cantilever-markdown-to-html-queue",3)
+            buildSQSQueue("cantilever-markdown-to-html-queue", 3)
 
         println("Creating handlebar templating processing queue")
         val handlebarProcessingQueue =
-            buildSQSQueue("cantilever-html-handlebar-queue",3)
+            buildSQSQueue("cantilever-html-handlebar-queue", 3)
 
         println("Creating image processing queue")
         val imageProcessingQueue =
-            buildSQSQueue("cantilever-image-processing-queue",3)
+            buildSQSQueue("cantilever-image-processing-queue", 3)
 
         println("Creating FileUploadHandler Lambda function")
         val fileUploadLambda = createLambda(
@@ -135,6 +135,20 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             )
         )
 
+        println("Creating Image processing Lambda function")
+        val imageProcessorLambda = createLambda(
+            stack = this,
+            id = "cantilever-image-processor-lambda",
+            description = "Lambda function which processes images",
+            codePath = "./ImageProcessor/build/libs/ImageProcessorHandler.jar",
+            handler = "org.liamjd.cantilever.lambda.imagep.ImageProcessorHandler",
+            memory = 256,
+            environment = mapOf(
+                ENV.source_bucket.name to sourceBucket.bucketName,
+                ENV.destination_bucket.name to destinationBucket.bucketName,
+            )
+        )
+
         println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
         val cloudfrontSubstack = CloudFrontSubstack(versionString)
         cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
@@ -144,7 +158,6 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         fileUploadLambda.apply {
             sourceBucket.grantRead(this)
             sourceBucket.grantWrite(this)
-
         }
         markdownProcessorLambda.apply {
             sourceBucket.grantRead(this)
@@ -157,8 +170,10 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         apiRoutingLambda.apply {
             sourceBucket.grantRead(this)
             sourceBucket.grantWrite(this)
-            markdownProcessingQueue.queue.grantSendMessages(this)
-            handlebarProcessingQueue.queue.grantSendMessages(this)
+        }
+        imageProcessorLambda.apply {
+            sourceBucket.grantRead(this)
+            sourceBucket.grantWrite(this)
         }
 
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
@@ -177,13 +192,21 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             SqsEventSource.Builder.create(handlebarProcessingQueue.queue).build()
         )
 
+        println("Add image processor SQS event source to image processor lambda")
+        imageProcessorLambda.addEventSource(
+            SqsEventSource.Builder.create(imageProcessingQueue.queue).build()
+        )
+
         println("Granting queue-to-queue permissions")
         markdownProcessingQueue.queue.grantSendMessages(fileUploadLambda)
         markdownProcessingQueue.queue.grantConsumeMessages(markdownProcessorLambda)
+        markdownProcessingQueue.queue.grantSendMessages(apiRoutingLambda)
         handlebarProcessingQueue.queue.grantSendMessages(markdownProcessorLambda)
         handlebarProcessingQueue.queue.grantConsumeMessages(templateProcessorLambda)
         handlebarProcessingQueue.queue.grantSendMessages(fileUploadLambda)
+        handlebarProcessingQueue.queue.grantSendMessages(apiRoutingLambda)
         imageProcessingQueue.queue.grantSendMessages(fileUploadLambda)
+        imageProcessingQueue.queue.grantConsumeMessages(imageProcessorLambda)
 
         println("Creating API Gateway integrations")
         val certificate = Certificate.fromCertificateArn(
@@ -314,6 +337,6 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         .code(Code.fromAsset(codePath))
         .handler(handler)
         .logRetention(RetentionDays.ONE_MONTH)
-        .environment(environment ?: emptyMap())  // TODO should this should be a CloudFormation parameter CfnParameter
+        .environment(environment ?: emptyMap())  // TODO: should this should be a CloudFormation parameter CfnParameter
         .build()
 }

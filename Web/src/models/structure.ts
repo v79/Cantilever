@@ -309,12 +309,12 @@ export class CantileverProject {
 	The [ImgRes] Represents an image resolution in pixels.
 */
 export class ImgRes {
-	x: number | undefined;
-	y: number | undefined;
+	w: number | undefined;
+	h: number | undefined;
 
 	constructor(x: number, y: number) {
-		this.x = x;
-		this.y = y;
+		this.w = x;
+		this.h = y;
 	}
 
 	toJSON(): string {
@@ -322,17 +322,17 @@ export class ImgRes {
 	}
 
 	getStringX(): string {
-		if (isNaN(this.x!!)) {
+		if (isNaN(this.w!!)) {
 			return '';
 		} else {
-			return '' + this.x;
+			return '' + this.w;
 		}
 	}
 	getStringY(): string {
-		if (isNaN(this.y!!)) {
+		if (isNaN(this.h!!)) {
 			return '';
 		} else {
-			return '' + this.y;
+			return '' + this.h;
 		}
 	}
 }

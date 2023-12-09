@@ -1,5 +1,6 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
+
 plugins {
     kotlin("jvm") version "1.9.20"
     kotlin("plugin.serialization") version "1.9.0"
@@ -8,21 +9,19 @@ plugins {
 }
 
 group = "org.liamjd.cantilever.lambda"
-version = "0.0.10"
+version = "0.0.9"
 
 repositories {
     mavenCentral()
-    google()
 }
 
 dependencies {
     // shared elements
     implementation(project(":SharedModels"))
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
 
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
-
+    implementation("com.charleskorn.kaml:kaml:0.55.0")
 
     // sdk v2
     implementation(platform("software.amazon.awssdk:bom:2.20.68"))
@@ -35,9 +34,8 @@ dependencies {
     implementation("com.amazonaws:aws-lambda-java-events:3.11.3")
     runtimeOnly("com.amazonaws:aws-lambda-java-log4j2:1.6.0")
 
-    // markdown processing
-    implementation("com.vladsch.flexmark:flexmark-all:0.64.6")
-//    implementation("com.vladsch.flexmark:flexmark-test-util:0.64.6")
+    // image processing library
+    implementation("com.sksamuel.scrimage:scrimage-core:4.1.1")
 
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
@@ -46,7 +44,7 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.4")
 }
 
-tasks.getByName<Test>("test") {
+tasks.test {
     useJUnitPlatform()
 }
 
@@ -57,5 +55,5 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
-    archiveBaseName.set("MarkdownProcessorHandler")
+    archiveBaseName.set("ImageProcessorHandler")
 }
