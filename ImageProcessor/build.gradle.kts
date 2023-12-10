@@ -1,6 +1,5 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-
 plugins {
     kotlin("jvm") version "1.9.20"
     kotlin("plugin.serialization") version "1.9.0"
@@ -9,7 +8,7 @@ plugins {
 }
 
 group = "org.liamjd.cantilever.lambda"
-version = "0.0.9"
+version = "0.0.10"
 
 repositories {
     mavenCentral()

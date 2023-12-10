@@ -182,6 +182,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
                 .filters(listOf(NotificationKeyFilter.Builder().prefix("sources/").build()))
                 .events(mutableListOf(EventType.OBJECT_CREATED_PUT, EventType.OBJECT_CREATED_POST)).build()
         )
+
         println("Add markdown processor SQS event source to markdown processor lambda")
         markdownProcessorLambda.addEventSource(
             SqsEventSource.Builder.create(markdownProcessingQueue.queue).build()
@@ -198,15 +199,25 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         )
 
         println("Granting queue-to-queue permissions")
-        markdownProcessingQueue.queue.grantSendMessages(fileUploadLambda)
-        markdownProcessingQueue.queue.grantConsumeMessages(markdownProcessorLambda)
-        markdownProcessingQueue.queue.grantSendMessages(apiRoutingLambda)
-        handlebarProcessingQueue.queue.grantSendMessages(markdownProcessorLambda)
-        handlebarProcessingQueue.queue.grantConsumeMessages(templateProcessorLambda)
-        handlebarProcessingQueue.queue.grantSendMessages(fileUploadLambda)
-        handlebarProcessingQueue.queue.grantSendMessages(apiRoutingLambda)
-        imageProcessingQueue.queue.grantSendMessages(fileUploadLambda)
-        imageProcessingQueue.queue.grantConsumeMessages(imageProcessorLambda)
+        fileUploadLambda.apply {
+            markdownProcessingQueue.queue.grantSendMessages(this)
+            handlebarProcessingQueue.queue.grantSendMessages(this)
+            imageProcessingQueue.queue.grantSendMessages(this)
+        }
+        markdownProcessorLambda.apply {
+            markdownProcessingQueue.queue.grantConsumeMessages(this)
+            handlebarProcessingQueue.queue.grantSendMessages(this)
+        }
+        templateProcessorLambda.apply {
+            handlebarProcessingQueue.queue.grantConsumeMessages(this)
+        }
+        apiRoutingLambda.apply {
+            markdownProcessingQueue.queue.grantSendMessages(this)
+            handlebarProcessingQueue.queue.grantSendMessages(this)
+        }
+        imageProcessorLambda.apply {
+            imageProcessingQueue.queue.grantConsumeMessages(this)
+        }
 
         println("Creating API Gateway integrations")
         val certificate = Certificate.fromCertificateArn(

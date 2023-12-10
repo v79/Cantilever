@@ -33,7 +33,6 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
         val destinationBucket = System.getenv("destination_bucket")
         logger = context.logger
         var response = "200 OK"
-
         logger.info("Received ${event.records.size} events received for image processing")
 
         event.records.forEach { eventRecord ->
@@ -55,39 +54,46 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
         destinationBucket: String
     ): String {
 
-        logger.info("Loading project metadata from $sourceBucket/${S3_KEY.projectKey} to get image resolutions")
-        val projectString = s3Service.getObjectAsString(S3_KEY.projectKey, sourceBucket)
-        val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectString)
+        try {
+            logger.info("Loading project metadata from $sourceBucket/${S3_KEY.projectKey} to get image resolutions")
+            val projectString = s3Service.getObjectAsString(S3_KEY.projectKey, sourceBucket)
+            val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectString)
 
-        logger.info("**** project: $project")
+            logger.info("**** project: $project")
 
-        // loop through all the image resolutions and create resized images for each uploaded file
-        if (project.imageResolutions.isNotEmpty()) {
-            logger.info("Checking if image exists in $sourceBucket/${imageMessage.srcKey}")
-            if (s3Service.objectExists(imageMessage.srcKey, sourceBucket)) {
-                val imageBytes = s3Service.getObjectAsBytes(sourceBucket, imageMessage.srcKey)
-                if (imageBytes.isNotEmpty()) {
-                    logger.info("ImageProcessorHandler: resizeImage: ${imageBytes.size} bytes")
-                    project.imageResolutions.forEach { (name, imgRes) ->
-                        logger.info("ImageProcessorHandler: resizeImage: $name ${imgRes.w}x${imgRes.h}")
-                        if (imgRes.w == null && imgRes.h == null) {
-                            logger.info("Skipping image resize for $name as no dimensions specified")
-                        } else {
-                            val resizedBytes = processor.resizeImage(imgRes, imageBytes, imageMessage.srcKey)
+            // loop through all the image resolutions and create resized images for each uploaded file
+            /*     if (project.imageResolutions.isNotEmpty()) {
+                     logger.info("Checking if image exists in $sourceBucket/${imageMessage.srcKey}")
+                     if (s3Service.objectExists(imageMessage.srcKey, sourceBucket)) {
+                         val imageBytes = s3Service.getObjectAsBytes(sourceBucket, imageMessage.srcKey)
+                         if (imageBytes.isNotEmpty()) {
+                             logger.info("ImageProcessorHandler: resizeImage: ${imageBytes.size} bytes")
+                             project.imageResolutions.forEach { (name, imgRes) ->
+                                 logger.info("ImageProcessorHandler: resizeImage: $name ${imgRes.w}x${imgRes.h}")
+                                 if (imgRes.w == null && imgRes.h == null) {
+                                     logger.info("Skipping image resize for $name as no dimensions specified")
+                                 } else {
+                                     val resizedBytes = processor.resizeImage(imgRes, imageBytes, imageMessage.srcKey)
 
-                            val destKey =
-                                "${S3_KEY.generated}/${imageMessage.srcKey.removePrefix(S3_KEY.sourcesPrefix)}-${name}"
-                            s3Service.putObject(destKey, sourceBucket, String(resizedBytes), "image/jpeg")
-                        }
-                    }
-                } else {
-                    logger.error("ImageProcessorHandler: resizeImage: ${imageMessage.srcKey} is empty")
-                    return "500 Internal Server Error"
-                }
-            }
-        } else {
-            logger.warn("No  image resolutions defined in project metadata. Copying image to destination bucket without resizing")
-            // TODO: copy image to destination bucket
+                                     val destKey =
+                                         "${S3_KEY.generated}/${imageMessage.srcKey.removePrefix(S3_KEY.sourcesPrefix)}-${name}"
+                                     s3Service.putObject(destKey, sourceBucket, String(resizedBytes), "image/jpeg")
+                                 }
+                             }
+                         } else {
+                             logger.error("ImageProcessorHandler: resizeImage: ${imageMessage.srcKey} is empty")
+                             return "500 Internal Server Error"
+                         }
+                     }
+                 } else {
+                     logger.warn("No  image resolutions defined in project metadata. Copying image to destination bucket without resizing")
+                     // TODO: copy image to destination bucket
+                     return "202 Accepted"
+                 }
+                 */
+        } catch (e: Exception) {
+            logger.error("ImageProcessorHandler: resizeImage: ${e.message}")
+            return "500 Internal Server Error"
         }
         return "404 Not Found"
     }
