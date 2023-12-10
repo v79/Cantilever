@@ -12,11 +12,13 @@ version = "0.0.10"
 
 repositories {
     mavenCentral()
+    google()
 }
 
 dependencies {
     // shared elements
     implementation(project(":SharedModels"))
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
 
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
@@ -33,9 +35,6 @@ dependencies {
     implementation("com.amazonaws:aws-lambda-java-events:3.11.3")
     runtimeOnly("com.amazonaws:aws-lambda-java-log4j2:1.6.0")
 
-    // image processing library
-    implementation("com.sksamuel.scrimage:scrimage-core:4.1.1")
-
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
@@ -43,7 +42,7 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.4")
 }
 
-tasks.test {
+tasks.getByName<Test>("test") {
     useJUnitPlatform()
 }
 

@@ -1,4 +1,4 @@
-package org.liamjd.cantilever.lambda.imagep
+package org.liamjd.cantilever.lambda.image
 
 import org.liamjd.cantilever.models.ImgRes
 import org.liamjd.cantilever.models.SrcKey
@@ -7,9 +7,7 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 
-
 class ImageProcessor {
-
     /**
      * Call the standard Java 7 BufferedImage scale function to resize the image
      */
@@ -35,11 +33,5 @@ class ImageProcessor {
         outStream.flush()
         g.dispose()
         return outStream.toByteArray()
-
-//        ImmutableImage.loader().fromBytes(imageBytes).let { image ->
-//          if(res.x == null) {
-//              image.scaleToHeight(res.y!!)
-//          }
-//        }
     }
 }

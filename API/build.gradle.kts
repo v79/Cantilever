@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "org.liamjd.cantilever"
-version = "0.0.9"
+version = "0.0.10"
 
 repositories {
     mavenCentral()
@@ -28,7 +28,6 @@ dependencies {
     // openAPI dependency scanning
     implementation(project(":OpenAPISchemaAnnotations"))
     implementation(project(":OpenAPISchemaGenerator"))
-//    ksp(project(":OpenAPISchemaGenerator"))
 
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")

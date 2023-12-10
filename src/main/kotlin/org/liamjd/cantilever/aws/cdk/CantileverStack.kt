@@ -141,7 +141,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             id = "cantilever-image-processor-lambda",
             description = "Lambda function which processes images",
             codePath = "./ImageProcessor/build/libs/ImageProcessorHandler.jar",
-            handler = "org.liamjd.cantilever.lambda.imagep.ImageProcessorHandler",
+            handler = "org.liamjd.cantilever.lambda.image.ImageProcessorHandler",
             memory = 256,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
