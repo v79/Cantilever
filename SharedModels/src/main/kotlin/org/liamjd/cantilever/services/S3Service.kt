@@ -47,7 +47,17 @@ interface S3Service {
      * @param contentType the mime type of the file; optional
      * @return size of object in bytes
      */
-    fun putObject(key: String, bucket: String, contents: String, contentType: String?): Int
+    fun putObjectAsString(key: String, bucket: String, contents: String, contentType: String?): Int
+
+    /**
+     * Write a ByteArray to an S3 bucket
+     * @param key the S3 object key to write
+     * @param bucket the s3 bucket name
+     * @param contents the ByteArray to write to the object
+     * @param contentType the mime type of the file; optional
+     * @return size of object in bytes
+     */
+    fun putObjectAsBytes(key: String, bucket: String, contents: ByteArray, contentType: String?): Int
 
     /**
      * Check to see if the object with the given key exists

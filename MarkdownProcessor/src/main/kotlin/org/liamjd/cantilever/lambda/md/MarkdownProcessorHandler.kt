@@ -85,7 +85,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                 logger.info("Writing ${it.key} to ${fragmentPrefix}${it.key}")
                 val html = converter.convertMDToHTML(it.value)
                 logger.info("HTML output is ${html.length} characters long.")
-                bytesWritten += s3Service.putObject(
+                bytesWritten += s3Service.putObjectAsString(
                     fragmentPrefix + it.key,
                     sourceBucket,
                     html,
@@ -150,7 +150,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 
         try {
             val htmlKey = fragments + sqsMsgBody.metadata.slug
-            s3Service.putObject(htmlKey, sourceBucket, html, "text/html")
+            s3Service.putObjectAsString(htmlKey, sourceBucket, html, "text/html")
             logger.info("Wrote HTML file '$htmlKey'")
             logger.info("Sending message to handlebars handler")
             val message = TemplateSQSMessage.RenderPostMsg(

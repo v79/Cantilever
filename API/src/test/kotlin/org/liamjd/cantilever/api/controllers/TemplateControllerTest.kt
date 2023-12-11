@@ -108,7 +108,7 @@ internal class TemplateControllerTest : KoinTest {
 
         declareMock<S3Service> {
             every { mockS3.objectExists("my-template", sourceBucket) } returns true
-            every { mockS3.putObject("my-template", sourceBucket, any(), "text/html") } returns 1234
+            every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/html") } returns 1234
         }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
@@ -142,7 +142,7 @@ internal class TemplateControllerTest : KoinTest {
 
         declareMock<S3Service> {
             every { mockS3.objectExists("my-template", sourceBucket) } returns true
-            every { mockS3.putObject("my-template", sourceBucket, any(), "text/html") } returns 1234
+            every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/html") } returns 1234
         }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()

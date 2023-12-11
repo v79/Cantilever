@@ -63,7 +63,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
         info("Updated project: $updatedDefinition")
         val yamlToSave = Yaml.default.encodeToString(CantileverProject.serializer(), request.body)
         val jsonResponse = Json.encodeToString(CantileverProject.serializer(), request.body)
-        s3Service.putObject(
+        s3Service.putObjectAsString(
             projectKey,
             sourceBucket,
             yamlToSave,
@@ -162,7 +162,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
                 TemplateList(templates = list.toList(), count = filesProcessed, lastUpdated = Clock.System.now())
             val listJson = Json.encodeToString(TemplateList.serializer(), templateList)
             info("Saving PageList JSON file (${listJson.length} bytes)")
-            s3Service.putObject(templatesKey, sourceBucket, listJson, APP_JSON)
+            s3Service.putObjectAsString(templatesKey, sourceBucket, listJson, APP_JSON)
         } else {
             error("No source files found in $sourceBucket which match the requirements to build a $templatesKey file.")
             return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a $templatesKey file."))

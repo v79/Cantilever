@@ -37,7 +37,7 @@ abstract class APIController(val sourceBucket: String) : KoinComponent {
         info("Saving content tree to bucket $sourceBucket")
         val json = Json { prettyPrint = true }
         val metadata = json.encodeToString(ContentTree.serializer(), contentTree)
-        s3Service.putObject(S3_KEY.metadataKey, sourceBucket, metadata, MimeType.json.toString() )
+        s3Service.putObjectAsString(S3_KEY.metadataKey, sourceBucket, metadata, MimeType.json.toString() )
     }
 
     /**

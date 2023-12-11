@@ -21,20 +21,37 @@ class S3ServiceImpl(region: Region) : S3Service {
         return String(bytes)
     }
 
-    override fun putObject(key: String, bucket: String, contents: String, contentType: String?): Int {
+    override fun putObjectAsString(key: String, bucket: String, contents: String, contentType: String?): Int {
         val bytes = contents.toByteArray(Charsets.UTF_8)
         println("S3Service: putObject: key: $key, ${bytes.size} bytes")
 
+        val requestBuilder = byteArrayBuilder(bytes, key, bucket, contentType)
+        val request = requestBuilder.build()
+        s3Client.putObject(request, RequestBody.fromBytes(bytes))
+        return bytes.size
+    }
+
+    override fun putObjectAsBytes(key: String, bucket: String, contents: ByteArray, contentType: String?): Int {
+        val requestBuilder = byteArrayBuilder(contents, key, bucket, contentType)
+        val request = requestBuilder.build()
+        s3Client.putObject(request, RequestBody.fromBytes(contents))
+        return contents.size
+    }
+
+    private fun byteArrayBuilder(
+        contents: ByteArray,
+        key: String,
+        bucket: String,
+        contentType: String?
+    ): PutObjectRequest.Builder {
         val requestBuilder = PutObjectRequest.builder()
-            .contentLength(bytes.size.toLong())
+            .contentLength(contents.size.toLong())
             .key(key)
             .bucket(bucket)
         contentType?.let {
             requestBuilder.contentType(it)
         }
-        val request = requestBuilder.build()
-        s3Client.putObject(request, RequestBody.fromBytes(bytes))
-        return bytes.size
+        return requestBuilder
     }
 
     override fun getObject(key: String, bucket: String): GetObjectResponse? {

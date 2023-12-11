@@ -65,7 +65,7 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
             if (project.imageResolutions.isNotEmpty()) {
                 logger.info("Checking if image exists in $sourceBucket/${imageMessage.srcKey}")
                 if (s3Service.objectExists(imageMessage.srcKey, sourceBucket)) {
-                    val imageBytes = s3Service.getObjectAsBytes(imageMessage.srcKey,sourceBucket)
+                    val imageBytes = s3Service.getObjectAsBytes(imageMessage.srcKey, sourceBucket)
                     if (imageBytes.isNotEmpty()) {
                         logger.info("ImageProcessorHandler: resizeImage: ${imageBytes.size} bytes")
                         project.imageResolutions.forEach { (name, imgRes) ->
@@ -74,22 +74,22 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
                                 logger.info("Skipping image resize for $name as no dimensions specified")
                             } else {
                                 val resizedBytes = processor.resizeImage(imgRes, imageBytes, imageMessage.srcKey)
-
+                                val origSuffix = imageMessage.srcKey.substringAfterLast(".")
                                 val destKey =
-                                    "${S3_KEY.generated}/${imageMessage.srcKey.removePrefix(S3_KEY.sourcesPrefix)}-${name}"
-                                s3Service.putObject(destKey, sourceBucket, String(resizedBytes), "image/jpeg")
+                                    "${S3_KEY.generated}/${imageMessage.srcKey.removePrefix(S3_KEY.sourcesPrefix)}-${name}.${origSuffix}"
+                                s3Service.putObjectAsBytes(destKey, sourceBucket, resizedBytes, "image/jpeg")
                             }
                         }
-                } else {
-                    logger.error("ImageProcessorHandler: resizeImage: ${imageMessage.srcKey} is empty")
-                    return "500 Internal Server Error"
+                    } else {
+                        logger.error("ImageProcessorHandler: resizeImage: ${imageMessage.srcKey} is empty")
+                        return "500 Internal Server Error"
+                    }
                 }
+            } else {
+                logger.warn("No  image resolutions defined in project metadata. Copying image to destination bucket without resizing")
+                // TODO: copy image to destination bucket
+                return "202 Accepted"
             }
-              } else {
-                  logger.warn("No  image resolutions defined in project metadata. Copying image to destination bucket without resizing")
-                  // TODO: copy image to destination bucket
-                  return "202 Accepted"
-              }
 
 
         } catch (e: Exception) {

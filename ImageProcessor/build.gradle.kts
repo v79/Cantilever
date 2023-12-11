@@ -35,6 +35,9 @@ dependencies {
     implementation("com.amazonaws:aws-lambda-java-events:3.11.3")
     runtimeOnly("com.amazonaws:aws-lambda-java-log4j2:1.6.0")
 
+    // image scaler
+    implementation("org.imgscalr:imgscalr-lib:4.2")
+
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")

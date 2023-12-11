@@ -1,13 +1,11 @@
 package org.liamjd.cantilever.api.controllers
 
-import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
-import org.liamjd.cantilever.models.ContentTree
 import org.liamjd.cantilever.models.rest.PostListDTO
 import org.liamjd.cantilever.models.rest.PostNodeRestDTO
 import org.liamjd.cantilever.routing.Request
@@ -50,13 +48,13 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             loadContentTree()
             info("Updating existing file '${postToSave.srcKey}'")
-            val length = s3Service.putObject(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
+            val length = s3Service.putObjectAsString(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
             contentTree.updatePost(postToSave.toPostNode())
             saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
-            val length = s3Service.putObject(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
+            val length = s3Service.putObjectAsString(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
             contentTree.insertPost(postToSave.toPostNode())
             saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))

@@ -161,7 +161,7 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
     private fun writeTemplateFile(handlebarsContent: HandlebarsTemplate, key: String): Int {
         val frontmatter = buildFrontmatterForTemplate(template = handlebarsContent.template)
         val body = frontmatter + handlebarsContent.body
-        return s3Service.putObject(key, sourceBucket, body, "text/html")
+        return s3Service.putObjectAsString(key, sourceBucket, body, "text/html")
     }
 
     override fun info(message: String) = println("INFO: TemplateController: $message")
