@@ -50,6 +50,12 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
         return response
     }
 
+    /**
+     * Process the image resize message. For each resolution defined in the project metadata, create a new image based on the original
+     * @param imageMessage the SQS message containing the image to resize
+     * @param sourceBucket the bucket containing the image to resize
+     * @return a String response to the SQS message
+     */
     private fun processImageResize(
         imageMessage: ImageSQSMessage.ResizeImageMsg,
         sourceBucket: String
@@ -66,18 +72,24 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
                 logger.info("Checking if image exists in $sourceBucket/${imageMessage.srcKey}")
                 if (s3Service.objectExists(imageMessage.srcKey, sourceBucket)) {
                     val imageBytes = s3Service.getObjectAsBytes(imageMessage.srcKey, sourceBucket)
+                    val contentType = s3Service.getContentType(imageMessage.srcKey, sourceBucket)
                     if (imageBytes.isNotEmpty()) {
                         logger.info("ImageProcessorHandler: resizeImage: ${imageBytes.size} bytes")
                         project.imageResolutions.forEach { (name, imgRes) ->
-                            logger.info("ImageProcessorHandler: resizeImage: $name ${imgRes.w}x${imgRes.h}")
+                            logger.info("ImageProcessorHandler: resizeImage: $name (${imgRes.w}x${imgRes.h})")
                             if (imgRes.w == null && imgRes.h == null) {
                                 logger.info("Skipping image resize for $name as no dimensions specified")
                             } else {
-                                val resizedBytes = processor.resizeImage(imgRes, imageBytes, imageMessage.srcKey)
-                                val origSuffix = imageMessage.srcKey.substringAfterLast(".")
-                                val destKey =
-                                    "${S3_KEY.generated}/${imageMessage.srcKey.removePrefix(S3_KEY.sourcesPrefix)}-${name}.${origSuffix}"
-                                s3Service.putObjectAsBytes(destKey, sourceBucket, resizedBytes, "image/jpeg")
+                                val resizedBytes =
+                                    processor.resizeImage(imgRes, imageBytes, getFormatNameFromContentType(contentType))
+                                val destKey = calculateFilename(imageMessage, name)
+                                logger.info("ImageProcessorHandler: resizeImage: writing ${resizedBytes.size} bytes to $destKey to $sourceBucket")
+                                s3Service.putObjectAsBytes(
+                                    destKey,
+                                    sourceBucket,
+                                    resizedBytes,
+                                    contentType ?: "image/jpeg"
+                                )
                             }
                         }
                     } else {
@@ -100,7 +112,32 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
         return responseString
     }
 
+    /**
+     * Calculate the filename for the resized image
+     * Based on the original file name, and the resolution name
+     */
+    private fun calculateFilename(
+        imageMessage: ImageSQSMessage.ResizeImageMsg,
+        resName: String
+    ): String {
+        val origSuffix = imageMessage.srcKey.substringAfterLast(".")
+        val newPrefix = S3_KEY.generated + "/"
+        val leafName = imageMessage.srcKey.removePrefix(S3_KEY.sourcesPrefix).substringBeforeLast(".")
+        return "$newPrefix$leafName-$resName.${origSuffix}"
+    }
 
+    /**
+     * Get the format name from the content type
+     * The Java ImageIO file writer needs an "informal format name" to write the image, but I only have the content type
+     */
+    private fun getFormatNameFromContentType(contentType: String?): String {
+        return when (contentType?.lowercase()) {
+            "image/jpeg" -> "jpg"
+            "image/png" -> "png"
+            "image/gif" -> "gif"
+            else -> "jpg"
+        }
+    }
 }
 
 /**
