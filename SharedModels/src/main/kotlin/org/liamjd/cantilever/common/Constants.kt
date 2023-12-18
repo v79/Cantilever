@@ -54,7 +54,8 @@ enum class SOURCE_TYPE(val folder: String) {
     Posts("posts"),
     Templates("templates"),
     Statics("statics"),
-    Images("images");
+    Images("images"),
+    Root("");
 
     object SourceHelper {
         /**
@@ -62,7 +63,11 @@ enum class SOURCE_TYPE(val folder: String) {
          * @param folderName should be "posts", "pages", "templates" or "statics"
          */
         fun fromFolderName(folderName: String): SOURCE_TYPE =
-            SOURCE_TYPE.entries.first { it.folder == folderName.lowercase() }
+            if(folderName.isBlank()) {
+                Root
+            } else {
+                entries.first { it.folder == folderName.lowercase() }
+            }
     }
 }
 

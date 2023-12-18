@@ -22,18 +22,21 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
 
     private val s3Service: S3Service
     private val sqsService: SQSService
-    private val processor: ImageProcessor
+
     private lateinit var logger: LambdaLogger
+    private lateinit var processor: ImageProcessor
 
     init {
         s3Service = S3ServiceImpl(Region.EU_WEST_2)
         sqsService = SQSServiceImpl(Region.EU_WEST_2)
-        processor = ImageProcessor()
+
     }
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
-        val sourceBucket = System.getenv("source_bucket")
         logger = context.logger
+        processor = ImageProcessor(logger)
+        val sourceBucket = System.getenv("source_bucket")
+
         var response = "200 OK"
 
         logger.info("Received ${event.records.size} events received for image processing")
@@ -74,16 +77,16 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
                     val imageBytes = s3Service.getObjectAsBytes(imageMessage.srcKey, sourceBucket)
                     val contentType = s3Service.getContentType(imageMessage.srcKey, sourceBucket)
                     if (imageBytes.isNotEmpty()) {
-                        logger.info("ImageProcessorHandler: resizeImage: ${imageBytes.size} bytes")
+                        logger.info("Resize image: ${imageBytes.size} bytes")
                         project.imageResolutions.forEach { (name, imgRes) ->
-                            logger.info("ImageProcessorHandler: resizeImage: $name (${imgRes.w}x${imgRes.h})")
+                            logger.info("Resize image: $name (${imgRes.w}x${imgRes.h})")
                             if (imgRes.w == null && imgRes.h == null) {
                                 logger.info("Skipping image resize for $name as no dimensions specified")
                             } else {
                                 val resizedBytes =
                                     processor.resizeImage(imgRes, imageBytes, getFormatNameFromContentType(contentType))
                                 val destKey = calculateFilename(imageMessage, name)
-                                logger.info("ImageProcessorHandler: resizeImage: writing ${resizedBytes.size} bytes to $destKey to $sourceBucket")
+                                logger.info("Resize image: writing $destKey (${resizedBytes.size} bytes) to $sourceBucket")
                                 s3Service.putObjectAsBytes(
                                     destKey,
                                     sourceBucket,
@@ -93,7 +96,7 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
                             }
                         }
                     } else {
-                        logger.error("ImageProcessorHandler: resizeImage: ${imageMessage.srcKey} is empty")
+                        logger.error("Resize image: ${imageMessage.srcKey} is empty")
                         return "500 Internal Server Error"
                     }
                 }
@@ -123,7 +126,7 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
         val origSuffix = imageMessage.srcKey.substringAfterLast(".")
         val newPrefix = S3_KEY.generated + "/"
         val leafName = imageMessage.srcKey.removePrefix(S3_KEY.sourcesPrefix).substringBeforeLast(".")
-        return "$newPrefix$leafName-$resName.${origSuffix}"
+        return "$newPrefix$leafName/$resName.${origSuffix}"
     }
 
     /**
@@ -135,6 +138,7 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
             "image/jpeg" -> "jpg"
             "image/png" -> "png"
             "image/gif" -> "gif"
+            "image/webp" -> "webp"
             else -> "jpg"
         }
     }

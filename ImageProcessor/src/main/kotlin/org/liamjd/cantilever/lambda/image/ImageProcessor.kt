@@ -1,11 +1,12 @@
 package org.liamjd.cantilever.lambda.image
 
+import com.amazonaws.services.lambda.runtime.LambdaLogger
 import org.imgscalr.Scalr
 import org.liamjd.cantilever.models.ImgRes
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 
-class ImageProcessor {
+class ImageProcessor(private val logger: LambdaLogger) {
 
     /**
      * Use the Scalr library to resize the image
@@ -18,7 +19,7 @@ class ImageProcessor {
         val srcImage = ImageIO.read(imageBytes.inputStream())
         val newWidth = res.w ?: srcImage.width
         val newHeight = res.h ?: srcImage.height
-        println("ImageProcessor: resize $formatName image from ${srcImage.width} x ${srcImage.height} to $newWidth x $newHeight")
+        logger.info("ImageProcessor: resize $formatName image from ${srcImage.width} x ${srcImage.height} to $newWidth x $newHeight")
 
         val scaledImage = Scalr.resize(srcImage, newWidth, newHeight) // Scale image
         val baos = ByteArrayOutputStream(imageBytes.size)
