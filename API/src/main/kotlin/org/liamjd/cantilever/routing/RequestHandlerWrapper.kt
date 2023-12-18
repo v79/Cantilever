@@ -10,6 +10,7 @@ import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
+import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.routing.Router.Companion.CONTENT_TYPE
 
 /**

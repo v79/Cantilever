@@ -15,7 +15,7 @@ import org.liamjd.cantilever.common.S3_KEY.templatesKey
 import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.*
-import org.liamjd.cantilever.routing.MimeType
+import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 

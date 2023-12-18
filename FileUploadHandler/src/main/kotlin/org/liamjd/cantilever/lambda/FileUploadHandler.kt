@@ -60,7 +60,8 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
             try {
                 val fileType = srcKey.substringAfterLast('.').lowercase()
-                logger.info("FileUpload handler: source type is '$folderName'; file type is '$fileType'")
+                val contentType = s3Service.getContentType(srcKey, srcBucket)
+                logger.info("FileUpload handler: source type is '$folderName'; file type is '$fileType'; content type is '$contentType'")
 
                 when (uploadFolder) {
                     Posts -> {

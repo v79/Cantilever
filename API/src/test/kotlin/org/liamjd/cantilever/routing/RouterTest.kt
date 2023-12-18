@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test
 import org.liamjd.cantilever.api.models.RawJsonString
 import org.liamjd.cantilever.auth.AuthResult
 import org.liamjd.cantilever.auth.Authorizer
+import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.openapi.APISchema
 import java.net.URLEncoder
 import java.nio.charset.Charset

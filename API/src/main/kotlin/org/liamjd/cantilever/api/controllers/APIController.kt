@@ -5,7 +5,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.models.ContentTree
-import org.liamjd.cantilever.routing.MimeType
+import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.services.S3Service
 
 abstract class APIController(val sourceBucket: String) : KoinComponent {

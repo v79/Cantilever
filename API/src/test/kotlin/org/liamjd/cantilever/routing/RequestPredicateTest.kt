@@ -3,6 +3,7 @@ package org.liamjd.cantilever.routing
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.liamjd.cantilever.common.MimeType
 
 class RequestPredicateTest {
 

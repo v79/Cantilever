@@ -4,6 +4,7 @@ import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 import org.liamjd.cantilever.api.controllers.*
 import org.liamjd.cantilever.auth.CognitoJWTAuthorizer
+import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.routing.*
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService

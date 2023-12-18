@@ -2,6 +2,7 @@ package org.liamjd.cantilever.routing
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import org.liamjd.cantilever.auth.Authorizer
+import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.common.toSlug
 import kotlin.reflect.typeOf
 
