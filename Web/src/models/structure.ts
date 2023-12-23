@@ -309,43 +309,43 @@ export class CantileverProject {
 	The [ImgRes] Represents an image resolution in pixels.
 */
 export class ImgRes {
-	x: number | undefined;
-	y: number | undefined;
+	w: number | undefined;
+	h: number | undefined;
 
-	constructor(x: number, y: number) {
-		this.x = x;
-		this.y = y;
+	constructor(width: number, height: number) {
+		this.w = width;
+		this.h = height;
 	}
 
 	toJSON(): string {
-		return this.getStringX() + 'x' + this.getStringY();
+		return this.getStringW() + 'x' + this.getStringH();
 	}
 
-	getStringX(): string {
-		if (isNaN(this.x!!)) {
+	getStringW(): string {
+		if (isNaN(this.w!!)) {
 			return '';
 		} else {
-			return '' + this.x;
+			return '' + this.w;
 		}
 	}
-	getStringY(): string {
-		if (isNaN(this.y!!)) {
+	getStringH(): string {
+		if (isNaN(this.h!!)) {
 			return '';
 		} else {
-			return '' + this.y;
+			return '' + this.h;
 		}
 	}
 }
 
 /**
- * Convert a string like "640x480" into a [ImgRes] object with values x=640, y=480
+ * Convert a string like "640x480" into a [ImgRes] object with values w=640, h=480
  * @param resString
  * @returns an [ImgRes] object with the appropriate dimensions. If a dimension is not found, it will be returned as NaN.
  */
 export function parseResString(resString: string) {
-	const xS: string = resString.substring(0, resString.indexOf('x'));
-	const yS: string = resString.substring(resString.indexOf('x') + 1);
-	return new ImgRes(parseInt(xS), parseInt(yS));
+	const wS: string = resString.substring(0, resString.indexOf('w'));
+	const hS: string = resString.substring(resString.indexOf('h') + 1);
+	return new ImgRes(parseInt(wS), parseInt(hS));
 }
 
 /**

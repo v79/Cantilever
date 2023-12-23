@@ -1,7 +1,7 @@
 package org.liamjd.cantilever.routing.simple
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
-import org.liamjd.cantilever.routing.MimeType
+import org.liamjd.cantilever.common.MimeType
 import kotlin.reflect.KType
 
 typealias SimpleHandlerFunction<I, T> = (request: SimpleRequest<I>) -> SimpleResponse<T>

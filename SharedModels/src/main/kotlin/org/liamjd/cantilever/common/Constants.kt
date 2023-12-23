@@ -9,10 +9,12 @@ object S3_KEY {
     const val sourcesPrefix = "$sources/"
     const val postsPrefix = "$sources/posts/"
     const val pagesPrefix = "$sources/pages/"
+    const val imagesPrefix = "$sources/images/"
     const val templatesPrefix = "${sources}/templates/"
     const val staticsPrefix = "${sources}/statics/"
     const val projectKey = "$sources/cantilever.yaml"
     const val fragments = "$generated/htmlFragments/"
+    const val thumbnail = "__thumb"
 
     @Deprecated("Use metadataKey instead")
     const val postsKey = "$generated/posts.json"
@@ -52,7 +54,9 @@ enum class SOURCE_TYPE(val folder: String) {
     Pages("pages"),
     Posts("posts"),
     Templates("templates"),
-    Statics("statics"), ;
+    Statics("statics"),
+    Images("images"),
+    Root("");
 
     object SourceHelper {
         /**
@@ -60,7 +64,11 @@ enum class SOURCE_TYPE(val folder: String) {
          * @param folderName should be "posts", "pages", "templates" or "statics"
          */
         fun fromFolderName(folderName: String): SOURCE_TYPE =
-            SOURCE_TYPE.entries.first { it.folder == folderName.lowercase() }
+            if(folderName.isBlank()) {
+                Root
+            } else {
+                entries.first { it.folder == folderName.lowercase() }
+            }
     }
 }
 
@@ -70,4 +78,5 @@ enum class SOURCE_TYPE(val folder: String) {
 object QUEUE {
     const val MARKDOWN = "markdown_processing_queue"
     const val HANDLEBARS = "handlebar_template_queue"
+    const val IMAGES = "image_processing_queue"
 }

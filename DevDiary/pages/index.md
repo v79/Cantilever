@@ -1,6 +1,7 @@
 ---
 title: Cantilever
 templateKey: sources/templates/index.html.hbs
+isRoot: true
 #siteName: Cantilever
 #author: Liam John Davison
 --- #body

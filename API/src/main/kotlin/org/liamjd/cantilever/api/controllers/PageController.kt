@@ -102,12 +102,12 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
         val srcKey = URLDecoder.decode(pageToSave.metadata.srcKey, Charset.defaultCharset())
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             info("Updating existing file '${pageToSave.metadata.srcKey}'")
-            val length = s3Service.putObject(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
+            val length = s3Service.putObjectAsString(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
             contentTree.updatePage(pageToSave.metadata).also { saveContentTree() }
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
-            val length = s3Service.putObject(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
+            val length = s3Service.putObjectAsString(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
             contentTree.insertPage(pageToSave.metadata).also { saveContentTree() }
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }

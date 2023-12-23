@@ -126,4 +126,13 @@ sealed interface ContentMetaDataBuilder {
             return customSections
         }
     }
+
+    object ImageBuilder : ContentMetaDataBuilder {
+        override fun buildFromSourceString(sourceString: String, srcKey: SrcKey): ContentNode.ImageNode {
+            return ContentNode.ImageNode(
+                srcKey = srcKey,
+                altText = srcKey.substringAfterLast("/").substringBeforeLast("."),
+            )
+        }
+    }
 }

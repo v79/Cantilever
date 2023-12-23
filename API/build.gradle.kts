@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "org.liamjd.cantilever"
-version = "0.0.9"
+version = "0.0.10"
 
 repositories {
     mavenCentral()
@@ -28,7 +28,6 @@ dependencies {
     // openAPI dependency scanning
     implementation(project(":OpenAPISchemaAnnotations"))
     implementation(project(":OpenAPISchemaGenerator"))
-    ksp(project(":OpenAPISchemaGenerator"))
 
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
@@ -62,6 +61,9 @@ dependencies {
 
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
+    dependsOn(
+        parent?.project?.tasks?.named("copyAPISchema")
+    )
 }
 
 tasks.withType<KotlinCompile> {
@@ -69,12 +71,13 @@ tasks.withType<KotlinCompile> {
         jvmTarget = "17"
         freeCompilerArgs += "-Xcontext-receivers"
     }
-
 }
 
 tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
     archiveBaseName.set("APIRouter")
-    dependsOn(parent?.project?.tasks?.named("copyAPISchema"))
+    dependsOn(
+        parent?.project?.tasks?.named("copyAPISchema")
+    )
 }

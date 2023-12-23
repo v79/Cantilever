@@ -7,7 +7,7 @@ import software.amazon.awscdk.StackProps
 fun main() {
     println("Initiating CDK Application")
     val app = App()
-    val versionString = "v0.0.9"
+    val versionString = "v0.0.10"
 
     val stack = CantileverStack(
         app,

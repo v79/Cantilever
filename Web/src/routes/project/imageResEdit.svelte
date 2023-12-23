@@ -17,8 +17,8 @@
 	let newKey = key;
 	$: editSave = editing ? 'Update' : 'Edit';
 
-	$: xS = res.x && isNaN(res.x) ? '' : (res.x as unknown as string);
-	$: yS = res.y as unknown as string;
+	$: xS = res.w && isNaN(res.w) ? '' : (res.w as unknown as string);
+	$: yS = res.h as unknown as string;
 
 	onMount(() => {
 		if (!readonly) {
@@ -55,10 +55,10 @@
 		if (target) {
 			switch (dimension) {
 				case 'x':
-					res.x = parseInt((target as HTMLInputElement).value);
+					res.w = parseInt((target as HTMLInputElement).value);
 					break;
 				case 'y':
-					res.y = parseInt((target as HTMLInputElement).value);
+					res.h = parseInt((target as HTMLInputElement).value);
 					break;
 			}
 		}

@@ -28,6 +28,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         source_bucket,
         markdown_processing_queue,
         handlebar_template_queue,
+        image_processing_queue,
         cors_domain,
         cognito_region,
         cognito_user_pools_id
@@ -59,18 +60,15 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         // SQS for inter-lambda communication. The visibility timeout should be > the max processing time of the lambdas, so setting to 3
         println("Creating markdown processing queue")
         val markdownProcessingQueue =
-            SqsQueue.Builder.create(
-                Queue.Builder.create(this, "cantilever-markdown-to-html-queue").visibilityTimeout(
-                    Duration.minutes(3)
-                ).build()
-            ).build()
+            buildSQSQueue("cantilever-markdown-to-html-queue", 3)
 
         println("Creating handlebar templating processing queue")
         val handlebarProcessingQueue =
-            SqsQueue.Builder.create(
-                Queue.Builder.create(this, "cantilever-html-handlebar-queue").visibilityTimeout(Duration.minutes(3))
-                    .build()
-            ).build()
+            buildSQSQueue("cantilever-html-handlebar-queue", 3)
+
+        println("Creating image processing queue")
+        val imageProcessingQueue =
+            buildSQSQueue("cantilever-image-processing-queue", 3)
 
         println("Creating FileUploadHandler Lambda function")
         val fileUploadLambda = createLambda(
@@ -83,7 +81,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
-                ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl
+                ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl,
+                ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl
             )
         )
 
@@ -129,9 +128,24 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
                 ENV.destination_bucket.name to destinationBucket.bucketName,
                 ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
                 ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl,
+                ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl,
                 ENV.cors_domain.name to deploymentDomain,
                 ENV.cognito_region.name to cr,
                 ENV.cognito_user_pools_id.name to cpool
+            )
+        )
+
+        println("Creating Image processing Lambda function")
+        val imageProcessorLambda = createLambda(
+            stack = this,
+            id = "cantilever-image-processor-lambda",
+            description = "Lambda function which processes images",
+            codePath = "./ImageProcessor/build/libs/ImageProcessorHandler.jar",
+            handler = "org.liamjd.cantilever.lambda.image.ImageProcessorHandler",
+            memory = 256,
+            environment = mapOf(
+                ENV.source_bucket.name to sourceBucket.bucketName,
+                ENV.destination_bucket.name to destinationBucket.bucketName,
             )
         )
 
@@ -144,7 +158,6 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         fileUploadLambda.apply {
             sourceBucket.grantRead(this)
             sourceBucket.grantWrite(this)
-
         }
         markdownProcessorLambda.apply {
             sourceBucket.grantRead(this)
@@ -157,8 +170,10 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         apiRoutingLambda.apply {
             sourceBucket.grantRead(this)
             sourceBucket.grantWrite(this)
-            markdownProcessingQueue.queue.grantSendMessages(this)
-            handlebarProcessingQueue.queue.grantSendMessages(this)
+        }
+        imageProcessorLambda.apply {
+            sourceBucket.grantRead(this)
+            sourceBucket.grantWrite(this)
         }
 
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
@@ -167,6 +182,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
                 .filters(listOf(NotificationKeyFilter.Builder().prefix("sources/").build()))
                 .events(mutableListOf(EventType.OBJECT_CREATED_PUT, EventType.OBJECT_CREATED_POST)).build()
         )
+
         println("Add markdown processor SQS event source to markdown processor lambda")
         markdownProcessorLambda.addEventSource(
             SqsEventSource.Builder.create(markdownProcessingQueue.queue).build()
@@ -177,12 +193,31 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             SqsEventSource.Builder.create(handlebarProcessingQueue.queue).build()
         )
 
+        println("Add image processor SQS event source to image processor lambda")
+        imageProcessorLambda.addEventSource(
+            SqsEventSource.Builder.create(imageProcessingQueue.queue).build()
+        )
+
         println("Granting queue-to-queue permissions")
-        markdownProcessingQueue.queue.grantSendMessages(fileUploadLambda)
-        markdownProcessingQueue.queue.grantConsumeMessages(markdownProcessorLambda)
-        handlebarProcessingQueue.queue.grantSendMessages(markdownProcessorLambda)
-        handlebarProcessingQueue.queue.grantConsumeMessages(templateProcessorLambda)
-        handlebarProcessingQueue.queue.grantSendMessages(fileUploadLambda)
+        fileUploadLambda.apply {
+            markdownProcessingQueue.queue.grantSendMessages(this)
+            handlebarProcessingQueue.queue.grantSendMessages(this)
+            imageProcessingQueue.queue.grantSendMessages(this)
+        }
+        markdownProcessorLambda.apply {
+            markdownProcessingQueue.queue.grantConsumeMessages(this)
+            handlebarProcessingQueue.queue.grantSendMessages(this)
+        }
+        templateProcessorLambda.apply {
+            handlebarProcessingQueue.queue.grantConsumeMessages(this)
+        }
+        apiRoutingLambda.apply {
+            markdownProcessingQueue.queue.grantSendMessages(this)
+            handlebarProcessingQueue.queue.grantSendMessages(this)
+        }
+        imageProcessorLambda.apply {
+            imageProcessingQueue.queue.grantConsumeMessages(this)
+        }
 
         println("Creating API Gateway integrations")
         val certificate = Certificate.fromCertificateArn(
@@ -261,6 +296,12 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         )
     }
 
+    private fun buildSQSQueue(queueId: String, timeout: Int): SqsQueue = SqsQueue.Builder.create(
+        Queue.Builder.create(this, queueId).visibilityTimeout(
+            Duration.minutes(timeout)
+        ).build()
+    ).build()
+
     private fun createDestinationBucket(): Bucket = Bucket.Builder.create(this, "cantilever-website")
         .versioned(false)
         .removalPolicy(RemovalPolicy.DESTROY)
@@ -307,6 +348,6 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         .code(Code.fromAsset(codePath))
         .handler(handler)
         .logRetention(RetentionDays.ONE_MONTH)
-        .environment(environment ?: emptyMap())  // TODO should this should be a CloudFormation parameter CfnParameter
+        .environment(environment ?: emptyMap())  // TODO: should this should be a CloudFormation parameter CfnParameter
         .build()
 }

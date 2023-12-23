@@ -9,6 +9,7 @@ import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.common.SOURCE_TYPE.*
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.SrcKey
+import org.liamjd.cantilever.models.sqs.ImageSQSMessage
 import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
 import org.liamjd.cantilever.models.sqs.TemplateSQSMessage
 import org.liamjd.cantilever.services.S3Service
@@ -43,6 +44,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         var response = "200 OK"
         val markdownQueueURL = System.getenv(QUEUE.MARKDOWN)
         val handlebarQueueURL = System.getenv(QUEUE.HANDLEBARS)
+        val imageQueueURL = System.getenv(QUEUE.IMAGES)
 
         logger.info("${event.records.size} upload events received")
 
@@ -50,6 +52,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val eventRecord = event.records[0] // TODO: No, this is wrong, we need to process all records
             val srcKey = eventRecord.s3.`object`.urlDecodedKey
             val srcBucket = eventRecord.s3.bucket.name
+            val size = eventRecord.s3.`object`.sizeAsLong
             val folderName =
                 srcKey.substringAfter('/').substringBefore('/') // the folder determines the type, POST, PAGE, STATICS
             val uploadFolder = SourceHelper.fromFolderName(folderName)
@@ -58,40 +61,55 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
             try {
                 val fileType = srcKey.substringAfterLast('.').lowercase()
-                logger.info("FileUpload handler: source type is '$folderName'; file type is '$fileType'")
+                val contentType = s3Service.getContentType(srcKey, srcBucket)
+                logger.info("FileUpload handler: source type is '$folderName'; file type is '$fileType'; content type is '$contentType'")
 
-                when (uploadFolder) {
-                    Posts -> {
-                        if (fileType == FILE_TYPE.MD) {
-                            processPostUpload(srcKey, srcBucket, markdownQueueURL)
-                        } else {
-                            logger.error("Posts must be written in Markdown format with the '.md' file extension")
+                if (size == 0L) {
+                    logger.error("File $srcKey is empty, so not processing")
+                    response = "400 Bad Request"
+                } else {
+                    when (uploadFolder) {
+                        Root -> {
+                            logger.info("No action defined for ROOT upload")
                         }
-                    }
 
-                    Pages -> {
-                        if (fileType == FILE_TYPE.MD) {
-                            processPageUpload(srcKey, srcBucket, markdownQueueURL)
-                        } else {
-                            logger.error("Pages must be written in Markdown format with the '.md' file extension")
-                        }
-                    }
-
-                    Templates -> {
-                        logger.warn("No action defined for TEMPLATE upload")
-                    }
-
-                    Statics -> {
-                        logger.info("Analysing file type for static file upload")
-                        when (fileType) {
-                            FILE_TYPE.CSS -> {
-                                processCSSUpload(srcKey, handlebarQueueURL)
+                        Posts -> {
+                            // i'd like to check ContenType too, but it is not set correctly for .md files uploaded via IntelliJ
+                            if (fileType == FILE_TYPE.MD) {
+                                processPostUpload(srcKey, srcBucket, markdownQueueURL)
+                            } else {
+                                logger.error("Posts must be written in Markdown format with the '.md' file extension")
                             }
                         }
-                    }
 
-                    else -> {
-                        logger.info("No action defined for source type '$srcKey'")
+                        Pages -> {
+                            if (fileType == FILE_TYPE.MD) {
+                                processPageUpload(srcKey, srcBucket, markdownQueueURL)
+                            } else {
+                                logger.error("Pages must be written in Markdown format with the '.md' file extension")
+                            }
+                        }
+
+                        Templates -> {
+                            logger.warn("No action defined for TEMPLATE upload")
+                        }
+
+                        Statics -> {
+                            logger.info("Analysing file type for static file upload")
+                            when (fileType) {
+                                FILE_TYPE.CSS -> {
+                                    processCSSUpload(srcKey, handlebarQueueURL)
+                                }
+                            }
+                        }
+
+                        Images -> {
+                            processImageUpload(srcKey, srcBucket, contentType, imageQueueURL)
+                        }
+
+                        else -> {
+                            logger.info("No action defined for source type '$srcKey'")
+                        }
                     }
                 }
 
@@ -179,6 +197,45 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             } else {
                 logger.warn("No response received for message")
             }
+        } catch (qdne: QueueDoesNotExistException) {
+            logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
+        }
+    }
+
+    /**
+     * Process the uploaded image file and send a message to the image processor queue.
+     * First check if it is supported file type.
+     */
+    private fun processImageUpload(srcKey: String, srcBucket: String, contentType: String?, queueUrl: String) {
+        try {
+            // check if the image is a supported file type
+            val validImageTypes = listOf(MimeType.jpg, MimeType.png, MimeType.gif, MimeType.webp)
+            if (contentType == null) {
+                logger.error("No Content-Type metadata for $srcKey")
+                throw Exception("No Content-Type metadata for $srcKey")
+            }
+
+            if (!validImageTypes.contains(MimeType.parse(contentType))) {
+                logger.error("Invalid image type '$contentType' for $srcKey")
+                throw Exception("Invalid image type '$contentType' for $srcKey")
+            }
+
+            // OK, we know it's a valid image type, so send it to the image processor queue
+            val metadata = ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", srcKey)
+            val imageMsg = ImageSQSMessage.ResizeImageMsg(metadata)
+            logger.info("Sending message to Image processor queue for $imageMsg")
+            val msgResponse = sqsService.sendImageMessage(
+                toQueue = queueUrl,
+                body = imageMsg
+            )
+            if (msgResponse != null) {
+                logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+            } else {
+                logger.warn("No response received for message")
+            }
+
+        } catch (e: Exception) {
+            logger.error("Failed to process image upload for $srcKey; ${e.message}")
         } catch (qdne: QueueDoesNotExistException) {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         }

@@ -21,20 +21,37 @@ class S3ServiceImpl(region: Region) : S3Service {
         return String(bytes)
     }
 
-    override fun putObject(key: String, bucket: String, contents: String, contentType: String?): Int {
+    override fun putObjectAsString(key: String, bucket: String, contents: String, contentType: String?): Int {
         val bytes = contents.toByteArray(Charsets.UTF_8)
         println("S3Service: putObject: key: $key, ${bytes.size} bytes")
 
+        val requestBuilder = byteArrayBuilder(bytes, key, bucket, contentType)
+        val request = requestBuilder.build()
+        s3Client.putObject(request, RequestBody.fromBytes(bytes))
+        return bytes.size
+    }
+
+    override fun putObjectAsBytes(key: String, bucket: String, contents: ByteArray, contentType: String?): Int {
+        val requestBuilder = byteArrayBuilder(contents, key, bucket, contentType)
+        val request = requestBuilder.build()
+        s3Client.putObject(request, RequestBody.fromBytes(contents))
+        return contents.size
+    }
+
+    private fun byteArrayBuilder(
+        contents: ByteArray,
+        key: String,
+        bucket: String,
+        contentType: String?
+    ): PutObjectRequest.Builder {
         val requestBuilder = PutObjectRequest.builder()
-            .contentLength(bytes.size.toLong())
+            .contentLength(contents.size.toLong())
             .key(key)
             .bucket(bucket)
         contentType?.let {
             requestBuilder.contentType(it)
         }
-        val request = requestBuilder.build()
-        s3Client.putObject(request, RequestBody.fromBytes(bytes))
-        return bytes.size
+        return requestBuilder
     }
 
     override fun getObject(key: String, bucket: String): GetObjectResponse? {
@@ -43,6 +60,14 @@ class S3ServiceImpl(region: Region) : S3Service {
             .bucket(bucket)
             .build()
         return s3Client.getObject(request).response()
+    }
+
+    override fun getObjectAsBytes(key: String, bucket: String): ByteArray {
+        val request = GetObjectRequest.builder()
+            .key(key)
+            .bucket(bucket)
+            .build()
+        return s3Client.getObjectAsBytes(request).asByteArray()
     }
 
     override fun objectExists(key: String, bucket: String): Boolean {
@@ -96,5 +121,42 @@ class S3ServiceImpl(region: Region) : S3Service {
             .build()
         val response = s3Client.headObject(request)
         return response.lastModified().toKotlinInstant()
+    }
+
+    override fun getMetadata(key: String, bucket: String, metadataKey: String): String? {
+        val request = HeadObjectRequest.builder()
+            .key(key)
+            .bucket(bucket)
+            .build()
+        val response = s3Client.headObject(request)
+        if (response.hasMetadata()) {
+            val metadata = response.metadata()
+            if (metadata.containsKey(metadataKey)) {
+                return metadata[metadataKey]
+            }
+        }
+        return null
+    }
+
+    override fun getContentType(key: String, bucket: String): String? {
+        val request = HeadObjectRequest.builder()
+            .key(key)
+            .bucket(bucket)
+            .build()
+        val response = s3Client.headObject(request)
+        return response.contentType()
+    }
+
+    override fun copyObject(srcKey:String, destKey: String, bucket: String): Int {
+        val request = CopyObjectRequest.builder()
+            .sourceBucket(bucket)
+            .sourceKey(srcKey)
+            .destinationKey(destKey)
+            .destinationBucket(bucket)
+            .build()
+        val response = s3Client.copyObject(request)
+        return if (response.copyObjectResult() != null)
+            0
+        else -1
     }
 }

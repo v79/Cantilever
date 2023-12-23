@@ -36,3 +36,4 @@ TemplateProcessor/build/
 /.idea/inspectionProfiles/Project_Default.xml
 /OpenAPISchemaGenerator/build/
 /OpenAPISchemaAnnotations/build/
+/ImageProcessor/build/

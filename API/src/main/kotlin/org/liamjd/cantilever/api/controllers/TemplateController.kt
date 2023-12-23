@@ -29,6 +29,7 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
             val decoded = URLDecoder.decode(handlebarSource, Charset.defaultCharset())
             info("Loading handlebar file $decoded")
             return if (s3Service.objectExists(decoded, sourceBucket)) {
+                // TODO: replace with s3service.objectExists
                 val templateObj = s3Service.getObject(decoded, sourceBucket)
                 if (templateObj != null) {
                     val body = s3Service.getObjectAsString(decoded, sourceBucket)
@@ -160,7 +161,7 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
     private fun writeTemplateFile(handlebarsContent: HandlebarsTemplate, key: String): Int {
         val frontmatter = buildFrontmatterForTemplate(template = handlebarsContent.template)
         val body = frontmatter + handlebarsContent.body
-        return s3Service.putObject(key, sourceBucket, body, "text/html")
+        return s3Service.putObjectAsString(key, sourceBucket, body, "text/html")
     }
 
     override fun info(message: String) = println("INFO: TemplateController: $message")

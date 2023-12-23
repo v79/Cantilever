@@ -6,10 +6,11 @@ plugins {
     `maven-publish`
     id("org.sonarqube") version "4.4.1.3373"
     id("org.jetbrains.kotlinx.kover") version "0.7.4"
+    id("org.barfuin.gradle.taskinfo") version "2.1.0"
 }
 
 group = "org.liamjd"
-version = "0.0.9"
+version = "0.0.10"
 
 repositories {
     mavenCentral()
@@ -46,6 +47,7 @@ tasks.withType<JavaExec> {
     dependsOn(":FileUploadHandler:shadowJar")
     dependsOn(":MarkdownProcessor:shadowJar")
     dependsOn(":TemplateProcessor:shadowJar")
+    dependsOn(":ImageProcessor:shadowJar")
     dependsOn(":API:shadowJar")
 }
 
@@ -55,11 +57,11 @@ tasks {
     }
 }
 
-
 tasks.register("copyAPISchema", Copy::class.java) {
     from(project(":SharedModels").layout.buildDirectory.dir("generated/ksp/main/resources/openapi/schema/api-schema.yaml"))
     into(project(":API").layout.buildDirectory.dir("/resources/main/schemas/"))
-    doLast { println("Copied API schema to build/resources/main/schemas") }
+    doLast {
+        println("Copied API schema to build/resources/main/schemas") }
 }
 
 koverReport {

@@ -30,11 +30,13 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 
     private val s3Service: S3Service
     private val sqsService: SQSService
+    private val converter: MarkdownConverter
     private lateinit var logger: LambdaLogger
 
     init {
         s3Service = S3ServiceImpl(Region.EU_WEST_2)
         sqsService = SQSServiceImpl(Region.EU_WEST_2)
+        converter = FlexmarkMarkdownConverter()
     }
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
@@ -81,9 +83,9 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         sections.forEach {
             try {
                 logger.info("Writing ${it.key} to ${fragmentPrefix}${it.key}")
-                val html = convertMDToHTML(it.value)
+                val html = converter.convertMDToHTML(it.value)
                 logger.info("HTML output is ${html.length} characters long.")
-                bytesWritten += s3Service.putObject(
+                bytesWritten += s3Service.putObjectAsString(
                     fragmentPrefix + it.key,
                     sourceBucket,
                     html,
@@ -141,14 +143,14 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         handlebarQueueUrl: String
     ): String {
         logger.info("Metadata: ${sqsMsgBody.metadata}")
-        val html = convertMDToHTML(mdSource = sqsMsgBody.markdownText)
+        val html = converter.convertMDToHTML(mdSource = sqsMsgBody.markdownText)
         val outputStream = ByteArrayOutputStream()
         var responseString = "200 OK"
         outputStream.bufferedWriter().write(html)
 
         try {
             val htmlKey = fragments + sqsMsgBody.metadata.slug
-            s3Service.putObject(htmlKey, sourceBucket, html, "text/html")
+            s3Service.putObjectAsString(htmlKey, sourceBucket, html, "text/html")
             logger.info("Wrote HTML file '$htmlKey'")
             logger.info("Sending message to handlebars handler")
             val message = TemplateSQSMessage.RenderPostMsg(
