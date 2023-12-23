@@ -3,9 +3,9 @@ package org.liamjd.cantilever.api.controllers
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.models.ContentTree
-import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.services.S3Service
 
 abstract class APIController(val sourceBucket: String) : KoinComponent {
@@ -25,6 +25,7 @@ abstract class APIController(val sourceBucket: String) : KoinComponent {
             contentTree.items.addAll(newTree.items)
             contentTree.templates.addAll(newTree.templates)
             contentTree.statics.addAll(newTree.statics)
+            contentTree.images.addAll(newTree.images)
         } else {
             warn("No '${S3_KEY.metadataKey}' file found in bucket $sourceBucket; creating new empty tree")
         }

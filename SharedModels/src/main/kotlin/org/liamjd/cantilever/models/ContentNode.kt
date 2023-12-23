@@ -173,7 +173,6 @@ sealed class ContentNode {
     data class ImageNode(
         override val srcKey: SrcKey,
         override val lastUpdated: Instant = Clock.System.now(),
-        val altText: String = ""
     ) : ContentNode(
     ) {
         var contentType: String? = null
@@ -452,5 +451,6 @@ class ContentTree {
         items.clear()
         templates.clear()
         statics.clear()
+        images.clear()
     }
 }

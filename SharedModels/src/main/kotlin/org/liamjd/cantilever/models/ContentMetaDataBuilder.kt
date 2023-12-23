@@ -130,8 +130,7 @@ sealed interface ContentMetaDataBuilder {
     object ImageBuilder : ContentMetaDataBuilder {
         override fun buildFromSourceString(sourceString: String, srcKey: SrcKey): ContentNode.ImageNode {
             return ContentNode.ImageNode(
-                srcKey = srcKey,
-                altText = srcKey.substringAfterLast("/").substringBeforeLast("."),
+                srcKey = srcKey
             )
         }
     }

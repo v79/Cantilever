@@ -42,6 +42,7 @@ class LambdaRouter : RequestHandlerWrapper() {
     private val generatorController = GeneratorController(sourceBucket = sourceBucket)
     private val projectController = ProjectController(sourceBucket = sourceBucket)
     private val metadataController = MetadataController(sourceBucket = sourceBucket)
+    private val mediaController = MediaController(sourceBucket = sourceBucket)
 
     private val cognitoJWTAuthorizer = CognitoJWTAuthorizer(
         mapOf(
@@ -158,6 +159,15 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
+        group("/media", Spec.Tag(name = "Media", description = "Create, update and manage images and other media files")) {
+            auth(cognitoJWTAuthorizer) {
+                get(
+                    "/images",
+                    mediaController::getImages,
+                ).spec(Spec.PathItem("Get images", "Returns a list of all images"))
+            }
+        }
+
         group("/generate", Spec.Tag("Generation", "Trigger the regeneration of pages and blog posts")) {
             auth(cognitoJWTAuthorizer) {
                 put(
@@ -184,13 +194,13 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
-        group("/metadata", Spec.Tag("Metadata", "Manage the metadata.yaml file for the project")) {
+        group("/metadata", Spec.Tag("Metadata", "Manage the metadata.json file for the project")) {
             auth(cognitoJWTAuthorizer) {
                 put(
                     "/rebuild",
                     metadataController::rebuildFromSources,
-                ).spec(
-                    Spec.PathItem("Rebuild metadata", "Rebuild the metadata.yaml file from the source files")
+                ).expects(emptySet()).spec(
+                    Spec.PathItem("Rebuild metadata", "Rebuild the metadata.json file from the source pages, posts, templates and images")
                 )
             }
         }
