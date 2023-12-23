@@ -16,7 +16,7 @@ The current application design is:
 
 There were some design principles for _Cantilever_ which haven't really held up well.
 
-I wanted everything to be defined solely by the markdown files, a little bit of yaml, and the handlebars templates. There was to be no database underlying the project. 
+I wanted everything to be defined solely by the markdown files, a little bit of yaml, and the handlebars templates. There was to be no database underlying the project.
 
 This didn't really work out. In order to present the web UI, and the list of files, I introduced a `JSON` file for each of the files - pages, posts and templates. As someone pointed out to me, while that isn't a SQL relational database, it is, ultimately, a database nonetheless.
 
@@ -30,4 +30,5 @@ I could regenerate it, before parsing the markdown. But Cantilever has another b
 
 I'm not sure what approach to take. More and more, I feel that having a persistent database (SQL or NoSQL) is necessary. That database could be updated with every file upload. And I'll have to postpone the final generation (fragment + handlebars templates) until the database is updated and all the markdown files have been processed.
 
-- It's quite a big rework, and it pulls me away from the design goal of "everything is defined by markdown and yaml".
+> It's quite a big rework, and it pulls me away from the design goal of "everything is defined by markdown and yaml".
+
