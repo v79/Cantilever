@@ -3,11 +3,7 @@ package org.liamjd.cantilever.models
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.EncodeDefault
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
+import kotlinx.serialization.*
 import org.liamjd.cantilever.common.S3_KEY
 
 /**
@@ -96,7 +92,7 @@ sealed class ContentNode {
         val attributes: Map<String, String> = emptyMap()
     ) : ContentNode() {
 
-        // I'd like to make this configurable, but lets try a folder structure based on the date
+        // I'd like to make this configurable, but let's try a folder structure based on the date
         override val url: String
             get() {
                 val year = date.year.toString()
@@ -168,6 +164,23 @@ sealed class ContentNode {
         var fileType: String? = null
         override val url = srcKey.removePrefix(S3_KEY.sources) + "/"
     }
+
+    /**
+     * An image is a node in the tree which represents an image file. It is copied to the generated bucket without modification
+     */
+    @Serializable
+    @SerialName("image")
+    data class ImageNode(
+        override val srcKey: SrcKey,
+        override val lastUpdated: Instant = Clock.System.now(),
+        val altText: String = ""
+    ) : ContentNode(
+    ) {
+        var contentType: String? = null
+        override val url = "" // irrelevant for images, or rather, handled differently because of the image resolutions
+
+        // should I be recording image resolutions here?
+    }
 }
 
 /**
@@ -198,6 +211,7 @@ class ContentTree {
     val items: MutableList<ContentNode> = mutableListOf()
     val templates: MutableList<ContentNode.TemplateNode> = mutableListOf()
     val statics: MutableList<ContentNode.StaticNode> = mutableListOf()
+    val images: MutableList<ContentNode.ImageNode> = mutableListOf()
 
     /**
      * Insert a node into the tree. It performs the appropriate insert based on the type of node.
@@ -209,6 +223,7 @@ class ContentTree {
             is ContentNode.PostNode -> insertPost(node)
             is ContentNode.TemplateNode -> insertTemplate(node)
             is ContentNode.StaticNode -> insertStatic(node)
+            is ContentNode.ImageNode -> insertImage(node)
         }
     }
 
@@ -231,6 +246,13 @@ class ContentTree {
      */
     fun insertStatic(staticNode: ContentNode.StaticNode) {
         statics.add(staticNode)
+    }
+
+    /**
+     * Insert an image into the tree
+     */
+    fun insertImage(imageNode: ContentNode.ImageNode) {
+        images.add(imageNode)
     }
 
     /**

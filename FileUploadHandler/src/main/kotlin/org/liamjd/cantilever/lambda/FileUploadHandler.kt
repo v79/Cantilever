@@ -72,6 +72,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                         Root -> {
                             logger.info("No action defined for ROOT upload")
                         }
+
                         Posts -> {
                             // i'd like to check ContenType too, but it is not set correctly for .md files uploaded via IntelliJ
                             if (fileType == FILE_TYPE.MD) {
@@ -111,10 +112,12 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                         }
                     }
                 }
+
             } catch (nske: NoSuchKeyException) {
                 logger.error("FileUpload EXCEPTION ${nske.message}")
                 response = "500 Internal Server Error"
             }
+
         } finally {
             logger.info("Request completed")
         }
@@ -218,7 +221,8 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             }
 
             // OK, we know it's a valid image type, so send it to the image processor queue
-            val imageMsg = ImageSQSMessage.ResizeImageMsg(srcKey, contentType)
+            val metadata = ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", srcKey)
+            val imageMsg = ImageSQSMessage.ResizeImageMsg(metadata)
             logger.info("Sending message to Image processor queue for $imageMsg")
             val msgResponse = sqsService.sendImageMessage(
                 toQueue = queueUrl,

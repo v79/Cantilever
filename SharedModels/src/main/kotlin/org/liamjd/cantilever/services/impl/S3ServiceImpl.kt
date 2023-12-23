@@ -146,4 +146,17 @@ class S3ServiceImpl(region: Region) : S3Service {
         val response = s3Client.headObject(request)
         return response.contentType()
     }
+
+    override fun copyObject(srcKey:String, destKey: String, bucket: String): Int {
+        val request = CopyObjectRequest.builder()
+            .sourceBucket(bucket)
+            .sourceKey(srcKey)
+            .destinationKey(destKey)
+            .destinationBucket(bucket)
+            .build()
+        val response = s3Client.copyObject(request)
+        return if (response.copyObjectResult() != null)
+            0
+        else -1
+    }
 }

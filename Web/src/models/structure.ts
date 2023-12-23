@@ -312,23 +312,23 @@ export class ImgRes {
 	w: number | undefined;
 	h: number | undefined;
 
-	constructor(x: number, y: number) {
-		this.w = x;
-		this.h = y;
+	constructor(width: number, height: number) {
+		this.w = width;
+		this.h = height;
 	}
 
 	toJSON(): string {
-		return this.getStringX() + 'x' + this.getStringY();
+		return this.getStringW() + 'x' + this.getStringH();
 	}
 
-	getStringX(): string {
+	getStringW(): string {
 		if (isNaN(this.w!!)) {
 			return '';
 		} else {
 			return '' + this.w;
 		}
 	}
-	getStringY(): string {
+	getStringH(): string {
 		if (isNaN(this.h!!)) {
 			return '';
 		} else {
@@ -338,14 +338,14 @@ export class ImgRes {
 }
 
 /**
- * Convert a string like "640x480" into a [ImgRes] object with values x=640, y=480
+ * Convert a string like "640x480" into a [ImgRes] object with values w=640, h=480
  * @param resString
  * @returns an [ImgRes] object with the appropriate dimensions. If a dimension is not found, it will be returned as NaN.
  */
 export function parseResString(resString: string) {
-	const xS: string = resString.substring(0, resString.indexOf('x'));
-	const yS: string = resString.substring(resString.indexOf('x') + 1);
-	return new ImgRes(parseInt(xS), parseInt(yS));
+	const wS: string = resString.substring(0, resString.indexOf('w'));
+	const hS: string = resString.substring(resString.indexOf('h') + 1);
+	return new ImgRes(parseInt(wS), parseInt(hS));
 }
 
 /**

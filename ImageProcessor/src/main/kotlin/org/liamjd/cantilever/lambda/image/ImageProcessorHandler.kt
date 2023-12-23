@@ -33,9 +33,9 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
     }
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
+        val sourceBucket = System.getenv("source_bucket")
         logger = context.logger
         processor = ImageProcessor(logger)
-        val sourceBucket = System.getenv("source_bucket")
 
         var response = "200 OK"
 
@@ -60,8 +60,7 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
      * @return a String response to the SQS message
      */
     private fun processImageResize(
-        imageMessage: ImageSQSMessage.ResizeImageMsg,
-        sourceBucket: String
+        imageMessage: ImageSQSMessage.ResizeImageMsg, sourceBucket: String
     ): String {
         var responseString = "200 OK"
 
@@ -72,10 +71,10 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
 
             // loop through all the image resolutions and create resized images for each uploaded file
             if (project.imageResolutions.isNotEmpty()) {
-                logger.info("Checking if image exists in $sourceBucket/${imageMessage.srcKey}")
-                if (s3Service.objectExists(imageMessage.srcKey, sourceBucket)) {
-                    val imageBytes = s3Service.getObjectAsBytes(imageMessage.srcKey, sourceBucket)
-                    val contentType = s3Service.getContentType(imageMessage.srcKey, sourceBucket)
+                logger.info("Checking if image exists in $sourceBucket/${imageMessage.metadata.srcKey}")
+                if (s3Service.objectExists(imageMessage.metadata.srcKey, sourceBucket)) {
+                    val imageBytes = s3Service.getObjectAsBytes(imageMessage.metadata.srcKey, sourceBucket)
+                    val contentType = s3Service.getContentType(imageMessage.metadata.srcKey, sourceBucket)
                     if (imageBytes.isNotEmpty()) {
                         logger.info("Resize image: ${imageBytes.size} bytes")
                         project.imageResolutions.forEach { (name, imgRes) ->
@@ -88,15 +87,19 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
                                 val destKey = calculateFilename(imageMessage, name)
                                 logger.info("Resize image: writing $destKey (${resizedBytes.size} bytes) to $sourceBucket")
                                 s3Service.putObjectAsBytes(
-                                    destKey,
-                                    sourceBucket,
-                                    resizedBytes,
-                                    contentType ?: "image/jpeg"
+                                    destKey, sourceBucket, resizedBytes, contentType ?: "image/jpeg"
                                 )
                             }
                         }
+                        // finally, copy the original image to the generated folder, unchanged
+                        logger.info("Copying original image to generated folder")
+                        s3Service.copyObject(
+                            imageMessage.metadata.srcKey,
+                            calculateFilename(imageMessage, null),
+                            sourceBucket
+                        )
                     } else {
-                        logger.error("Resize image: ${imageMessage.srcKey} is empty")
+                        logger.error("Resize image: ${imageMessage.metadata.srcKey} is empty")
                         return "500 Internal Server Error"
                     }
                 }
@@ -120,13 +123,15 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
      * Based on the original file name, and the resolution name
      */
     private fun calculateFilename(
-        imageMessage: ImageSQSMessage.ResizeImageMsg,
-        resName: String
+        imageMessage: ImageSQSMessage.ResizeImageMsg, resName: String?
     ): String {
-        val origSuffix = imageMessage.srcKey.substringAfterLast(".")
+        val origSuffix = imageMessage.metadata.srcKey.substringAfterLast(".")
         val newPrefix = S3_KEY.generated + "/"
-        val leafName = imageMessage.srcKey.removePrefix(S3_KEY.sourcesPrefix).substringBeforeLast(".")
-        return "$newPrefix$leafName/$resName.${origSuffix}"
+        val leafName = imageMessage.metadata.srcKey.removePrefix(S3_KEY.sourcesPrefix).substringBeforeLast(".")
+        val finalResName = if (resName != null) {
+            "/$resName."
+        } else "."
+        return "$newPrefix$leafName${finalResName}${origSuffix}"
     }
 
     /**
@@ -139,7 +144,7 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
             "image/png" -> "png"
             "image/gif" -> "gif"
             "image/webp" -> "webp"
-            else -> "jpg"
+            else -> "jpg" // default to jpg
         }
     }
 }

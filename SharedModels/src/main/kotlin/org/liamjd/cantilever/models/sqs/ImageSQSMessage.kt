@@ -1,7 +1,7 @@
 package org.liamjd.cantilever.models.sqs
 
 import kotlinx.serialization.Serializable
-import org.liamjd.cantilever.models.SrcKey
+import org.liamjd.cantilever.models.ContentNode
 
 /**
  * Represents a message sent to the AWS SQS queue when an image file is ready to be processed and resized
@@ -10,5 +10,5 @@ import org.liamjd.cantilever.models.SrcKey
 sealed class ImageSQSMessage {
 
     @Serializable
-    data class ResizeImageMsg(val srcKey: SrcKey, val mimeType: String) : ImageSQSMessage()
+    data class ResizeImageMsg(val metadata: ContentNode.ImageNode) : ImageSQSMessage()
 }

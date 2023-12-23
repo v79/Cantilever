@@ -124,4 +124,13 @@ interface S3Service {
      */
     fun getContentType(key: String, bucket: String): String?
 
+    /**
+     * Copy an object from one bucket to another
+     * @param srcKey the object to copy
+     * @param destKey the destination object name
+     * @param bucket the s3 bucket name
+     * @return 0, or -1 if not created
+     */
+    fun copyObject(srcKey: String, destKey: String, bucket: String): Int
+
 }
