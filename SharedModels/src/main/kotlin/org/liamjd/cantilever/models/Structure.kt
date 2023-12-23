@@ -66,11 +66,3 @@ data class Template(val key: String, val lastUpdated: Instant = Clock.System.now
 @Serializable
 @APISchema
 data class TemplateMetadata(val name: String, val sections: List<String>? = emptyList())
-
-@Deprecated(message = "This is obsolete, not used.")
-@Serializable
-data class Layouts(val templates: MutableMap<String, Template>)
-
-@Deprecated(message = "Not implemented yet, not used.")
-@Serializable
-data class Project(val name: String)

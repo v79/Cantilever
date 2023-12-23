@@ -8,6 +8,7 @@ import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.models.CantileverProject
+import org.liamjd.cantilever.models.ImgRes
 import org.liamjd.cantilever.models.sqs.ImageSQSMessage
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
@@ -97,6 +98,15 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
                             imageMessage.metadata.srcKey,
                             calculateFilename(imageMessage, null),
                             sourceBucket
+                        )
+                        logger.info("Creating internal thumbnail 100x100")
+                        val thumbNailRes = ImgRes(100, 100)
+                        val resizedBytes =
+                            processor.resizeImage(thumbNailRes, imageBytes, getFormatNameFromContentType(contentType))
+                        val destKey = calculateFilename(imageMessage, S3_KEY.thumbnail)
+                        logger.info("Resize image: writing $destKey (${resizedBytes.size} bytes) to $sourceBucket")
+                        s3Service.putObjectAsBytes(
+                            destKey, sourceBucket, resizedBytes, contentType ?: "image/jpeg"
                         )
                     } else {
                         logger.error("Resize image: ${imageMessage.metadata.srcKey} is empty")

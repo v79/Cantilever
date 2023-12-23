@@ -123,6 +123,21 @@
 				bind:metadata={$markdownStore.metadata}
 				bind:previewModal
 				bind:body={$markdownStore.body} />
+			<div class="flex items-center justify-end pr-8 focus:shadow-lg" role="group">
+				<button
+					type="button"
+					on:click={() => {
+						if ($activeStore.isNewFile) {
+							saveNewFileSlug = createSlug($markdownStore?.metadata?.title ?? '');
+							saveNewModal = true;
+						} else {
+							saveExistingModal = true;
+						}
+					}}
+					disabled={!$markdownStore.metadata?.isValid() ?? true}
+					class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 disabled:hover:bg-purple-600"
+					>Save</button>
+			</div>
 		{/if}
 	{:else}
 		<h3 class="px-8 text-center text-lg text-slate-200">
