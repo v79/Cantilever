@@ -35,11 +35,7 @@
 				var tempTemplates = new Array<Template>();
 				for (const t of data.data.templates) {
 					tempTemplates.push(
-						new Template(
-							t.srcKey,
-							t.lastUpdated,
-							new TemplateMetadata(t.title, t.sections)
-						)
+						new Template(t.srcKey, t.lastUpdated, new TemplateMetadata(t.title, t.sections))
 					);
 				}
 				// set templates store

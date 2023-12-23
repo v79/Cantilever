@@ -14,11 +14,13 @@
 
 	let regenAllPostsModal = false;
 	let regenAllPagesModal = false;
+	let regenMetaModal = false;
 
 	var activePage = $activeStore.currentPage;
 	var postsPage: boolean,
 		templatesPage: boolean,
 		projectPage: boolean,
+		mediaPage: boolean,
 		pagesPage = false;
 	var title = 'Cantilever Editor';
 
@@ -36,24 +38,35 @@
 				templatesPage = false;
 				pagesPage = false;
 				projectPage = false;
+				mediaPage = false;
 				break;
 			case 'Pages':
 				postsPage = false;
 				templatesPage = false;
 				pagesPage = true;
 				projectPage = false;
+				mediaPage = false;
+				break;
+			case 'Media':
+				postsPage = false;
+				templatesPage = false;
+				pagesPage = false;
+				projectPage = false;
+				mediaPage = true;
 				break;
 			case 'Templates':
 				postsPage = false;
 				templatesPage = true;
 				pagesPage = false;
 				projectPage = false;
+				mediaPage = false;
 				break;
 			case 'Project':
 				postsPage = false;
 				templatesPage = false;
 				pagesPage = false;
 				projectPage = true;
+				mediaPage = false;
 				break;
 			default:
 				break;
@@ -63,6 +76,44 @@
 	afterNavigate(() => {
 		markdownStore.clear();
 	});
+
+	/**
+	 * Trigger a request to rebuild all metadata, rescanning all Posts, Pages, Templates and Images to update the metadata.json file.
+	 */
+	async function rebuildAll() {
+		console.log('Regenerating project metadata...');
+		let token = $userStore.token;
+		notificationStore.set({ shown: false, message: '', type: 'info' });
+		fetch('https://api.cantilevers.org/metadata/rebuild', {
+			method: 'PUT',
+			headers: {
+				Accept: 'application/json',
+				Authorization: 'Bearer ' + token,
+				'X-Content-Length': '0'
+			},
+			mode: 'cors'
+		})
+			.then((response) => response.text())
+			.then((data) => {
+				console.log(data);
+				notificationStore.set({
+					message: data,
+					shown: true,
+					type: 'success'
+				});
+				//loadAllPosts();
+			})
+			.catch((error) => {
+				console.log(error);
+				notificationStore.set({
+					message: error,
+					shown: true,
+					type: 'error'
+				});
+				$spinnerStore.shown = false;
+				return {};
+			});
+	}
 
 	function regenerateAllPosts() {
 		console.log('Triggering regeneration of all posts');
@@ -150,6 +201,11 @@
 			<NavLi
 				nonActiveClass="text-grey-200"
 				activeClass="text-grey-200 font-bold"
+				active={mediaPage}
+				href="/media">Images</NavLi>
+			<NavLi
+				nonActiveClass="text-grey-200"
+				activeClass="text-grey-200 font-bold"
 				active={templatesPage}
 				href="/templates">Templates</NavLi>
 			<NavLi
@@ -159,6 +215,8 @@
 				href="/project">Project</NavLi>
 
 			<Dropdown triggeredBy="#generate-menu">
+				<DropdownItem on:click={(e) => (regenMetaModal = true)}
+					>Rebuild project metadata</DropdownItem>
 				<DropdownItem on:click={(e) => (regenAllPostsModal = true)}>Rebuild all posts</DropdownItem>
 				<DropdownItem on:click={(e) => (regenAllPagesModal = true)}>Rebuild all pages</DropdownItem>
 			</Dropdown>
@@ -206,6 +264,25 @@
 			on:click={(e) => {
 				spinnerStore.set({ message: 'Regenerating...', shown: true });
 				regenerateAllPages();
+			}}
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Regenerate</button>
+	</svelte:fragment>
+</Modal>
+
+<Modal title="Regenerate project metadata?" bind:open={regenMetaModal} autoclose size="sm">
+	<p>Rescan all pages, posts, templates and images. Continue?</p>
+
+	<svelte:fragment slot="footer">
+		<button
+			type="button"
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Cancel</button>
+		<button
+			type="button"
+			on:click={(e) => {
+				spinnerStore.set({ message: 'Regenerating...', shown: true });
+				rebuildAll();
 			}}
 			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
 			>Regenerate</button>

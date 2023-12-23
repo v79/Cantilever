@@ -2,7 +2,14 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import HandlebarListItem from '../../components/handlebarListItem.svelte';
 	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import { FileType, FolderNode, HandlebarsItem, HandlebarsTemplate, Template, TemplateMetadata } from '../../models/structure';
+	import {
+		FileType,
+		FolderNode,
+		HandlebarsItem,
+		HandlebarsTemplate,
+		Template,
+		TemplateMetadata
+	} from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import {
@@ -62,20 +69,22 @@
 </body>
 </html>
 		`;
-		var newTemplate = new Template('/sources/templates/',new Date(), new TemplateMetadata('new template', Array<string>()));
-		
-			$activeStore.activeFile = '';
-			$activeStore.isNewFile = true;
-			$activeStore.isValid = false;
-			$activeStore.newSlug = '';
-			$activeStore.hasChanged = false;
+		var newTemplate = new Template(
+			'/sources/templates/',
+			new Date(),
+			new TemplateMetadata('new template', Array<string>())
+		);
 
-		var newHBTemplate = new HandlebarsTemplate(newTemplate,rawHTML);
-			console.log('Creating new template');
-			currentTemplate.set(newHBTemplate);
+		$activeStore.activeFile = '';
+		$activeStore.isNewFile = true;
+		$activeStore.isValid = false;
+		$activeStore.newSlug = '';
+		$activeStore.hasChanged = false;
+
+		var newHBTemplate = new HandlebarsTemplate(newTemplate, rawHTML);
+		console.log('Creating new template');
+		currentTemplate.set(newHBTemplate);
 	}
-
-	
 
 	/**
 	 * Load the handlebars template file into the currentTemplate store
@@ -104,7 +113,7 @@
 				$activeStore.isValid = true;
 				$activeStore.newSlug = '';
 				$activeStore.fileType = FileType.Template;
-				$activeStore.folder = new FolderNode('folder', 'sources/templates/', 0, []);
+				$activeStore.folder = new FolderNode('folder', 'sources/templates/', [], null);
 				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
 				$notificationStore.shown = true;
 				$spinnerStore.shown = false;
