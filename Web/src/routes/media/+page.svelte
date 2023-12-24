@@ -1,17 +1,12 @@
 <script lang="ts">
-	import { onDestroy, onMount, tick } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
+	import { onDestroy, onMount } from 'svelte';
 	import ActiveStoreView from '../../components/activeStoreView.svelte';
-	import SpinnerWrapper from '../../components/utilities/spinnerWrapper.svelte';
+	import SpinnerWrapper, { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
 	import { AS_CLEAR, activeStore } from '../../stores/appStatusStore.svelte';
+	import { allImagesStore, fetchImages, imageStore } from '../../stores/mediaStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
-	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import MediaStore, {
-		allImagesStore,
-		fetchImages,
-		imageStore
-	} from '../../stores/mediaStore.svelte';
 
 	afterNavigate(() => {
 		activeStore.set(AS_CLEAR);
@@ -78,6 +73,25 @@
 					</span>
 				{/if}
 			</h3>
+			<div>
+				{#if $allImagesStore.count > 0}
+					<div class="grid grid-cols-4 gap-4">
+						{#each $allImagesStore.images as image}
+							<div class="flex flex-col">
+								<div class="flex-grow">
+									{image.key}
+								</div>
+								<div class="flex-grow text-sm">
+									{image.lastUpdated}
+								</div>
+								<div class="flex-grow">
+									{image.url}
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
 		</div>
 	</div>
 	<div class="invisible basis-1/4 bg-slate-800 lg:visible">

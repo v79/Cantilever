@@ -45,7 +45,7 @@
 				allImagesStore.set({
 					count: data.data.count,
 					lastUpdated: data.data.lastUpdated,
-					images: data.data.images
+					images: tempImages
 				});
 			})
 			.catch((error) => {
