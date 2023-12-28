@@ -6,6 +6,7 @@
 	import { ImageDTO } from '../../models/structure';
 	import { AS_CLEAR, activeStore } from '../../stores/appStatusStore.svelte';
 	import {
+		addImage,
 		allImagesStore,
 		fetchImage,
 		fetchImages,
@@ -13,7 +14,7 @@
 	} from '../../stores/mediaStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
-	import { Modal } from 'flowbite-svelte';
+	import { Dropzone, Modal } from 'flowbite-svelte';
 
 	afterNavigate(() => {
 		activeStore.set(AS_CLEAR);
@@ -22,6 +23,8 @@
 
 	let hoveredImage: string = '';
 	let showDeleteModal = false;
+	let fileUploads: File[] = [];
+	let confirmUpload = false;
 
 	onMount(async () => {});
 
@@ -54,6 +57,13 @@
 		showDeleteModal = false;
 	}
 
+	function uploadImage() {
+		console.log('Upload image ' + fileUploads[0]);
+		addImage($userStore.token, fileUploads[0]);
+		fileUploads = [];
+		confirmUpload = false;
+	}
+
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
 		if (data) {
 			loadAllImages();
@@ -70,7 +80,7 @@
 						throw new Error(data.message);
 					}
 					if (data instanceof ImageDTO) {
-						let imageDiv = document.getElementById('img-' + data.key);
+						let imageDiv = document.getElementById('img-' + data.srcKey);
 						if (imageDiv) {
 							let imgElement = imageDiv.getElementsByTagName('img')[0];
 							if (imgElement) {
@@ -87,6 +97,40 @@
 				});
 		}
 	});
+
+	const dropHandle = (event: DragEvent) => {
+		fileUploads = [];
+		event.preventDefault();
+		if (event && event.dataTransfer) {
+			if (event.dataTransfer.items) {
+				[...event.dataTransfer.items].forEach((item, i) => {
+					if (item.kind === 'file') {
+						const file = item.getAsFile();
+						if (file) {
+							fileUploads.push(file);
+							fileUploads = fileUploads;
+							confirmUpload = true;
+						}
+					}
+				});
+			} else {
+				[...event.dataTransfer.files].forEach((file, i) => {
+					fileUploads.push(file);
+				});
+			}
+		}
+	};
+
+	const handleUploadChange = (event: Event) => {
+		if (event && event.target) {
+			const files = event.target.files;
+			if (files.length > 0) {
+				fileUploads.push(files[0].name);
+				fileUploads = fileUploads;
+				confirmUpload = true;
+			}
+		}
+	};
 
 	onDestroy(userStoreUnsubscribe);
 	onDestroy(imageStoreUnsubscribe);
@@ -107,6 +151,45 @@
 			<div>
 				{#if $allImagesStore.count > 0}
 					<div class="ml-20 mr-10 grid grid-cols-4 gap-4">
+						<Dropzone
+							defaultClass="flex flex-col justify-center items-center w-full h-64 rounded-lg border-2 border-gray-300 border-dashed cursor-pointer dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-slate-400 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600"
+							accept="image/*"
+							on:drop={dropHandle}
+							on:dragover={(event) => {
+								event.preventDefault();
+							}}
+							on:click={(event) => {
+								event.preventDefault();
+							}}
+							on:change={handleUploadChange}>
+							<div class="flex flex-col items-center justify-center border border-slate-600">
+								{#if fileUploads.length == 0}
+									<p class="flex-grow text-lg font-bold text-white">Drop image here</p>
+									<p class="flex-grow text-white">PNG, JPG, GIF or WEBP</p>
+								{:else}
+									<p class="flex-grow text-lg font-bold text-white">Confirm upload</p>
+									<p class="flex-grow text-white">
+										{fileUploads[0].name} ({fileUploads[0].size} bytes)
+									</p>
+								{/if}
+								{#if confirmUpload}
+									<div class="absolute bottom-2 z-10 rounded-sm bg-slate-200 opacity-75">
+										<button
+											class="btn btn-primary text-lg"
+											on:click={() => {
+												uploadImage();
+											}}>✅</button>
+
+										<button
+											class="btn btn-secondary text-lg"
+											on:click={() => {
+												confirmUpload = false;
+												fileUploads = [];
+											}}>🗑️</button>
+									</div>
+								{/if}
+							</div>
+						</Dropzone>
 						{#each $allImagesStore.images as image}
 							<div
 								id="img-{image.key}"
@@ -123,7 +206,7 @@
 								{#if hoveredImage == image.key}
 									<div
 										id="img-hover-controls"
-										class=" absolute bottom-2 z-10 rounded-sm bg-slate-200 opacity-75">
+										class="absolute bottom-2 z-10 rounded-sm bg-slate-200 opacity-75">
 										<button
 											class="btn btn-primary"
 											on:click={() => {

@@ -62,7 +62,7 @@
 		srcKey: string,
 		resolution: string | undefined
 	): Promise<Error | ImageDTO | undefined> {
-		console.log(`Loading image bytes for ${srcKey} at ${resolution}...`);
+		// console.log(`Loading image bytes for ${srcKey} at ${resolution}...`);
 		notificationStore.set({ shown: false, message: '', type: 'info' });
 		let encodedKey = encodeURIComponent(srcKey);
 		try {
@@ -95,5 +95,38 @@
 			console.log(error);
 			return error as Error;
 		}
+	}
+
+	export async function addImage(token: string, file: File) {
+		console.log('Adding image ' + file.name + '...');
+		console.log('File size: ' + file.size);
+		const reader = new FileReader();
+		reader.readAsDataURL(file);
+		reader.onload = () => {
+			console.log('File loaded');
+
+			// base64 encode the bytes in file
+			const dto = new ImageDTO(file.name, file.type, reader.result as string);
+			console.log(JSON.stringify(dto));
+			try {
+				const response = fetch('https://api.cantilevers.org/media/images/', {
+					method: 'POST',
+					headers: {
+						Accept: 'text/plain',
+						Authorization: 'Bearer ' + token,
+						'Content-Type': 'application/json'
+					},
+					mode: 'cors',
+					body: JSON.stringify(dto)
+				})
+					.then((response) => response.text())
+					.then((data) => {
+						console.log(data);
+					});
+			} catch (error) {
+				console.log(error);
+				return error as Error;
+			}
+		};
 	}
 </script>

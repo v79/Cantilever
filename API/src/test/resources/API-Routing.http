@@ -9,4 +9,5 @@ GET https://api.cantilevers.org/showAllRoutes
 Accept: application/json
 
 ### GET openAPI specification
-GET http://api.cantilevers.org/openapi
+GET http://api.cantilevers.org/openAPI
+Accept: text/plain

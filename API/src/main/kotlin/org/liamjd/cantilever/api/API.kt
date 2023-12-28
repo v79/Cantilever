@@ -159,14 +159,25 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
-        group("/media", Spec.Tag(name = "Media", description = "Create, update and manage images and other media files")) {
+        group(
+            "/media",
+            Spec.Tag(name = "Media", description = "Create, update and manage images and other media files")
+        ) {
             auth(cognitoJWTAuthorizer) {
                 get(
                     "/images",
                     mediaController::getImages,
                 ).spec(Spec.PathItem("Get images", "Returns a list of all images"))
 
-                get("/images/$SRCKEY/{resolution}", mediaController::getImage).spec(Spec.PathItem("Get image", "Returns an image with the given key and image resolution"))
+                get("/images/$SRCKEY/{resolution}", mediaController::getImage).spec(
+                    Spec.PathItem(
+                        "Get image",
+                        "Returns an image with the given key and image resolution"
+                    )
+                )
+
+                post("/images/", mediaController::uploadImage).supplies(setOf(MimeType.plainText))
+                    .spec(Spec.PathItem("Upload image", "Upload an image to the source bucket"))
             }
         }
 
@@ -202,7 +213,10 @@ class LambdaRouter : RequestHandlerWrapper() {
                     "/rebuild",
                     metadataController::rebuildFromSources,
                 ).expects(emptySet()).spec(
-                    Spec.PathItem("Rebuild metadata", "Rebuild the metadata.json file from the source pages, posts, templates and images")
+                    Spec.PathItem(
+                        "Rebuild metadata",
+                        "Rebuild the metadata.json file from the source pages, posts, templates and images"
+                    )
                 )
             }
         }

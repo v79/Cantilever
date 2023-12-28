@@ -49,12 +49,12 @@ export class MediaImage {
  * Raw image data, used for fetching images from S3
  */
 export class ImageDTO {
-	key: string;
+	srcKey: string;
 	contentType: string;
-	bytes: Blob;
+	bytes: Blob | string;
 
-	constructor(key: string, contentType: string, bytes: Blob) {
-		this.key = key;
+	constructor(key: string, contentType: string, bytes: Blob | string) {
+		this.srcKey = key;
 		this.contentType = contentType;
 		this.bytes = bytes;
 	}

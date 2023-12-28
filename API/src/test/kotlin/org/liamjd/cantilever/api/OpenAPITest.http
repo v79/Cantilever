@@ -2,5 +2,5 @@ GET https://api.cantilevers.org/openAPI
 Accept: text/plain
 
 ###
-#GET https://api.cantilevers.org/showAllRoutes
-#Accept: text/plain
+GET https://api.cantilevers.org/showAllRoutes
+Accept: text/plain

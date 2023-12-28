@@ -49,13 +49,14 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
     fun getImage(request: Request<Unit>): ResponseEntity<APIResult<ImageDTO>> {
         val srcKey =
             request.pathParameters["srcKey"] ?: return ResponseEntity.badRequest(APIResult.Error("No srcKey provided"))
-        val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8   )
+        val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
         val resolution = request.pathParameters["resolution"]
         info("Loading image $decodedKey at resolution $resolution")
         // srcKey will be /sources/images/<image-name>.<ext> so we need to strip off the /sources/images/ prefix and add the /generated/images/ prefix
         // I also need to move the <ext> to the end of the generated key
         val ext = decodedKey.substringAfterLast(".")
-        val generatedKey = decodedKey.removeSuffix(".${ext}").replace(S3_KEY.imagesPrefix, S3_KEY.generatedImagesPrefix) + if (resolution != null) {
+        val generatedKey = decodedKey.removeSuffix(".${ext}")
+            .replace(S3_KEY.imagesPrefix, S3_KEY.generatedImagesPrefix) + if (resolution != null) {
             "/${resolution}.$ext"
         } else {
             ".${ext}"
@@ -65,8 +66,37 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
 
         // need to base64 encode the image
         val encoded = Base64.encode(image)
-        return ResponseEntity.ok(APIResult.Success(value = ImageDTO(srcKey = srcKey, getContentTypeFromExtension(ext),bytes = encoded)))
+        return ResponseEntity.ok(
+            APIResult.Success(
+                value = ImageDTO(
+                    srcKey = srcKey,
+                    getContentTypeFromExtension(ext),
+                    bytes = encoded
+                )
+            )
+        )
     }
+
+    /**
+     * Upload an image to the S3 bucket
+     */
+    @OptIn(ExperimentalEncodingApi::class)
+    fun uploadImage(request: Request<ImageDTO>): ResponseEntity<APIResult<String>> {
+        val imageBody = request.body
+        val srcKey = "sources/images/${imageBody.srcKey}"
+        val contentType = imageBody.contentType
+        val bytes = Base64.decode(imageBody.bytes)
+        println("Bytes: ${bytes}")
+        try {
+            info("Uploading image $srcKey")
+            s3Service.putObjectAsBytes(key = srcKey, bucket = sourceBucket, contentType = contentType, contents = bytes)
+        } catch (e: Exception) {
+            error("Error uploading image $srcKey: ${e.message}")
+            return ResponseEntity.badRequest(APIResult.Error("Error uploading image $srcKey: ${e.message}"))
+        }
+        return ResponseEntity.ok(APIResult.Success(value = "Image'${srcKey}' uploaded successfully"))
+    }
+
 
     /**
      * Get the content type from the file extension

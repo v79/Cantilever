@@ -9,3 +9,7 @@ import org.liamjd.cantilever.openapi.APISchema
 @APISchema
 @Serializable
 class ImageDTO(val srcKey: String, val contentType: String, val bytes: String)
+
+@APISchema
+@Serializable
+class ImageUploadDTO(val srcKey: String, val contentType: String, val bytes: String)
