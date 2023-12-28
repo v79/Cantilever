@@ -105,7 +105,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                 } else {
                     try {
                         val contentType = input.getHeader("Content-Type")
-                        println("Processing route: input content type was $contentType. Deserializing...")
+                        println("Processing route: input content type was $contentType. Deserializing to ${kType}...")
                         // Deserialize the input string with the serializer declared for the kType specified in the API definition
                         // and based on the Content-Type header
 
@@ -130,9 +130,11 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                         ResponseEntity.badRequest(body = "Invalid request. Error is: ${mfe.message}")
                     } catch (se: SerializationException) {
                         println("Could not deserialize body. Error is: ${se.message}")
+                        println("Body was: ${input.body}")
                         ResponseEntity.badRequest(body = "Could not deserialize body. Error is: ${se.message}")
                     } catch (iae: IllegalArgumentException) {
                         println("Could not deserialize body. Error is: ${iae.message}")
+                        println("Body was: ${input.body}")
                         ResponseEntity.badRequest(body = "Could not deserialize body. Error is: ${iae.message}")
                     }
                 }

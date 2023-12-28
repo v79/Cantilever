@@ -106,8 +106,12 @@
 			console.log('File loaded');
 
 			// base64 encode the bytes in file
-			const dto = new ImageDTO(file.name, file.type, reader.result as string);
+			let base64 = reader.result as string;
+			console.log('Stripping out data:image/png;base64, prefix...');
+			base64.replace('data:image/png;base64,', '');
+			const dto = new ImageDTO(file.name, file.type, base64);
 			console.log(JSON.stringify(dto));
+
 			try {
 				const response = fetch('https://api.cantilevers.org/media/images/', {
 					method: 'POST',

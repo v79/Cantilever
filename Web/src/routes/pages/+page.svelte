@@ -114,6 +114,22 @@
 						>Save</button>
 				</div>
 				<PageEditorForm bind:metadata={$markdownStore.metadata} bind:previewModal />
+				<button
+						type="button"
+						on:click={() => {
+							if ($activeStore.isNewFile) {
+								saveNewFileSlug = createSlug($markdownStore?.metadata?.title ?? '');
+								$activeStore.newSlug = saveNewFileSlug;
+								$markdownStore.metadata.srcKey = saveNewFileSlug;
+								$activeStore.activeFile = saveNewFileSlug;
+								saveNewModal = true;
+							} else {
+								saveExistingModal = true;
+							}
+						}}
+						disabled={!$markdownStore?.metadata?.isValid() ?? true}
+						class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 disabled:bg-slate-800 disabled:hover:bg-purple-600"
+						>Save</button>
 			{:else}
 				<h3 class="px-8 text-center text-lg text-slate-200">
 					Load an existing file or create a new one to get started
