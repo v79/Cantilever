@@ -39,6 +39,25 @@ export class MediaImage {
 		this.lastUpdated = lastUpdated;
 		this.url = url;
 	}
+
+	shortName(): string {
+		return this.key.split('/').slice(-1).join();
+	}
+}
+
+/**
+ * Raw image data, used for fetching images from S3
+ */
+export class ImageDTO {
+	key: string;
+	contentType: string;
+	bytes: Blob;
+
+	constructor(key: string, contentType: string, bytes: Blob) {
+		this.key = key;
+		this.contentType = contentType;
+		this.bytes = bytes;
+	}
 }
 
 /**

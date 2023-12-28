@@ -2,7 +2,7 @@
 	import { writable } from 'svelte/store';
 	import { notificationStore } from './notificationStore.svelte';
 	import type { AllImages } from '../models/structure';
-	import { MediaImage } from '../models/structure';
+	import { ImageDTO, MediaImage } from '../models/structure';
 
 	export const allImagesStore = writable<AllImages>({
 		count: 0,
@@ -53,5 +53,50 @@
 				return error;
 			});
 		return;
+	}
+
+	/** Asynchronously fetch the bytes of an image
+	 * @param token authentication token
+	 * @param srcKey the key of the image to fetch
+	 * @param resolution the resolution of the image to fetch
+	 */
+	export async function fetchImage(
+		token: string,
+		srcKey: string,
+		resolution: string | undefined
+	): Promise<Error | ImageDTO | undefined> {
+		console.log(`Loading image bytes for ${srcKey} at ${resolution}...`);
+		notificationStore.set({ shown: false, message: '', type: 'info' });
+		let encodedKey = encodeURIComponent(srcKey);
+		try {
+			const response = await fetch(
+				'https://api.cantilevers.org/media/images/' + encodedKey + '/' + resolution,
+				{
+					method: 'GET',
+					headers: {
+						Accept: 'application/json',
+						Authorization: 'Bearer ' + token
+					},
+					mode: 'cors'
+				}
+			);
+
+			const data = await response.json();
+			if (data.data === undefined) {
+				throw new Error(data.message);
+			}
+
+			// deserialize
+			const tempImage = new ImageDTO(
+				decodeURIComponent(data.data.srcKey),
+				data.data.contentType,
+				data.data.bytes
+			);
+
+			return tempImage;
+		} catch (error) {
+			console.log(error);
+			return error as Error;
+		}
 	}
 </script>

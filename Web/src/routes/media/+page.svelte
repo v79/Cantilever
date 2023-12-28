@@ -3,8 +3,14 @@
 	import { onDestroy, onMount } from 'svelte';
 	import ActiveStoreView from '../../components/activeStoreView.svelte';
 	import SpinnerWrapper, { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
+	import { ImageDTO } from '../../models/structure';
 	import { AS_CLEAR, activeStore } from '../../stores/appStatusStore.svelte';
-	import { allImagesStore, fetchImages, imageStore } from '../../stores/mediaStore.svelte';
+	import {
+		allImagesStore,
+		fetchImage,
+		fetchImages,
+		imageStore
+	} from '../../stores/mediaStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
 
@@ -55,6 +61,31 @@
 
 	const imageStoreUnsubscribe = allImagesStore.subscribe((data) => {
 		imageStore.set(data.images);
+		// loop round each of the images in the store and asynchronously fetch the bytes
+		for (const image of data.images) {
+			fetchImage($userStore.token, image.key, '__thumb')
+				.then((data) => {
+					if (data instanceof Error) {
+						throw new Error(data.message);
+					}
+					if (data instanceof ImageDTO) {
+						console.log('Pushed image onto imageDTOs');
+						let imageDiv = document.getElementById('img-' + data.key);
+						if (imageDiv) {
+							let imgElement = imageDiv.getElementsByTagName('img')[0];
+							if (imgElement) {
+								imgElement.src = 'data:' + data.contentType + ';base64,' + data.bytes;
+							}
+						}
+					} else {
+						throw new Error('Unknown data type, expected ImageDTO');
+					}
+				})
+				.catch((error) => {
+					console.log(error);
+					return;
+				});
+		}
 	});
 
 	onDestroy(userStoreUnsubscribe);
@@ -75,17 +106,17 @@
 			</h3>
 			<div>
 				{#if $allImagesStore.count > 0}
-					<div class="grid grid-cols-4 gap-4">
+					<div class="ml-20 mr-10 grid grid-cols-4 gap-4">
 						{#each $allImagesStore.images as image}
-							<div class="flex flex-col">
-								<div class="flex-grow">
-									{image.key}
-								</div>
-								<div class="flex-grow text-sm">
-									{image.lastUpdated}
+							<div
+								id="img-{image.key}"
+								class="flex flex-col items-center justify-center hover:border hover:border-white">
+								<div class="flex-grow text-lg font-bold text-white">
+									{image.shortName()}
 								</div>
 								<div class="flex-grow">
 									{image.url}
+									<img src="" alt={image.url} />
 								</div>
 							</div>
 						{/each}
