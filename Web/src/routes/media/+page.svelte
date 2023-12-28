@@ -13,19 +13,15 @@
 	} from '../../stores/mediaStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
+	import { Modal } from 'flowbite-svelte';
 
 	afterNavigate(() => {
 		activeStore.set(AS_CLEAR);
 		$activeStore.currentPage = 'Media';
 	});
 
-	function mapReplacer(key: string, value: any): any {
-		if (value instanceof Map) {
-			return Object.fromEntries(value);
-		} else {
-			return value;
-		}
-	}
+	let hoveredImage: string = '';
+	let showDeleteModal = false;
 
 	onMount(async () => {});
 
@@ -53,6 +49,11 @@
 		}
 	}
 
+	function deleteImage() {
+		console.log('Delete image ' + hoveredImage);
+		showDeleteModal = false;
+	}
+
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
 		if (data) {
 			loadAllImages();
@@ -69,7 +70,6 @@
 						throw new Error(data.message);
 					}
 					if (data instanceof ImageDTO) {
-						console.log('Pushed image onto imageDTOs');
 						let imageDiv = document.getElementById('img-' + data.key);
 						if (imageDiv) {
 							let imgElement = imageDiv.getElementsByTagName('img')[0];
@@ -110,7 +110,9 @@
 						{#each $allImagesStore.images as image}
 							<div
 								id="img-{image.key}"
-								class="flex flex-col items-center justify-center hover:border hover:border-white">
+								on:mouseover={(event) => (hoveredImage = image.key)}
+								on:focus={(event) => {}}
+								class="flex flex-col items-center justify-center border border-slate-600 hover:border-white">
 								<div class="flex-grow text-lg font-bold text-white">
 									{image.shortName()}
 								</div>
@@ -118,6 +120,17 @@
 									{image.url}
 									<img src="" alt={image.url} />
 								</div>
+								{#if hoveredImage == image.key}
+									<div
+										id="img-hover-controls"
+										class=" absolute bottom-2 z-10 rounded-sm bg-slate-200 opacity-75">
+										<button
+											class="btn btn-primary"
+											on:click={() => {
+												showDeleteModal = true;
+											}}>🗑️</button>
+									</div>
+								{/if}
 							</div>
 						{/each}
 					</div>
@@ -130,3 +143,21 @@
 		<SpinnerWrapper spinnerID="globalSpinner" />
 	</div>
 </div>
+
+<Modal title="Delete image?" bind:open={showDeleteModal} autoclose size="sm">
+	<p>
+		Really delete image resolution named '{hoveredImage}'? This will delete the source file and the
+		pre-generated image resolutions, but it will not remove the image from the published website.
+	</p>
+	<svelte:fragment slot="footer">
+		<button
+			type="button"
+			class="rounded bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Cancel</button>
+		<button
+			type="button"
+			on:click={deleteImage}
+			class="rounded bg-red-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+			>Delete</button>
+	</svelte:fragment>
+</Modal>

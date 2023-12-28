@@ -29,7 +29,6 @@
 			.then((response) => response.json())
 			.then((data) => {
 				console.log('Loaded all images json');
-				console.dir(data);
 				if (data.data === undefined) {
 					throw new Error(data.message);
 				}
@@ -38,8 +37,6 @@
 				for (const i of data.data.images) {
 					tempImages.push(new MediaImage(i.srcKey, i.lastUpdated, i.url));
 				}
-				console.log('tempImages: ' + tempImages.length);
-				console.log('count: ' + data.data.count);
 
 				// set images store
 				allImagesStore.set({
