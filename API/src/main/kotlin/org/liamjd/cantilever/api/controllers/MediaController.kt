@@ -7,6 +7,7 @@ import org.liamjd.cantilever.models.ImageDTO
 import org.liamjd.cantilever.models.rest.ImageListDTO
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
+import java.net.URLDecoder
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -48,19 +49,36 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
     fun getImage(request: Request<Unit>): ResponseEntity<APIResult<ImageDTO>> {
         val srcKey =
             request.pathParameters["srcKey"] ?: return ResponseEntity.badRequest(APIResult.Error("No srcKey provided"))
+        val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8   )
         val resolution = request.pathParameters["resolution"]
-        info("Loading image $srcKey at resolution $resolution")
+        info("Loading image $decodedKey at resolution $resolution")
         // srcKey will be /sources/images/<image-name>.<ext> so we need to strip off the /sources/images/ prefix and add the /generated/images/ prefix
-        val generatedKey = srcKey.replace(S3_KEY.imagesPrefix, S3_KEY.generatedImagesPrefix) + if (resolution != null) {
-            "/$resolution"
+        // I also need to move the <ext> to the end of the generated key
+        val ext = decodedKey.substringAfterLast(".")
+        val generatedKey = decodedKey.removeSuffix(".${ext}").replace(S3_KEY.imagesPrefix, S3_KEY.generatedImagesPrefix) + if (resolution != null) {
+            "/${resolution}.$ext"
         } else {
-            ""
+            ".${ext}"
         }
         info("Generated key is $generatedKey")
         val image = s3Service.getObjectAsBytes(generatedKey, sourceBucket)
+
         // need to base64 encode the image
         val encoded = Base64.encode(image)
-        return ResponseEntity.ok(APIResult.Success(value = ImageDTO(srcKey = srcKey, bytes = encoded)))
+        return ResponseEntity.ok(APIResult.Success(value = ImageDTO(srcKey = srcKey, getContentTypeFromExtension(ext),bytes = encoded)))
+    }
+
+    /**
+     * Get the content type from the file extension
+     */
+    private fun getContentTypeFromExtension(extension: String): String {
+        return when (extension) {
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            else -> "image/jpeg"
+        }
     }
 
     override fun info(message: String) = println("INFO: MediaController: $message")

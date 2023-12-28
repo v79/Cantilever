@@ -212,6 +212,9 @@ class ContentTree {
     val statics: MutableList<ContentNode.StaticNode> = mutableListOf()
     val images: MutableList<ContentNode.ImageNode> = mutableListOf()
 
+    val postCount = items.filterIsInstance<ContentNode.PostNode>().size
+    val pageCount = items.filterIsInstance<ContentNode.PageNode>().size
+
     /**
      * Insert a node into the tree. It performs the appropriate insert based on the type of node.
      */

@@ -90,7 +90,7 @@ class MetadataController(sourceBucket: String) : KoinComponent, APIController(so
             return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a ${S3_KEY.postsKey} file."))
         }
 
-        return ResponseEntity.ok(body = APIResult.Success("Rebuilt metadata.json file in $sourceBucket with $filesProcessed files"))
+        return ResponseEntity.ok(body = APIResult.Success("Rebuilt metadata.json file in $sourceBucket with $filesProcessed (${contentTree.postCount} posts, ${contentTree.pageCount} pages, ${contentTree.images.size} images, ${contentTree.templates.size} templates, ${contentTree.statics.size} statics)"))
     }
 
     /**
