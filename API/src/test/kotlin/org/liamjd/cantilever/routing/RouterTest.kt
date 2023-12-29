@@ -382,7 +382,13 @@ class RouterTest {
     fun `can deserialize an object containing a base64 encoded string`() {
         val testR = TestRouter()
         val event = APIGatewayProxyRequestEvent().withPath("/base64").withHttpMethod("POST")
-            .withBody(Json.encodeToString(SimpleClass("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAFiUAABYlAUlSJPAAAABKSURBVChTY/hPJIArvLZi/f9jrf1QHiaAKwQp6mAQhfIwAVarsZmOVSE20wl6BmY6QYUw0wkqhAGwQmTH4womsEJkxyOzEeD/fwBMTXMyLCsQMwAAAABJRU5ErkJggg==")))
+            .withBody("""
+                {
+                    "srcKey": "tiny.png",
+                    "contentType": "image/png",
+                    "bytes": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAFiUAABYlAUlSJPAAAABKSURBVChTY/hPJIArvLZi/f9jrf1QHiaAKwQp6mAQhfIwAVarsZmOVSE20wl6BmY6QYUw0wkqhAGwQmTH4womsEJkxyOzEeD/fwBMTXMyLCsQMwAAAABJRU5ErkJggg=="
+                }
+            """.trimIndent())
             .withHeaders(contentJson + acceptText)
         val response = testR.handleRequest(event)
 
@@ -500,9 +506,9 @@ class TestRouter : RequestHandlerWrapper() {
         }
 
         // base64 encoding
-        post("/base64") { request: Request<SimpleClass> ->
+        post("/base64") { request: Request<Base64DTO> ->
             val obj = request.body
-            ResponseEntity.ok("Received post for object message=${obj.message}")
+            ResponseEntity.ok("Received post for Base64 message=${obj.srcKey}")
         }.expects(
             setOf(
                 MimeType.json
@@ -552,6 +558,10 @@ data class PostThis(val name: String, val count: Int)
 @Serializable
 @APISchema
 data class DontPostThis(val year: Long, val truth: Boolean)
+
+@Serializable
+@APISchema
+data class Base64DTO(val srcKey: String, val contentType: String, val bytes: String)
 
 object FakeAuthorizer : Authorizer {
     override val simpleName: String
