@@ -107,7 +107,7 @@
 
 			// base64 encode the bytes in file
 			const dto = new ImageDTO(file.name, file.type, reader.result as string);
-			console.log(JSON.stringify(dto));
+			let dtoString = JSON.stringify(dto);
 			try {
 				const response = fetch('https://api.cantilevers.org/media/images/', {
 					method: 'POST',
@@ -117,7 +117,7 @@
 						'Content-Type': 'application/json'
 					},
 					mode: 'cors',
-					body: JSON.stringify(dto)
+					body: dtoString
 				})
 					.then((response) => response.text())
 					.then((data) => {

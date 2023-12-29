@@ -85,9 +85,10 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
         val imageBody = request.body
         val srcKey = "sources/images/${imageBody.srcKey}"
         val contentType = imageBody.contentType
-        val bytes = Base64.decode(imageBody.bytes)
-        println("Bytes: ${bytes}")
         try {
+            val startIndex = imageBody.bytes.indexOf("base64,") + 7 // 7 is the length of the string "base64,"
+            val bytes = Base64.decode(imageBody.bytes, startIndex)
+            println("Bytes: ${bytes}")
             info("Uploading image $srcKey")
             s3Service.putObjectAsBytes(key = srcKey, bucket = sourceBucket, contentType = contentType, contents = bytes)
         } catch (e: Exception) {

@@ -149,47 +149,47 @@
 				{/if}
 			</h3>
 			<div>
-				{#if $allImagesStore.count > 0}
-					<div class="ml-20 mr-10 grid grid-cols-4 gap-4">
-						<Dropzone
-							defaultClass="flex flex-col justify-center items-center w-full h-64 rounded-lg border-2 border-gray-300 border-dashed cursor-pointer dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-slate-400 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600"
-							accept="image/*"
-							on:drop={dropHandle}
-							on:dragover={(event) => {
-								event.preventDefault();
-							}}
-							on:click={(event) => {
-								event.preventDefault();
-							}}
-							on:change={handleUploadChange}>
-							<div class="flex flex-col items-center justify-center border border-slate-600">
-								{#if fileUploads.length == 0}
-									<p class="flex-grow text-lg font-bold text-white">Drop image here</p>
-									<p class="flex-grow text-white">PNG, JPG, GIF or WEBP</p>
-								{:else}
-									<p class="flex-grow text-lg font-bold text-white">Confirm upload</p>
-									<p class="flex-grow text-white">
-										{fileUploads[0].name} ({fileUploads[0].size} bytes)
-									</p>
-								{/if}
-								{#if confirmUpload}
-									<div class="absolute bottom-2 z-10 rounded-sm bg-slate-200 opacity-75">
-										<button
-											class="btn btn-primary text-lg"
-											on:click={() => {
-												uploadImage();
-											}}>✅</button>
+				<div class="ml-20 mr-10 grid grid-cols-4 gap-4">
+					<Dropzone
+						defaultClass="flex flex-col justify-center items-center w-full h-64 rounded-lg border-2 border-gray-300 border-dashed cursor-pointer dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-slate-400 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600"
+						accept="image/*"
+						on:drop={dropHandle}
+						on:dragover={(event) => {
+							event.preventDefault();
+						}}
+						on:click={(event) => {
+							event.preventDefault();
+						}}
+						on:change={handleUploadChange}>
+						<div class="flex flex-col items-center justify-center border border-slate-600">
+							{#if fileUploads.length == 0}
+								<p class="flex-grow text-lg font-bold text-white">Drop image here</p>
+								<p class="flex-grow text-white">PNG, JPG, GIF or WEBP</p>
+							{:else}
+								<p class="flex-grow text-lg font-bold text-white">Confirm upload</p>
+								<p class="flex-grow text-white">
+									{fileUploads[0].name} ({fileUploads[0].size} bytes)
+								</p>
+							{/if}
+							{#if confirmUpload}
+								<div class="absolute bottom-2 z-10 rounded-sm bg-slate-200 opacity-75">
+									<button
+										class="btn btn-primary text-lg"
+										on:click={() => {
+											uploadImage();
+										}}>✅</button>
 
-										<button
-											class="btn btn-secondary text-lg"
-											on:click={() => {
-												confirmUpload = false;
-												fileUploads = [];
-											}}>🗑️</button>
-									</div>
-								{/if}
-							</div>
-						</Dropzone>
+									<button
+										class="btn btn-secondary text-lg"
+										on:click={() => {
+											confirmUpload = false;
+											fileUploads = [];
+										}}>🗑️</button>
+								</div>
+							{/if}
+						</div>
+					</Dropzone>
+					{#if $allImagesStore.count > 0}
 						{#each $allImagesStore.images as image}
 							<div
 								id="img-{image.key}"
@@ -216,8 +216,8 @@
 								{/if}
 							</div>
 						{/each}
-					</div>
-				{/if}
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>

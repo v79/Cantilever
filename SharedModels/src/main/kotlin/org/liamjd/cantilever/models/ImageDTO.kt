@@ -8,8 +8,8 @@ import org.liamjd.cantilever.openapi.APISchema
  */
 @APISchema
 @Serializable
-class ImageDTO(val srcKey: String, val contentType: String, val bytes: String)
-
-@APISchema
-@Serializable
-class ImageUploadDTO(val srcKey: String, val contentType: String, val bytes: String)
+class ImageDTO(val srcKey: String, val contentType: String, val bytes: String) {
+    override fun toString(): String {
+        return "ImageDTO(srcKey='$srcKey', contentType='$contentType', ${bytes.length} bytes starting with '${bytes.substring(0, 10)}'...)"
+    }
+}
