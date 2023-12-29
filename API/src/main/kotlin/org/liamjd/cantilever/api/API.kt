@@ -178,6 +178,10 @@ class LambdaRouter : RequestHandlerWrapper() {
 
                 post("/images/", mediaController::uploadImage).supplies(setOf(MimeType.plainText))
                     .spec(Spec.PathItem("Upload image", "Upload an image to the source bucket"))
+
+                delete("/images/$SRCKEY", mediaController::deleteImage).supplies(setOf(MimeType.plainText))
+                    .spec(Spec.PathItem("Delete image", "Delete an image from the source bucket"))
+
             }
         }
 
@@ -194,6 +198,15 @@ class LambdaRouter : RequestHandlerWrapper() {
                     generatorController::generatePage,
                 ).supplies(setOf(MimeType.plainText))
                     .spec(Spec.PathItem("Regenerate a page", "Trigger the regeneration of a page"))
+
+                put("/images/resolutions") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Not implemented yet!") }.supplies(
+                    setOf(MimeType.plainText)
+                ).spec(
+                    Spec.PathItem(
+                        "Regenerate images",
+                        "Trigger the regeneration of all images at all resolutions - NOT IMPLEMENTED"
+                    )
+                )
 
                 put(
                     "/template/{templateKey}", generatorController::generateTemplate

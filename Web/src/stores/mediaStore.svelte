@@ -129,4 +129,24 @@
 			}
 		};
 	}
+
+	export async function deleteImage(token: string, srcKey: string) {
+		console.log('Deleting image ' + srcKey + '...');
+		let encodedKey = encodeURIComponent(srcKey);
+		try {
+			const response = await fetch('https://api.cantilevers.org/media/images/' + encodedKey, {
+				method: 'DELETE',
+				headers: {
+					Accept: 'text/plain',
+					Authorization: 'Bearer ' + token
+				},
+				mode: 'cors'
+			});
+			const data = await response.text();
+			console.log(data);
+		} catch (error) {
+			console.log(error);
+			return error as Error;
+		}
+	}
 </script>

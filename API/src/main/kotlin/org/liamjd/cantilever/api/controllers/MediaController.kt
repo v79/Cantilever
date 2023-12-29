@@ -3,6 +3,7 @@ package org.liamjd.cantilever.api.controllers
 import org.koin.core.component.KoinComponent
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
+import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ImageDTO
 import org.liamjd.cantilever.models.rest.ImageListDTO
 import org.liamjd.cantilever.routing.Request
@@ -51,7 +52,7 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
             request.pathParameters["srcKey"] ?: return ResponseEntity.badRequest(APIResult.Error("No srcKey provided"))
         val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
         val resolution = request.pathParameters["resolution"]
-        info("Loading image $decodedKey at resolution $resolution")
+        info("Fetching image $decodedKey at resolution $resolution")
         // srcKey will be /sources/images/<image-name>.<ext> so we need to strip off the /sources/images/ prefix and add the /generated/images/ prefix
         // I also need to move the <ext> to the end of the generated key
         val ext = decodedKey.substringAfterLast(".")
@@ -61,7 +62,6 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
         } else {
             ".${ext}"
         }
-        info("Generated key is $generatedKey")
         val image = s3Service.getObjectAsBytes(generatedKey, sourceBucket)
 
         // need to base64 encode the image
@@ -82,20 +82,59 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
      */
     @OptIn(ExperimentalEncodingApi::class)
     fun uploadImage(request: Request<ImageDTO>): ResponseEntity<APIResult<String>> {
+        loadContentTree()
+
         val imageBody = request.body
         val srcKey = "sources/images/${imageBody.srcKey}"
         val contentType = imageBody.contentType
         try {
             val startIndex = imageBody.bytes.indexOf("base64,") + 7 // 7 is the length of the string "base64,"
             val bytes = Base64.decode(imageBody.bytes, startIndex)
-            println("Bytes: ${bytes}")
             info("Uploading image $srcKey")
             s3Service.putObjectAsBytes(key = srcKey, bucket = sourceBucket, contentType = contentType, contents = bytes)
+
+            // add the image to the content tree
+            val metadata = ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", srcKey)
+            contentTree.insertImage(metadata)
+            saveContentTree()
         } catch (e: Exception) {
             error("Error uploading image $srcKey: ${e.message}")
             return ResponseEntity.badRequest(APIResult.Error("Error uploading image $srcKey: ${e.message}"))
         }
         return ResponseEntity.ok(APIResult.Success(value = "Image'${srcKey}' uploaded successfully"))
+    }
+
+    /**
+     * Delete an image from the sources bucket, and remove all the generated variants
+     * This does NOT delete any images from the destination website bucket
+     */
+    fun deleteImage(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val srcKey =
+            request.pathParameters["srcKey"] ?: return ResponseEntity.badRequest(APIResult.Error("No srcKey provided"))
+        val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
+        loadContentTree()
+        loadProjectDefinition()
+
+        info("Deleting image $decodedKey and all its generated versions")
+        s3Service.deleteObject(decodedKey, sourceBucket)
+        val ext = decodedKey.substringAfterLast(".")
+
+        project.imageResolutions.forEach { resolution ->
+            val resolutionKey = decodedKey.replace(S3_KEY.imagesPrefix, S3_KEY.generatedImagesPrefix)
+                .removeSuffix(".$ext") + "/${resolution.key}.$ext"
+            info("Deleting generated image $resolutionKey")
+            s3Service.deleteObject(resolutionKey, sourceBucket)
+        }
+        s3Service.deleteObject(decodedKey.replaceFirst("sources", "generated"), sourceBucket)
+        s3Service.deleteObject(
+            decodedKey.replace(S3_KEY.imagesPrefix, S3_KEY.generatedImagesPrefix)
+                .removeSuffix(".$ext") + "/${S3_KEY.thumbnail}.$ext", sourceBucket
+        )
+
+        contentTree.deleteImage(ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", decodedKey))
+        saveContentTree()
+
+        return ResponseEntity.ok(APIResult.Success(value = "Image'${srcKey}' deleted successfully"))
     }
 
 
