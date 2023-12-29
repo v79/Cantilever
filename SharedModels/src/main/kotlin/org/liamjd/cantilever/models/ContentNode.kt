@@ -240,6 +240,9 @@ class ContentTree {
      * Insert a Template into the tree
      */
     fun insertTemplate(templateNode: ContentNode.TemplateNode) {
+        if(templates.contains(templateNode)) {
+            templates.remove(templateNode)
+        }
         templates.add(templateNode)
     }
 
@@ -247,6 +250,9 @@ class ContentTree {
      * Insert a static file, such as a .css file or image, into the tree
      */
     fun insertStatic(staticNode: ContentNode.StaticNode) {
+        if(statics.contains(staticNode)) {
+            statics.remove(staticNode)
+        }
         statics.add(staticNode)
     }
 
@@ -254,6 +260,9 @@ class ContentTree {
      * Insert an image into the tree
      */
     fun insertImage(imageNode: ContentNode.ImageNode) {
+        if(images.contains(imageNode)) {
+            images.remove(imageNode)
+        }
         images.add(imageNode)
     }
 
@@ -265,9 +274,17 @@ class ContentTree {
     }
 
     /**
+     * Delete an image from the tree
+     */
+    fun deleteImage(imageNode: ContentNode.ImageNode) {
+        images.remove(imageNode)
+    }
+
+    /**
      * Insert a folder into the tree.
      */
     fun insertFolder(folderNode: ContentNode.FolderNode) {
+        // not sure I want to delete first, but I don't want duplicates either
         items.add(folderNode)
     }
 
@@ -285,6 +302,7 @@ class ContentTree {
      * Insert a page into the tree. It also attempts to associate the page with its parent folder.
      */
     fun insertPage(page: ContentNode.PageNode) {
+        // check if page exists first??
         items.add(page)
         val parent = items.find { it.srcKey == page.parent } as ContentNode.FolderNode?
         parent?.children?.add(page.srcKey).also {
@@ -298,6 +316,7 @@ class ContentTree {
      *  Insert a page into the tree, and associate it with the specified parent folder.
      */
     fun insertPage(page: ContentNode.PageNode, folder: ContentNode.FolderNode) {
+        // check if page exists first??
         items.add(page)
         folder.children.add(page.srcKey)
         page.parent = folder.srcKey

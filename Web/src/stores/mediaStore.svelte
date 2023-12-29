@@ -106,12 +106,8 @@
 			console.log('File loaded');
 
 			// base64 encode the bytes in file
-			let base64 = reader.result as string;
-			console.log('Stripping out data:image/png;base64, prefix...');
-			base64.replace('data:image/png;base64,', '');
-			const dto = new ImageDTO(file.name, file.type, base64);
-			console.log(JSON.stringify(dto));
-
+			const dto = new ImageDTO(file.name, file.type, reader.result as string);
+			let dtoString = JSON.stringify(dto);
 			try {
 				const response = fetch('https://api.cantilevers.org/media/images/', {
 					method: 'POST',
@@ -121,7 +117,7 @@
 						'Content-Type': 'application/json'
 					},
 					mode: 'cors',
-					body: JSON.stringify(dto)
+					body: dtoString
 				})
 					.then((response) => response.text())
 					.then((data) => {
@@ -132,5 +128,25 @@
 				return error as Error;
 			}
 		};
+	}
+
+	export async function deleteImage(token: string, srcKey: string) {
+		console.log('Deleting image ' + srcKey + '...');
+		let encodedKey = encodeURIComponent(srcKey);
+		try {
+			const response = await fetch('https://api.cantilevers.org/media/images/' + encodedKey, {
+				method: 'DELETE',
+				headers: {
+					Accept: 'text/plain',
+					Authorization: 'Bearer ' + token
+				},
+				mode: 'cors'
+			});
+			const data = await response.text();
+			console.log(data);
+		} catch (error) {
+			console.log(error);
+			return error as Error;
+		}
 	}
 </script>

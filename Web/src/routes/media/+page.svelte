@@ -8,6 +8,7 @@
 	import {
 		addImage,
 		allImagesStore,
+		deleteImage,
 		fetchImage,
 		fetchImages,
 		imageStore
@@ -52,16 +53,27 @@
 		}
 	}
 
-	function deleteImage() {
+	function requestImageDeletion() {
 		console.log('Delete image ' + hoveredImage);
 		showDeleteModal = false;
+		$spinnerStore.message = 'Deleting image ' + hoveredImage;
+		$spinnerStore.shown = true;
+		deleteImage($userStore.token, hoveredImage);
+		$allImagesStore.count--;
+		$allImagesStore.images = $allImagesStore.images.filter((image) => {
+			return image.key != hoveredImage;
+		});
+		$spinnerStore.shown = false;
 	}
 
 	function uploadImage() {
+		$spinnerStore.message = 'Uploading image ' + fileUploads[0].name;
+		$spinnerStore.shown = true;
 		console.log('Upload image ' + fileUploads[0]);
 		addImage($userStore.token, fileUploads[0]);
 		fileUploads = [];
 		confirmUpload = false;
+		$spinnerStore.shown = false;
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
@@ -82,6 +94,7 @@
 					if (data instanceof ImageDTO) {
 						let imageDiv = document.getElementById('img-' + data.srcKey);
 						if (imageDiv) {
+							imageDiv.appendChild(document.createElement('img'));
 							let imgElement = imageDiv.getElementsByTagName('img')[0];
 							if (imgElement) {
 								imgElement.src = 'data:' + data.contentType + ';base64,' + data.bytes;
@@ -149,53 +162,53 @@
 				{/if}
 			</h3>
 			<div>
-				{#if $allImagesStore.count > 0}
-					<div class="ml-20 mr-10 grid grid-cols-4 gap-4">
-						<Dropzone
-							defaultClass="flex flex-col justify-center items-center w-full h-64 rounded-lg border-2 border-gray-300 border-dashed cursor-pointer dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-slate-400 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600"
-							accept="image/*"
-							on:drop={dropHandle}
-							on:dragover={(event) => {
-								event.preventDefault();
-							}}
-							on:click={(event) => {
-								event.preventDefault();
-							}}
-							on:change={handleUploadChange}>
-							<div class="flex flex-col items-center justify-center border border-slate-600">
-								{#if fileUploads.length == 0}
-									<p class="flex-grow text-lg font-bold text-white">Drop image here</p>
-									<p class="flex-grow text-white">PNG, JPG, GIF or WEBP</p>
-								{:else}
-									<p class="flex-grow text-lg font-bold text-white">Confirm upload</p>
-									<p class="flex-grow text-white">
-										{fileUploads[0].name} ({fileUploads[0].size} bytes)
-									</p>
-								{/if}
-								{#if confirmUpload}
-									<div class="absolute bottom-2 z-10 rounded-sm bg-slate-200 opacity-75">
-										<button
-											class="btn btn-primary text-lg"
-											on:click={() => {
-												uploadImage();
-											}}>✅</button>
+				<div class="ml-20 mr-10 grid grid-cols-4 gap-4">
+					<Dropzone
+						defaultClass="flex flex-col justify-center items-center w-full h-32 rounded-lg border-2 border-gray-300 border-dashed cursor-pointer dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-slate-400 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600"
+						accept="image/*"
+						on:drop={dropHandle}
+						on:dragover={(event) => {
+							event.preventDefault();
+						}}
+						on:click={(event) => {
+							event.preventDefault();
+						}}
+						on:change={handleUploadChange}>
+						<div class="relative flex flex-col items-center justify-center border border-slate-600">
+							{#if fileUploads.length == 0}
+								<p class="flex-grow text-lg font-bold text-white">Drop image here</p>
+								<p class="flex-grow text-white">PNG, JPG, GIF or WEBP</p>
+							{:else}
+								<p class="flex-grow text-lg font-bold text-white">Confirm upload</p>
+								<p class="flex-grow text-white">
+									{fileUploads[0].name} ({fileUploads[0].size} bytes)
+								</p>
+							{/if}
+							{#if confirmUpload}
+								<div class="absolute bottom-2 z-10 rounded-sm bg-slate-200 opacity-75">
+									<button
+										class="btn btn-primary text-lg"
+										on:click={() => {
+											uploadImage();
+										}}>✅</button>
 
-										<button
-											class="btn btn-secondary text-lg"
-											on:click={() => {
-												confirmUpload = false;
-												fileUploads = [];
-											}}>🗑️</button>
-									</div>
-								{/if}
-							</div>
-						</Dropzone>
+									<button
+										class="btn btn-secondary text-lg"
+										on:click={() => {
+											confirmUpload = false;
+											fileUploads = [];
+										}}>🗑️</button>
+								</div>
+							{/if}
+						</div>
+					</Dropzone>
+					{#if $allImagesStore.count > 0}
 						{#each $allImagesStore.images as image}
 							<div
 								id="img-{image.key}"
 								on:mouseover={(event) => (hoveredImage = image.key)}
 								on:focus={(event) => {}}
-								class="flex flex-col items-center justify-center border border-slate-600 hover:border-white">
+								class="relative flex flex-col items-center justify-center border border-slate-600 hover:border-white">
 								<div class="flex-grow text-lg font-bold text-white">
 									{image.shortName()}
 								</div>
@@ -206,7 +219,7 @@
 								{#if hoveredImage == image.key}
 									<div
 										id="img-hover-controls"
-										class="absolute bottom-2 z-10 rounded-sm bg-slate-200 opacity-75">
+										class="absolute bottom-2 rounded-sm bg-slate-200 opacity-75">
 										<button
 											class="btn btn-primary"
 											on:click={() => {
@@ -216,8 +229,8 @@
 								{/if}
 							</div>
 						{/each}
-					</div>
-				{/if}
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>
@@ -239,7 +252,7 @@
 			>Cancel</button>
 		<button
 			type="button"
-			on:click={deleteImage}
+			on:click={requestImageDeletion}
 			class="rounded bg-red-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-700 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
 			>Delete</button>
 	</svelte:fragment>

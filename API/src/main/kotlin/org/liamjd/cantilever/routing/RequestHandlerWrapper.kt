@@ -105,7 +105,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                 } else {
                     try {
                         val contentType = input.getHeader("Content-Type")
-                        println("Processing route: input content type was $contentType. Deserializing to ${kType}...")
+                        println("Processing route: input content type was $contentType. Deserializing...")
                         // Deserialize the input string with the serializer declared for the kType specified in the API definition
                         // and based on the Content-Type header
 
@@ -122,20 +122,23 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                                 input.body
                             }
                         } else input.body
-
                         val request = Request(input, bodyObject, routerFunction.requestPredicate.pathPattern)
-                        (handler as HandlerFunction<*, *>)(request)
+                        // call the handler function with the request object; this will return a ResponseEntity; if it catches an error then that's the fault of the handler function
+                        try {
+                            (handler as HandlerFunction<*, *>)(request)
+                        } catch (e: Exception) {
+                            println("Error calling handler function: ${e.message}")
+                            ResponseEntity.serverError(body = "Server error in processing request for ${handler}: ${e.message}")
+                        }
                     } catch (mfe: MissingFieldException) {
                         println("Invalid request. Error is: ${mfe.message}")
                         ResponseEntity.badRequest(body = "Invalid request. Error is: ${mfe.message}")
                     } catch (se: SerializationException) {
                         println("Could not deserialize body. Error is: ${se.message}")
-                        println("Body was: ${input.body}")
                         ResponseEntity.badRequest(body = "Could not deserialize body. Error is: ${se.message}")
                     } catch (iae: IllegalArgumentException) {
-                        println("Could not deserialize body. Error is: ${iae.message}")
-                        println("Body was: ${input.body}")
-                        ResponseEntity.badRequest(body = "Could not deserialize body. Error is: ${iae.message}")
+                        println("Illegal argument exception. Error is: ${iae.message}")
+                        ResponseEntity.badRequest(body = "Could not deserialize body; IllegalArgumentException. Error is: ${iae.message}")
                     }
                 }
             }
