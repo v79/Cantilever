@@ -14,6 +14,7 @@ object S3_KEY {
     const val staticsPrefix = "${sources}/statics/"
     const val projectKey = "$sources/cantilever.yaml"
     const val fragments = "$generated/htmlFragments/"
+    const val generatedImagesPrefix = "$generated/images/"
     const val thumbnail = "__thumb"
 
     @Deprecated("Use metadataKey instead")

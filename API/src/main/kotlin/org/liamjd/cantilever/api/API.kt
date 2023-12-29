@@ -42,6 +42,7 @@ class LambdaRouter : RequestHandlerWrapper() {
     private val generatorController = GeneratorController(sourceBucket = sourceBucket)
     private val projectController = ProjectController(sourceBucket = sourceBucket)
     private val metadataController = MetadataController(sourceBucket = sourceBucket)
+    private val mediaController = MediaController(sourceBucket = sourceBucket)
 
     private val cognitoJWTAuthorizer = CognitoJWTAuthorizer(
         mapOf(
@@ -158,6 +159,32 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
+        group(
+            "/media",
+            Spec.Tag(name = "Media", description = "Create, update and manage images and other media files")
+        ) {
+            auth(cognitoJWTAuthorizer) {
+                get(
+                    "/images",
+                    mediaController::getImages,
+                ).spec(Spec.PathItem("Get images", "Returns a list of all images"))
+
+                get("/images/$SRCKEY/{resolution}", mediaController::getImage).spec(
+                    Spec.PathItem(
+                        "Get image",
+                        "Returns an image with the given key and image resolution"
+                    )
+                )
+
+                post("/images/", mediaController::uploadImage).supplies(setOf(MimeType.plainText))
+                    .spec(Spec.PathItem("Upload image", "Upload an image to the source bucket"))
+
+                delete("/images/$SRCKEY", mediaController::deleteImage).supplies(setOf(MimeType.plainText))
+                    .spec(Spec.PathItem("Delete image", "Delete an image from the source bucket"))
+
+            }
+        }
+
         group("/generate", Spec.Tag("Generation", "Trigger the regeneration of pages and blog posts")) {
             auth(cognitoJWTAuthorizer) {
                 put(
@@ -172,6 +199,15 @@ class LambdaRouter : RequestHandlerWrapper() {
                 ).supplies(setOf(MimeType.plainText))
                     .spec(Spec.PathItem("Regenerate a page", "Trigger the regeneration of a page"))
 
+                put("/images/resolutions") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Not implemented yet!") }.supplies(
+                    setOf(MimeType.plainText)
+                ).spec(
+                    Spec.PathItem(
+                        "Regenerate images",
+                        "Trigger the regeneration of all images at all resolutions - NOT IMPLEMENTED"
+                    )
+                )
+
                 put(
                     "/template/{templateKey}", generatorController::generateTemplate
                 ).supplies(setOf(MimeType.plainText)).expects(emptySet())
@@ -184,13 +220,16 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
-        group("/metadata", Spec.Tag("Metadata", "Manage the metadata.yaml file for the project")) {
+        group("/metadata", Spec.Tag("Metadata", "Manage the metadata.json file for the project")) {
             auth(cognitoJWTAuthorizer) {
                 put(
                     "/rebuild",
                     metadataController::rebuildFromSources,
-                ).spec(
-                    Spec.PathItem("Rebuild metadata", "Rebuild the metadata.yaml file from the source files")
+                ).expects(emptySet()).spec(
+                    Spec.PathItem(
+                        "Rebuild metadata",
+                        "Rebuild the metadata.json file from the source pages, posts, templates and images"
+                    )
                 )
             }
         }

@@ -34,7 +34,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             val pageList = PageListDTO(
                 count = sorted.size,
                 lastUpdated = lastUpdated,
-                pages = pages,
+                pages = sorted,
                 folders = folders
             )
             ResponseEntity.ok(body = APIResult.Success(value = pageList))

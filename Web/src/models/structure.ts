@@ -27,6 +27,40 @@ export class Template {
 }
 
 /**
+ * An image file may have in one of several different formats, and may have multiple resolutions
+ */
+export class MediaImage {
+	key: string;
+	lastUpdated: Date;
+	url: string;
+
+	constructor(key: string, lastUpdated: Date, url: string) {
+		this.key = key;
+		this.lastUpdated = lastUpdated;
+		this.url = url;
+	}
+
+	shortName(): string {
+		return this.key.split('/').slice(-1).join();
+	}
+}
+
+/**
+ * Raw image data, used for fetching images from S3
+ */
+export class ImageDTO {
+	srcKey: string;
+	contentType: string;
+	bytes: Blob | string;
+
+	constructor(key: string, contentType: string, bytes: Blob | string) {
+		this.srcKey = key;
+		this.contentType = contentType;
+		this.bytes = bytes;
+	}
+}
+
+/**
  * Yaml frontmatter for Templates
  */
 export class TemplateMetadata {
@@ -64,6 +98,15 @@ export interface AllTemplates {
 	count: number;
 	lastUpdated: Date;
 	templates: Array<Template>;
+}
+
+/**
+ * Wrapper collection for Images
+ */
+export interface AllImages {
+	count: number;
+	lastUpdated: Date;
+	images: Array<MediaImage>;
 }
 
 /**

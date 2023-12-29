@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Cantilever API
   description: API for Cantilever, providing methods for managing the content of a static website
-  version: 0.0.8
+  version: 0.0.9
 servers:
   - url: https://api.cantilevers.org
 tags:
@@ -12,13 +12,17 @@ tags:
     description: Create, update and manage blog posts
   - name: Templates
     description: Create, update and manage templates
+  - name: Media
+    description: Create, update and manage images and other media files
   - name: Generation
     description: Trigger the regeneration of pages and blog posts
   - name: Metadata
-    description: Manage the metadata.yaml file for the project
+    description: Manage the metadata.json file for the project
 paths:
   /warm:
     get:
+      summary: Warm
+      description: Warms the lambda router
       responses:
         200:
           description: OK
@@ -52,7 +56,7 @@ paths:
         content:
           application/yaml:
             schema:
-              type: string
+              $ref: '#/components/schemas/org.liamjd.cantilever.models.CantileverProject'
       responses:
         200:
           description: OK
@@ -87,7 +91,7 @@ paths:
         content:
           application/json:
             schema:
-              type: string
+              $ref: '#/components/schemas/org.liamjd.cantilever.models.rest.MarkdownPageDTO'
       responses:
         200:
           description: OK
@@ -221,6 +225,8 @@ paths:
     get:
       tags:
         - Posts
+      summary: Preview post
+      description: When implemented, this will return a preview of a post
       security:
         - cognitojwt-bearer-token-authorizer: []
       parameters:
@@ -248,7 +254,7 @@ paths:
         content:
           application/json:
             schema:
-              type: string
+              $ref: '#/components/schemas/org.liamjd.cantilever.models.rest.PostNodeRestDTO'
       responses:
         200:
           description: OK
@@ -302,7 +308,68 @@ paths:
         content:
           application/json:
             schema:
-              type: string
+              $ref: '#/components/schemas/org.liamjd.cantilever.models.rest.HandlebarsTemplate'
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /media/images:
+    get:
+      tags:
+        - Media
+      summary: Get images
+      description: Returns a list of all images
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+  /media/images/{srcKey}/{resolution}:
+    get:
+      tags:
+        - Media
+      summary: Get image
+      description: Returns an image with the given key and image resolution
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: resolution
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+  /media/images/:
+    put:
+      tags:
+        - Media
+      summary: Upload image
+      description: Upload an image to the source bucket
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/org.liamjd.cantilever.models.ImageDTO'
       responses:
         200:
           description: OK
@@ -390,14 +457,11 @@ paths:
       tags:
         - Metadata
       summary: Rebuild metadata
-      description: Rebuild the metadata.yaml file from the source files
+      description: Rebuild the metadata.json file from the source pages, posts, templates and images
       security:
         - cognitojwt-bearer-token-authorizer: []
       requestBody:
         content:
-          application/json:
-            schema:
-              type: string
       responses:
         200:
           description: OK
@@ -407,6 +471,8 @@ paths:
                 type: string
   /openAPI:
     get:
+      summary: OpenAPI
+      description: Returns the OpenAPI specification for this API
       responses:
         200:
           description: OK
@@ -416,6 +482,8 @@ paths:
                 type: string
   /showAllRoutes:
     get:
+      summary: Show all routes
+      description: Returns a list of all routes in the API, a rather clumsy text list.
       responses:
         200:
           description: OK
@@ -429,3 +497,145 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  schemas:
+    org.liamjd.cantilever.models.CantileverProject:
+      type: object
+      properties:
+        projectName:
+          type: string
+        author:
+          type: string
+        dateFormat:
+          type: string
+        dateTimeFormat:
+          type: string
+        imageResolutions:
+          type: object
+          description: object(Map<String, ImgRes>)
+        attributes:
+          type: object
+          description: object(Map<String, String>?)
+    org.liamjd.cantilever.models.ImageDTO:
+      type: object
+      properties:
+        srcKey:
+          type: string
+        contentType:
+          type: string
+        bytes:
+          type: string
+    org.liamjd.cantilever.models.TemplateList:
+      type: object
+      properties:
+        count:
+          type: number
+        lastUpdated:
+          type: object
+          description: object(Instant)
+        templates:
+          type: object
+          description: object(List<Template>)
+    org.liamjd.cantilever.models.Template:
+      type: object
+      properties:
+        key:
+          type: string
+        lastUpdated:
+          type: object
+          description: object(Instant)
+        metadata:
+          type: object
+          description: object(TemplateMetadata)
+    org.liamjd.cantilever.models.TemplateMetadata:
+      type: object
+      properties:
+        name:
+          type: string
+        sections:
+          type: object
+          description: object(List<String>?)
+    org.liamjd.cantilever.models.rest.HandlebarsTemplate:
+      type: object
+      properties:
+        template:
+          type: object
+          description: object(Template)
+        body:
+          type: string
+    org.liamjd.cantilever.models.rest.ImageListDTO:
+      type: object
+      properties:
+        count:
+          type: number
+        lastUpdated:
+          type: object
+          description: object(Instant)
+        images:
+          type: object
+          description: object(List<ImageNode>)
+    org.liamjd.cantilever.models.rest.MarkdownPageDTO:
+      type: object
+      properties:
+        metadata:
+          type: object
+          description: object(PageNode)
+        body:
+          type: string
+        type:
+          type: object
+          description: object(String?)
+    org.liamjd.cantilever.models.rest.PageListDTO:
+      type: object
+      properties:
+        count:
+          type: number
+        lastUpdated:
+          type: object
+          description: object(Instant)
+        pages:
+          type: object
+          description: object(List<PageNode>)
+        folders:
+          type: object
+          description: object(List<FolderNode>)
+    org.liamjd.cantilever.models.rest.PostListDTO:
+      type: object
+      properties:
+        count:
+          type: number
+        lastUpdated:
+          type: object
+          description: object(Instant)
+        posts:
+          type: object
+          description: object(List<PostNode>)
+    org.liamjd.cantilever.models.rest.PostNodeRestDTO:
+      type: object
+      properties:
+        srcKey:
+          type: string
+        title:
+          type: string
+        templateKey:
+          type: string
+        date:
+          type: object
+          description: object(LocalDate)
+        slug:
+          type: string
+        body:
+          type: string
+        attributes:
+          type: object
+          description: object(Map<String, String>)
+    org.liamjd.cantilever.models.rest.TemplateListDTO:
+      type: object
+      properties:
+        count:
+          type: number
+        lastUpdated:
+          type: object
+          description: object(Instant)
+        templates:
+          type: object
+          description: object(List<TemplateNode>)
