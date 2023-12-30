@@ -1,6 +1,6 @@
 package org.liamjd.cantilever.lambda.md
 
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class MarkdownProcessorKtTest {
@@ -32,5 +32,22 @@ class MarkdownProcessorKtTest {
         """.trimIndent()
         val actual = converter.convertMDToHTML(mdSource)
         assertEquals(expected, actual.trim())
+    }
+
+    @Test
+    fun `extract images from markdown`() {
+        val mdSource = """
+            # This is a test
+            ## This is a subheading
+            This is some text
+            ![image](/images/my-image.jpg "image title here")
+            """.trimIndent()
+        val expected = 1
+        val actual = converter.extractImages(mdSource)
+        assertEquals(expected, actual.size)
+        actual.forEach { image ->
+            assertEquals("/images/my-image.jpg", image.url.toString())
+            assertEquals("image title here", image.title.toString())
+        }
     }
 }

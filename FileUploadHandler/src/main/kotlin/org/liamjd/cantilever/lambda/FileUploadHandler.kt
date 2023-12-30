@@ -165,7 +165,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val pageSrcKey = srcKey.removePrefix(S3_KEY.pagesPrefix) // just want the actual file name
             // extract page model
             val metadata =
-                ContentMetaDataBuilder.PageBuilder.buildFromSourceString(sourceString, pageSrcKey)
+                ContentMetaDataBuilder.PageBuilder.buildFromSourceString(sourceString, srcKey)
             val markdownBody = sourceString.stripFrontMatter()
             val pageModelMsg = MarkdownSQSMessage.PageUploadMsg(metadata, markdownBody)
             logger.info("Built page model for: ${pageModelMsg.metadata.srcKey}")

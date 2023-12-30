@@ -35,6 +35,7 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
         val sourceBucket = System.getenv("source_bucket")
+        val destinationBucket = System.getenv("destination_bucket")
         logger = context.logger
         processor = ImageProcessor(logger)
 
@@ -48,6 +49,10 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
             when (val sqsMsg = Json.decodeFromString<ImageSQSMessage>(eventRecord.body)) {
                 is ImageSQSMessage.ResizeImageMsg -> {
                     response = processImageResize(sqsMsg, sourceBucket)
+                }
+                is ImageSQSMessage.CopyImagesMsg -> {
+                    logger.info("Received request to copy images from source to destination bucket")
+                    response =  processImageCopy(sqsMsg, sourceBucket, destinationBucket)
                 }
             }
         }
@@ -122,6 +127,32 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
 
         } catch (e: Exception) {
             logger.error("Failed to process image file; ${e.message}")
+            responseString = "500 Internal Server Error"
+        }
+
+        return responseString
+    }
+
+    private fun processImageCopy(imageMessage: ImageSQSMessage.CopyImagesMsg, sourceBucket: String, destinationBucket: String): String {
+        var responseString = "200 OK"
+
+        try {
+            imageMessage.imageList.forEach { imageKey ->
+                // imageKey will be as requested by the markdown file, e.g. /images/my-image.jpg
+                // sourceKey will be the full path in the source bucket, e.g. generated/images/my-image.jpg
+                // and destination key will be the full path in the destination bucket, e.g. images/my-image.jpg (no leading slash)
+                // TODO: this requires the user to always request images in a folder called images.
+                val sourceKey = "${S3_KEY.generated}${imageKey}"
+                val destinationKey = imageKey.removePrefix("/")
+                logger.info("Copying $sourceKey to $destinationKey, from $sourceBucket to $destinationBucket")
+                val copyResult = s3Service.copyObject(sourceKey, destinationKey, sourceBucket, destinationBucket)
+                if(copyResult == -1) {
+                    logger.error("Failed to copy $sourceKey to $destinationKey, from $sourceBucket to $destinationBucket")
+                    responseString = "500 Internal Server Error"
+                }
+            }
+        } catch (e: Exception) {
+            logger.error("Failed to copy images; ${e.message}")
             responseString = "500 Internal Server Error"
         }
 

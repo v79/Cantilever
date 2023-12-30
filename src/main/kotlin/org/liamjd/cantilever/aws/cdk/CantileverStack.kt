@@ -96,7 +96,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             memory = 320,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
-                ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl
+                ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl,
+                ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl
             )
         )
 
@@ -174,6 +175,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         imageProcessorLambda.apply {
             sourceBucket.grantRead(this)
             sourceBucket.grantWrite(this)
+            destinationBucket.grantWrite(this)
         }
 
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
@@ -207,6 +209,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         markdownProcessorLambda.apply {
             markdownProcessingQueue.queue.grantConsumeMessages(this)
             handlebarProcessingQueue.queue.grantSendMessages(this)
+            imageProcessingQueue.queue.grantSendMessages(this)
         }
         templateProcessorLambda.apply {
             handlebarProcessingQueue.queue.grantConsumeMessages(this)
