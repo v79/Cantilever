@@ -176,7 +176,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                     )
                 )
 
-                post("/images/", mediaController::uploadImage).supplies(setOf(MimeType.plainText))
+                post("/images/", mediaController::uploadImage)
                     .spec(Spec.PathItem("Upload image", "Upload an image to the source bucket"))
 
                 delete("/images/$SRCKEY", mediaController::deleteImage).supplies(setOf(MimeType.plainText))

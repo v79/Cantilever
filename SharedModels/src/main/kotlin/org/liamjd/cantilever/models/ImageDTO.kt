@@ -10,6 +10,11 @@ import org.liamjd.cantilever.openapi.APISchema
 @Serializable
 class ImageDTO(val srcKey: String, val contentType: String, val bytes: String) {
     override fun toString(): String {
-        return "ImageDTO(srcKey='$srcKey', contentType='$contentType', ${bytes.length} bytes starting with '${bytes.substring(0, 10)}'...)"
+        return "ImageDTO(srcKey='$srcKey', contentType='$contentType', ${bytes.length} bytes starting with '${
+            bytes.substring(
+                0,
+                (if (bytes.length > 10) 10 else bytes.length)
+            )
+        }'...)"
     }
 }

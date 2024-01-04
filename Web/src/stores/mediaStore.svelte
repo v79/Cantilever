@@ -97,37 +97,43 @@
 		}
 	}
 
-	export async function addImage(token: string, file: File) {
+	export async function addImage(token: string, file: File): Promise<Error | ImageDTO> {
 		console.log('Adding image ' + file.name + '...');
 		console.log('File size: ' + file.size);
 		const reader = new FileReader();
 		reader.readAsDataURL(file);
-		reader.onload = () => {
-			console.log('File loaded');
+		return new Promise((resolve, reject) => {
+			reader.onload = () => {
+				console.log('File loaded for upload');
 
-			// base64 encode the bytes in file
-			const dto = new ImageDTO(file.name, file.type, reader.result as string);
-			let dtoString = JSON.stringify(dto);
-			try {
-				const response = fetch('https://api.cantilevers.org/media/images/', {
-					method: 'POST',
-					headers: {
-						Accept: 'text/plain',
-						Authorization: 'Bearer ' + token,
-						'Content-Type': 'application/json'
-					},
-					mode: 'cors',
-					body: dtoString
-				})
-					.then((response) => response.text())
-					.then((data) => {
-						console.log(data);
-					});
-			} catch (error) {
-				console.log(error);
-				return error as Error;
-			}
-		};
+				// base64 encode the bytes in file
+				const dto = new ImageDTO(file.name, file.type, reader.result as string);
+				let dtoString = JSON.stringify(dto);
+
+				try {
+					const response = fetch('https://api.cantilevers.org/media/images/', {
+						method: 'POST',
+						headers: {
+							Accept: 'application/json',
+							Authorization: 'Bearer ' + token,
+							'Content-Type': 'application/json'
+						},
+						mode: 'cors',
+						body: dtoString
+					})
+						.then((response) =>response.json() )
+						.then((data) => {
+							console.log(data);
+							// we set the bytes to the result of the reader, rather than from the API result, because we've already got the bytes
+							let result = new ImageDTO(data.data.srcKey, data.data.contentType, reader.result as string);
+							resolve(result);
+						});
+				} catch (error) {
+					console.log(error);
+					resolve(error as Error);
+				}
+			};
+		});
 	}
 
 	export async function deleteImage(token: string, srcKey: string) {

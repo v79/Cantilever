@@ -3,7 +3,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import ActiveStoreView from '../../components/activeStoreView.svelte';
 	import SpinnerWrapper, { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import { ImageDTO } from '../../models/structure';
+	import { ImageDTO, MediaImage } from '../../models/structure';
 	import { AS_CLEAR, activeStore } from '../../stores/appStatusStore.svelte';
 	import {
 		addImage,
@@ -66,14 +66,37 @@
 		$spinnerStore.shown = false;
 	}
 
-	function uploadImage() {
+	async function uploadImage() {
 		$spinnerStore.message = 'Uploading image ' + fileUploads[0].name;
 		$spinnerStore.shown = true;
-		console.log('Upload image ' + fileUploads[0]);
-		addImage($userStore.token, fileUploads[0]);
-		fileUploads = [];
-		confirmUpload = false;
-		$spinnerStore.shown = false;
+		console.log('Upload image ' + fileUploads[0] + ' and awaiting response');
+		let imgResponse = await addImage($userStore.token, fileUploads[0]);
+		console.log('Got response!');
+		if (imgResponse instanceof Error) {
+			console.log('Error uploading image: ' + imgResponse.message);
+			$notificationStore.message = imgResponse.message;
+			$notificationStore.shown = true;
+			$spinnerStore.shown = false;
+			return;
+		} else if(imgResponse instanceof ImageDTO) {
+			// API is returning an ImageDTO, so we can assume it's a success
+			// let destinationName = imgResponse.srcKey.split('=')[1].replace(')', '');
+			console.log('Response was: ' + imgResponse.srcKey);
+			$notificationStore.message = 'Uploaded image ' + imgResponse.srcKey;
+			$notificationStore.shown = true;
+			$allImagesStore.count++;
+			let newImage = new MediaImage(imgResponse.srcKey, new Date(), imgResponse.srcKey);
+			$allImagesStore.images.push(newImage);
+			confirmUpload = false;
+			$spinnerStore.shown = false;
+			console.log('Fetching image bytes for ' + newImage.key);
+			let bytesToPlace = (imgResponse.bytes as string).split(',')[1];
+			placeImage(true, newImage.key, imgResponse.contentType, bytesToPlace as unknown as Blob);
+			fileUploads = [];
+		} else {
+			// error, unknown response type
+			console.log('Unknown response type: ' + imgResponse);
+		}
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
@@ -86,30 +109,42 @@
 		imageStore.set(data.images);
 		// loop round each of the images in the store and asynchronously fetch the bytes
 		for (const image of data.images) {
-			fetchImage($userStore.token, image.key, '__thumb')
-				.then((data) => {
-					if (data instanceof Error) {
-						throw new Error(data.message);
-					}
-					if (data instanceof ImageDTO) {
-						let imageDiv = document.getElementById('img-' + data.srcKey);
-						if (imageDiv) {
-							imageDiv.appendChild(document.createElement('img'));
-							let imgElement = imageDiv.getElementsByTagName('img')[0];
-							if (imgElement) {
-								imgElement.src = 'data:' + data.contentType + ';base64,' + data.bytes;
-							}
-						}
-					} else {
-						throw new Error('Unknown data type, expected ImageDTO');
-					}
-				})
-				.catch((error) => {
-					console.log(error);
-					return;
-				});
+			fetchImageBytes(image);
 		}
 	});
+
+	function fetchImageBytes(image: MediaImage) {
+		fetchImage($userStore.token, image.key, '__thumb')
+			.then((data) => {
+				if (data instanceof Error) {
+					throw new Error(data.message);
+				}
+				if (data instanceof ImageDTO) {
+					placeImage(false, image.key, data.contentType, data.bytes as Blob);
+				} else {
+					throw new Error('Unknown data type, expected ImageDTO');
+				}
+			})
+			.catch((error) => {
+				console.log(error);
+				return;
+			});
+	}
+
+	function placeImage(isNew: Boolean, id: string, contentType: string, bytes: Blob) {
+		if(isNew) {
+
+		} else {
+		let imageDiv = document.getElementById('img-' + id);
+		if (imageDiv) {
+			imageDiv.appendChild(document.createElement('img'));
+			let imgElement = imageDiv.getElementsByTagName('img')[0];
+			if (imgElement) {
+				imgElement.src = 'data:' + contentType + ';base64,' + bytes;
+			}
+		}
+	}
+	}
 
 	const dropHandle = (event: DragEvent) => {
 		fileUploads = [];
@@ -214,7 +249,7 @@
 								</div>
 								<div class="flex-grow">
 									{image.url}
-									<img src="" alt={image.url} />
+									<img src="" alt="{image.url}" />
 								</div>
 								{#if hoveredImage == image.key}
 									<div

@@ -81,27 +81,29 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
      * Upload an image to the S3 bucket
      */
     @OptIn(ExperimentalEncodingApi::class)
-    fun uploadImage(request: Request<ImageDTO>): ResponseEntity<APIResult<String>> {
+    fun uploadImage(request: Request<ImageDTO>): ResponseEntity<APIResult<ImageDTO>> {
         loadContentTree()
 
         val imageBody = request.body
         val srcKey = "sources/images/${imageBody.srcKey}"
         val contentType = imageBody.contentType
+        var dto: ImageDTO? = null
         try {
             val startIndex = imageBody.bytes.indexOf("base64,") + 7 // 7 is the length of the string "base64,"
             val bytes = Base64.decode(imageBody.bytes, startIndex)
-            info("Uploading image $srcKey")
+            info("Uploading image $srcKey with ${bytes.size} bytes")
             s3Service.putObjectAsBytes(key = srcKey, bucket = sourceBucket, contentType = contentType, contents = bytes)
 
             // add the image to the content tree
             val metadata = ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", srcKey)
+            dto = ImageDTO(srcKey, contentType, "") // we don't really need to return the bytes, the browser already has them
             contentTree.insertImage(metadata)
             saveContentTree()
         } catch (e: Exception) {
             error("Error uploading image $srcKey: ${e.message}")
             return ResponseEntity.badRequest(APIResult.Error("Error uploading image $srcKey: ${e.message}"))
         }
-        return ResponseEntity.ok(APIResult.Success(value = "Image'${srcKey}' uploaded successfully"))
+        return ResponseEntity.ok(APIResult.Success(dto))
     }
 
     /**
@@ -132,6 +134,7 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
         )
 
         contentTree.deleteImage(ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", decodedKey))
+        println("Content tree now has ${contentTree.images.size} images")
         saveContentTree()
 
         return ResponseEntity.ok(APIResult.Success(value = "Image'${srcKey}' deleted successfully"))

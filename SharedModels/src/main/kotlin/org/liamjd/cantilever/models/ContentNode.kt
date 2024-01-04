@@ -277,6 +277,7 @@ class ContentTree {
      * Delete an image from the tree
      */
     fun deleteImage(imageNode: ContentNode.ImageNode) {
+        println("deleting image ${imageNode.srcKey} from ContentTree")
         images.remove(imageNode)
     }
 
