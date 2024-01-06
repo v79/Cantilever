@@ -53,6 +53,7 @@
 	}
 
 	function logout() {
+		// clear all stores here?
 		userStore.set(CLEAR_USER);
 		window.location.assign(logoutUrl);
 	}

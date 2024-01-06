@@ -1,16 +1,17 @@
 <script lang="ts">
+	import { afterNavigate } from '$app/navigation';
+	import { Dropdown, DropdownItem, Modal, Navbar, NavBrand, NavLi, NavUl } from 'flowbite-svelte';
+	import { afterUpdate, onMount } from 'svelte';
+	import { activeStore, AS_CLEAR } from '../stores/appStatusStore.svelte';
+	import { markdownStore } from '../stores/markdownContentStore.svelte';
+	import { allImagesStore, IMAGES_CLEAR } from '../stores/mediaStore.svelte';
+	import { notificationStore } from '../stores/notificationStore.svelte';
+	import { allPagesStore, allPostsStore, PAGES_CLEAR } from '../stores/postsStore.svelte';
+	import { allTemplatesStore, TEMPLATES_CLEAR } from '../stores/templateStore.svelte';
+	import { userStore } from '../stores/userStore.svelte';
+	import CToast from './customized/cToast.svelte';
 	import LoginButton from './loginButton.svelte';
 	import { spinnerStore } from './utilities/spinnerWrapper.svelte';
-	import { userStore } from '../stores/userStore.svelte';
-	import { activeStore } from '../stores/appStatusStore.svelte';
-	import { allPostsStore } from '../stores/postsStore.svelte';
-	import { markdownStore } from '../stores/markdownContentStore.svelte';
-	import { Dropdown, DropdownItem, Navbar, NavBrand, NavLi, NavUl } from 'flowbite-svelte';
-	import { Modal } from 'flowbite-svelte';
-	import CToast from './customized/cToast.svelte';
-	import { notificationStore } from '../stores/notificationStore.svelte';
-	import { afterUpdate, onMount } from 'svelte';
-	import { afterNavigate } from '$app/navigation';
 
 	let regenAllPostsModal = false;
 	let regenAllPagesModal = false;
@@ -101,6 +102,13 @@
 					shown: true,
 					type: 'success'
 				});
+				// reset all stores
+				allPostsStore.set({ count: 0, lastUpdated: new Date(), posts: [] });
+				activeStore.set(AS_CLEAR);
+				allPagesStore.set(PAGES_CLEAR);
+				allTemplatesStore.set(TEMPLATES_CLEAR);
+				allImagesStore.set(IMAGES_CLEAR);
+
 				//loadAllPosts();
 			})
 			.catch((error) => {
