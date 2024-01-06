@@ -11,6 +11,8 @@
 	});
 	export const imageStore = writable<MediaImage[]>();
 
+	export const IMAGES_CLEAR: AllImages = { count: 0, lastUpdated: new Date(), images: [] };
+
 	/**
 	 * Populate the allImagesStore by fetching from the server
 	 * @param token authentication token
@@ -35,7 +37,7 @@
 				// deserialize
 				var tempImages = new Array<MediaImage>();
 				for (const i of data.data.images) {
-					tempImages.push(new MediaImage(i.srcKey, i.lastUpdated, i.url));
+					tempImages.push(new MediaImage(i.srcKey, i.lastUpdated, i.url, false));
 				}
 
 				// set images store
@@ -98,14 +100,10 @@
 	}
 
 	export async function addImage(token: string, file: File): Promise<Error | ImageDTO> {
-		console.log('Adding image ' + file.name + '...');
-		console.log('File size: ' + file.size);
 		const reader = new FileReader();
 		reader.readAsDataURL(file);
 		return new Promise((resolve, reject) => {
 			reader.onload = () => {
-				console.log('File loaded for upload');
-
 				// base64 encode the bytes in file
 				const dto = new ImageDTO(file.name, file.type, reader.result as string);
 				let dtoString = JSON.stringify(dto);
@@ -121,11 +119,14 @@
 						mode: 'cors',
 						body: dtoString
 					})
-						.then((response) =>response.json() )
+						.then((response) => response.json())
 						.then((data) => {
-							console.log(data);
 							// we set the bytes to the result of the reader, rather than from the API result, because we've already got the bytes
-							let result = new ImageDTO(data.data.srcKey, data.data.contentType, reader.result as string);
+							let result = new ImageDTO(
+								data.data.srcKey,
+								data.data.contentType,
+								reader.result as string
+							);
 							resolve(result);
 						});
 				} catch (error) {

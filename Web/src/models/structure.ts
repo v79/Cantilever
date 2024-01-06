@@ -33,11 +33,13 @@ export class MediaImage {
 	key: string;
 	lastUpdated: Date;
 	url: string;
+	hasBeenPlaced: boolean;
 
-	constructor(key: string, lastUpdated: Date, url: string) {
+	constructor(key: string, lastUpdated: Date, url: string, hasBeenPlaced: boolean) {
 		this.key = key;
 		this.lastUpdated = lastUpdated;
 		this.url = url;
+		this.hasBeenPlaced = hasBeenPlaced;
 	}
 
 	shortName(): string {

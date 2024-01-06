@@ -10,4 +10,7 @@
 
 	//@ts-ignore
 	export const pageTreeStore = writable<PageTree>({ lastUpdated: new Date(), root: {} });
+
+	export const POSTS_CLEAR: AllPosts = { count: 0, lastUpdated: new Date(), posts: [] };
+	export const PAGES_CLEAR: AllPages = { count: 0, lastUpdated: new Date(), pages: [] };
 </script>
