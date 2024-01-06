@@ -212,8 +212,8 @@ class ContentTree {
     val statics: MutableList<ContentNode.StaticNode> = mutableListOf()
     val images: MutableList<ContentNode.ImageNode> = mutableListOf()
 
-    val postCount = items.filterIsInstance<ContentNode.PostNode>().size
-    val pageCount = items.filterIsInstance<ContentNode.PageNode>().size
+    val postCount = items.filterIsInstance<ContentNode.PostNode>().size // FIXME: not working as I expected
+    val pageCount = items.filterIsInstance<ContentNode.PageNode>().size // FIXME: not working as I expected
 
     /**
      * Insert a node into the tree. It performs the appropriate insert based on the type of node.
@@ -240,7 +240,7 @@ class ContentTree {
      * Insert a Template into the tree
      */
     fun insertTemplate(templateNode: ContentNode.TemplateNode) {
-        if(templates.contains(templateNode)) {
+        if (templates.contains(templateNode)) {
             templates.remove(templateNode)
         }
         templates.add(templateNode)
@@ -250,7 +250,7 @@ class ContentTree {
      * Insert a static file, such as a .css file or image, into the tree
      */
     fun insertStatic(staticNode: ContentNode.StaticNode) {
-        if(statics.contains(staticNode)) {
+        if (statics.contains(staticNode)) {
             statics.remove(staticNode)
         }
         statics.add(staticNode)
@@ -260,7 +260,7 @@ class ContentTree {
      * Insert an image into the tree
      */
     fun insertImage(imageNode: ContentNode.ImageNode) {
-        if(images.contains(imageNode)) {
+        if (images.contains(imageNode)) {
             images.remove(imageNode)
         }
         images.add(imageNode)
@@ -270,15 +270,16 @@ class ContentTree {
      * Delete a template from the tree.
      */
     fun deleteTemplate(templateNode: ContentNode.TemplateNode) {
-        templates.remove(templateNode)
+        println("Removing template ${templateNode.srcKey} from ContentTree")
+        templates.removeIf { it.srcKey == templateNode.srcKey }
     }
 
     /**
      * Delete an image from the tree
      */
     fun deleteImage(imageNode: ContentNode.ImageNode) {
-        println("deleting image ${imageNode.srcKey} from ContentTree")
-        images.remove(imageNode)
+        println("Removing image ${imageNode.srcKey} from ContentTree")
+        images.removeIf { it.srcKey == imageNode.srcKey }
     }
 
     /**
