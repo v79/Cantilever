@@ -11,6 +11,8 @@
 	});
 	export const imageStore = writable<MediaImage[]>();
 
+	export const IMAGES_CLEAR: AllImages = { count: 0, lastUpdated: new Date(), images: [] };
+
 	/**
 	 * Populate the allImagesStore by fetching from the server
 	 * @param token authentication token
@@ -35,7 +37,7 @@
 				// deserialize
 				var tempImages = new Array<MediaImage>();
 				for (const i of data.data.images) {
-					tempImages.push(new MediaImage(i.srcKey, i.lastUpdated, i.url));
+					tempImages.push(new MediaImage(i.srcKey, i.lastUpdated, i.url, false));
 				}
 
 				// set images store
@@ -97,37 +99,42 @@
 		}
 	}
 
-	export async function addImage(token: string, file: File) {
-		console.log('Adding image ' + file.name + '...');
-		console.log('File size: ' + file.size);
+	export async function addImage(token: string, file: File): Promise<Error | ImageDTO> {
 		const reader = new FileReader();
 		reader.readAsDataURL(file);
-		reader.onload = () => {
-			console.log('File loaded');
+		return new Promise((resolve, reject) => {
+			reader.onload = () => {
+				// base64 encode the bytes in file
+				const dto = new ImageDTO(file.name, file.type, reader.result as string);
+				let dtoString = JSON.stringify(dto);
 
-			// base64 encode the bytes in file
-			const dto = new ImageDTO(file.name, file.type, reader.result as string);
-			let dtoString = JSON.stringify(dto);
-			try {
-				const response = fetch('https://api.cantilevers.org/media/images/', {
-					method: 'POST',
-					headers: {
-						Accept: 'text/plain',
-						Authorization: 'Bearer ' + token,
-						'Content-Type': 'application/json'
-					},
-					mode: 'cors',
-					body: dtoString
-				})
-					.then((response) => response.text())
-					.then((data) => {
-						console.log(data);
-					});
-			} catch (error) {
-				console.log(error);
-				return error as Error;
-			}
-		};
+				try {
+					const response = fetch('https://api.cantilevers.org/media/images/', {
+						method: 'POST',
+						headers: {
+							Accept: 'application/json',
+							Authorization: 'Bearer ' + token,
+							'Content-Type': 'application/json'
+						},
+						mode: 'cors',
+						body: dtoString
+					})
+						.then((response) => response.json())
+						.then((data) => {
+							// we set the bytes to the result of the reader, rather than from the API result, because we've already got the bytes
+							let result = new ImageDTO(
+								data.data.srcKey,
+								data.data.contentType,
+								reader.result as string
+							);
+							resolve(result);
+						});
+				} catch (error) {
+					console.log(error);
+					resolve(error as Error);
+				}
+			};
+		});
 	}
 
 	export async function deleteImage(token: string, srcKey: string) {

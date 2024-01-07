@@ -11,4 +11,7 @@ sealed class ImageSQSMessage {
 
     @Serializable
     data class ResizeImageMsg(val metadata: ContentNode.ImageNode) : ImageSQSMessage()
+
+    @Serializable
+    data class CopyImagesMsg(val imageList: List<String>) : ImageSQSMessage()
 }

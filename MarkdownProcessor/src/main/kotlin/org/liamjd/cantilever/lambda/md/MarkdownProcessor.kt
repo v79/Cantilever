@@ -15,18 +15,23 @@ import com.vladsch.flexmark.util.data.MutableDataSet
 
 interface MarkdownConverter {
     fun convertMDToHTML(mdSource: String): String
+    fun extractImages(mdSource: String): List<Image>
 }
 
 class FlexmarkMarkdownConverter : MarkdownConverter {
+
+    private val options = MutableDataSet().set(Parser.EXTENSIONS, listOf(TablesExtension.create()))
+    private val parser: Parser = Parser.builder(options).build()
+
+    override fun extractImages(mdSource: String): List<Image> {
+        val document: Node = parser.parse(mdSource)
+        return document.descendants.filterIsInstanceTo(mutableListOf<Image>()).toList()
+    }
+
     override fun convertMDToHTML(mdSource: String): String {
-        val options = MutableDataSet().set(Parser.EXTENSIONS, listOf(TablesExtension.create()))
-        val parser: Parser = Parser.builder(options).build()
         val renderer: HtmlRenderer = HtmlRenderer.builder(options).build()
 
         val document: Node = parser.parse(mdSource)
-        document.descendants.filterIsInstanceTo(mutableListOf<Image>()).forEach {
-            println("Image: ${it.url}")
-        }
         return renderer.render(document)
     }
 }

@@ -81,7 +81,8 @@ class LambdaRouter : RequestHandlerWrapper() {
                     Spec.PathItem("Update project definition", "Supply an updated cantilever.yaml definition file")
                 )
 
-                group("/pages") {
+                // TODO: move this set of routes outside of the project group
+                group("/pages", Spec.Tag(name = "Pages", description = "Create, update and manage static pages")) {
                     get("", pageController::getPages).spec(Spec.PathItem("Get pages", "Returns a list of all pages"))
 
                     post(
@@ -176,7 +177,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                     )
                 )
 
-                post("/images/", mediaController::uploadImage).supplies(setOf(MimeType.plainText))
+                post("/images/", mediaController::uploadImage)
                     .spec(Spec.PathItem("Upload image", "Upload an image to the source bucket"))
 
                 delete("/images/$SRCKEY", mediaController::deleteImage).supplies(setOf(MimeType.plainText))

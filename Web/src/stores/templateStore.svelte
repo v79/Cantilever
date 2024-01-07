@@ -11,6 +11,12 @@
 	export const templateStore = writable<Template[]>();
 	export const currentTemplate = writable<HandlebarsTemplate>();
 
+	export const TEMPLATES_CLEAR: AllTemplates = {
+		lastUpdated: new Date(),
+		count: 0,
+		templates: []
+	};
+
 	/**
 	 * Populate the allTemplatesStore by fetching from the server
 	 * @param token authentication token

@@ -16,6 +16,9 @@ class MarkdownPageDTO(val metadata: ContentNode.PageNode, val body: String = "",
             appendLine(SEPARATOR)
             appendLine("title: ${metadata.title}")
             appendLine("templateKey: ${metadata.templateKey}")
+            if(metadata.isRoot) {
+                appendLine("isRoot: true")
+            }
             metadata.attributes.forEach {
                 appendLine("#${it.key}: ${it.value}")
             }

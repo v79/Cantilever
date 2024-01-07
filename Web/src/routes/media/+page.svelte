@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
-	import { onDestroy, onMount } from 'svelte';
+	import { Dropzone, Modal } from 'flowbite-svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import ActiveStoreView from '../../components/activeStoreView.svelte';
 	import SpinnerWrapper, { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import { ImageDTO } from '../../models/structure';
+	import { ImageDTO, MediaImage } from '../../models/structure';
 	import { AS_CLEAR, activeStore } from '../../stores/appStatusStore.svelte';
 	import {
 		addImage,
@@ -15,7 +16,6 @@
 	} from '../../stores/mediaStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
-	import { Dropzone, Modal } from 'flowbite-svelte';
 
 	afterNavigate(() => {
 		activeStore.set(AS_CLEAR);
@@ -60,20 +60,52 @@
 		$spinnerStore.shown = true;
 		deleteImage($userStore.token, hoveredImage);
 		$allImagesStore.count--;
-		$allImagesStore.images = $allImagesStore.images.filter((image) => {
-			return image.key != hoveredImage;
-		});
+
+		$allImagesStore.images = $allImagesStore.images
+			.map((image) => {
+				if (image.key !== hoveredImage) {
+					image.hasBeenPlaced = false;
+				}
+				return image;
+			})
+			.filter((image) => {
+				return image.key !== hoveredImage;
+			});
+
 		$spinnerStore.shown = false;
 	}
 
-	function uploadImage() {
+	// upload an image to the server, awaiting a response before placing a new thumbnail into the DOM
+	async function uploadImage() {
 		$spinnerStore.message = 'Uploading image ' + fileUploads[0].name;
 		$spinnerStore.shown = true;
-		console.log('Upload image ' + fileUploads[0]);
-		addImage($userStore.token, fileUploads[0]);
-		fileUploads = [];
-		confirmUpload = false;
-		$spinnerStore.shown = false;
+		console.log('Upload image ' + fileUploads[0] + ' and awaiting response');
+		let imgResponse = await addImage($userStore.token, fileUploads[0]);
+		console.log('Got response!');
+		if (imgResponse instanceof Error) {
+			console.log('Error uploading image: ' + imgResponse.message);
+			$notificationStore.message = imgResponse.message;
+			$notificationStore.shown = true;
+			$spinnerStore.shown = false;
+			return;
+		} else if (imgResponse instanceof ImageDTO) {
+			// API is returning an ImageDTO, so we can assume it's a success
+			$notificationStore.message = 'Uploaded image ' + imgResponse.srcKey;
+			$notificationStore.shown = true;
+			$allImagesStore.count++;
+			let newImage = new MediaImage(imgResponse.srcKey, new Date(), imgResponse.srcKey, false);
+			confirmUpload = false;
+			$spinnerStore.shown = false;
+			$allImagesStore.images.push(newImage);
+			await tick(); // wait for DOM to update, so that there is a div to place the image into
+			let bytesToPlace = (imgResponse.bytes as string).split(',')[1];
+			placeImage(newImage.key, imgResponse.contentType, bytesToPlace as unknown as Blob);
+			newImage.hasBeenPlaced = true;
+			fileUploads = [];
+		} else {
+			// error, unknown response type
+			console.log('Unknown response type when uploading image: ' + imgResponse);
+		}
 	}
 
 	const userStoreUnsubscribe = userStore.subscribe((data) => {
@@ -86,21 +118,24 @@
 		imageStore.set(data.images);
 		// loop round each of the images in the store and asynchronously fetch the bytes
 		for (const image of data.images) {
+			fetchImageBytes(image);
+		}
+	});
+
+	// fetch the bytes of an image if it hasn't already been fetched
+	function fetchImageBytes(image: MediaImage) {
+		if (!image.hasBeenPlaced) {
+			console.log('Fetching image bytes for ' + image.key);
 			fetchImage($userStore.token, image.key, '__thumb')
 				.then((data) => {
 					if (data instanceof Error) {
 						throw new Error(data.message);
 					}
 					if (data instanceof ImageDTO) {
-						let imageDiv = document.getElementById('img-' + data.srcKey);
-						if (imageDiv) {
-							imageDiv.appendChild(document.createElement('img'));
-							let imgElement = imageDiv.getElementsByTagName('img')[0];
-							if (imgElement) {
-								imgElement.src = 'data:' + data.contentType + ';base64,' + data.bytes;
-							}
-						}
+						placeImage(image.key, data.contentType, data.bytes as Blob);
+						image.hasBeenPlaced = true;
 					} else {
+						console.log('Unknown data type, expected ImageDTO');
 						throw new Error('Unknown data type, expected ImageDTO');
 					}
 				})
@@ -109,7 +144,23 @@
 					return;
 				});
 		}
-	});
+	}
+
+	// place an image into the DOM
+	function placeImage(id: string, contentType: string, bytes: Blob) {
+		let imageDiv = document.getElementById('img-' + id);
+		if (imageDiv) {
+			imageDiv.appendChild(document.createElement('img'));
+			let imgElement = imageDiv.getElementsByTagName('img')[0];
+			if (imgElement) {
+				imgElement.width = 100;
+				imgElement.height = 100;
+				imgElement.src = 'data:' + contentType + ';base64,' + bytes;
+			}
+		} else {
+			console.log('Could not find div for image ' + id);
+		}
+	}
 
 	const dropHandle = (event: DragEvent) => {
 		fileUploads = [];
@@ -136,8 +187,8 @@
 
 	const handleUploadChange = (event: Event) => {
 		if (event && event.target) {
-			const files = event.target.files;
-			if (files.length > 0) {
+			const files = (event.target as HTMLInputElement).files;
+			if (files && files.length > 0) {
 				fileUploads.push(files[0].name);
 				fileUploads = fileUploads;
 				confirmUpload = true;
@@ -211,10 +262,6 @@
 								class="relative flex flex-col items-center justify-center border border-slate-600 hover:border-white">
 								<div class="flex-grow text-lg font-bold text-white">
 									{image.shortName()}
-								</div>
-								<div class="flex-grow">
-									{image.url}
-									<img src="" alt={image.url} />
 								</div>
 								{#if hoveredImage == image.key}
 									<div

@@ -159,4 +159,17 @@ class S3ServiceImpl(region: Region) : S3Service {
             0
         else -1
     }
+
+    override fun copyObject(srcKey: String, destKey: String, srcBucket: String, destBucket: String): Int {
+        val request = CopyObjectRequest.builder()
+            .sourceBucket(srcBucket)
+            .sourceKey(srcKey)
+            .destinationKey(destKey)
+            .destinationBucket(destBucket)
+            .build()
+        val response = s3Client.copyObject(request)
+        return if (response.copyObjectResult() != null)
+            0
+        else -1
+    }
 }
