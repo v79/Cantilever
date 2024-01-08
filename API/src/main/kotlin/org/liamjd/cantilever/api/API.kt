@@ -99,10 +99,17 @@ class LambdaRouter : RequestHandlerWrapper() {
                         Spec.PathItem("Get page source", "Returns the markdown source for a page")
                     )
 
+                    get("/folders", pageController::getFolders).spec(
+                        Spec.PathItem(
+                            "Get folders",
+                            "Returns a list of all folders"
+                        )
+                    )
+
                     put(
                         "/folder/new/{folderName}",
                         pageController::createFolder,
-                    ).supplies(setOf(MimeType.plainText)).spec(
+                    ).spec(
                         Spec.PathItem("Create folder", "Pages can be nested in folders")
                     )
                 }

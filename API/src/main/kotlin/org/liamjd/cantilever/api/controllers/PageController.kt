@@ -20,7 +20,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
 
     /**
      * Return a list of all the pages in the content tree
-     * @return [PageListDTO] object containing the list of Pages and Folders, a count and the last updated date/time
+     * @return [PageListDTO] object containing the list of Pages, a count and the last updated date/time
      */
     fun getPages(request: Request<Unit>): ResponseEntity<APIResult<PageListDTO>> {
         return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
@@ -28,14 +28,14 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             info("Fetching all pages from metadata.json")
             val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
             val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
-            val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
+//            val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
             val sorted = pages.sortedByDescending { it.srcKey }
-            sorted.forEach { println(it.srcKey) }
+//            sorted.forEach { println(it.srcKey) }
             val pageList = PageListDTO(
                 count = sorted.size,
                 lastUpdated = lastUpdated,
                 pages = sorted,
-                folders = folders
+                folders = emptyList()
             )
             ResponseEntity.ok(body = APIResult.Success(value = pageList))
         } else {
@@ -79,7 +79,9 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
                 if (result != 0) {
                     ResponseEntity.serverError(body = APIResult.Error("Folder '$slugged' was not created"))
                 }
-                contentTree.insertFolder(ContentNode.FolderNode(folderName)).also { saveContentTree() }
+                contentTree.insertFolder(ContentNode.FolderNode(folderName))
+                saveContentTree()
+
                 ResponseEntity.ok(body = APIResult.OK("Folder '$slugged' created"))
             } else {
                 warn("Folder '$slugged' already exists")
@@ -111,6 +113,11 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             contentTree.insertPage(pageToSave.metadata).also { saveContentTree() }
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
+    }
+
+    fun getFolders(request: Request<Unit>): ResponseEntity<APIResult<List<ContentNode.FolderNode>>> {
+        val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>()
+        return ResponseEntity.ok(body = APIResult.Success(folders))
     }
 
     /**
