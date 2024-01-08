@@ -1,4 +1,5 @@
 <script context="module" lang="ts">
+	/** This store manages the markdown content for the editor, i.e the content of the current Page or Post */
 	import { writable } from 'svelte/store';
 	import { MarkdownContent } from '../models/structure';
 
@@ -23,4 +24,6 @@
 
 	//@ts-ignore
 	export const CLEAR = new MarkdownContent(null, '');
+
+	
 </script>

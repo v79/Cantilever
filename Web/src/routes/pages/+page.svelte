@@ -12,6 +12,7 @@
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
 	import ActiveStoreView from '../../components/activeStoreView.svelte';
+	import { savePage } from '../../stores/pagesStore.svelte';
 
 	let previewModal = false;
 	let deleteFileModal = false;
@@ -32,7 +33,7 @@
 		}
 	}
 
-	function saveFile() {
+	async function saveFile() {
 		if ($markdownStore.metadata === null) {
 			throw new Error('Cannot save a page with no metadata');
 		} else {
@@ -40,38 +41,56 @@
 		}
 		var pageToSave = $markdownStore;
 		// these two properties are not needed in the API
-		delete pageToSave.metadata.type;
-		delete pageToSave.metadata.body;
+		if(pageToSave.metadata !== null) {
+			delete pageToSave.metadata.type;
+			delete pageToSave.metadata.body;
+		}
 		let pageJson = JSON.stringify(pageToSave, mapReplacer);
-		// console.log(pageJson);
-		fetch('https://api.cantilevers.org/project/pages/', {
-			method: 'POST',
-			headers: {
-				Accept: 'text/plain',
-				Authorization: 'Bearer ' + $userStore.token,
-				'Content-Type': 'application/json'
-			},
-			body: pageJson,
-			mode: 'cors'
-		})
-			.then((response) => response.text())
-			.then((data) => {
-				notificationStore.set({
-					message: decodeURI($markdownStore.metadata?.srcKey ?? '') + ' saved. ' + data,
-					shown: true,
-					type: 'success'
-				});
-				$activeStore.isNewFile = false;
-			})
-			.catch((error) => {
-				console.log(error);
-				notificationStore.set({
-					message: error,
-					shown: true,
-					type: 'error'
-				});
-				return {};
+
+		let response = await savePage($userStore.token, pageJson);
+		if (response instanceof Error) {
+			notificationStore.set({
+				message: response.message,
+				shown: true,
+				type: 'error'
 			});
+		} else {
+			notificationStore.set({
+				message: decodeURI($markdownStore.metadata?.srcKey ?? '') + ' saved. ' + response,
+				shown: true,
+				type: 'success'
+			});
+			$activeStore.isNewFile = false;
+		}
+		// console.log(pageJson);
+		// fetch('https://api.cantilevers.org/project/pages/', {
+		// 	method: 'POST',
+		// 	headers: {
+		// 		Accept: 'text/plain',
+		// 		Authorization: 'Bearer ' + $userStore.token,
+		// 		'Content-Type': 'application/json'
+		// 	},
+		// 	body: pageJson,
+		// 	mode: 'cors'
+		// })
+		// 	.then((response) => response.text())
+		// 	.then((data) => {
+		// 		notificationStore.set({
+		// 			message: decodeURI($markdownStore.metadata?.srcKey ?? '') + ' saved. ' + data,
+		// 			shown: true,
+		// 			type: 'success'
+		// 		});
+		// 		$activeStore.isNewFile = false;
+		// 	})
+		// 	.catch((error) => {
+		// 		console.log(error);
+		// 		notificationStore.set({
+		// 			message: error,
+		// 			shown: true,
+		// 			type: 'error'
+		// 		});
+		// 		return {};
+		// 	});
 	}
 </script>
 

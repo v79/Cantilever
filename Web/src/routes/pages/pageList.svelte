@@ -1,25 +1,24 @@
 <script lang="ts">
+	import { Modal } from 'flowbite-svelte';
 	import { onDestroy, tick } from 'svelte';
+	import TextInput from '../../components/forms/textInput.svelte';
+	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
+	import type { Template, TreeNode } from '../../models/structure';
 	import {
+		FileType,
+		FolderNode,
 		MarkdownContent,
 		Page,
 		PageTree,
-		FolderNode,
-		TemplateMetadata,
-		FileType
+		TemplateMetadata
 	} from '../../models/structure';
-	import type { Template, TreeNode } from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import { markdownStore } from '../../stores/markdownContentStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
+	import { allTemplatesStore, fetchTemplateMetadata, fetchTemplates } from '../../stores/templateStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
-	import { pageTreeStore } from '../../stores/postsStore.svelte';
-	import { spinnerStore } from '../../components/utilities/spinnerWrapper.svelte';
-	import { allTemplatesStore, fetchTemplateMetadata } from '../../stores/templateStore.svelte';
+	import { fetchFolderList, pageTreeStore } from '../../stores/folderStore.svelte';
 	import PageTreeView from './pageTreeView.svelte';
-	import { Modal } from 'flowbite-svelte';
-	import TextInput from '../../components/forms/textInput.svelte';
-	import { fetchTemplates } from '../../stores/templateStore.svelte';
 
 	$: rootFolder = $pageTreeStore.rootFolder;
 
@@ -34,6 +33,7 @@
 	$: newFolderValid = selectedParentFolder && newFolderName !== '';
 	$: newPageValid = selectedParentFolder && selectedTemplate;
 
+	// TODO: move this to the store
 	function loadAllPages() {
 		console.log('Loading all pages json...');
 		let token = $userStore.token;
@@ -54,8 +54,10 @@
 					throw new Error(data.message);
 				}
 				var rootFolder = new FolderNode('folder', 'sources/pages/', new Array<TreeNode>(), null);
+
+				// THIS WILL NOW BE EMPTY
+
 				addFoldersToRoot(rootFolder, data.data.folders, data.data.pages);
-				// addNodesToContainer(rootFolder, data.data.pages);
 				var pageTree = new PageTree(data.data.lastUpdated, rootFolder);
 				pageTreeStore.set(pageTree);
 				$notificationStore.message = 'Loaded all pages ' + $activeStore.activeFile;
@@ -120,6 +122,7 @@
 		}
 	}
 	/**
+	 * TODO: Move this to the store
 	 * Load the markdown for the specified page srcKey.
 	 * @param srcKey
 	 */
@@ -187,6 +190,7 @@
 			});
 	}
 
+	// @deprecated
 	async function rebuild() {
 		let token = $userStore.token;
 		console.log('Regenerating project pages file...');
@@ -281,16 +285,20 @@
 	/**
 	 * Return just the folders in the pageTreeStore
 	 */
-	function getFolders() {
-		if ($pageTreeStore.rootFolder.children) {
-			let result = <FolderNode[]>(
-				$pageTreeStore.rootFolder.children.filter((value) => value.type == 'folder')
-			);
-			result.push($pageTreeStore.rootFolder);
-			// sort the result by the length of the srcKey, so that the root folder is first
-			result.sort((a, b) => a.srcKey.length - b.srcKey.length);
-			return result;
-		}
+	// TODO: Move this to the store, and make it call the server API to return folders
+	 async function getFolders() {
+		await fetchFolderList($userStore.token);
+
+
+		// if ($pageTreeStore.rootFolder.children) {
+		// 	let result = <FolderNode[]>(
+		// 		$pageTreeStore.rootFolder.children.filter((value) => value.type == 'folder')
+		// 	);
+		// 	result.push($pageTreeStore.rootFolder);
+		// 	// sort the result by the length of the srcKey, so that the root folder is first
+		// 	result.sort((a, b) => a.srcKey.length - b.srcKey.length);
+		// 	return result;
+		// }
 		return [];
 	}
 
@@ -335,6 +343,8 @@
 			(selectedParentFolder ? selectedParentFolder.srcKey : '') + newFolderName
 		);
 		console.log('Creating new folder ' + folderName);
+
+		// TODO: move this to the pageTreeStore
 
 		fetch('https://api.cantilevers.org/project/pages/folder/new/' + folderName, {
 			method: 'PUT',

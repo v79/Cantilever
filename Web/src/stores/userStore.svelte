@@ -1,4 +1,5 @@
 <script context="module" lang="ts">
+	/** This store manages the currently logged in user */
 	import { writable } from 'svelte/store';
 	import type { User } from '../models/authUser';
 
