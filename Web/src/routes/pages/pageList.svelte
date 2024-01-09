@@ -15,10 +15,15 @@
 	import { activeStore } from '../../stores/appStatusStore.svelte';
 	import { markdownStore } from '../../stores/markdownContentStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
-	import { allTemplatesStore, fetchTemplateMetadata, fetchTemplates } from '../../stores/templateStore.svelte';
+	import {
+		allTemplatesStore,
+		fetchTemplateMetadata,
+		fetchTemplates
+	} from '../../stores/templateStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
 	import { fetchFolderList, pageTreeStore } from '../../stores/folderStore.svelte';
 	import PageTreeView from './pageTreeView.svelte';
+	import { allPagesStore, fetchPage, fetchPageList } from '../../stores/pagesStore.svelte';
 
 	$: rootFolder = $pageTreeStore.rootFolder;
 
@@ -33,93 +38,74 @@
 	$: newFolderValid = selectedParentFolder && newFolderName !== '';
 	$: newPageValid = selectedParentFolder && selectedTemplate;
 
-	// TODO: move this to the store
-	function loadAllPages() {
+	async function loadAllPages() {
 		console.log('Loading all pages json...');
 		let token = $userStore.token;
 		notificationStore.set({ shown: false, message: '', type: 'info' });
-		fetch('https://api.cantilevers.org/project/pages', {
-			method: 'GET',
-			headers: {
-				Accept: 'application/json',
-				Authorization: 'Bearer ' + token
-			},
-			mode: 'cors'
-		})
-			.then((response) => response.json())
-			.then((data) => {
-				console.log('Loaded all pages json');
-				// console.dir(data);
-				if (data.data === undefined) {
-					throw new Error(data.message);
-				}
-				var rootFolder = new FolderNode('folder', 'sources/pages/', new Array<TreeNode>(), null);
 
-				// THIS WILL NOW BE EMPTY
-
-				addFoldersToRoot(rootFolder, data.data.folders, data.data.pages);
-				var pageTree = new PageTree(data.data.lastUpdated, rootFolder);
-				pageTreeStore.set(pageTree);
-				$notificationStore.message = 'Loaded all pages ' + $activeStore.activeFile;
-				$notificationStore.shown = true;
-				$spinnerStore.shown = false;
-			})
-			.catch((error) => {
-				console.log(error);
+		// fetch the page list from the server
+		let response = await fetchPageList($userStore.token);
+		if (response instanceof Error) {
+			notificationStore.set({
+				message: response.message,
+				shown: true,
+				type: 'error'
+			});
+			$spinnerStore.shown = false;
+			return {};
+		} else {
+			console.log($allPagesStore.count + ' pages fetched');
+			// now we need to fetch the folder list from the server
+			let folderResponse = await fetchFolderList($userStore.token);
+			if (folderResponse instanceof Error) {
 				notificationStore.set({
-					message: error,
+					message: folderResponse.message,
 					shown: true,
 					type: 'error'
 				});
 				$spinnerStore.shown = false;
 				return {};
-			});
+			}
+			// and then combine the two into a single tree
+			var rootFolder = new FolderNode('folder', 'sources/pages/', new Array<TreeNode>(), null);
+			addFoldersToRoot(
+				$pageTreeStore.rootFolder,
+				$pageTreeStore.rootFolder.children,
+				$allPagesStore.pages
+			);
+		}
+		$notificationStore.message = 'Loaded all pages ' + $activeStore.activeFile;
+		$notificationStore.shown = true;
+		$spinnerStore.shown = false;
 	}
 
 	/**
-	 * Loop through all the folders and add them to the root folder. Then find the pages which match the children of the folder, and add them
-	 * This is not recursive, so it only adds the first level of folders.
+	 * Loop through all the pages and add them to their parent folder, or the root folder if not found.
+	 * Finally, update the root folder in the pageTreeStore.
 	 * @param root
 	 * @param folders
 	 * @param pages
 	 */
 	function addFoldersToRoot(root: FolderNode, folders: Array<TreeNode>, pages: Array<TreeNode>) {
-		if (folders) {
-			for (const node of folders) {
-				console.log('Adding folder ' + node.srcKey + ' to root');
-				var folder = node as FolderNode;
-				node.type = 'folder';
-				// we are given just the srcKeys of the child pages, so we need to find and convert these to Page objects
-				// these are strings, NOT TreeNodes
-				let childKeys: string[] = folder.children.map((child) => child.toString());
-				folder.children = [];
-				for (const childKey of childKeys) {
-					let childPage = pages.find((page) => page.srcKey === childKey);
-					if (childPage) {
-						folder.children.push(childPage);
-					}
-				}
+		if (folders === undefined || pages === undefined) {
+			console.log('No folders or pages to add to root');
+			return;
+		}
 
-				if (root.children == undefined) {
-					root.children = new Array<TreeNode>();
-				}
-				root.children.push(folder);
+		for (const node of pages) {
+			const page = node as Page;
+			const parentFolder = folders.find((folder) => folder.srcKey === page.parent) as FolderNode;
+			if (parentFolder) {
+				console.log('Adding page ' + page.srcKey + ' to folder ' + parentFolder.srcKey);
+				parentFolder.children.push(page);
+				parentFolder.count++;
+			} else {
+				console.log('Adding page ' + page.srcKey + ' to root folder');
+				root.children.push(page);
 				root.count++;
 			}
 		}
-		if (pages) {
-			for (const node of pages) {
-				var page = node as Page;
-				page.type = 'page';
-				if (root.children == undefined) {
-					root.children = new Array<TreeNode>();
-				}
-				if (page.parent === 'sources/pages/') {
-					root.children.push(page);
-					root.count++;
-				}
-			}
-		}
+		$pageTreeStore.rootFolder = root;
 	}
 	/**
 	 * TODO: Move this to the store
@@ -133,61 +119,32 @@
 		spinnerStore.set({ shown: true, message: 'Loading markdown file... ' + srcKey });
 		notificationStore.set({ shown: false, message: '', type: 'info' });
 		tick();
-		fetch('https://api.cantilevers.org/project/pages/' + encodeURIComponent(srcKey), {
-			method: 'GET',
-			headers: {
-				Accept: 'application/json',
-				Authorization: 'Bearer ' + token
-			},
-			mode: 'cors'
-		})
-			.then((response) => response.json())
-			.then((data) => {
-				if (data.data === undefined) {
-					throw new Error(data.message);
-				}
-				var tmpPage = new MarkdownContent(
-					new Page(
-						'page',
-						data.data.metadata.title,
-						data.data.metadata.srcKey,
-						data.data.metadata.templateKey,
-						data.data.metadata.slug,
-						data.data.metadata.lastUpdated,
-						new Map<string, string>(Object.entries(data.data.metadata.attributes)),
-						new Map<string, string>(Object.entries(data.data.metadata.sections)),
-						data.data.metadata.isRoot,
-						data.data.metadata.parent
-					),
-					''
-				);
-				markdownStore.set(tmpPage);
-				$activeStore.activeFile = decodeURIComponent($markdownStore.metadata!!.srcKey);
-				$activeStore.isNewFile = false;
-				$activeStore.hasChanged = false;
-				$activeStore.isValid = true;
-				$activeStore.fileType = FileType.Page;
-				$activeStore.newSlug = $markdownStore.metadata!!.slug;
-				let leafIndex = $activeStore.activeFile.lastIndexOf('/');
-				let folderString = '';
-				if (leafIndex >= pagesFolder.length) {
-					folderString = $activeStore.activeFile.substring(pagesFolder.length, leafIndex);
-				}
-				let folder = new FolderNode('folder', pagesFolder + folderString, [], null);
-				$activeStore.folder = folder;
-				$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
-				$notificationStore.shown = true;
-				$spinnerStore.shown = false;
-			})
-			.catch((error) => {
-				console.log(error);
-				notificationStore.set({
-					message: error,
-					shown: true,
-					type: 'error'
-				});
-				$spinnerStore.shown = false;
+		let page = fetchPage(token, srcKey);
+		if(page instanceof Error) {
+			notificationStore.set({
+				message: page.message,
+				shown: true,
+				type: 'error'
 			});
+			$spinnerStore.shown = false;
+			return {};
+		}
+		$activeStore.activeFile = decodeURIComponent($markdownStore.metadata!!.srcKey);
+		$activeStore.isNewFile = false;
+		$activeStore.hasChanged = false;
+		$activeStore.isValid = true;
+		$activeStore.fileType = FileType.Page;
+		$activeStore.newSlug = $markdownStore.metadata!!.slug;
+		let leafIndex = $activeStore.activeFile.lastIndexOf('/');
+		let folderString = '';
+		if (leafIndex >= pagesFolder.length) {
+			folderString = $activeStore.activeFile.substring(pagesFolder.length, leafIndex);
+		}
+		let folder = new FolderNode('folder', pagesFolder + folderString, [], null);
+		$activeStore.folder = folder;
+		$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
+		$notificationStore.shown = true;
+		$spinnerStore.shown = false;
 	}
 
 	// @deprecated
@@ -286,9 +243,8 @@
 	 * Return just the folders in the pageTreeStore
 	 */
 	// TODO: Move this to the store, and make it call the server API to return folders
-	 async function getFolders() {
+	async function getFolders() {
 		await fetchFolderList($userStore.token);
-
 
 		// if ($pageTreeStore.rootFolder.children) {
 		// 	let result = <FolderNode[]>(

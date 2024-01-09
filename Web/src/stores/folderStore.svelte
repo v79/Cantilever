@@ -10,7 +10,7 @@
 		console.log('fetching folder list');
 
 		return new Promise((resolve) => {
-			fetch('https://api.cantilevers.org/project/pages/folders', {
+			fetch('https://api.cantilevers.org/project/folders', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -21,14 +21,15 @@
 				.then((response) => response.json())
 				.then((data) => {
 					if (data.data === undefined) {
+						console.log('No response to fetch folder list request');
 						throw new Error(data.message);
 					}
 					console.log('Loaded folder list');
 					console.dir(data.data);
 					// deserialize
 					var tempFolders = new Array<FolderNode>();
-					for (const f of data.data.folders) {
-						tempFolders.push(new FolderNode(f.srcKey, f.lastUpdated, [], f.indexPage));
+					for (const f of data.data) {
+						tempFolders.push(new FolderNode('folder',f.srcKey, [], f.indexPage));
 					}
                     var rootFolder = new FolderNode('folder', 'sources/pages/', tempFolders, null);
 					// set pageTreeStore

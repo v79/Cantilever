@@ -62,35 +62,6 @@
 			});
 			$activeStore.isNewFile = false;
 		}
-		// console.log(pageJson);
-		// fetch('https://api.cantilevers.org/project/pages/', {
-		// 	method: 'POST',
-		// 	headers: {
-		// 		Accept: 'text/plain',
-		// 		Authorization: 'Bearer ' + $userStore.token,
-		// 		'Content-Type': 'application/json'
-		// 	},
-		// 	body: pageJson,
-		// 	mode: 'cors'
-		// })
-		// 	.then((response) => response.text())
-		// 	.then((data) => {
-		// 		notificationStore.set({
-		// 			message: decodeURI($markdownStore.metadata?.srcKey ?? '') + ' saved. ' + data,
-		// 			shown: true,
-		// 			type: 'success'
-		// 		});
-		// 		$activeStore.isNewFile = false;
-		// 	})
-		// 	.catch((error) => {
-		// 		console.log(error);
-		// 		notificationStore.set({
-		// 			message: error,
-		// 			shown: true,
-		// 			type: 'error'
-		// 		});
-		// 		return {};
-		// 	});
 	}
 </script>
 
