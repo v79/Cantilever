@@ -120,7 +120,7 @@
 		notificationStore.set({ shown: false, message: '', type: 'info' });
 		tick();
 		let page = fetchPage(token, srcKey);
-		if(page instanceof Error) {
+		if (page instanceof Error) {
 			notificationStore.set({
 				message: page.message,
 				shown: true,
@@ -242,25 +242,33 @@
 	/**
 	 * Return just the folders in the pageTreeStore
 	 */
-	// TODO: Move this to the store, and make it call the server API to return folders
-	async function getFolders() {
-		await fetchFolderList($userStore.token);
-
-		// if ($pageTreeStore.rootFolder.children) {
-		// 	let result = <FolderNode[]>(
-		// 		$pageTreeStore.rootFolder.children.filter((value) => value.type == 'folder')
-		// 	);
-		// 	result.push($pageTreeStore.rootFolder);
-		// 	// sort the result by the length of the srcKey, so that the root folder is first
-		// 	result.sort((a, b) => a.srcKey.length - b.srcKey.length);
-		// 	return result;
-		// }
-		return [];
+	function getFolders(): FolderNode[] {
+		if ($pageTreeStore.rootFolder.children === undefined) {
+			console.log('Need to load folders');
+			let folders = fetchFolderList($userStore.token);
+			console.log('after fetch: folders=' + folders);
+			if (folders instanceof Error) {
+				notificationStore.set({
+					message: folders.message,
+					shown: true,
+					type: 'error'
+				});
+				$spinnerStore.shown = false;
+				return [];
+			} else if (folders instanceof Array) {
+				return folders;
+			} else {
+				return [];
+			}
+		} else {
+			console.log('Folders already loaded');
+			console.dir($pageTreeStore.rootFolder.children);
+			return $pageTreeStore.rootFolder.children.filter((node) => node instanceof FolderNode) as FolderNode[];
+		}
 	}
 
 	function getTemplates() {
 		if ($allTemplatesStore.count > 0) {
-			console.log($allTemplatesStore.count);
 			return $allTemplatesStore.templates;
 		} else {
 			console.log('Need to load templates');
@@ -275,16 +283,17 @@
 	function openFolderModal() {
 		selectedParentFolder = undefined;
 		selectedTemplate = undefined;
-		folders = getFolders();
+		folders = $pageTreeStore.rootFolder.children as FolderNode[];
 		newFolderModal = true;
 	}
 
 	/**
 	 * Fetch all the templates and folders, then open the new page modal
 	 */
-	function openNewPageModal() {
+	async function openNewPageModal() {
 		selectedParentFolder = undefined;
 		selectedTemplate = undefined;
+		console.log('await getFolders()');
 		folders = getFolders();
 		templates = getTemplates();
 		newPageModal = true;

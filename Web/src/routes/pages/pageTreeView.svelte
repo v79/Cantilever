@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { children } from 'svelte/internal';
 	import type { FolderNode } from '../../models/structure';
 
 	export let rootFolder: FolderNode;
@@ -8,6 +9,7 @@
 </script>
 
 <ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
+	<!-- TODO: this does not correctly display pages in the root folder -->
 	{#each rootFolder.children as node}
 		{#if node.type === 'folder'}
 			{@const folder = node}
@@ -30,4 +32,5 @@ hover:bg-slate-200">
 			</li>
 		{/if}
 	{/each}
+	
 </ul>

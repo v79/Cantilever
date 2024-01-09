@@ -92,7 +92,7 @@
 							if ($activeStore.isNewFile) {
 								saveNewFileSlug = createSlug($markdownStore?.metadata?.title ?? '');
 								$activeStore.newSlug = saveNewFileSlug;
-								$markdownStore.metadata.srcKey = saveNewFileSlug;
+								$markdownStore.metadata.srcKey = $activeStore.folder?.srcKey + saveNewFileSlug + '.md';
 								$activeStore.activeFile = saveNewFileSlug;
 								saveNewModal = true;
 							} else {
