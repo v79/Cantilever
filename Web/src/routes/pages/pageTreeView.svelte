@@ -1,15 +1,13 @@
 <script lang="ts">
-	import { children } from 'svelte/internal';
 	import type { FolderNode } from '../../models/structure';
 
 	export let rootFolder: FolderNode;
 	export let onClickFn: (srcKey: string) => void;
 
-	// $: sorted = rootFolder.depthSort();
 </script>
 
 <ul class="w-96 rounded-lg border border-gray-400 bg-white text-slate-900">
-	<!-- TODO: this does not correctly display pages in the root folder -->
+	<!-- TODO: this is not reactive to changes in pageTreeStore? -->
 	{#each rootFolder.children as node}
 		{#if node.type === 'folder'}
 			{@const folder = node}

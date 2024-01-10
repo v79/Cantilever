@@ -9,21 +9,20 @@
 		FolderNode,
 		MarkdownContent,
 		Page,
-		PageTree,
 		TemplateMetadata
 	} from '../../models/structure';
 	import { activeStore } from '../../stores/appStatusStore.svelte';
+	import { fetchFolderList, pageTreeStore } from '../../stores/folderStore.svelte';
 	import { markdownStore } from '../../stores/markdownContentStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
+	import { allPagesStore, fetchPage, fetchPageList } from '../../stores/pagesStore.svelte';
 	import {
 		allTemplatesStore,
 		fetchTemplateMetadata,
 		fetchTemplates
 	} from '../../stores/templateStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
-	import { fetchFolderList, pageTreeStore } from '../../stores/folderStore.svelte';
 	import PageTreeView from './pageTreeView.svelte';
-	import { allPagesStore, fetchPage, fetchPageList } from '../../stores/pagesStore.svelte';
 
 	$: rootFolder = $pageTreeStore.rootFolder;
 
@@ -112,14 +111,14 @@
 	 * Load the markdown for the specified page srcKey.
 	 * @param srcKey
 	 */
-	function loadMarkdown(srcKey: string) {
+	async function loadMarkdown(srcKey: string) {
 		const pagesFolder: string = 'sources/pages/';
 		let token = $userStore.token;
 		console.log('Loading markdown file... ' + srcKey);
 		spinnerStore.set({ shown: true, message: 'Loading markdown file... ' + srcKey });
 		notificationStore.set({ shown: false, message: '', type: 'info' });
 		tick();
-		let page = fetchPage(token, srcKey);
+		let page = await fetchPage(token, srcKey);
 		if (page instanceof Error) {
 			notificationStore.set({
 				message: page.message,
@@ -128,22 +127,23 @@
 			});
 			$spinnerStore.shown = false;
 			return {};
+		} else if (page instanceof MarkdownContent) {
+			$activeStore.activeFile = decodeURIComponent($markdownStore.metadata!!.srcKey);
+			$activeStore.isNewFile = false;
+			$activeStore.hasChanged = false;
+			$activeStore.isValid = true;
+			$activeStore.fileType = FileType.Page;
+			$activeStore.newSlug = $markdownStore.metadata!!.slug;
+			let leafIndex = $activeStore.activeFile.lastIndexOf('/');
+			let folderString = '';
+			if (leafIndex >= pagesFolder.length) {
+				folderString = $activeStore.activeFile.substring(pagesFolder.length, leafIndex);
+			}
+			let folder = new FolderNode('folder', pagesFolder + folderString, [], null);
+			$activeStore.folder = folder;
+			$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
+			$notificationStore.shown = true;
 		}
-		$activeStore.activeFile = decodeURIComponent($markdownStore.metadata!!.srcKey);
-		$activeStore.isNewFile = false;
-		$activeStore.hasChanged = false;
-		$activeStore.isValid = true;
-		$activeStore.fileType = FileType.Page;
-		$activeStore.newSlug = $markdownStore.metadata!!.slug;
-		let leafIndex = $activeStore.activeFile.lastIndexOf('/');
-		let folderString = '';
-		if (leafIndex >= pagesFolder.length) {
-			folderString = $activeStore.activeFile.substring(pagesFolder.length, leafIndex);
-		}
-		let folder = new FolderNode('folder', pagesFolder + folderString, [], null);
-		$activeStore.folder = folder;
-		$notificationStore.message = 'Loaded file ' + $activeStore.activeFile;
-		$notificationStore.shown = true;
 		$spinnerStore.shown = false;
 	}
 
@@ -263,7 +263,9 @@
 		} else {
 			console.log('Folders already loaded');
 			console.dir($pageTreeStore.rootFolder.children);
-			return $pageTreeStore.rootFolder.children.filter((node) => node instanceof FolderNode) as FolderNode[];
+			return $pageTreeStore.rootFolder.children.filter(
+				(node) => node instanceof FolderNode
+			) as FolderNode[];
 		}
 	}
 
@@ -394,7 +396,7 @@
 		{#if $pageTreeStore && $pageTreeStore.rootFolder}
 			<h4 class="text-right text-sm text-slate-900">{$pageTreeStore.rootFolder.count} pages</h4>
 			<div class="justify-left flex py-2">
-				<PageTreeView {rootFolder} onClickFn={loadMarkdown} />
+				<PageTreeView bind:rootFolder onClickFn={loadMarkdown} />
 			</div>
 		{:else}
 			<div class="flex items-center justify-center py-4">
