@@ -119,7 +119,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * Return a list of all the folders which contain pages (i.e. under /sources/pages/)
      */
     fun getFolders(request: Request<Unit>): ResponseEntity<APIResult<List<ContentNode.FolderNode>>> {
-        val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
+        val folders = listOf(ContentNode.FolderNode(S3_KEY.pagesPrefix)) + contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
         return ResponseEntity.ok(body = APIResult.Success(folders))
     }
 
