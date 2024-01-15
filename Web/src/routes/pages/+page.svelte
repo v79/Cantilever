@@ -6,12 +6,14 @@
 	import PageList from './pageList.svelte';
 	import SpinnerWrapper from '../../components/utilities/spinnerWrapper.svelte';
 	import { createSlug } from '../../functions/createSlug';
-	import { Page } from '../../models/structure';
+	import { FolderNode, Page } from '../../models/structure';
 	import { AS_CLEAR, activeStore } from '../../stores/appStatusStore.svelte';
 	import { markdownStore } from '../../stores/markdownContentStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
 	import ActiveStoreView from '../../components/activeStoreView.svelte';
+	import { savePage } from '../../stores/pagesStore.svelte';
+	import { pageTreeStore } from '../../stores/folderStore.svelte';
 
 	let previewModal = false;
 	let deleteFileModal = false;
@@ -32,7 +34,7 @@
 		}
 	}
 
-	function saveFile() {
+	async function saveFile() {
 		if ($markdownStore.metadata === null) {
 			throw new Error('Cannot save a page with no metadata');
 		} else {
@@ -40,38 +42,46 @@
 		}
 		var pageToSave = $markdownStore;
 		// these two properties are not needed in the API
-		delete pageToSave.metadata.type;
-		delete pageToSave.metadata.body;
+		if (pageToSave.metadata !== null) {
+			delete pageToSave.metadata.type;
+			delete pageToSave.metadata.body;
+		}
 		let pageJson = JSON.stringify(pageToSave, mapReplacer);
-		// console.log(pageJson);
-		fetch('https://api.cantilevers.org/project/pages/', {
-			method: 'POST',
-			headers: {
-				Accept: 'text/plain',
-				Authorization: 'Bearer ' + $userStore.token,
-				'Content-Type': 'application/json'
-			},
-			body: pageJson,
-			mode: 'cors'
-		})
-			.then((response) => response.text())
-			.then((data) => {
-				notificationStore.set({
-					message: decodeURI($markdownStore.metadata?.srcKey ?? '') + ' saved. ' + data,
-					shown: true,
-					type: 'success'
-				});
-				$activeStore.isNewFile = false;
-			})
-			.catch((error) => {
-				console.log(error);
-				notificationStore.set({
-					message: error,
-					shown: true,
-					type: 'error'
-				});
-				return {};
+
+		let response = await savePage($userStore.token, pageJson);
+		if (response instanceof Error) {
+			notificationStore.set({
+				message: response.message,
+				shown: true,
+				type: 'error'
 			});
+		} else {
+			notificationStore.set({
+				message: decodeURI($markdownStore.metadata?.srcKey ?? '') + ' saved. ' + response,
+				shown: true,
+				type: 'success'
+			});
+			$activeStore.isNewFile = false;
+			if ($activeStore.folder) {
+				let folderNode = findFolderNode($activeStore.folder?.srcKey);
+				if (folderNode !== undefined) {
+					// this isn't updating the store, is it?
+					folderNode.children.push($markdownStore.metadata as Page);
+					($markdownStore.metadata as Page).parent = folderNode;
+				}
+			}
+		}
+	}
+
+	/**
+	 * Look for a FolderNode with the given srcKey in the pageTreeStore
+	 * @param folderSrcKey
+	 */
+	function findFolderNode(folderSrcKey: string): FolderNode | undefined {
+		console.log('Looking for a folder with key ' + folderSrcKey);
+		return $pageTreeStore.rootFolder.children.find(
+			(f) => f.srcKey === folderSrcKey
+		) as FolderNode;
 	}
 </script>
 
@@ -102,7 +112,8 @@
 							if ($activeStore.isNewFile) {
 								saveNewFileSlug = createSlug($markdownStore?.metadata?.title ?? '');
 								$activeStore.newSlug = saveNewFileSlug;
-								$markdownStore.metadata.srcKey = saveNewFileSlug;
+								$markdownStore.metadata.srcKey =
+									$activeStore.folder?.srcKey + saveNewFileSlug + '.md';
 								$activeStore.activeFile = saveNewFileSlug;
 								saveNewModal = true;
 							} else {
@@ -115,21 +126,21 @@
 				</div>
 				<PageEditorForm bind:metadata={$markdownStore.metadata} bind:previewModal />
 				<button
-						type="button"
-						on:click={() => {
-							if ($activeStore.isNewFile) {
-								saveNewFileSlug = createSlug($markdownStore?.metadata?.title ?? '');
-								$activeStore.newSlug = saveNewFileSlug;
-								$markdownStore.metadata.srcKey = saveNewFileSlug;
-								$activeStore.activeFile = saveNewFileSlug;
-								saveNewModal = true;
-							} else {
-								saveExistingModal = true;
-							}
-						}}
-						disabled={!$markdownStore?.metadata?.isValid() ?? true}
-						class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 disabled:bg-slate-800 disabled:hover:bg-purple-600"
-						>Save</button>
+					type="button"
+					on:click={() => {
+						if ($activeStore.isNewFile) {
+							saveNewFileSlug = createSlug($markdownStore?.metadata?.title ?? '');
+							$activeStore.newSlug = saveNewFileSlug;
+							$markdownStore.metadata.srcKey = saveNewFileSlug;
+							$activeStore.activeFile = saveNewFileSlug;
+							saveNewModal = true;
+						} else {
+							saveExistingModal = true;
+						}
+					}}
+					disabled={!$markdownStore?.metadata?.isValid() ?? true}
+					class="inline-block rounded-r bg-purple-600 px-6 py-2.5 text-xs font-medium uppercase leading-tight text-white transition duration-150 ease-in-out hover:bg-blue-700 focus:bg-blue-700 focus:outline-none focus:ring-0 active:bg-blue-800 disabled:bg-slate-800 disabled:hover:bg-purple-600"
+					>Save</button>
 			{:else}
 				<h3 class="px-8 text-center text-lg text-slate-200">
 					Load an existing file or create a new one to get started

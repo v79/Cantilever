@@ -1,4 +1,5 @@
 <script context="module" lang="ts">
+	/** This store manages the active file and the current page, plus a few other useful statuses */
 	import { writable } from 'svelte/store';
 	import type { AppStatus } from '../models/appStatus';
 

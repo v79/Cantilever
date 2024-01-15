@@ -6,12 +6,13 @@
 	import { markdownStore } from '../stores/markdownContentStore.svelte';
 	import { allImagesStore, IMAGES_CLEAR } from '../stores/mediaStore.svelte';
 	import { notificationStore } from '../stores/notificationStore.svelte';
-	import { allPagesStore, allPostsStore, PAGES_CLEAR } from '../stores/postsStore.svelte';
+	import { allPostsStore  } from '../stores/postsStore.svelte';
 	import { allTemplatesStore, TEMPLATES_CLEAR } from '../stores/templateStore.svelte';
 	import { userStore } from '../stores/userStore.svelte';
 	import CToast from './customized/cToast.svelte';
 	import LoginButton from './loginButton.svelte';
 	import { spinnerStore } from './utilities/spinnerWrapper.svelte';
+	import { allPagesStore, PAGES_CLEAR } from '../stores/pagesStore.svelte';
 
 	let regenAllPostsModal = false;
 	let regenAllPagesModal = false;

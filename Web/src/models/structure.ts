@@ -158,8 +158,7 @@ export class FolderNode implements TreeNode {
 		this.children = children;
 		this.indexPage = indexPage;
 	}
-
-	depthSort() {
+	depthSort(): TreeNode[] {
 		return this.children.sort((a: TreeNode, b: TreeNode) => {
 			if (a.type === 'folder' && b.type === 'folder') {
 				const aFolder = a as FolderNode;
@@ -171,6 +170,7 @@ export class FolderNode implements TreeNode {
 			return 0;
 		});
 	}
+	
 }
 
 /**

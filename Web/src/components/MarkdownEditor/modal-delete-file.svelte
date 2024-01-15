@@ -6,6 +6,8 @@
 	import { allPostsStore } from '../../stores/postsStore.svelte';
 	import { notificationStore } from '../../stores/notificationStore.svelte';
 	import { createEventDispatcher } from 'svelte';
+	import { Page, Post } from '../../models/structure';
+	import { pageTreeStore } from '../../stores/folderStore.svelte';
 
 	export let shown = false;
 
@@ -41,10 +43,20 @@
 					shown: true,
 					type: 'success'
 				});
-				$allPostsStore.count--;
-				let toDelete = $allPostsStore.posts.findIndex((post) => post.srcKey === srcKey);
-				$allPostsStore.posts.splice(toDelete, 1);
-				markdownStore.set(CLEAR);
+
+				if ($markdownStore.metadata instanceof Page) {
+					console.log('Deleting page from pageTreeStore');
+					let toDelete = $pageTreeStore.rootFolder.children.findIndex(
+						(page) => page.srcKey === srcKey
+					);
+					$pageTreeStore.rootFolder.children.splice(toDelete, 1);
+					markdownStore.set(CLEAR);
+				} else if ($markdownStore.metadata instanceof Post) {
+					$allPostsStore.count--;
+					let toDelete = $allPostsStore.posts.findIndex((post) => post.srcKey === srcKey);
+					$allPostsStore.posts.splice(toDelete, 1);
+					markdownStore.set(CLEAR);
+				}
 			})
 			.catch((error) => {
 				notificationStore.set({ message: 'Error deleting: ' + error, shown: true, type: 'error' });

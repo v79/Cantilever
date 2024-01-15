@@ -1,4 +1,5 @@
 <script lang="ts" context="module">
+	/** This store manages the list of templates that pages can use */
 	import { writable } from 'svelte/store';
 	import { type AllTemplates, TemplateMetadata } from '../models/structure';
 	import { Template, HandlebarsTemplate } from '../models/structure';

@@ -1,4 +1,5 @@
 <script context="module" lang="ts">
+	/** This store manages the notification display for 'Toasts'*/
 	import { writable } from 'svelte/store';
 	import type { Notification } from '../models/notification';
 

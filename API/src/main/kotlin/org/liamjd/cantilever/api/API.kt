@@ -102,10 +102,17 @@ class LambdaRouter : RequestHandlerWrapper() {
                     put(
                         "/folder/new/{folderName}",
                         pageController::createFolder,
-                    ).supplies(setOf(MimeType.plainText)).spec(
+                    ).spec(
                         Spec.PathItem("Create folder", "Pages can be nested in folders")
-                    )
+                    ).supplies(setOf(MimeType.plainText))
                 }
+                get("/folders", pageController::getFolders).spec(
+                    Spec.PathItem(
+                        "Get folders",
+                        "Returns a list of all folders"
+                    )
+                )
+
                 get(
                     "/templates/{templateKey}",
                     templateController::getTemplateMetadata,

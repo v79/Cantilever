@@ -1,4 +1,5 @@
 <script lang="ts" context="module">
+	/** This store manages the images and other media in the project */
 	import { writable } from 'svelte/store';
 	import { notificationStore } from './notificationStore.svelte';
 	import type { AllImages } from '../models/structure';
