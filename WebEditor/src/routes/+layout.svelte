@@ -4,6 +4,7 @@
 		AppRail,
 		AppRailAnchor,
 		AppShell,
+		Avatar,
 		Modal,
 		initializeStores
 	} from '@skeletonlabs/skeleton';
@@ -29,6 +30,7 @@
 		Settings_applications
 	} from 'svelte-google-materialdesign-icons';
 	import { page } from '$app/stores';
+	import LoginAvatar from '../components/LoginAvatar.svelte';
 	storePopup.set({ computePosition, autoUpdate, flip, shift, offset, arrow });
 	initializeStores();
 </script>
@@ -47,14 +49,7 @@
 			<h1 class="h1">{$page.route.id}</h1>
 			<!-- TODO: replace with value from my custom navigation store? -->
 			<svelte:fragment slot="trail">
-				<a
-					class="btn btn-sm variant-ghost-surface"
-					href="https://github.com/v79/Cantilever"
-					target="_blank"
-					rel="noreferrer"
-				>
-					GitHub
-				</a>
+				<LoginAvatar/>
 			</svelte:fragment>
 		</AppBar>
 	</svelte:fragment>
