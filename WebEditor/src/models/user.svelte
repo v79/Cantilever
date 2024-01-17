@@ -4,9 +4,9 @@
 		sub: string;
 		email: string;
 		auth_time: number;
-		token: string;
+		token: string | undefined;
 
-		constructor(name: string, sub: string, email: string, auth_time: number, token: string) {
+		constructor(name: string, sub: string, email: string, auth_time: number, token: string | undefined) {
 			this.name = name;
 			this.sub = sub;
 			this.email = email;

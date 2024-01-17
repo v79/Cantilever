@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { PUBLIC_COGNITO_CALLBACK_URL } from '$env/static/public';
 	import { jwtDecode, type JwtPayload } from 'jwt-decode';
-	import { userStore } from '../stores/userStore.svelte';
+	import { CLEAR_USER, userStore } from '../stores/userStore.svelte';
 	import { Avatar } from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
 	import { User } from '../models/user.svelte';
 	import { Icon, Login, Logout } from 'svelte-google-materialdesign-icons';
 
-	let authToken: string | null;
+	let authToken: string | undefined;
 	let tokenPayload: JwtPayload;
 
 	const appClientId = '6ijb6bg3hk22selq6rj2bb5rmq';
@@ -45,7 +45,7 @@
 		}
 	});
 
-	function extractIdToken(): string | null {
+	function extractIdToken(): string | undefined {
 		if (window.location.hash) {
 			let hash = window.location.hash.substring(1);
 			let regex = /id_token=([^&]*)/;
@@ -54,7 +54,7 @@
 				return match[1];
 			}
 		}
-		return null;
+		return undefined;
 	}
 
 	function initLogin() {
@@ -66,7 +66,7 @@
 	}
 
 	function initLogout() {
-		userStore.set(undefined)
+		userStore.set(CLEAR_USER);
         // TODO: clear other stores
 		window.location.assign(logoutUrl);
 	}
@@ -78,13 +78,13 @@
 	});
 </script>
 
-{#if $userStore}
-	<button type="button" class="btn btn-sm variant-ghost-secondary" on:click={initLogout}>
+{#if $userStore.token}
+	<button type="button" class="btn btn-sm variant-ghost-secondary" on:click={initLogout} title="Logout">
 		<Icon icon={Logout} /></button
 	>
-	<Avatar initials="LD" alt={$userStore?.name} />
+	<Avatar initials="LD" alt={$userStore.name} />
 {:else}
-	<button type="button" class="btn btn-sm variant-ghost-secondary" on:click={initLogin}>
+	<button type="button" class="btn btn-sm variant-ghost-secondary" title="Login" on:click={initLogin}>
 		<Icon icon={Login} /></button
 	>
 {/if}

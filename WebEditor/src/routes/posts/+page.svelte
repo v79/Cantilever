@@ -1,29 +1,63 @@
 <script lang="ts">
+	import { type TreeViewNode } from '@skeletonlabs/skeleton';
+	import { onMount } from 'svelte';
 	import { Add, Icon, Refresh } from 'svelte-google-materialdesign-icons';
-	import { RecursiveTreeView, type TreeViewNode } from '@skeletonlabs/skeleton';
+	import { userStore } from '../../stores/userStore.svelte';
+	import PostList from './PostList.svelte';
 	import PostListItem from './PostListItem.svelte';
+	import { fetchPosts, posts } from './postStore.svelte';
 
-	let postList: TreeViewNode[] = [
-		{
-			id: 'post-1',
-			content: PostListItem,
-			contentProps: { title: 'New Design', date: '2024-01-01', srcKey: 'new-design' }
-		},
-		{
-			id: 'post-2',
-			content: PostListItem,
-			contentProps: { title: 'UI Concerns', date: '2023-01-01', srcKey: 'ui-concerns' }
-		},
-		{
-			id: 'post-3',
-			content: PostListItem,
-			contentProps: { title: 'Success with images', date: '2022-01-01', srcKey: 'image-success' }
+	let postListNodes = [] as TreeViewNode[];
+
+	onMount(async () => {
+		if (!$posts) {
+			console.log('no posts');
+			await loadPosts();
 		}
-	];
+		console.log('posts', $posts);
+	});
+
+	async function loadPosts() {
+		if (!$userStore.token) {
+			console.log('no token');
+			return;
+		} else {
+			let fetchResult = await fetchPosts($userStore.token);
+			if (fetchResult instanceof Error) {
+				console.error(fetchResult);
+			} else {
+			}
+		}
+	}
+
+	async function initiateLoadPost(srcKey: string) {
+		console.log('initiateLoadPost', srcKey);
+	}
+
+	const userStoreUnsubscribe = userStore.subscribe((value) => {
+		if (value) {
+			// do nothing
+		}
+	});
+
+	const postsUnsubscribe = posts.subscribe((value) => {
+		if (value) {
+			console.dir(value);
+			// build TreeViewNodes from PostNodes
+			for (const post of value.posts) {
+				postListNodes.push({
+					id: post.srcKey,
+					content: PostListItem,
+					contentProps: { title: post.title, date: post.date, srcKey: post.slug }
+				});
+			}
+		}
+	});
 </script>
 
 <section class="flex flex-row grow mt-2 container justify-center">
 	<div class="basis-1/4 flex flex-col items-center mr-4">
+		{#if $userStore.name}
 		<h3 class="h3">Posts</h3>
 
 		<div class="btn-group variant-filled">
@@ -31,11 +65,16 @@
 			<button><Icon icon={Add} />New Post</button>
 		</div>
 		<div class="flex flex-row m-4">
-			<span class="text=sm text-secondary-500">{postList.length} posts</span>
+			{#if $posts}
+			<span class="text=sm text-secondary-500">{$posts?.count} posts</span>
+			{/if}
 		</div>
 		<div class="card bg-primary-200 w-full">
-			<RecursiveTreeView nodes={postList} spacing="space-y-0" padding="py-2 px-2" />
+			<PostList nodes={postListNodes} onClickFn={initiateLoadPost}/>
 		</div>
+		{:else}
+		<div class="placeholder"></div>
+		{/if}
 	</div>
 
 	<div class="basis-2/3 container flex flex-row justify-center">

@@ -49,7 +49,7 @@
 			<h1 class="h1">{$page.route.id}</h1>
 			<!-- TODO: replace with value from my custom navigation store? -->
 			<svelte:fragment slot="trail">
-				<LoginAvatar/>
+				<LoginAvatar />
 			</svelte:fragment>
 		</AppBar>
 	</svelte:fragment>
@@ -59,40 +59,42 @@
 		<!-- Hidden below Tailwind's large breakpoint -->
 
 		<AppRail>
-			<AppRailAnchor href="/" title="Project">
-				<svelte:fragment slot="lead"
-					><Icon icon={Settings_applications} size={32} variation="outlined" /></svelte:fragment
-				>
-				<span>Project</span>
-			</AppRailAnchor>
+			<div data-sveltekit-preload-data="false">
+				<AppRailAnchor href="/" title="Project">
+					<svelte:fragment slot="lead"
+						><Icon icon={Settings_applications} size={32} variation="outlined" /></svelte:fragment
+					>
+					<span>Project</span>
+				</AppRailAnchor>
 
-			<AppRailAnchor href="/posts" title="Posts">
-				<svelte:fragment slot="lead"
-					><Icon icon={Feed} size={32} variation="outlined" /></svelte:fragment
-				>
-				<span>Posts</span>
-			</AppRailAnchor>
+				<AppRailAnchor href="/posts" title="Posts">
+					<svelte:fragment slot="lead"
+						><Icon icon={Feed} size={32} variation="outlined" /></svelte:fragment
+					>
+					<span>Posts</span>
+				</AppRailAnchor>
 
-			<AppRailAnchor href="/" title="Pages">
-				<svelte:fragment slot="lead"
-					><Icon icon={Article} size={32} variation="outlined" /></svelte:fragment
-				>
-				<span>Pages</span>
-			</AppRailAnchor>
+				<AppRailAnchor href="/" title="Pages">
+					<svelte:fragment slot="lead"
+						><Icon icon={Article} size={32} variation="outlined" /></svelte:fragment
+					>
+					<span>Pages</span>
+				</AppRailAnchor>
 
-			<AppRailAnchor href="/" title="Media">
-				<svelte:fragment slot="lead"
-					><Icon icon={Perm_media} size={32} variation="outlined" /></svelte:fragment
-				>
-				<span>Media</span>
-			</AppRailAnchor>
+				<AppRailAnchor href="/" title="Media">
+					<svelte:fragment slot="lead"
+						><Icon icon={Perm_media} size={32} variation="outlined" /></svelte:fragment
+					>
+					<span>Media</span>
+				</AppRailAnchor>
 
-			<AppRailAnchor href="/" title="Templates">
-				<svelte:fragment slot="lead"
-					><Icon icon={Document_scanner} size={32} variation="outlined" /></svelte:fragment
-				>
-				<span>Templates</span>
-			</AppRailAnchor>
+				<AppRailAnchor href="/" title="Templates">
+					<svelte:fragment slot="lead"
+						><Icon icon={Document_scanner} size={32} variation="outlined" /></svelte:fragment
+					>
+					<span>Templates</span>
+				</AppRailAnchor>
+			</div>
 		</AppRail>
 	</svelte:fragment>
 

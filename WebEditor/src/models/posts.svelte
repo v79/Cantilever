@@ -1,9 +1,14 @@
 <script lang="ts" context="module">
 	import { ContentNode } from './common.svelte';
 
+	export interface PostList {
+		count: number;
+		posts: PostNode[];
+	}
+
 	/**
 	 * Blog post, which is a type of content node.
-     * Does not content the actual content of the post, only metadata.
+     * Does not contain the actual content of the post, only metadata.
 	 */
 	export class PostNode extends ContentNode {
 		title: string;
