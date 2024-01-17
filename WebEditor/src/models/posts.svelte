@@ -1,0 +1,33 @@
+<script lang="ts" context="module">
+	import { ContentNode } from './common.svelte';
+
+	/**
+	 * Blog post, which is a type of content node.
+     * Does not content the actual content of the post, only metadata.
+	 */
+	export class PostNode extends ContentNode {
+		title: string;
+		templateKey: string;
+		slug: string;
+		date: Date;
+		attributes: Map<string, string>;
+
+		constructor(
+			srcKey: string,
+			lastUpdated: Date,
+			url: string | undefined,
+			title: string,
+			templateKey: string,
+			slug: string,
+			date: Date,
+			attributes: Map<string, string>
+		) {
+			super(srcKey, lastUpdated, url);
+			this.title = title;
+			this.templateKey = templateKey;
+			this.slug = slug;
+			this.date = date;
+			this.attributes = attributes;
+		}
+	}
+</script>
