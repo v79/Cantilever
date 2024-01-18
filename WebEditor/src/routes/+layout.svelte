@@ -36,12 +36,6 @@
 	initializeStores();
 
 	$: loggedIn = $userStore.isLoggedIn();
-
-	const unsubscribe = userStore.subscribe((value) => {
-		if (value) {
-			// do nothing really, just here to trigger the subscription
-		}
-	});
 </script>
 
 <!-- Single Modal Container -->
@@ -78,9 +72,10 @@
 					</AppRailAnchor>
 
 					<AppRailAnchor href="/posts" selected={$page.url.pathname === '/posts'} title="Posts">
-						<svelte:fragment slot="lead"
-							><Icon icon={Feed} size={32} variation="outlined" /></svelte:fragment
-						>
+						<svelte:fragment slot="lead">
+							<Icon icon={Feed} size={32} variation="outlined" />
+						</svelte:fragment>
+
 						<span>Posts</span>
 					</AppRailAnchor>
 
@@ -99,8 +94,14 @@
 					</AppRailAnchor>
 
 					<AppRailAnchor href="/" title="Templates">
-						<svelte:fragment slot="lead"
-							><Icon icon={Document_scanner} size={32} variation="outlined" /></svelte:fragment
+						<svelte:fragment slot="lead">
+							<!-- TODO: this badge might be a nice way of indicating that there are ungenerated changes? -->
+							<div class="relative inline-block">
+								<span class="badge-icon variant-filled-error absolute -bottom-0 -right-0 z-10"
+									>2</span
+								>
+								<Icon icon={Document_scanner} size={32} variation="outlined" />
+							</div></svelte:fragment
 						>
 						<span>Templates</span>
 					</AppRailAnchor>
