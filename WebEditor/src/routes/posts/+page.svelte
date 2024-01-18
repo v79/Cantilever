@@ -1,20 +1,19 @@
 <script lang="ts">
 	import { type TreeViewNode } from '@skeletonlabs/skeleton';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { Add, Icon, Refresh } from 'svelte-google-materialdesign-icons';
 	import { userStore } from '../../stores/userStore.svelte';
 	import PostList from './PostList.svelte';
 	import PostListItem from './PostListItem.svelte';
 	import { fetchPosts, posts } from './postStore.svelte';
+	import ListPlaceholder from '../../components/ListPlaceholder.svelte';
 
 	let postListNodes = [] as TreeViewNode[];
 
 	onMount(async () => {
 		if (!$posts) {
-			console.log('no posts');
 			await loadPosts();
 		}
-		console.log('posts', $posts);
 	});
 
 	async function loadPosts() {
@@ -42,7 +41,6 @@
 
 	const postsUnsubscribe = posts.subscribe((value) => {
 		if (value) {
-			console.dir(value);
 			// build TreeViewNodes from PostNodes
 			for (const post of value.posts) {
 				postListNodes.push({
@@ -51,6 +49,8 @@
 					contentProps: { title: post.title, date: post.date, srcKey: post.slug }
 				});
 			}
+			postListNodes = [...postListNodes];
+			console.log('postListNodes', postListNodes);
 		}
 	});
 </script>
@@ -58,22 +58,28 @@
 <section class="flex flex-row grow mt-2 container justify-center">
 	<div class="basis-1/4 flex flex-col items-center mr-4">
 		{#if $userStore.name}
-		<h3 class="h3">Posts</h3>
+			<h3 class="h3">Posts</h3>
 
-		<div class="btn-group variant-filled">
-			<button><Icon icon={Refresh} />Reload</button>
-			<button><Icon icon={Add} />New Post</button>
-		</div>
-		<div class="flex flex-row m-4">
-			{#if $posts}
-			<span class="text=sm text-secondary-500">{$posts?.count} posts</span>
-			{/if}
-		</div>
-		<div class="card bg-primary-200 w-full">
-			<PostList nodes={postListNodes} onClickFn={initiateLoadPost}/>
-		</div>
+			<div class="btn-group variant-filled">
+				<button><Icon icon={Refresh} />Reload</button>
+				<button><Icon icon={Add} />New Post</button>
+			</div>
+			<div class="flex flex-row m-4">
+				{#if $posts?.count === undefined} 
+					<ListPlaceholder label="Loading posts" rows={5}/>
+				{:else}
+					{#if $posts?.count === 0}
+						<p>No posts</p>
+					{:else}
+					<span class="text=sm text-secondary-500">{$posts?.count} posts</span>
+					{/if}
+				{/if}
+			</div>
+			<div class="card bg-primary-200 w-full">
+				<PostList nodes={postListNodes} onClickFn={initiateLoadPost} />
+			</div>
 		{:else}
-		<div class="placeholder"></div>
+			<p class="text-error-500">Not logged in</p>
 		{/if}
 	</div>
 

@@ -9,4 +9,12 @@
 	}
 </script>
 
-<RecursiveTreeView on:click={onClick} {nodes} spacing="space-y-0" padding="py-2 px-2" />
+<div class="listHeight overflow-y-auto">
+	<RecursiveTreeView on:click={onClick} {nodes} spacing="space-y-0" padding="py-2 px-2" />
+</div>
+
+<style>
+	.listHeight {
+		max-height: 700px;
+	}
+</style>
