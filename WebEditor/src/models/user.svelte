@@ -13,5 +13,9 @@
 			this.auth_time = auth_time;
 			this.token = token;
 		}
+
+		isLoggedIn(): boolean {
+			return this.token !== undefined;
+		}
 	}
 </script>

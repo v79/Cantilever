@@ -31,8 +31,17 @@
 	} from 'svelte-google-materialdesign-icons';
 	import { page } from '$app/stores';
 	import LoginAvatar from '../components/LoginAvatar.svelte';
+	import { userStore } from '../stores/userStore.svelte';
 	storePopup.set({ computePosition, autoUpdate, flip, shift, offset, arrow });
 	initializeStores();
+
+	$: loggedIn = $userStore.isLoggedIn();
+
+	const unsubscribe = userStore.subscribe((value) => {
+		if (value) {
+			// do nothing really, just here to trigger the subscription
+		}
+	});
 </script>
 
 <!-- Single Modal Container -->
@@ -58,44 +67,46 @@
 	<svelte:fragment slot="sidebarLeft">
 		<!-- Hidden below Tailwind's large breakpoint -->
 
-		<AppRail>
-			<div data-sveltekit-preload-data="false">
-				<AppRailAnchor href="/" title="Project">
-					<svelte:fragment slot="lead"
-						><Icon icon={Settings_applications} size={32} variation="outlined" /></svelte:fragment
-					>
-					<span>Project</span>
-				</AppRailAnchor>
+		{#if loggedIn}
+			<AppRail>
+				<div data-sveltekit-preload-data="false">
+					<AppRailAnchor href="/" selected={$page.url.pathname === '/'} title="Project">
+						<svelte:fragment slot="lead"
+							><Icon icon={Settings_applications} size={32} variation="outlined" /></svelte:fragment
+						>
+						<span>Project</span>
+					</AppRailAnchor>
 
-				<AppRailAnchor href="/posts" title="Posts">
-					<svelte:fragment slot="lead"
-						><Icon icon={Feed} size={32} variation="outlined" /></svelte:fragment
-					>
-					<span>Posts</span>
-				</AppRailAnchor>
+					<AppRailAnchor href="/posts" selected={$page.url.pathname === '/posts'} title="Posts">
+						<svelte:fragment slot="lead"
+							><Icon icon={Feed} size={32} variation="outlined" /></svelte:fragment
+						>
+						<span>Posts</span>
+					</AppRailAnchor>
 
-				<AppRailAnchor href="/" title="Pages">
-					<svelte:fragment slot="lead"
-						><Icon icon={Article} size={32} variation="outlined" /></svelte:fragment
-					>
-					<span>Pages</span>
-				</AppRailAnchor>
+					<AppRailAnchor href="/" title="Pages">
+						<svelte:fragment slot="lead"
+							><Icon icon={Article} size={32} variation="outlined" /></svelte:fragment
+						>
+						<span>Pages</span>
+					</AppRailAnchor>
 
-				<AppRailAnchor href="/" title="Media">
-					<svelte:fragment slot="lead"
-						><Icon icon={Perm_media} size={32} variation="outlined" /></svelte:fragment
-					>
-					<span>Media</span>
-				</AppRailAnchor>
+					<AppRailAnchor href="/" title="Media">
+						<svelte:fragment slot="lead"
+							><Icon icon={Perm_media} size={32} variation="outlined" /></svelte:fragment
+						>
+						<span>Media</span>
+					</AppRailAnchor>
 
-				<AppRailAnchor href="/" title="Templates">
-					<svelte:fragment slot="lead"
-						><Icon icon={Document_scanner} size={32} variation="outlined" /></svelte:fragment
-					>
-					<span>Templates</span>
-				</AppRailAnchor>
-			</div>
-		</AppRail>
+					<AppRailAnchor href="/" title="Templates">
+						<svelte:fragment slot="lead"
+							><Icon icon={Document_scanner} size={32} variation="outlined" /></svelte:fragment
+						>
+						<span>Templates</span>
+					</AppRailAnchor>
+				</div>
+			</AppRail>
+		{/if}
 	</svelte:fragment>
 
 	<!-- Page Route Content -->
