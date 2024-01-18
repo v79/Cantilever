@@ -80,11 +80,11 @@
 
 {#if $userStore.token}
 	<button type="button" class="btn btn-sm variant-ghost-secondary" on:click={initLogout} title="Logout">
-		<Icon icon={Logout} /></button
+		<Icon icon={Logout} />Logout</button
 	>
-	<Avatar initials="LD" alt={$userStore.name} />
+	<Avatar width="w-8" initials="LD" alt={$userStore.name} />
 {:else}
 	<button type="button" class="btn btn-sm variant-ghost-secondary" title="Login" on:click={initLogin}>
-		<Icon icon={Login} /></button
+		<Icon icon={Login} />Login</button
 	>
 {/if}
