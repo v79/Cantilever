@@ -6,7 +6,8 @@
 		AppShell,
 		Avatar,
 		Modal,
-		initializeStores
+		initializeStores,
+		type ModalComponent
 	} from '@skeletonlabs/skeleton';
 	import '../app.postcss';
 	// Highlight JS
@@ -33,13 +34,18 @@
 	import LoginAvatar from '../components/LoginAvatar.svelte';
 	import { userStore } from '../stores/userStore.svelte';
 	storePopup.set({ computePosition, autoUpdate, flip, shift, offset, arrow });
+
+	import ConfirmDeleteModal from '../components/modals/confirmDeleteModal.svelte';
+	const modalRegistry: Record<string, ModalComponent> = {
+		confirmPostDeleteModal: { ref: ConfirmDeleteModal }
+	};
 	initializeStores();
 
 	$: loggedIn = $userStore.isLoggedIn();
 </script>
 
 <!-- Single Modal Container -->
-<Modal />
+<Modal components={modalRegistry} />
 <!-- App Shell -->
 <AppShell>
 	<svelte:fragment slot="header">

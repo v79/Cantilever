@@ -22,7 +22,7 @@
 			if (response.ok) {
 				const data = await response.json();
 				posts.set(data.data);
-				return data.data.length;
+				return data.data.length as number;
 			} else {
 				throw new Error('Failed to fetch posts');
 			}
