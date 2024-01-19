@@ -10,7 +10,7 @@
 </script>
 
 <div class="listHeight overflow-y-auto">
-	<RecursiveTreeView on:click={onClick} {nodes} spacing="space-y-0" padding="py-2 px-2" />
+	<RecursiveTreeView on:click={onClick} {nodes} spacing="space-y-0" padding="py-2 pr-4" />
 </div>
 
 <style>
