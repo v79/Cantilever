@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { type TreeViewNode } from '@skeletonlabs/skeleton';
-	import { onMount, tick } from 'svelte';
+	import { onMount } from 'svelte';
 	import { Add, Icon, Refresh } from 'svelte-google-materialdesign-icons';
 	import { userStore } from '../../stores/userStore.svelte';
 	import PostList from './PostList.svelte';
@@ -8,6 +8,9 @@
 	import { fetchPost, fetchPosts, posts } from './postStore.svelte';
 	import ListPlaceholder from '../../components/ListPlaceholder.svelte';
 	import { markdownStore } from '../../stores/contentStore.svelte';
+	import TextInput from '../../components/forms/textInput.svelte';
+	import DatePicker from '../../components/forms/datePicker.svelte';
+	import MarkdownEditor from '../../components/forms/markdownEditor.svelte';
 
 	let postListNodes = [] as TreeViewNode[];
 	let pgTitle = 'Markdown Editor';
@@ -98,19 +101,45 @@
 				<form action="#" method="POST">
 					<div class="grid grid-cols-6 gap-6">
 						<div class="col-span-6 sm:col-span-6 lg:col-span-2">
-							<input
-								type="text"
+							<TextInput
+								label="Slug"
 								name="slug"
-								id="slug"
-								disabled
-								value={$markdownStore.metadata.slug}
-								class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md text-primary-900"
-								placeholder="Slug"
+								bind:value={$markdownStore.metadata.slug}
+								required
+								readonly
 							/>
+						</div>
+						<div class="col-span-6 sm:col-span-3 lg:col-span-2">
+							<DatePicker
+								label="Date"
+								name="date"
+								required
+								bind:value={$markdownStore.metadata.date}
+							/>
+						</div>
+						<div class="col-span-6 sm:col-span-3 lg:col-span-2">
+							<TextInput
+								bind:value={$markdownStore.metadata.templateKey}
+								name="template"
+								label="Template"
+								required
+								readonly
+							/>
+						</div>
+						<div class="col-span-6">
+							<TextInput
+								bind:value={$markdownStore.metadata.title}
+								required
+								name="Title"
+								label="Title"
+							/>
+						</div>
+						<div class="col-span-6">
+							<label for="markdown" class="label"><span>Markdown</span></label>
+							<MarkdownEditor bind:body={$markdownStore.body} />
 						</div>
 					</div>
 				</form>
-				{$markdownStore.body}
 			{/if}
 		</div>
 	</div>
