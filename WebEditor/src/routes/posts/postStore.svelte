@@ -73,4 +73,28 @@
 			return error as Error;
 		}
 	}
+
+	export async function savePost(srcKey: string, token: string): Promise<Error | undefined> {
+		console.log('postStore: Saving post', srcKey);
+		try {
+			const encodedKey = encodeURIComponent(srcKey);
+			const response = await fetch(`https://api.cantilevers.org/posts/${encodedKey}`, {
+				method: 'PUT',
+				headers: {
+					Accept: 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const data = await response.json();
+				console.log('postStore: Saved post', data.data);
+			} else {
+				throw new Error('Failed to save post');
+			}
+		} catch (error) {
+			console.error(error);
+			return error as Error;
+		}
+	}
 </script>

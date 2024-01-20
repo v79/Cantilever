@@ -36,8 +36,10 @@
 	storePopup.set({ computePosition, autoUpdate, flip, shift, offset, arrow });
 
 	import ConfirmDeleteModal from '../components/modals/confirmDeleteModal.svelte';
+	import SaveNewPostModal from '../components/modals/saveNewPostModal.svelte';
 	const modalRegistry: Record<string, ModalComponent> = {
-		confirmPostDeleteModal: { ref: ConfirmDeleteModal }
+		confirmPostDeleteModal: { ref: ConfirmDeleteModal },
+		saveNewPostModal: { ref: SaveNewPostModal }
 	};
 	initializeStores();
 
@@ -46,6 +48,7 @@
 
 <!-- Single Modal Container -->
 <Modal components={modalRegistry} />
+
 <!-- App Shell -->
 <AppShell>
 	<svelte:fragment slot="header">

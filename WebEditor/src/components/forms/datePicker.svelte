@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+
 	export let name: string;
 	export let required = false;
 	export let value: Date;
@@ -13,11 +15,7 @@
 	const onInput = (e: Event) => {
 		const { target } = e;
 		if (target) {
-			// value is a Date. The input element returns a string formatted "YYYY-MM-dd"
-			// the backend Kotlin model uses LocalDate for this field but there's no equivalent in Javascript/Typescript
-			// hence the error here. Works at runtime.
-			// @ts-ignore
-			value = (target as HTMLInputElement).value;
+			value = new Date((target as HTMLInputElement).value);
 		}
 	};
 </script>

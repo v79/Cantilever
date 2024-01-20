@@ -18,10 +18,11 @@
 	let pgTitle = 'Markdown Editor';
 	$: markdownTitle = $markdownStore.metadata?.title ?? 'Untitled';
 	$: postIsValid = $markdownStore.metadata?.title != null && $markdownStore.metadata?.title != '';
+	let isNewPost = false;
 
 	// define modals
 	/**
-	 * @type: {ModalComponent}
+	 * @type: {ModalSettings}
 	 */
 	$: savePostModal = {
 		type: 'confirm',
@@ -34,11 +35,12 @@
 			if (r) {
 				initiateSavePost();
 			}
+			modalStore.close();
 		}
 	};
 
 	/**
-	 * @type: {ModalComponent}
+	 * @type: {ModalSettings}
 	 */
 	$: deletePostModal = {
 		type: 'component',
@@ -48,6 +50,22 @@
 			itemTitle: markdownTitle,
 			onFormSubmit: () => {
 				initiateDeletePost();
+			}
+		}
+	};
+
+	/**
+	 * @type: {ModalSettings}
+	 */
+	$: saveNewPostModal = {
+		type: 'component',
+		component: 'saveNewPostModal',
+		meta: {
+			modalTitle: 'Save new post',
+			postTitle: markdownTitle,
+			templateKey: $markdownStore.metadata?.templateKey ?? 'unknown',
+			onFormSubmit: () => {
+				initiateSavePost();
 			}
 		}
 	};
@@ -85,6 +103,7 @@
 
 	async function initiateLoadPost(srcKey: string) {
 		fetchPost(srcKey, $userStore.token!!);
+		isNewPost = false;
 	}
 
 	function initiateNewPost() {
@@ -93,15 +112,17 @@
 			''
 		);
 		markdownStore.set(newPost);
-		console.dir($markdownStore.metadata);
+		isNewPost = true;
 	}
 
 	async function initiateSavePost() {
-		console.log('save post (not yet)');
+		console.log('save post (not yet)', $markdownStore.metadata?.slug);
+		//isNewPost = false;
 	}
 
 	async function initiateDeletePost() {
 		console.log('delete post (not yet)');
+		modalStore.close();
 	}
 
 	async function reloadPostList() {
@@ -177,6 +198,7 @@
 				<div class="btn-group variant-filled" role="group">
 					<button
 						class=" variant-filled-error"
+						disabled={isNewPost}
 						on:click={(e) => {
 							modalStore.trigger(deletePostModal);
 						}}><Icon icon={Delete} />Delete</button
@@ -185,20 +207,28 @@
 						disabled={!postIsValid}
 						class=" variant-filled-primary"
 						on:click={(e) => {
-							modalStore.trigger(savePostModal);
+							if (isNewPost) {
+								modalStore.trigger(saveNewPostModal);
+							} else {
+								modalStore.trigger(savePostModal);
+							}
 						}}>Save<Icon icon={Save} /></button
 					>
 				</div>
 			</div>
 			<div class="grid grid-cols-6 gap-6">
 				<div class="col-span-6 sm:col-span-6 lg:col-span-2">
-					<TextInput
-						label="Slug"
-						name="slug"
-						bind:value={$markdownStore.metadata.slug}
-						required
-						readonly
-					/>
+					{#if isNewPost}
+						<p><em>Slug will be set on first save</em></p>
+					{:else}
+						<TextInput
+							label="Slug"
+							name="slug"
+							bind:value={$markdownStore.metadata.slug}
+							required
+							readonly
+						/>
+					{/if}
 				</div>
 				<div class="col-span-6 sm:col-span-3 lg:col-span-2">
 					<DatePicker label="Date" name="date" required bind:value={$markdownStore.metadata.date} />
@@ -228,10 +258,14 @@
 			<div class="flex flex-row justify-end mt-2">
 				<div class="btn-group variant-filled" role="group">
 					<button
-						class=" variant-filled-primary"
+						class="variant-filled-primary"
 						disabled={!postIsValid}
 						on:click={(e) => {
-							modalStore.trigger(savePostModal);
+							if (isNewPost) {
+								modalStore.trigger(saveNewPostModal);
+							} else {
+								modalStore.trigger(savePostModal);
+							}
 						}}>Save<Icon icon={Save} /></button
 					>
 				</div>
