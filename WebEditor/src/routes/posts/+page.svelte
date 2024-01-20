@@ -1,9 +1,5 @@
 <script lang="ts">
-	import {
-		getModalStore,
-		type ModalSettings,
-		type TreeViewNode
-	} from '@skeletonlabs/skeleton';
+	import { getModalStore, type ModalSettings, type TreeViewNode } from '@skeletonlabs/skeleton';
 	import { onMount, tick } from 'svelte';
 	import { Add, Delete, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
 	import ListPlaceholder from '../../components/ListPlaceholder.svelte';
@@ -15,17 +11,22 @@
 	import PostList from './PostList.svelte';
 	import PostListItem from './PostListItem.svelte';
 	import { fetchPost, fetchPosts, posts } from './postStore.svelte';
+	import { MarkdownContent, PostItem } from '../../models/markdown';
 
 	const modalStore = getModalStore();
 	let postListNodes = [] as TreeViewNode[];
 	let pgTitle = 'Markdown Editor';
 	$: markdownTitle = $markdownStore.metadata?.title ?? 'Untitled';
+	$: postIsValid = $markdownStore.metadata?.title != null && $markdownStore.metadata?.title != '';
 
 	// define modals
+	/**
+	 * @type: {ModalComponent}
+	 */
 	$: savePostModal = {
 		type: 'confirm',
 		title: 'Confirm save',
-		body: 'Save changes to post \'<strong>' + markdownTitle + '</strong>\'?',
+		body: "Save changes to post '<strong>" + markdownTitle + "</strong>'?",
 		buttonTextConfirm: 'Save',
 		buttonTextCancel: 'Cancel',
 		// TRUE if confirm pressed, FALSE if cancel pressed
@@ -36,6 +37,9 @@
 		}
 	};
 
+	/**
+	 * @type: {ModalComponent}
+	 */
 	$: deletePostModal = {
 		type: 'component',
 		component: 'confirmPostDeleteModal',
@@ -84,7 +88,12 @@
 	}
 
 	function initiateNewPost() {
-		console.log('new post (not yet)');
+		let newPost = new MarkdownContent(
+			new PostItem('', '', 'sources/templates/post.html.hbs', '', new Date(), new Date(), true),
+			''
+		);
+		markdownStore.set(newPost);
+		console.dir($markdownStore.metadata);
 	}
 
 	async function initiateSavePost() {
@@ -109,7 +118,7 @@
 	});
 
 	const postsUnsubscribe = posts.subscribe((value) => {
-		if (value && value.count != -1)  {
+		if (value && value.count != -1) {
 			// build TreeViewNodes from PostNodes
 			for (const post of value.posts) {
 				postListNodes.push({
@@ -173,6 +182,7 @@
 						}}><Icon icon={Delete} />Delete</button
 					>
 					<button
+						disabled={!postIsValid}
 						class=" variant-filled-primary"
 						on:click={(e) => {
 							modalStore.trigger(savePostModal);
@@ -180,54 +190,52 @@
 					>
 				</div>
 			</div>
-			<!-- form goes here in a grid -->
-			<form action="#" method="POST">
-				<div class="grid grid-cols-6 gap-6">
-					<div class="col-span-6 sm:col-span-6 lg:col-span-2">
-						<TextInput
-							label="Slug"
-							name="slug"
-							bind:value={$markdownStore.metadata.slug}
-							required
-							readonly
-						/>
-					</div>
-					<div class="col-span-6 sm:col-span-3 lg:col-span-2">
-						<DatePicker
-							label="Date"
-							name="date"
-							required
-							bind:value={$markdownStore.metadata.date}
-						/>
-					</div>
-					<div class="col-span-6 sm:col-span-3 lg:col-span-2">
-						<TextInput
-							bind:value={$markdownStore.metadata.templateKey}
-							name="template"
-							label="Template"
-							required
-							readonly
-						/>
-					</div>
-					<div class="col-span-6">
-						<TextInput
-							bind:value={$markdownStore.metadata.title}
-							required
-							name="Title"
-							label="Title"
-						/>
-					</div>
-					<div class="col-span-6">
-						<label for="markdown" class="label"><span>Markdown</span></label>
-						<MarkdownEditor bind:body={$markdownStore.body} />
-					</div>
+			<div class="grid grid-cols-6 gap-6">
+				<div class="col-span-6 sm:col-span-6 lg:col-span-2">
+					<TextInput
+						label="Slug"
+						name="slug"
+						bind:value={$markdownStore.metadata.slug}
+						required
+						readonly
+					/>
 				</div>
-				<div class="flex flex-row justify-end mt-2">
-					<div class="btn-group variant-filled" role="group">
-						<button class=" variant-filled-primary"><Icon icon={Save} />Save</button>
-					</div>
+				<div class="col-span-6 sm:col-span-3 lg:col-span-2">
+					<DatePicker label="Date" name="date" required bind:value={$markdownStore.metadata.date} />
 				</div>
-			</form>
+				<div class="col-span-6 sm:col-span-3 lg:col-span-2">
+					<TextInput
+						bind:value={$markdownStore.metadata.templateKey}
+						name="template"
+						label="Template"
+						required
+						readonly
+					/>
+				</div>
+				<div class="col-span-6">
+					<TextInput
+						bind:value={$markdownStore.metadata.title}
+						required
+						name="postTitle"
+						label="Title"
+					/>
+				</div>
+				<div class="col-span-6">
+					<label for="markdown" class="label"><span>Markdown</span></label>
+					<MarkdownEditor bind:body={$markdownStore.body} />
+				</div>
+			</div>
+			<div class="flex flex-row justify-end mt-2">
+				<div class="btn-group variant-filled" role="group">
+					<button
+						class=" variant-filled-primary"
+						disabled={!postIsValid}
+						on:click={(e) => {
+							modalStore.trigger(savePostModal);
+						}}>Save<Icon icon={Save} /></button
+					>
+				</div>
+			</div>
 		{/if}
 	</div>
 </div>

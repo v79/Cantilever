@@ -3,11 +3,12 @@
 	export let required = false;
 	export let value: Date;
 	export let label: string;
-    export let classes = '';
+	export let classes = '';
 
 	export let onChange = (e: Event) => {};
 
-    $: classesToApply = `input ${classes}`;
+	$: classesToApply = `input ${classes}`;
+	$: displayDate = value ? value.toISOString().split('T')[0] : '';
 
 	const onInput = (e: Event) => {
 		const { target } = e;
@@ -21,16 +22,18 @@
 	};
 </script>
 
-<label for={name} class="label"><span>{label}</span>
-    <input
-	{value}
-	on:change={onChange}
-	on:input={onInput}
-	type="date"
-	{name}
-	id={name}
-	{required}
-	class="{classesToApply}" />
+<label for={name} class="label"
+	><span>{label}</span>
+	<input
+		value={displayDate}
+		on:change={onChange}
+		on:input={onInput}
+		type="date"
+		{name}
+		id={name}
+		{required}
+		class={classesToApply}
+	/>
 </label>
 {#if required}
 	{#if !value}

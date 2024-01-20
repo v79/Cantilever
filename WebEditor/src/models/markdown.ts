@@ -3,22 +3,31 @@
  * Implementations include Post and Page.
  */
 export abstract class MetadataItem {
-    title: string;
-    srcKey: string;
-    templateKey: string;
-    slug: string;
-    lastUpdated: Date;
+	title: string;
+	srcKey: string;
+	templateKey: string;
+	slug: string;
+	lastUpdated: Date;
+	isNew: boolean = false;
 
-    constructor(title: string, srcKey: string, templateKey: string, slug: string, lastUpdated: Date) {
-        this.title = title;
-        this.srcKey = srcKey;
-        this.templateKey = templateKey;
-        this.slug = slug;
-        this.lastUpdated = new Date(lastUpdated);
-    }
+	constructor(
+		title: string,
+		srcKey: string,
+		templateKey: string,
+		slug: string,
+		lastUpdated: Date,
+		isNew: boolean
+	) {
+		this.title = title;
+		this.srcKey = srcKey;
+		this.templateKey = templateKey;
+		this.slug = slug;
+		this.lastUpdated = new Date(lastUpdated);
+		this.isNew = isNew;
+	}
 
-    abstract getDateString(): string;
-    abstract isValid(): boolean;
+	abstract getDateString(): string;
+	abstract isValid(): boolean;
 }
 
 /**
@@ -26,40 +35,37 @@ export abstract class MetadataItem {
  * This is metadata only, it does not contain the body content.
  */
 export class PostItem extends MetadataItem {
-    date: Date;
+	date: Date;
 
-    constructor(
-        title: string,
-        srcKey: string,
-        templateKey: string,
-        url: string,
-        lastUpdated: Date,
-        date: Date
-    ) {
-        super(title, srcKey, templateKey, url, lastUpdated);
-        this.date = date;
-    }
+	constructor(
+		title: string,
+		srcKey: string,
+		templateKey: string,
+		url: string,
+		lastUpdated: Date,
+		date: Date,
+		isNew: boolean
+	) {
+		super(title, srcKey, templateKey, url, lastUpdated, isNew);
+		this.date = date;
+	}
 
-    getDateString(): string {
-        return this.date.toLocaleDateString('en-GB');
-    }
+	getDateString(): string {
+		return this.date.toLocaleDateString('en-GB');
+	}
 
-    isValid(): boolean {
-        return this.title != '' && this.date != null;
-    }
+	isValid(): boolean {
+		return this.title != '' && this.date != null;
+	}
 }
 
 /**
  * A Page is a static piece of content, generally unchanging content at a fixed URL.
  * This is metadata only, it does not contain the body content.
  */
-export class Page implements MetadataItem {
+export class Page extends MetadataItem {
 	type: string;
-	title: string;
-	srcKey: string;
-	templateKey: string;
 	slug: string;
-	lastUpdated: Date;
 	attributes: Map<string, string>;
 	sections: Map<string, string>;
 	isRoot: boolean;
@@ -75,14 +81,12 @@ export class Page implements MetadataItem {
 		attributes: Map<string, string>,
 		sections: Map<string, string>,
 		isRoot: boolean,
-		parent: string | null
+		parent: string | null,
+		isNew: boolean
 	) {
+		super(title, srcKey, templateKey, slug, lastUpdated, isNew);
 		this.type = nodeType;
-		this.title = title;
-		this.srcKey = srcKey;
-		this.templateKey = templateKey;
 		this.slug = slug;
-		this.lastUpdated = lastUpdated;
 		this.attributes = attributes;
 		this.sections = sections;
 		this.isRoot = isRoot;

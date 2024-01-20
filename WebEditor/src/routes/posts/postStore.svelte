@@ -32,7 +32,10 @@
 		}
 	}
 
-	export async function fetchPost(srcKey: string, token: string): Promise<MarkdownContent | Error | undefined> {
+	export async function fetchPost(
+		srcKey: string,
+		token: string
+	): Promise<MarkdownContent | Error | undefined> {
 		console.log('postStore: Fetching post', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -46,7 +49,9 @@
 			});
 			if (response.ok) {
 				const data = await response.json();
-				console.log('postStore: Fetched post', data.data);
+				// console.log('postStore: Fetched post', data.data);
+				// date is a YYYY-MM-DD string, convert to Date
+				data.data.date = new Date(data.data.date);
 				var tmpPost = new MarkdownContent(
 					new PostItem(
 						data.data.title,
@@ -54,7 +59,8 @@
 						data.data.templateKey,
 						data.data.slug,
 						data.data.lastUpdated,
-						data.data.date
+						data.data.date,
+						false
 					),
 					data.data.body
 				);
