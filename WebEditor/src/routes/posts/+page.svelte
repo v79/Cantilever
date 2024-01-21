@@ -10,7 +10,7 @@
 	import { userStore } from '../../stores/userStore.svelte';
 	import PostList from './PostList.svelte';
 	import PostListItem from './PostListItem.svelte';
-	import { fetchPost, fetchPosts, posts } from './postStore.svelte';
+	import { fetchPost, fetchPosts, posts, savePost } from './postStore.svelte';
 	import { MarkdownContent, PostItem } from '../../models/markdown';
 
 	const modalStore = getModalStore();
@@ -116,8 +116,15 @@
 	}
 
 	async function initiateSavePost() {
-		console.log('save post (not yet)', $markdownStore.metadata?.slug);
-		//isNewPost = false;
+		if ($markdownStore.metadata) {
+			let metadata = $markdownStore.metadata;
+			if (isNewPost || metadata.srcKey === '') {
+				console.log('Is a new post / srcKey is blank, so setting it to the slug', metadata.slug);
+				metadata.srcKey = 'sources/posts/' + metadata.slug + '.md';
+				$markdownStore.metadata = metadata;
+			}
+			let saveResult = await savePost(metadata?.srcKey, $userStore.token!!);
+		}
 	}
 
 	async function initiateDeletePost() {

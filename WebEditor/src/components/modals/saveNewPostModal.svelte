@@ -27,6 +27,15 @@
 			$markdownStore.metadata.slug = newPostSlug;
 		}
 	}
+
+	function updateAndSubmit() {
+		if ($markdownStore.metadata) {
+			console.log('updateAndSubmit: ', newPostSlug);
+			$markdownStore.metadata.slug = newPostSlug;
+			$modalStore[0].meta.onFormSubmit();
+			modalStore.close();
+		}
+	}
 </script>
 
 {#if $modalStore[0]}
@@ -55,7 +64,7 @@
 		<!-- prettier-ignore -->
 		<footer class="modal-footer {parent.regionFooter}">
 			<button class="btn {parent.buttonNeutral}" on:click={parent.onClose}>{parent.buttonTextCancel}</button>
-			<button disabled={disabled} class="btn variant-filled-primary" on:click={$modalStore[0].meta.onFormSubmit}>Save</button>
+			<button disabled={disabled} class="btn variant-filled-primary" on:click={updateAndSubmit}>Save</button>
 		</footer>
 	</div>
 {/if}

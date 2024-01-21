@@ -1,5 +1,5 @@
 <script context="module" lang="ts">
-	import { writable } from 'svelte/store';
+	import { writable, get } from 'svelte/store';
 	import type { PostList } from '../../models/posts.svelte';
 	import { PostItem, MarkdownContent } from '../../models/markdown';
 	import { markdownStore } from '../../stores/contentStore.svelte';
@@ -76,25 +76,44 @@
 
 	export async function savePost(srcKey: string, token: string): Promise<Error | undefined> {
 		console.log('postStore: Saving post', srcKey);
-		try {
-			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/posts/${encodedKey}`, {
-				method: 'PUT',
-				headers: {
-					Accept: 'application/json',
-					Authorization: `Bearer ${token}`
-				},
-				mode: 'cors'
-			});
-			if (response.ok) {
-				const data = await response.json();
-				console.log('postStore: Saved post', data.data);
-			} else {
-				throw new Error('Failed to save post');
+		let content: MarkdownContent = get(markdownStore);
+		if (content.metadata && content.metadata instanceof PostItem) {
+			try {
+				// unwrap the MarkdownContent into something we can send to the server
+				let postToSave = {
+					title: content.metadata.title,
+					templateKey: content.metadata.templateKey,
+					srcKey: content.metadata.srcKey,
+					slug: content.metadata.slug,
+					// date is a Kotlin.LocalDate at the back end, so convert to YYYY-MM-DD string
+					date: content.metadata.date.toISOString().split('T')[0],
+					body: content.body
+				};
+
+				let postJson = JSON.stringify(postToSave);
+				const response = await fetch(`https://api.cantilevers.org/posts/save`, {
+					method: 'POST',
+					headers: {
+						Accept: 'text/plain',
+						Authorization: `Bearer ${token}`,
+						'Content-Type': 'application/json'
+					},
+					mode: 'cors',
+					body: postJson
+				});
+				if (response.ok) {
+					const data = await response.text();
+					console.log('postStore: Saved post', data);
+				} else {
+					console.log(response);
+					throw new Error('Failed to save post ' + srcKey);
+				}
+			} catch (error) {
+				console.error(error);
+				return error as Error;
 			}
-		} catch (error) {
-			console.error(error);
-			return error as Error;
+		} else {
+			console.error('postStore: savePost: metadata is not a PostItem');
 		}
 	}
 </script>
