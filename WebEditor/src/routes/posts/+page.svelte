@@ -14,7 +14,7 @@
 	import TextInput from '../../components/forms/textInput.svelte';
 	import { markdownStore } from '../../stores/contentStore.svelte';
 	import { userStore } from '../../stores/userStore.svelte';
-	import PostList from './PostList.svelte';
+	import PostList from '../../components/BasicFileList.svelte';
 	import PostListItem from './PostListItem.svelte';
 	import { fetchPost, fetchPosts, posts, savePost } from './postStore.svelte';
 	import { MarkdownContent, PostItem } from '../../models/markdown';
@@ -22,7 +22,7 @@
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
 
-	let postListNodes = [] as TreeViewNode[];
+	let postListNodes = [] as TreeViewNode[]; // for the treeview component
 	let pgTitle = 'Markdown Editor';
 	$: markdownTitle = $markdownStore.metadata?.title ?? 'Untitled';
 	$: postIsValid = $markdownStore.metadata?.title != null && $markdownStore.metadata?.title != '';
@@ -118,7 +118,6 @@
 			} else {
 				toast.message = 'Loaded ' + fetchResult + ' posts';
 				toastStore.trigger(toast);
-				console.log('postStore: Fetched', fetchResult, 'posts');
 			}
 		}
 	}

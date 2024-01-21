@@ -8,7 +8,7 @@
 	export const posts = writable<PostList>();
 
 	// fetch list of posts from server
-	export async function fetchPosts(token: string): Promise<number | Error | undefined> {
+	export async function fetchPosts(token: string): Promise<number | Error> {
 		console.log('postStore: Fetching posts');
 		try {
 			const response = await fetch('https://api.cantilevers.org/posts', {

@@ -1,6 +1,11 @@
 <script lang="ts" context="module">
 	import { writable } from 'svelte/store';
 	import { MarkdownContent } from '../models/markdown';
+	import { TemplateNode } from '../models/templates.svelte';
+
+	//@ts-ignore
+	export const CLEAR_MARKDOWN = new MarkdownContent(null, '');
+	export const CLEAR_HANDLEBARS = new TemplateNode('', new Date(), '', [], '');
 
 	function createMarkdownStore() {
 		//@ts-ignore
@@ -22,6 +27,16 @@
 		return title.toLowerCase().replaceAll(invalid, '-');
 	}
 
-	//@ts-ignore
-	export const CLEAR_MARKDOWN = new MarkdownContent(null, '');
+	function createHandlebarsStore() {
+		//@ts-ignore
+		const { subscribe, set, update } = writable<TemplateNode>(CLEAR_HANDLEBARS);
+		return {
+			subscribe,
+			set,
+			update,
+			clear: () => set(CLEAR_HANDLEBARS)
+		};
+	}
+	/** This store manages the handlebars content for the editor, i.e the content of the current Template */
+	export const handlebars = createHandlebarsStore();
 </script>
