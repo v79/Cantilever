@@ -7,7 +7,8 @@
 		Avatar,
 		Modal,
 		initializeStores,
-		type ModalComponent
+		type ModalComponent,
+		Toast
 	} from '@skeletonlabs/skeleton';
 	import '../app.postcss';
 	// Highlight JS
@@ -48,6 +49,9 @@
 
 <!-- Single Modal Container -->
 <Modal components={modalRegistry} />
+
+<!-- Single Toast Container -->
+<Toast position="tr" padding="p-2" />
 
 <!-- App Shell -->
 <AppShell>

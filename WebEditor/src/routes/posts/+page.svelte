@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { getModalStore, type ModalSettings, type TreeViewNode } from '@skeletonlabs/skeleton';
+	import {
+		getModalStore,
+		getToastStore,
+		type ModalSettings,
+		type ToastSettings,
+		type TreeViewNode
+	} from '@skeletonlabs/skeleton';
 	import { onMount, tick } from 'svelte';
 	import { Add, Delete, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
 	import ListPlaceholder from '../../components/ListPlaceholder.svelte';
@@ -14,6 +20,8 @@
 	import { MarkdownContent, PostItem } from '../../models/markdown';
 
 	const modalStore = getModalStore();
+	const toastStore = getToastStore();
+
 	let postListNodes = [] as TreeViewNode[];
 	let pgTitle = 'Markdown Editor';
 	$: markdownTitle = $markdownStore.metadata?.title ?? 'Untitled';
@@ -81,6 +89,16 @@
 		}
 	};
 
+	const toast: ToastSettings = {
+		message: 'Loaded posts',
+		background: 'variant-filled-success',
+		hideDismiss: true
+	};
+	const errorToast: ToastSettings = {
+		message: 'Failed to load posts',
+		background: 'variant-filled-error'
+	};
+
 	onMount(async () => {
 		if (!$posts) {
 			await loadPostList();
@@ -94,16 +112,29 @@
 		} else {
 			let fetchResult = await fetchPosts($userStore.token);
 			if (fetchResult instanceof Error) {
+				errorToast.message = 'Failed to load posts. Message was: ' + fetchResult.message;
+				toastStore.trigger(errorToast);
 				console.error(fetchResult);
 			} else {
+				toast.message = 'Loaded ' + fetchResult + ' posts';
+				toastStore.trigger(toast);
 				console.log('postStore: Fetched', fetchResult, 'posts');
 			}
 		}
 	}
 
 	async function initiateLoadPost(srcKey: string) {
-		fetchPost(srcKey, $userStore.token!!);
-		isNewPost = false;
+		let loadResponse = fetchPost(srcKey, $userStore.token!!);
+		loadResponse.then((r) => {
+			if (r instanceof Error) {
+				errorToast.message = 'Failed to load post';
+				toastStore.trigger(errorToast);
+			} else {
+				toast.message = r;
+				toastStore.trigger(toast);
+				isNewPost = false;
+			}
+		});
 	}
 
 	function initiateNewPost() {
@@ -124,6 +155,15 @@
 				$markdownStore.metadata = metadata;
 			}
 			let saveResult = await savePost(metadata?.srcKey, $userStore.token!!);
+			if (saveResult instanceof Error) {
+				errorToast.message = 'Failed to save post';
+				toastStore.trigger(errorToast);
+			} else {
+				console.log('postStore: Saved post', metadata.srcKey);
+				toast.message = saveResult;
+				toastStore.trigger(toast);
+				reloadPostList();
+			}
 		}
 	}
 

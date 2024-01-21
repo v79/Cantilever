@@ -22,7 +22,7 @@
 			if (response.ok) {
 				const data = await response.json();
 				posts.set(data.data);
-				return data.data.length as number;
+				return data.data.count as number;
 			} else {
 				throw new Error('Failed to fetch posts');
 			}
@@ -32,10 +32,7 @@
 		}
 	}
 
-	export async function fetchPost(
-		srcKey: string,
-		token: string
-	): Promise<MarkdownContent | Error | undefined> {
+	export async function fetchPost(srcKey: string, token: string): Promise<Error | string> {
 		console.log('postStore: Fetching post', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -65,6 +62,7 @@
 					data.data.body
 				);
 				markdownStore.set(tmpPost);
+				return 'Loaded post ' + srcKey;
 			} else {
 				throw new Error('Failed to fetch post');
 			}
@@ -74,7 +72,7 @@
 		}
 	}
 
-	export async function savePost(srcKey: string, token: string): Promise<Error | undefined> {
+	export async function savePost(srcKey: string, token: string): Promise<Error | string> {
 		console.log('postStore: Saving post', srcKey);
 		let content: MarkdownContent = get(markdownStore);
 		if (content.metadata && content.metadata instanceof PostItem) {
@@ -104,6 +102,7 @@
 				if (response.ok) {
 					const data = await response.text();
 					console.log('postStore: Saved post', data);
+					return data;
 				} else {
 					console.log(response);
 					throw new Error('Failed to save post ' + srcKey);
@@ -114,6 +113,7 @@
 			}
 		} else {
 			console.error('postStore: savePost: metadata is not a PostItem');
+			return new Error('postStore: savePost: metadata is not a PostItem');
 		}
 	}
 </script>
