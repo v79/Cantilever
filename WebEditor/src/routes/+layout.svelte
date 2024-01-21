@@ -38,6 +38,9 @@
 
 	import ConfirmDeleteModal from '../components/modals/confirmDeleteModal.svelte';
 	import SaveNewPostModal from '../components/modals/saveNewPostModal.svelte';
+	import { onMount } from 'svelte';
+	
+	
 	const modalRegistry: Record<string, ModalComponent> = {
 		confirmPostDeleteModal: { ref: ConfirmDeleteModal },
 		saveNewPostModal: { ref: SaveNewPostModal }
@@ -45,6 +48,25 @@
 	initializeStores();
 
 	$: loggedIn = $userStore.isLoggedIn();
+
+	export const warmTimer = 60 * 1000;
+	
+	onMount(() => {
+		async function warm() {
+			// attempt to warm the lambda by calling /warm (/ping is reserved by API Gateway)
+			console.log('Keeping lambda warm...');
+			fetch('https://api.cantilevers.org/warm', {
+				mode: 'no-cors',
+				headers: {
+					Accept: 'text/plain'
+				}
+			});
+		}
+
+		const interval = setInterval(warm, warmTimer);
+		warm();
+		return () => clearInterval(interval);
+	});
 </script>
 
 <!-- Single Modal Container -->
@@ -101,12 +123,12 @@
 
 					<AppRailAnchor href="/" title="Media">
 						<svelte:fragment slot="lead"
-							><Icon icon={Perm_media} size={32} variation="outlined" /></svelte:fragment
+							><Icon icon={Perm_media} size={32} variation="filled" /></svelte:fragment
 						>
 						<span>Media</span>
 					</AppRailAnchor>
 
-					<AppRailAnchor href="/" title="Templates">
+					<AppRailAnchor href="/templates" title="Templates">
 						<svelte:fragment slot="lead">
 							<!-- TODO: this badge might be a nice way of indicating that there are ungenerated changes? -->
 							<div class="relative inline-block">
