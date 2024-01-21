@@ -149,6 +149,7 @@ sealed class ContentNode {
         val sections: List<String> = emptyList(),
     ) : ContentNode() {
         override val url = "" // irrelevant for templates
+        var body: String = ""
     }
 
     /**

@@ -99,7 +99,7 @@ internal class TemplateControllerTest : KoinTest {
         val body = """
             {{{ name }}}
         """.trimIndent()
-        every { mockTemplate.key } returns "my-template"
+        every { mockTemplate.srcKey } returns "my-template"
         every { mockTemplate.metadata } returns mockTemplateMeta
         every { mockTemplateMeta.name } returns "My Template"
         every { mockHandlebarsContent.template } returns mockTemplate
@@ -133,7 +133,7 @@ internal class TemplateControllerTest : KoinTest {
         val body = """
             {{{ name }}}
         """.trimIndent()
-        every { mockTemplate.key } returns "my-template"
+        every { mockTemplate.srcKey } returns "my-template"
         every { mockTemplate.metadata } returns mockTemplateMeta
         every { mockTemplateMeta.name } returns "My Template"
         every { mockHandlebarsContent.template } returns mockTemplate

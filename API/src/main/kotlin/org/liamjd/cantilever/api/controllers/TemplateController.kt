@@ -21,9 +21,9 @@ import java.nio.charset.Charset
 class TemplateController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
 
     /**
-     * Load a handlebars template file with the specified 'srcKey' and return it as a [HandlebarsTemplate] response
+     * Load a handlebars template file with the specified 'srcKey' and return it as a [ContentNode.TemplateNode] response
      */
-    fun loadHandlebarsSource(request: Request<Unit>): ResponseEntity<APIResult<HandlebarsTemplate>> {
+    fun loadHandlebarsSource(request: Request<Unit>): ResponseEntity<APIResult<ContentNode.TemplateNode>> {
         val handlebarSource = request.pathParameters["srcKey"]
         return if (handlebarSource != null) {
             val decoded = URLDecoder.decode(handlebarSource, Charset.defaultCharset())
@@ -37,13 +37,13 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
                     // TODO: this throws exception if a value is missing from the frontmatter, even though it should encode the default
                     val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
                     info("Handlebar frontmatter: $metadata")
-                    val template = Template(
-                        handlebarSource,
-                        templateObj.lastModified().toKotlinInstant(),
-                        metadata
-                    )
-                    val handlebarsTemplate = HandlebarsTemplate(template, body.stripFrontMatter())
-                    ResponseEntity.ok(body = APIResult.Success(handlebarsTemplate))
+
+                    val templateNode: ContentNode.TemplateNode = ContentNode.TemplateNode(
+                        srcKey = decoded,
+                        title = metadata.name,
+                        sections = metadata.sections?.toMutableList() ?: mutableListOf()
+                    ).also { it.body = body.stripFrontMatter() }
+                    ResponseEntity.ok(body = APIResult.Success(templateNode))
                 } else {
                     error("Handlebars file $decoded not found in bucket $sourceBucket")
                     ResponseEntity.notFound(body = APIResult.Error("Handlebars file $decoded not found in bucket $sourceBucket"))
@@ -63,39 +63,40 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
      */
     fun saveTemplate(request: Request<HandlebarsTemplate>): ResponseEntity<APIResult<String>> {
         val handlebarsContent = request.body
-        val srcKey = URLDecoder.decode(handlebarsContent.template.key, Charset.defaultCharset())
+        val srcKey = URLDecoder.decode(handlebarsContent.template.srcKey, Charset.defaultCharset())
 
         // both branches do the same thing
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
-            info("Updating existing file '${handlebarsContent.template.key}'")
+            info("Updating existing file '${handlebarsContent.template.srcKey}'")
             val length = writeTemplateFile(handlebarsContent, srcKey)
             contentTree.updateTemplate(
                 ContentNode.TemplateNode(
-                    srcKey = handlebarsContent.template.key,
+                    srcKey = handlebarsContent.template.srcKey,
                     title = handlebarsContent.template.metadata.name,
                     sections = handlebarsContent.template.metadata.sections?.toMutableList() ?: mutableListOf()
                 )
             )
             ResponseEntity.ok(
                 body =
-                APIResult.OK("Updated file ${handlebarsContent.template.key}, $length bytes")
+                APIResult.OK("Updated file ${handlebarsContent.template.srcKey}, $length bytes")
             )
         } else {
-            info("Creating new file '${handlebarsContent.template.key}'")
+            info("Creating new file '${handlebarsContent.template.srcKey}'")
             val length = writeTemplateFile(handlebarsContent, srcKey)
             contentTree.insertTemplate(
                 ContentNode.TemplateNode(
-                    srcKey = handlebarsContent.template.key,
+                    srcKey = handlebarsContent.template.srcKey,
                     title = handlebarsContent.template.metadata.name,
                     sections = handlebarsContent.template.metadata.sections?.toMutableList() ?: mutableListOf()
                 )
             )
-            ResponseEntity.ok(body = APIResult.OK("Updated file ${handlebarsContent.template.key}, $length bytes"))
+            ResponseEntity.ok(body = APIResult.OK("Updated file ${handlebarsContent.template.srcKey}, $length bytes"))
         }
     }
 
     /**
      * Load the handlebars template file and extract its metadata
+     * TODO: return a [TemplateNode] instead of a [TemplateMetadata]
      */
     fun getTemplateMetadata(request: Request<Unit>): ResponseEntity<APIResult<TemplateMetadata>> {
         val handlebarKey = request.pathParameters["templateKey"]
