@@ -37,6 +37,9 @@
 		hideDismiss: true
 	};
 
+		/**
+	* @type: {ModalSettings}
+	*/
 	$: saveTemplateModal = {
 		type: 'confirm',
 		title: 'Confirm save',
@@ -63,6 +66,21 @@
 			templateTitle: $handlebars.title,
 			onFormSubmit: () => {
 				initiateSaveTemplate();
+			}
+		}
+	};
+
+	/**
+	 * @type: {ModalSettings}
+	 */
+	 $: deleteTemplateModal = {
+		type: 'component',
+		component: 'confirmPostDeleteModal',
+		meta: {
+			modalTitle: 'Confirm template deletion',
+			itemTitle: $handlebars.title,
+			onFormSubmit: () => {
+				initiateDeletePost();
 			}
 		}
 	};
@@ -131,6 +149,10 @@
 				isNewTemplate = false;
 			}
 		}
+	}
+
+	async function initiateDeletePost() {
+		console.log('deleting post (not yet implemented)');
 	}
 
 	function createNewTemplate() {
@@ -228,7 +250,7 @@
 						class=" variant-filled-error"
 						disabled={isNewTemplate}
 						on:click={(e) => {
-							// modalStore.trigger(deleteTemplateModal);
+							modalStore.trigger(deleteTemplateModal);
 						}}><Icon icon={Delete} />Delete</button
 					>
 					<button

@@ -19,12 +19,10 @@
 	const cForm = 'p-4 space-y-4 rounded-container-token';
 </script>
 
-<!-- @component This example creates a simple form modal. -->
-
 {#if $modalStore[0]}
 	<div class="modal-example-form {cBase}">
 		<header class={cHeader}>{$modalStore[0].meta.modalTitle}</header>
-		<article>Delete post '<strong>{$modalStore[0].meta.itemTitle ?? '(title missing)'}</strong>'?<br/> This cannot be undone.</article>
+		<article>Delete file '<strong>{$modalStore[0].meta.itemTitle ?? '(title missing)'}</strong>'?<br/> This cannot be undone.</article>
 		<!-- Enable for debugging: -->
 		<form class="modal-form {cForm}">
 			<label class="label">
