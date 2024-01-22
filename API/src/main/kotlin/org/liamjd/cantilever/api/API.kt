@@ -112,7 +112,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                         "Returns a list of all folders"
                     )
                 )
-
+                // TODO: I think this is obsolete, replaced with GET /metadata
                 get(
                     "/templates/{templateKey}",
                     templateController::getTemplateMetadata,
@@ -160,7 +160,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                 ).spec(Spec.PathItem("Get template source", "Returns the handlebars source for a template"))
 
                 post(
-                    "/",
+                    "/save",
                     templateController::saveTemplate,
                 ).supplies(setOf(MimeType.plainText))
                     .spec(Spec.PathItem("Save template", "Save handlebars template source"))

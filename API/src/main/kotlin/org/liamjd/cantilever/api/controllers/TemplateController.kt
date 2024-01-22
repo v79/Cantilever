@@ -1,7 +1,6 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.charleskorn.kaml.Yaml
-import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.SerializationException
 import org.koin.core.component.KoinComponent
 import org.liamjd.cantilever.api.models.APIResult
@@ -46,11 +45,15 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
                     ResponseEntity.ok(body = APIResult.Success(templateNode))
                 } else {
                     error("Handlebars file $decoded not found in bucket $sourceBucket")
-                    ResponseEntity.notFound(body = APIResult.Error("Handlebars file $decoded not found in bucket $sourceBucket"))
+                    ResponseEntity.notFound(
+                        body = APIResult.Error("Handlebars file $decoded not found in bucket $sourceBucket")
+                    )
                 }
             } else {
                 error("Handlebars file $decoded not found in bucket $sourceBucket")
-                ResponseEntity.notFound(body = APIResult.Error("Handlebars file $decoded not found in bucket $sourceBucket"))
+                ResponseEntity.notFound(
+                    body = APIResult.Error("Handlebars file $decoded not found in bucket $sourceBucket")
+                )
             }
         } else {
             error("Invalid request for null source file")
@@ -61,36 +64,45 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
     /**
      * Save a handlebars template file, which contains a key, sections, name and body
      */
-    fun saveTemplate(request: Request<HandlebarsTemplate>): ResponseEntity<APIResult<String>> {
-        val handlebarsContent = request.body
-        val srcKey = URLDecoder.decode(handlebarsContent.template.srcKey, Charset.defaultCharset())
+    fun saveTemplate(request: Request<ContentNode.TemplateNode>): ResponseEntity<APIResult<String>> {
+        val templateNode = request.body
+        val srcKey = URLDecoder.decode(templateNode.srcKey, Charset.defaultCharset())
 
         // both branches do the same thing
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
-            info("Updating existing file '${handlebarsContent.template.srcKey}'")
-            val length = writeTemplateFile(handlebarsContent, srcKey)
-            contentTree.updateTemplate(
-                ContentNode.TemplateNode(
-                    srcKey = handlebarsContent.template.srcKey,
-                    title = handlebarsContent.template.metadata.name,
-                    sections = handlebarsContent.template.metadata.sections?.toMutableList() ?: mutableListOf()
-                )
+            info("Updating existing file '${templateNode.srcKey}'")
+            val length = s3Service.putObjectAsString(
+                templateNode.srcKey,
+                sourceBucket,
+                convertTemplateToYamlString(templateNode),
+                "text/plain"
             )
+            templateNode.body = ""
+            contentTree.updateTemplate(
+                templateNode
+            )
+            saveContentTree()
             ResponseEntity.ok(
                 body =
-                APIResult.OK("Updated file ${handlebarsContent.template.srcKey}, $length bytes")
+                APIResult.OK("Updated file ${templateNode.srcKey}, $length bytes")
             )
         } else {
-            info("Creating new file '${handlebarsContent.template.srcKey}'")
-            val length = writeTemplateFile(handlebarsContent, srcKey)
-            contentTree.insertTemplate(
-                ContentNode.TemplateNode(
-                    srcKey = handlebarsContent.template.srcKey,
-                    title = handlebarsContent.template.metadata.name,
-                    sections = handlebarsContent.template.metadata.sections?.toMutableList() ?: mutableListOf()
-                )
+            info("Creating new file '${templateNode.srcKey}'")
+            val length = s3Service.putObjectAsString(
+                templateNode.srcKey,
+                sourceBucket,
+                convertTemplateToYamlString(templateNode),
+                "text/plain"
             )
-            ResponseEntity.ok(body = APIResult.OK("Updated file ${handlebarsContent.template.srcKey}, $length bytes"))
+            templateNode.body = ""
+            contentTree.insertTemplate(
+                templateNode
+            )
+            saveContentTree()
+            ResponseEntity.ok(
+                body =
+                APIResult.OK("Updated file ${templateNode.srcKey}, $length bytes")
+            )
         }
     }
 
@@ -110,7 +122,9 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
                     val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
                     ResponseEntity.ok(body = APIResult.Success(metadata))
                 } catch (se: SerializationException) {
-                    ResponseEntity.serverError(body = APIResult.Error("Could not deserialize template $srcKey. Error was ${se.message}"))
+                    ResponseEntity.serverError(
+                        body = APIResult.Error("Could not deserialize template $srcKey. Error was ${se.message}")
+                    )
                 }
             } else {
                 ResponseEntity.badRequest(body = APIResult.Error("Could not find template $srcKey"))
@@ -137,32 +151,26 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
             ResponseEntity.ok(body = APIResult.Success(value = templateList))
         } else {
             error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
-            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
+            ResponseEntity.notFound(
+                body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+            )
         }
     }
 
     /**
-     * Build the frontmatter for the metadata for a handlebars template file
+     * The front end gives us a JSON representation of a handlebars template, which we need to convert to a YAML frontmatter & body
      */
-    private fun buildFrontmatterForTemplate(template: Template): String {
-        val sBuilder = StringBuilder()
-        sBuilder.append("---\n")
-        sBuilder.append("name: ${template.metadata.name}\n")
-        sBuilder.append("sections:\n")
-        template.metadata.sections?.forEach {
-            sBuilder.append(" - $it\n")
-        }
-        sBuilder.append("---\n")
+    private fun convertTemplateToYamlString(template: ContentNode.TemplateNode): String {
+        val templateMetadata = TemplateMetadata(
+            name = template.title,
+            sections = template.sections
+        )
+        val sBuilder: StringBuilder = StringBuilder()
+        sBuilder.appendLine("---")
+        sBuilder.appendLine(Yaml.default.encodeToString(TemplateMetadata.serializer(), templateMetadata))
+        sBuilder.appendLine("---")
+        sBuilder.appendLine(template.body)
         return sBuilder.toString()
-    }
-
-    /**
-     * Write a handlebars template file to S3, combining the metadata and the body into a single string
-     */
-    private fun writeTemplateFile(handlebarsContent: HandlebarsTemplate, key: String): Int {
-        val frontmatter = buildFrontmatterForTemplate(template = handlebarsContent.template)
-        val body = frontmatter + handlebarsContent.body
-        return s3Service.putObjectAsString(key, sourceBucket, body, "text/html")
     }
 
     override fun info(message: String) = println("INFO: TemplateController: $message")

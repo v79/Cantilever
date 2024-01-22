@@ -9,7 +9,7 @@
 
 	import { userStore } from '../../stores/userStore.svelte';
 	import { onMount, tick } from 'svelte';
-	import { fetchTemplate, fetchTemplates, templates } from './templateStore.svelte';
+	import { fetchTemplate, fetchTemplates, templates, saveTemplate } from './templateStore.svelte';
 	import { Refresh, Icon, Save, Delete, Sync, Add } from 'svelte-google-materialdesign-icons';
 	import TemplateListItem from './TemplateListItem.svelte';
 	import ListPlaceholder from '../../components/ListPlaceholder.svelte';
@@ -36,6 +36,37 @@
 		background: 'variant-filled-success',
 		hideDismiss: true
 	};
+
+	$: saveTemplateModal = {
+		type: 'confirm',
+		title: 'Confirm save',
+		body: "Save changes to template '<strong>" + $handlebars.title + "</strong>'?",
+		buttonTextConfirm: 'Save',
+		buttonTextCancel: 'Cancel',
+		// TRUE if confirm pressed, FALSE if cancel pressed
+		response: (r: boolean) => {
+			if (r) {
+				initiateSaveTemplate();
+			}
+			modalStore.close();
+		}
+	};
+	
+	/**
+	* @type: {ModalSettings}
+	*/
+	$: saveNewTemplateModal = {
+		type: 'component',
+		component: 'saveNewTemplateModal',
+		meta: {
+			modalTitle: 'Save new template',
+			templateTitle: $handlebars.title,
+			onFormSubmit: () => {
+				initiateSaveTemplate();
+			}
+		}
+	};
+	
 
 	onMount(async () => {
 		if (!$templates) {
@@ -83,6 +114,25 @@
 		});
 	}
 
+	async function initiateSaveTemplate() {
+		if ($handlebars) {
+			console.log('initiateSaveTemplate: ', $handlebars.srcKey);
+			if(isNewTemplate) {
+				$handlebars.srcKey = 'sources/templates/' + $handlebars.srcKey + '.html.hbs';
+			}
+			const result = await saveTemplate($userStore.token!!);
+			if (result instanceof Error) {
+				errorToast.message = 'Failed to save template. Message was: ' + result.message;
+				toastStore.trigger(errorToast);
+				console.error(result);
+			} else {
+				toast.message = result;
+				toastStore.trigger(toast);
+				isNewTemplate = false;
+			}
+		}
+	}
+
 	function createNewTemplate() {
 		console.log('Creating new template');
 		const rawHTML = `<!DOCTYPE html>
@@ -114,6 +164,7 @@
 	const templatesUnsubscribe = templates.subscribe((value) => {
 		if (value && value.count != -1) {
 			// build TreeViewNodes from TemplateNodes
+			templateListNodes = [];
 			for (const template of value.templates) {
 				templateListNodes.push({
 					id: template.srcKey,
@@ -185,9 +236,9 @@
 						class=" variant-filled-primary"
 						on:click={(e) => {
 							if (isNewTemplate) {
-								// modalStore.trigger(saveNewTemplateModal);
+								modalStore.trigger(saveNewTemplateModal);
 							} else {
-								// modalStore.trigger(savePostModal);
+								modalStore.trigger(saveTemplateModal);
 							}
 						}}>Save<Icon icon={Save} /></button
 					>
@@ -208,9 +259,9 @@
 						class=" variant-filled-primary"
 						on:click={(e) => {
 							if (isNewTemplate) {
-								// modalStore.trigger(saveNewTemplateModal);
+								modalStore.trigger(saveNewTemplateModal);
 							} else {
-								// modalStore.trigger(savePostModal);
+								modalStore.trigger(saveTemplateModal);
 							}
 						}}>Save<Icon icon={Save} /></button
 					>

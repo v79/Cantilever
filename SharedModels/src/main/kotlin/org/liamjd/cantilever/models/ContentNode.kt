@@ -357,7 +357,7 @@ class ContentTree {
      * Update a template in the tree. This does a delete then insert
      */
     fun updateTemplate(template: ContentNode.TemplateNode) {
-        val existing = templates.find { it.srcKey == template.srcKey } as ContentNode.TemplateNode?
+        val existing = templates.find { it.srcKey == template.srcKey }
         if (existing != null) {
             deleteTemplate(existing)
             insertTemplate(template)

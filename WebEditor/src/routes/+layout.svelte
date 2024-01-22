@@ -38,12 +38,14 @@
 
 	import ConfirmDeleteModal from '../components/modals/confirmDeleteModal.svelte';
 	import SaveNewPostModal from '../components/modals/saveNewPostModal.svelte';
+	import SaveNewTemplateModal from '../components/modals/saveNewTemplateModal.svelte';
 	import { onMount } from 'svelte';
 	
 	
 	const modalRegistry: Record<string, ModalComponent> = {
 		confirmPostDeleteModal: { ref: ConfirmDeleteModal },
-		saveNewPostModal: { ref: SaveNewPostModal }
+		saveNewPostModal: { ref: SaveNewPostModal },
+		saveNewTemplateModal: { ref: SaveNewTemplateModal }
 	};
 	initializeStores();
 
