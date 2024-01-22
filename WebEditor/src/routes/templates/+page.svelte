@@ -10,12 +10,13 @@
 	import { userStore } from '../../stores/userStore.svelte';
 	import { onMount, tick } from 'svelte';
 	import { fetchTemplate, fetchTemplates, templates } from './templateStore.svelte';
-	import { Refresh, Icon, Save, Delete, Sync } from 'svelte-google-materialdesign-icons';
+	import { Refresh, Icon, Save, Delete, Sync, Add } from 'svelte-google-materialdesign-icons';
 	import TemplateListItem from './TemplateListItem.svelte';
 	import ListPlaceholder from '../../components/ListPlaceholder.svelte';
 	import PostList from '../../components/BasicFileList.svelte';
 	import { handlebars } from '../../stores/contentStore.svelte';
 	import TextInput from '../../components/forms/textInput.svelte';
+	import { TemplateNode } from '../../models/templates.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -23,7 +24,7 @@
 	let templateListNodes = [] as TreeViewNode[]; // for the treeview component
 	let pgTitle = 'Template Editor';
 	let isNewTemplate = false;
-	let templateIsValid = false;
+	$: templateIsValid = $handlebars.title != null && $handlebars.body != null;
 
 	const errorToast: ToastSettings = {
 		message: 'Failed to fetch templates',
@@ -82,6 +83,34 @@
 		});
 	}
 
+	function createNewTemplate() {
+		console.log('Creating new template');
+		const rawHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="author" content="{{author}}">
+    <meta name="generator" content="cantilevers">
+    <title>{{ project.projectName }} - {{ title }}</title>
+    <link rel="stylesheet" href="/css/pico.min.css">
+</head>
+<body>
+</body>
+</html>
+`;
+		let newTemplate: TemplateNode = new TemplateNode(
+			'',
+			new Date(),
+			'(new template)',
+			new Array<string>(),
+			rawHTML
+		);
+		handlebars.set(newTemplate);
+		isNewTemplate = true;
+	}
+
 	const templatesUnsubscribe = templates.subscribe((value) => {
 		if (value && value.count != -1) {
 			// build TreeViewNodes from TemplateNodes
@@ -111,6 +140,7 @@
 			<h3 class="h3">Templates</h3>
 			<div class="btn-group variant-filled">
 				<button on:click={reloadPostList}><Icon icon={Refresh} />Reload</button>
+				<button on:click={(e) => createNewTemplate()}><Icon icon={Add} />New Template</button>
 			</div>
 			<div class="flex flex-row m-4">
 				{#if $templates?.count === undefined || $templates?.count === -1}
@@ -138,6 +168,7 @@
 				<div class="btn-group variant-filled" role="group">
 					<button
 						class="variant-filled-secondary"
+						disabled={isNewTemplate}
 						on:click={(e) => {
 							// regenerateFromTemplate()
 						}}><Icon icon={Sync} />Regenerate</button

@@ -37,3 +37,4 @@ TemplateProcessor/build/
 /OpenAPISchemaGenerator/build/
 /OpenAPISchemaAnnotations/build/
 /ImageProcessor/build/
+/MarkdownProcessor/.gradle/
