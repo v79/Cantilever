@@ -14,7 +14,7 @@
 	import TextInput from '$lib/forms/textInput.svelte';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
-	import PostList from '$lib/components/BasicFileList.svelte';
+	import BasicFileList from '$lib/components/BasicFileList.svelte';
 	import PostListItem from './PostListItem.svelte';
 	import { fetchPost, fetchPosts, posts, savePost } from './postStore.svelte';
 	import { MarkdownContent, PostItem } from '$lib/models/markdown';
@@ -210,7 +210,7 @@
 <div class="flex flex-row grow mt-2 container justify-center">
 	<div class="basis-1/4 flex flex-col items-center mr-4">
 		{#if $userStore.isLoggedIn()}
-			<h3 class="h3">Posts</h3>
+			<h3 class="h3 mb-2">Posts</h3>
 
 			<div class="btn-group variant-filled">
 				<button on:click={reloadPostList}><Icon icon={Refresh} />Reload</button>
@@ -229,7 +229,7 @@
 			</div>
 			{#if $posts?.count > 0}
 				<div class="card bg-primary-200 w-full">
-					<PostList nodes={postListNodes} onClickFn={initiateLoadPost} />
+					<BasicFileList nodes={postListNodes} onClickFn={initiateLoadPost} />
 				</div>
 			{/if}
 		{:else}

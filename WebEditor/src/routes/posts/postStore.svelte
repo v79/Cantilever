@@ -20,6 +20,7 @@
 				mode: 'cors'
 			});
 			if (response.ok) {
+				/** @type {PostList} */
 				const data = await response.json();
 				posts.set(data.data);
 				return data.data.count as number;

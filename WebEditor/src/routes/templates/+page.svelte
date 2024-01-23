@@ -210,7 +210,7 @@
 <div class="flex flex-row grow mt-2 container justify-center">
 	<div class="basis-1/4 flex flex-col items-center mr-4">
 		{#if $userStore.isLoggedIn()}
-			<h3 class="h3">Templates</h3>
+			<h3 class="h3 mb-2">Templates</h3>
 			<div class="btn-group variant-filled">
 				<button on:click={reloadPostList}><Icon icon={Refresh} />Reload</button>
 				<button on:click={(e) => createNewTemplate()}><Icon icon={Add} />New Template</button>
