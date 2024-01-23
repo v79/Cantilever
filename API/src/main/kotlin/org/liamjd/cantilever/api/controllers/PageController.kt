@@ -6,6 +6,7 @@ import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.toS3Key
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
+import org.liamjd.cantilever.models.rest.FolderListDTO
 import org.liamjd.cantilever.models.rest.MarkdownPageDTO
 import org.liamjd.cantilever.models.rest.PageListDTO
 import org.liamjd.cantilever.routing.Request
@@ -34,13 +35,14 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             val pageList = PageListDTO(
                 count = sorted.size,
                 lastUpdated = lastUpdated,
-                pages = sorted,
-                folders = emptyList()
+                pages = sorted
             )
             ResponseEntity.ok(body = APIResult.Success(value = pageList))
         } else {
             error("Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
-            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
+            ResponseEntity.notFound(
+                body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+            )
         }
     }
 
@@ -57,7 +59,9 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
                 ResponseEntity.ok(body = APIResult.Success(mdPage))
             } else {
                 error("File '$decoded' not found")
-                ResponseEntity.notFound(body = APIResult.Error("Markdown file $decoded not found in bucket $sourceBucket"))
+                ResponseEntity.notFound(
+                    body = APIResult.Error("Markdown file $decoded not found in bucket $sourceBucket")
+                )
             }
         } else {
             ResponseEntity.badRequest(body = APIResult.Error("Invalid request for null source file"))
@@ -99,7 +103,9 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
         info("saveMarkdownPageSource")
         val pageToSave = request.body
         pageToSave.also {
-            info("PageToSave: ${it.metadata.title} has ${it.metadata.attributes.keys.size} attributes and ${it.metadata.sections.keys.size} sections")
+            info(
+                "PageToSave: ${it.metadata.title} has ${it.metadata.attributes.keys.size} attributes and ${it.metadata.sections.keys.size} sections"
+            )
         }
         val srcKey = URLDecoder.decode(pageToSave.metadata.srcKey, Charset.defaultCharset())
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
@@ -118,9 +124,13 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
     /**
      * Return a list of all the folders which contain pages (i.e. under /sources/pages/)
      */
-    fun getFolders(request: Request<Unit>): ResponseEntity<APIResult<List<ContentNode.FolderNode>>> {
-        val folders = listOf(ContentNode.FolderNode(S3_KEY.pagesPrefix)) + contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
-        return ResponseEntity.ok(body = APIResult.Success(folders))
+    fun getFolders(request: Request<Unit>): ResponseEntity<APIResult<FolderListDTO>> {
+        val folders = listOf(
+            ContentNode.FolderNode(S3_KEY.pagesPrefix)
+        ) + contentTree.items.filterIsInstance<ContentNode.FolderNode>()
+            .filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
+        val dto = FolderListDTO(folders.size, folders)
+        return ResponseEntity.ok(body = APIResult.Success(dto))
     }
 
     /**

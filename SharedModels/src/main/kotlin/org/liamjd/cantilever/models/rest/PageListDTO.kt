@@ -10,4 +10,4 @@ import org.liamjd.cantilever.openapi.APISchema
  */
 @APISchema
 @Serializable
-class PageListDTO(val count: Int = 0, val lastUpdated: Instant, val pages: List<ContentNode.PageNode>, val folders: List<ContentNode.FolderNode>)
+class PageListDTO(val count: Int = 0, val lastUpdated: Instant, val pages: List<ContentNode.PageNode>)
