@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { userStore } from '../stores/userStore.svelte';
+	import { userStore } from '$lib/stores/userStore.svelte';
 
 	$: isLoggedIn = $userStore.isLoggedIn();
 </script>

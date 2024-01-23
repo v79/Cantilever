@@ -8,16 +8,16 @@
 	} from '@skeletonlabs/skeleton';
 	import { onMount, tick } from 'svelte';
 	import { Add, Delete, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
-	import ListPlaceholder from '../../components/ListPlaceholder.svelte';
-	import DatePicker from '../../components/forms/datePicker.svelte';
-	import MarkdownEditor from '../../components/forms/markdownEditor.svelte';
-	import TextInput from '../../components/forms/textInput.svelte';
-	import { markdownStore } from '../../stores/contentStore.svelte';
-	import { userStore } from '../../stores/userStore.svelte';
-	import PostList from '../../components/BasicFileList.svelte';
+	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
+	import DatePicker from '$lib/forms/datePicker.svelte';
+	import MarkdownEditor from '$lib/forms/markdownEditor.svelte';
+	import TextInput from '$lib/forms/textInput.svelte';
+	import { markdownStore } from '$lib/stores/contentStore.svelte';
+	import { userStore } from '$lib/stores/userStore.svelte';
+	import PostList from '$lib/components/BasicFileList.svelte';
 	import PostListItem from './PostListItem.svelte';
 	import { fetchPost, fetchPosts, posts, savePost } from './postStore.svelte';
-	import { MarkdownContent, PostItem } from '../../models/markdown';
+	import { MarkdownContent, PostItem } from '$lib/models/markdown';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -209,7 +209,7 @@
 
 <div class="flex flex-row grow mt-2 container justify-center">
 	<div class="basis-1/4 flex flex-col items-center mr-4">
-		{#if $userStore.name}
+		{#if $userStore.isLoggedIn()}
 			<h3 class="h3">Posts</h3>
 
 			<div class="btn-group variant-filled">

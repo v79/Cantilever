@@ -1,7 +1,7 @@
 <script lang="ts" context="module">
 	import { writable, get } from 'svelte/store';
-	import type { TemplateList, TemplateNode } from '../../models/templates.svelte';
-	import { handlebars } from '../../stores/contentStore.svelte';
+	import type { TemplateList, TemplateNode } from '$lib/models/templates.svelte';
+	import { handlebars } from '$lib/stores/contentStore.svelte';
 
 	// complete set of template metadata
 	export const templates = writable<TemplateList>();

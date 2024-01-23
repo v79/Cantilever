@@ -1,8 +1,8 @@
 <script context="module" lang="ts">
 	import { writable, get } from 'svelte/store';
-	import type { PostList } from '../../models/posts.svelte';
-	import { PostItem, MarkdownContent } from '../../models/markdown';
-	import { markdownStore } from '../../stores/contentStore.svelte';
+	import type { PostList } from '$lib/models/posts.svelte';
+	import { PostItem, MarkdownContent } from '$lib/models/markdown';
+	import { markdownStore } from '$lib/stores/contentStore.svelte';
 
 	// complete set of post metadata
 	export const posts = writable<PostList>();

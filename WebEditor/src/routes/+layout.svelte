@@ -32,13 +32,13 @@
 		Settings_applications
 	} from 'svelte-google-materialdesign-icons';
 	import { page } from '$app/stores';
-	import LoginAvatar from '../components/LoginAvatar.svelte';
-	import { userStore } from '../stores/userStore.svelte';
+	import LoginAvatar from '$lib/components/LoginAvatar.svelte';
+	import { userStore } from '$lib/stores/userStore.svelte';
 	storePopup.set({ computePosition, autoUpdate, flip, shift, offset, arrow });
 
-	import ConfirmDeleteModal from '../components/modals/confirmDeleteModal.svelte';
-	import SaveNewPostModal from '../components/modals/saveNewPostModal.svelte';
-	import SaveNewTemplateModal from '../components/modals/saveNewTemplateModal.svelte';
+	import ConfirmDeleteModal from '$lib/modals/confirmDeleteModal.svelte';
+	import SaveNewPostModal from '$lib/modals/saveNewPostModal.svelte';
+	import SaveNewTemplateModal from '$lib/modals/saveNewTemplateModal.svelte';
 	import { onMount } from 'svelte';
 	
 	
@@ -116,11 +116,12 @@
 						<span>Posts</span>
 					</AppRailAnchor>
 
-					<AppRailAnchor href="/" title="Pages">
+					<AppRailAnchor href="/pages" selected={$page.url.pathname == '/pages'} title="Pages">
 						<svelte:fragment slot="lead"
 							><Icon icon={Article} size={32} variation="outlined" /></svelte:fragment
 						>
 						<span>Pages</span>
+						
 					</AppRailAnchor>
 
 					<AppRailAnchor href="/" title="Media">

@@ -7,16 +7,16 @@
 		type TreeViewNode
 	} from '@skeletonlabs/skeleton';
 
-	import { userStore } from '../../stores/userStore.svelte';
+	import { userStore } from '$lib/stores/userStore.svelte';
 	import { onMount, tick } from 'svelte';
 	import { fetchTemplate, fetchTemplates, templates, saveTemplate } from './templateStore.svelte';
 	import { Refresh, Icon, Save, Delete, Sync, Add } from 'svelte-google-materialdesign-icons';
 	import TemplateListItem from './TemplateListItem.svelte';
-	import ListPlaceholder from '../../components/ListPlaceholder.svelte';
-	import PostList from '../../components/BasicFileList.svelte';
-	import { handlebars } from '../../stores/contentStore.svelte';
-	import TextInput from '../../components/forms/textInput.svelte';
-	import { TemplateNode } from '../../models/templates.svelte';
+	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
+	import PostList from '$lib/components/BasicFileList.svelte';
+	import { handlebars } from '$lib/stores/contentStore.svelte';
+	import TextInput from '$lib/forms/textInput.svelte';
+	import { TemplateNode } from '$lib/models/templates.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -209,7 +209,7 @@
 
 <div class="flex flex-row grow mt-2 container justify-center">
 	<div class="basis-1/4 flex flex-col items-center mr-4">
-		{#if $userStore.name}
+		{#if $userStore.isLoggedIn()}
 			<h3 class="h3">Templates</h3>
 			<div class="btn-group variant-filled">
 				<button on:click={reloadPostList}><Icon icon={Refresh} />Reload</button>
