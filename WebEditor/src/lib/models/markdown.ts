@@ -63,8 +63,7 @@ export class PostItem extends MetadataItem {
  * A Page is a static piece of content, generally unchanging content at a fixed URL.
  * This is metadata only, it does not contain the body content.
  */
-export class Page extends MetadataItem {
-	type: string;
+export class PageItem extends MetadataItem {
 	slug: string;
 	attributes: Map<string, string>;
 	sections: Map<string, string>;
@@ -72,7 +71,6 @@ export class Page extends MetadataItem {
 	parent: string | null;
 
 	constructor(
-		nodeType: string,
 		title: string,
 		srcKey: string,
 		templateKey: string,
@@ -85,7 +83,6 @@ export class Page extends MetadataItem {
 		isNew: boolean
 	) {
 		super(title, srcKey, templateKey, slug, lastUpdated, isNew);
-		this.type = nodeType;
 		this.slug = slug;
 		this.attributes = attributes;
 		this.sections = sections;
@@ -107,10 +104,10 @@ export class Page extends MetadataItem {
  * Ideally metadata would not be undefined but I can't find a workaround.
  */
 export class MarkdownContent {
-	metadata: PostItem | Page | undefined;
+	metadata: PostItem | PageItem | undefined;
 	body: string;
 
-	constructor(metadata: PostItem | Page, body: string) {
+	constructor(metadata: PostItem | PageItem, body: string) {
 		this.metadata = metadata;
 		this.body = body;
 	}

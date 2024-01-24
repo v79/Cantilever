@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
 	import NestedFileList from '$lib/components/NestedFileList.svelte';
+	import { markdownStore } from '$lib/stores/contentStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import {
 		getModalStore,
@@ -9,13 +10,14 @@
 		type TreeViewNode
 	} from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
-	import { Add, Icon, Refresh } from 'svelte-google-materialdesign-icons';
+	import { Add, Delete, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
 	import PostListItem from '../posts/PostListItem.svelte';
 	import FolderIconComponent from './FolderIconComponent.svelte';
 	import FolderListItem from './FolderListItem.svelte';
 	import IndexPageIconComponent from './IndexPageIconComponent.svelte';
 	import PageIconComponent from './PageIconComponent.svelte';
-	import { fetchFolders, fetchPages, folders, pages } from './pageStore.svelte';
+	import { fetchFolders, fetchPage, fetchPages, folders, pages } from './pageStore.svelte';
+	import TextInput from '$lib/forms/textInput.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -37,9 +39,9 @@
 	};
 
 	onMount(async () => {
-		// if (!$posts) {
-		await loadPagesAndFolders();
-		// }
+		if (!$pages) {
+			await loadPagesAndFolders();
+		}
 	});
 
 	async function loadPagesAndFolders() {
@@ -67,6 +69,20 @@
 				toastStore.trigger(toast);
 			}
 		}
+	}
+
+	async function intiateLoadPage(srcKey: string) {
+		let loadResponse = fetchPage(srcKey, $userStore.token!!);
+		loadResponse.then((r) => {
+			if (r instanceof Error) {
+				errorToast.message = 'Failed to load page';
+				toastStore.trigger(errorToast);
+			} else {
+				toast.message = r;
+				toastStore.trigger(toast);
+				isNewPage = false;
+			}
+		});
 	}
 
 	const foldersUnsubscribe = folders.subscribe((value) => {
@@ -124,6 +140,14 @@
 			pgFolderNodes = [...pgFolderNodes];
 		}
 	});
+
+	const contentStoreUnsubscribe = markdownStore.subscribe((value) => {
+		if (value) {
+			if (value.metadata != null) {
+				pgTitle = value.metadata.title;
+			}
+		}
+	});
 </script>
 
 <div class="flex flex-row grow mt-2 container justify-center">
@@ -145,7 +169,7 @@
 			</div>
 			{#if $pages?.count > 0}
 				<div class="card bg-primary-200 w-full">
-					<NestedFileList nodes={pgFolderNodes} {expandedNodes} onClickFn={() => {}} />
+					<NestedFileList nodes={pgFolderNodes} {expandedNodes} onClickFn={intiateLoadPage} />
 				</div>
 			{/if}
 		{:else}
@@ -155,5 +179,89 @@
 
 	<div class="basis-3/4 container flex flex-col w-full">
 		<h3 class="h3 text-center mb-2">{pgTitle}</h3>
+		{#if $markdownStore.metadata}
+			<div class="flex flex-row justify-end">
+				<div class="btn-group variant-filled" role="group">
+					<button
+						class=" variant-filled-error"
+						disabled={isNewPage}
+						on:click={(e) => {
+							// modalStore.trigger(deletePostModal);
+						}}><Icon icon={Delete} />Delete</button
+					>
+					<button
+						disabled
+						class=" variant-filled-primary"
+						on:click={(e) => {
+							if (isNewPage) {
+								// modalStore.trigger(saveNewPostModal);
+							} else {
+								// modalStore.trigger(savePostModal);
+							}
+						}}>Save<Icon icon={Save} /></button
+					>
+				</div>
+			</div>
+			<div class="grid grid-cols-6 gap-6">
+				<div class="col-span-6 sm:col-span-6 lg:col-span-2">
+					{#if isNewPage}
+						<p><em>Slug will be set on first save</em></p>
+					{:else}
+						<TextInput
+							label="Slug"
+							name="slug"
+							bind:value={$markdownStore.metadata.srcKey}
+							required
+							readonly
+						/>
+					{/if}
+				</div>
+				<div class="col-span-6 sm:col-span-3 lg:col-span-2">
+					<TextInput
+						bind:value={$markdownStore.metadata.templateKey}
+						name="template"
+						label="Template"
+						required
+						readonly
+					/>
+				</div>
+				<div class="col-span-6 sm:col-span-3 lg:col-span-2">
+					<label class="label" for="isRoot">
+						<span>Is Index Page?</span>
+						<input
+							type="checkbox"
+							bind:checked={$markdownStore.metadata.isRoot}
+							name="isRoot"
+							id="isRoot"
+							class="input h-5 w-5 text-primary-600"
+						/>
+					</label>
+				</div>
+				<div class="col-span-6">
+					<TextInput
+						bind:value={$markdownStore.metadata.title}
+						required
+						name="postTitle"
+						label="Title"
+					/>
+				</div>
+				<div class="col-span-6">markdown editor here</div>
+			</div>
+			<div class="flex flex-row justify-end mt-2">
+				<div class="btn-group variant-filled" role="group">
+					<button
+						disabled
+						class=" variant-filled-primary"
+						on:click={(e) => {
+							if (isNewPage) {
+								// modalStore.trigger(saveNewPostModal);
+							} else {
+								// modalStore.trigger(savePostModal);
+							}
+						}}>Save<Icon icon={Save} /></button
+					>
+				</div>
+			</div>
+		{/if}
 	</div>
 </div>

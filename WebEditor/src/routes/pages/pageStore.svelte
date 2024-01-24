@@ -1,5 +1,7 @@
 <script lang="ts" context="module">
-	import type { PageList, FolderList } from '$lib/models/pages.svelte';
+	import { MarkdownContent, PageItem } from '$lib/models/markdown';
+	import { type PageList, type FolderList, PageNode } from '$lib/models/pages.svelte';
+	import { markdownStore } from '$lib/stores/contentStore.svelte';
 	import { writable, get } from 'svelte/store';
 
 	export const pages = writable<PageList>();
@@ -50,6 +52,46 @@
 				return data.data.count as number;
 			} else {
 				throw new Error('Failed to fetch folders');
+			}
+		} catch (error) {
+			console.error(error);
+			return error as Error;
+		}
+	}
+
+	export async function fetchPage(srcKey: string, token: string): Promise<Error | string> {
+		console.log('pageStore: Fetching page', srcKey);
+		try {
+			const encodedKey = encodeURIComponent(srcKey);
+			const response = await fetch(`https://api.cantilevers.org/pages/${encodedKey}`, {
+				method: 'GET',
+				headers: {
+					Accept: 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const data = await response.json();
+				var tmpPage = new MarkdownContent(
+					new PageItem(
+						data.data.metadata.title,
+						data.data.metadata.srcKey,
+						data.data.metadata.templateKey,
+						data.data.metadata.url,
+						data.data.metadata.lastUpdated,
+						data.data.metadata.attributes,
+						data.data.metadata.sections,
+						data.data.metadata.isRoot,
+						data.data.metadata.parent,
+						false
+					),
+					data.data.body
+				);
+				markdownStore.set(tmpPage);
+				return data.data.title;
+			} else {
+				throw new Error('Failed to fetch page');
 			}
 		} catch (error) {
 			console.error(error);
