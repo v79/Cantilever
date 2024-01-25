@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
 	import NestedFileList from '$lib/components/NestedFileList.svelte';
+	import TextInput from '$lib/forms/textInput.svelte';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import {
@@ -17,7 +18,7 @@
 	import IndexPageIconComponent from './IndexPageIconComponent.svelte';
 	import PageIconComponent from './PageIconComponent.svelte';
 	import { fetchFolders, fetchPage, fetchPages, folders, pages } from './pageStore.svelte';
-	import TextInput from '$lib/forms/textInput.svelte';
+	import SectionTabs from './SectionTabs.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -26,6 +27,7 @@
 	let expandedNodes = [] as string[];
 	let pgTitle = 'Markdown Editor';
 	let isNewPage = false;
+
 	$: pgAndFoldersLabel = $pages?.count + ' pages in ' + $folders?.count + ' folders';
 
 	const toast: ToastSettings = {
@@ -78,7 +80,7 @@
 				errorToast.message = 'Failed to load page';
 				toastStore.trigger(errorToast);
 			} else {
-				toast.message = r;
+				toast.message = 'Loaded page ' + r;
 				toastStore.trigger(toast);
 				isNewPage = false;
 			}
@@ -245,7 +247,14 @@
 						label="Title"
 					/>
 				</div>
-				<div class="col-span-6">markdown editor here</div>
+
+				<div class="col-span-6">
+					{#if $markdownStore.metadata}
+						<SectionTabs bind:sections={$markdownStore.metadata.sections} />
+					{:else}
+						<span class="text-error-500">No metadata found for page.</span>
+					{/if}
+				</div>
 			</div>
 			<div class="flex flex-row justify-end mt-2">
 				<div class="btn-group variant-filled" role="group">

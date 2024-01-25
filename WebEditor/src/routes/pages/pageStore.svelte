@@ -89,7 +89,7 @@
 					data.data.body
 				);
 				markdownStore.set(tmpPage);
-				return data.data.title;
+				return data.data.metadata.title;
 			} else {
 				throw new Error('Failed to fetch page');
 			}
