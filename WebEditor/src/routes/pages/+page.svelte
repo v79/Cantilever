@@ -74,6 +74,11 @@
 	}
 
 	async function intiateLoadPage(srcKey: string) {
+		// First check if the item is a page, and not a folder
+		let folder = $folders?.folders.find((f) => f.srcKey === srcKey);
+		if(folder) {
+			return
+		}
 		let loadResponse = fetchPage(srcKey, $userStore.token!!);
 		loadResponse.then((r) => {
 			if (r instanceof Error) {
