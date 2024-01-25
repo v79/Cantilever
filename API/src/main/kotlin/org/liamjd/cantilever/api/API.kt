@@ -68,7 +68,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             get("", pageController::getPages).spec(Spec.PathItem("Get pages", "Returns a list of all pages"))
 
             post(
-                "/",
+                "/save",
                 pageController::saveMarkdownPageSource,
             ).supplies(setOf(MimeType.plainText)).spec(
                 Spec.PathItem("Save page", "Save markdown page source")

@@ -99,24 +99,25 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
     /**
      * Save a [MarkdownPageDTO] to the sources bucket
      */
-    fun saveMarkdownPageSource(request: Request<MarkdownPageDTO>): ResponseEntity<APIResult<String>> {
+    fun saveMarkdownPageSource(request: Request<ContentNode.PageNode>): ResponseEntity<APIResult<String>> {
         info("saveMarkdownPageSource")
         val pageToSave = request.body
+        println(pageToSave)
         pageToSave.also {
             info(
-                "PageToSave: ${it.metadata.title} has ${it.metadata.attributes.keys.size} attributes and ${it.metadata.sections.keys.size} sections"
+                "PageToSave: ${it.title} has ${it.attributes.keys.size} attributes and ${it.sections.keys.size} sections"
             )
         }
-        val srcKey = URLDecoder.decode(pageToSave.metadata.srcKey, Charset.defaultCharset())
+        val srcKey = URLDecoder.decode(pageToSave.srcKey, Charset.defaultCharset())
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
-            info("Updating existing file '${pageToSave.metadata.srcKey}'")
-            val length = s3Service.putObjectAsString(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
-            contentTree.updatePage(pageToSave.metadata).also { saveContentTree() }
+            info("Updating existing file '${pageToSave.srcKey}'")
+            val length = s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
+            contentTree.updatePage(pageToSave).also { saveContentTree() }
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
-            val length = s3Service.putObjectAsString(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
-            contentTree.insertPage(pageToSave.metadata).also { saveContentTree() }
+            val length = s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
+            contentTree.insertPage(pageToSave).also { saveContentTree() }
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
     }
@@ -140,6 +141,30 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
         val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
         val pageMeta = ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(markdown, srcKey)
         return MarkdownPageDTO(pageMeta)
+    }
+
+    /**
+     * Convert a [ContentNode.PageNode] to a markdown, with each section string
+     */
+    private fun convertNodeToMarkdown(page: ContentNode.PageNode): String {
+        val separator = "---"
+        val sBuilder = StringBuilder()
+        sBuilder.apply {
+            appendLine(separator)
+            appendLine("title: ${page.title}")
+            appendLine("templateKey: ${page.templateKey}")
+            if(page.isRoot) {
+                appendLine("isRoot: true")
+            }
+            page.attributes.forEach {
+                appendLine("#${it.key}: ${it.value}")
+            }
+            page.sections.forEach {
+                appendLine("$separator #${it.key}")
+                appendLine(it.value)
+            }
+        }
+        return sBuilder.toString().trim()
     }
 
     override fun info(message: String) = println("INFO: PageController: $message")

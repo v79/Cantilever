@@ -17,7 +17,7 @@
 	import FolderListItem from './FolderListItem.svelte';
 	import IndexPageIconComponent from './IndexPageIconComponent.svelte';
 	import PageIconComponent from './PageIconComponent.svelte';
-	import { fetchFolders, fetchPage, fetchPages, folders, pages } from './pageStore.svelte';
+	import { fetchFolders, fetchPage, fetchPages, folders, pages, savePage } from './pageStore.svelte';
 	import SectionTabs from './SectionTabs.svelte';
 
 	const modalStore = getModalStore();
@@ -29,7 +29,8 @@
 	let isNewPage = false;
 
 	$: pgAndFoldersLabel = $pages?.count + ' pages in ' + $folders?.count + ' folders';
-
+	$: isValid = $markdownStore.metadata?.srcKey != null && $markdownStore.metadata?.templateKey != null;
+	
 	const toast: ToastSettings = {
 		message: 'Loaded posts',
 		background: 'variant-filled-success',
@@ -39,6 +40,26 @@
 		message: 'Failed to load posts',
 		background: 'variant-filled-error'
 	};
+
+/**
+	 * @type: {ModalSettings}
+	 */
+	$: savePageModal = {
+		type: 'confirm',
+		title: 'Confirm save',
+		body: "Save changes to page '<strong>" + pgTitle + "</strong>'?",
+		buttonTextConfirm: 'Save',
+		buttonTextCancel: 'Cancel',
+		response: (r: boolean) => {
+			if (r) {
+				console.log('save clicked');
+				initiateSavePage();
+			} else {
+				console.log('cancel clicked');
+			}
+			modalStore.close();
+		}
+	}
 
 	onMount(async () => {
 		if (!$pages) {
@@ -91,6 +112,22 @@
 			}
 		});
 	}
+
+	async function initiateSavePage() {
+		console.log('saving page');
+		if($markdownStore.metadata) {
+			let saveResult = savePage($markdownStore.metadata.srcKey, $userStore.token!!);
+			if(saveResult instanceof Error) {
+				errorToast.message = 'Failed to save page';
+				toastStore.trigger(errorToast);
+			} else {
+				toast.message = 'Saved page ' + saveResult;
+				toastStore.trigger(toast);
+				loadPagesAndFolders();
+			}
+		}
+	}
+
 
 	const foldersUnsubscribe = folders.subscribe((value) => {
 		const rootFolderKey = 'sources/pages/';
@@ -197,13 +234,13 @@
 						}}><Icon icon={Delete} />Delete</button
 					>
 					<button
-						disabled
+						disabled={!isValid}
 						class=" variant-filled-primary"
 						on:click={(e) => {
 							if (isNewPage) {
 								// modalStore.trigger(saveNewPostModal);
 							} else {
-								// modalStore.trigger(savePostModal);
+								modalStore.trigger(savePageModal);
 							}
 						}}>Save<Icon icon={Save} /></button
 					>
@@ -243,6 +280,7 @@
 							class="input h-5 w-5 text-primary-600"
 						/>
 					</label>
+					isValid: {isValid}
 				</div>
 				<div class="col-span-6">
 					<TextInput
@@ -264,13 +302,13 @@
 			<div class="flex flex-row justify-end mt-2">
 				<div class="btn-group variant-filled" role="group">
 					<button
-						disabled
+					disabled={!isValid}
 						class=" variant-filled-primary"
 						on:click={(e) => {
 							if (isNewPage) {
 								// modalStore.trigger(saveNewPostModal);
 							} else {
-								// modalStore.trigger(savePostModal);
+								modalStore.trigger(savePageModal);
 							}
 						}}>Save<Icon icon={Save} /></button
 					>

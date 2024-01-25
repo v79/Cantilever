@@ -98,4 +98,40 @@
 			return error as Error;
 		}
 	}
+
+	export async function savePage(srcKey: string, token: string): Promise<Error | string> {
+		console.log('pageStore: Saving page');
+		let content: MarkdownContent = get(markdownStore);
+		if (content.metadata && content.metadata instanceof PageItem) {
+			try {
+				console.log(JSON.stringify(content.metadata));
+				// the backend ContentNode.PageNode is slightly different from the frontend PageItem
+				// remove isNew, set slug
+				delete content.metadata.isNew;
+				content.metadata.slug = content.metadata.srcKey;
+				const response = await fetch('https://api.cantilevers.org/pages/save', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Accept: 'text/plain',
+						Authorization: `Bearer ${token}`
+					},
+					mode: 'cors',
+					body: JSON.stringify(content.metadata)
+				});
+				if (response.ok) {
+					const data = await response.text();
+					return data;
+				} else {
+					throw new Error('Failed to save page');
+				}
+			} catch (error) {
+				console.error(error);
+				return error as Error;
+			}
+		} else {
+			console.error('pageStore: savePage: metadata is not a PageItem');
+			return new Error('pageStore: savePage: metadata is not a PageItem');
+		}
+	}
 </script>
