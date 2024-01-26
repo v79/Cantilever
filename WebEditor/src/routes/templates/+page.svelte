@@ -9,7 +9,7 @@
 
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import { onMount, tick } from 'svelte';
-	import { fetchTemplate, fetchTemplates, templates, saveTemplate } from './templateStore.svelte';
+	import { fetchTemplate, fetchTemplates, templates, saveTemplate } from '$lib/stores/templateStore.svelte';
 	import { Refresh, Icon, Save, Delete, Sync, Add } from 'svelte-google-materialdesign-icons';
 	import TemplateListItem from './TemplateListItem.svelte';
 	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';

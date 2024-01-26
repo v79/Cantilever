@@ -17,8 +17,19 @@
 	import FolderListItem from './FolderListItem.svelte';
 	import IndexPageIconComponent from './IndexPageIconComponent.svelte';
 	import PageIconComponent from './PageIconComponent.svelte';
-	import { fetchFolders, fetchPage, fetchPages, folders, pages, savePage } from './pageStore.svelte';
+	import {
+		fetchFolders,
+		fetchPage,
+		fetchPages,
+		folders,
+		pages,
+		savePage
+	} from './pageStore.svelte';
 	import SectionTabs from './SectionTabs.svelte';
+	import { TemplateNode } from '$lib/models/templates.svelte';
+	import { PageNode } from '$lib/models/pages.svelte';
+	import { PageItem } from '$lib/models/markdown';
+	import { createSlug } from '$lib/functions/createSlug';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -29,8 +40,9 @@
 	let isNewPage = false;
 
 	$: pgAndFoldersLabel = $pages?.count + ' pages in ' + $folders?.count + ' folders';
-	$: isValid = $markdownStore.metadata?.srcKey != null && $markdownStore.metadata?.templateKey != null;
-	
+	$: isValid =
+		$markdownStore.metadata?.srcKey != null || (isNewPage && $markdownStore.metadata?.title != null);
+
 	const toast: ToastSettings = {
 		message: 'Loaded posts',
 		background: 'variant-filled-success',
@@ -41,7 +53,19 @@
 		background: 'variant-filled-error'
 	};
 
-/**
+	const createNewPostModal = {
+		type: 'component',
+		component: 'createNewPageModal',
+		meta: {
+			modalTitle: 'Create new page',
+			showOnlyWithSections: true,
+			onFormSubmit: (template: TemplateNode) => {
+				initiateNewPage(template);
+			}
+		}
+	};
+
+	/**
 	 * @type: {ModalSettings}
 	 */
 	$: savePageModal = {
@@ -59,7 +83,7 @@
 			}
 			modalStore.close();
 		}
-	}
+	};
 
 	onMount(async () => {
 		if (!$pages) {
@@ -97,8 +121,8 @@
 	async function intiateLoadPage(srcKey: string) {
 		// First check if the item is a page, and not a folder
 		let folder = $folders?.folders.find((f) => f.srcKey === srcKey);
-		if(folder) {
-			return
+		if (folder) {
+			return;
 		}
 		let loadResponse = fetchPage(srcKey, $userStore.token!!);
 		loadResponse.then((r) => {
@@ -115,9 +139,9 @@
 
 	async function initiateSavePage() {
 		console.log('saving page');
-		if($markdownStore.metadata) {
+		if ($markdownStore.metadata) {
 			let saveResult = savePage($markdownStore.metadata.srcKey, $userStore.token!!);
-			if(saveResult instanceof Error) {
+			if (saveResult instanceof Error) {
 				errorToast.message = 'Failed to save page';
 				toastStore.trigger(errorToast);
 			} else {
@@ -128,6 +152,27 @@
 		}
 	}
 
+	function initiateNewPage(template: TemplateNode) {
+		let sectionsObject = template.sections.reduce((obj, item) => {
+			obj[item as string] = '';
+			return obj;
+		}, {});
+
+		$markdownStore.metadata = new PageItem(
+			'',
+			//@ts-ignore
+			null,
+			template.srcKey,
+			'',
+			new Date(),
+			new Map<string, string>(),
+			sectionsObject,
+			false,
+			null,
+			true
+		);
+		isNewPage = true;
+	}
 
 	const foldersUnsubscribe = folders.subscribe((value) => {
 		const rootFolderKey = 'sources/pages/';
@@ -200,7 +245,9 @@
 			<h3 class="h3 mb-2">Pages</h3>
 			<div class="btn-group variant-filled">
 				<button on:click={loadPagesAndFolders}><Icon icon={Refresh} />Reload</button>
-				<button on:click={(e) => {}}><Icon icon={Add} />New Page</button>
+				<button on:click={(e) => modalStore.trigger(createNewPostModal)}
+					><Icon icon={Add} />New Page</button
+				>
 			</div>
 			<div class="flex flex-row m-4">
 				{#if $pages?.count === undefined || $pages?.count === -1}
@@ -302,7 +349,7 @@
 			<div class="flex flex-row justify-end mt-2">
 				<div class="btn-group variant-filled" role="group">
 					<button
-					disabled={!isValid}
+						disabled={!isValid}
 						class=" variant-filled-primary"
 						on:click={(e) => {
 							if (isNewPage) {

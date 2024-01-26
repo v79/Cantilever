@@ -2,7 +2,6 @@
 	import MarkdownEditor from '$lib/forms/markdownEditor.svelte';
 	import { Tab, TabGroup } from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
-	import { markdownStore } from '$lib/stores/contentStore.svelte';
 
 	export let sections: Map<string, string>;
 	let tabGroup = '';
@@ -22,9 +21,11 @@
 		<Tab bind:group={tabGroup} name={key} value={key}><span>{key}</span></Tab>
 	{/each}
 	<svelte:fragment slot="panel">
-		{#if sections[tabGroup]}
+		{#if sections[tabGroup] !== undefined}
 			{@const body = sections[tabGroup]}
 			<MarkdownEditor {body} onChange={updateSection} />
+			{:else}
+			nothing at sections[{tabGroup}]
 		{/if}
 	</svelte:fragment>
 </TabGroup>
