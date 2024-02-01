@@ -75,6 +75,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
     fun createFolder(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val folderName = request.pathParameters["folderName"]
         return if (folderName != null) {
+            loadContentTree() // TODO: can we move this to the abstract class? Calling it for every function seems wasteful
             // folder name must be web safe
             val slugged = URLDecoder.decode(folderName, Charset.defaultCharset()).toS3Key()
             info("Creating folder '$slugged'")
@@ -102,7 +103,6 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
     fun saveMarkdownPageSource(request: Request<ContentNode.PageNode>): ResponseEntity<APIResult<String>> {
         info("saveMarkdownPageSource")
         val pageToSave = request.body
-        println(pageToSave)
         pageToSave.also {
             info(
                 "PageToSave: ${it.title} has ${it.attributes.keys.size} attributes and ${it.sections.keys.size} sections"
@@ -112,12 +112,14 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             info("Updating existing file '${pageToSave.srcKey}'")
             val length = s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
-            contentTree.updatePage(pageToSave).also { saveContentTree() }
+            contentTree.updatePage(pageToSave)
+            saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
             val length = s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
-            contentTree.insertPage(pageToSave).also { saveContentTree() }
+            contentTree.insertPage(pageToSave)
+            saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
     }
