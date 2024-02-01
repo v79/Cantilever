@@ -1,4 +1,6 @@
 <script lang="ts">
+	import type { ComponentType } from 'svelte';
+	import { Icon } from 'svelte-google-materialdesign-icons';
 	export let disabled = false;
 	export let name: string;
 	export let value: string;
@@ -8,8 +10,11 @@
 	export let placeholder = '';
 	export let onChange = (e: Event) => {};
 	export let classes = '';
+	export let iconLeft: ComponentType | undefined = undefined;
+	export let iconRight: ComponentType | undefined = undefined;
 
 	$: classesToApply = `input ${classes}`;
+	$: hasIcons = iconLeft || iconRight;
 	export let onInput: (e: Event) => void = (e: Event) => {
 		const { target } = e;
 		if (target) {
@@ -19,20 +24,32 @@
 </script>
 
 <label class="label" for={name}>
-    <span>{label}</span>
-	<input
-		class={classesToApply}
-		type="text"
-		{value}
-		{name}
-		{disabled}
-		id={name}
-		{required}
-		{placeholder}
-		readonly={readonly || null}
-		on:change={onChange}
-		on:input={onInput}
-	/>
+	<span>{label}</span>
+	<div class={hasIcons ? 'input-group input-group-divider grid-cols-[1fr_auto]' : ''}>
+		{#if iconLeft}
+			<div class="input-group-shim">
+				<Icon icon={iconLeft} />
+			</div>
+		{/if}
+		<input
+			class={classesToApply}
+			type="text"
+			{value}
+			{name}
+			{disabled}
+			id={name}
+			{required}
+			{placeholder}
+			readonly={readonly || null}
+			on:change={onChange}
+			on:input={onInput}
+		/>
+		{#if iconRight}
+		<div class="input-group-shim">
+			<Icon icon={iconRight} />
+		</div>
+		{/if}
+	</div>
 </label>
 {#if required}
 	{#if value === ''}
