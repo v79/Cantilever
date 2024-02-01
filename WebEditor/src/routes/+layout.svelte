@@ -71,6 +71,23 @@
 		warm();
 		return () => clearInterval(interval);
 	});
+
+
+	// rebuild metadata
+	// TODO: move this to another file eventually
+	async function rebuildAllMetadata() {
+		const response = await fetch('https://api.cantilevers.org/metadata/rebuild', {
+			method: 'PUT',
+			headers: {
+				Accept: 'application/json',
+				Authorization: 'Bearer ' + $userStore.token,
+				'X-Content-Length': '0'
+			},
+			mode: 'cors'
+		});
+		const data = await response;
+		console.log(data);
+	}
 </script>
 
 <!-- Single Modal Container -->
@@ -86,7 +103,7 @@
 		<AppBar gridColumns="grid-cols-3" slotDefault="place-self-center" slotTrail="place-content-end">
 			<svelte:fragment slot="lead">
 				<strong class="text-xl">Cantilever v0.0.9</strong>
-				<button type="button" class="btn btn-sm variant-ghost-secondary"> Rebuild Metadata </button>
+				<button type="button" on:click={rebuildAllMetadata} class="btn btn-sm variant-ghost-secondary"> Rebuild Metadata </button>
 			</svelte:fragment>
 			<h1 class="h1">{$page.route.id}</h1>
 			<!-- TODO: replace with value from my custom navigation store? -->
