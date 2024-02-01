@@ -154,6 +154,7 @@
 
 	function initiateNewPage(template: TemplateNode) {
 		let sectionsObject = template.sections.reduce((obj, item) => {
+			// @ts-expect-error
 			obj[item as string] = '';
 			return obj;
 		}, {});

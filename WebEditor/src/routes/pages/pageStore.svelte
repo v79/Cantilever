@@ -104,10 +104,10 @@
 		let content: MarkdownContent = get(markdownStore);
 		if (content.metadata && content.metadata instanceof PageItem) {
 			try {
-				console.log(JSON.stringify(content.metadata));
 				// the backend ContentNode.PageNode is slightly different from the frontend PageItem
 				// remove isNew, set slug
-				delete content.metadata.isNew;
+				//@ts-ignore
+				delete content.metadata.isNew; // or how about replacing content with a new object which does not contain isNew?
 				content.metadata.slug = content.metadata.srcKey;
 				const response = await fetch('https://api.cantilevers.org/pages/save', {
 					method: 'POST',
@@ -120,8 +120,7 @@
 					body: JSON.stringify(content.metadata)
 				});
 				if (response.ok) {
-					const data = await response.text();
-					return data;
+					return await response.text();
 				} else {
 					throw new Error('Failed to save page');
 				}
