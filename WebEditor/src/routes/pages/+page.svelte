@@ -11,7 +11,7 @@
 		type TreeViewNode
 	} from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
-	import { Add, Delete, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
+	import { Add, Delete, Home, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
 	import PostListItem from '../posts/PostListItem.svelte';
 	import FolderIconComponent from './FolderIconComponent.svelte';
 	import FolderListItem from './FolderListItem.svelte';
@@ -27,7 +27,7 @@
 	} from './pageStore.svelte';
 	import SectionTabs from './SectionTabs.svelte';
 	import { TemplateNode } from '$lib/models/templates.svelte';
-	import { PageNode } from '$lib/models/pages.svelte';
+	import { FolderNode, PageNode } from '$lib/models/pages.svelte';
 	import { PageItem } from '$lib/models/markdown';
 	import { createSlug } from '$lib/functions/createSlug';
 
@@ -39,9 +39,12 @@
 	let pgTitle = 'Markdown Editor';
 	let isNewPage = false;
 
+	let homeIcon = Home;
+
 	$: pgAndFoldersLabel = $pages?.count + ' pages in ' + $folders?.count + ' folders';
 	$: isValid =
-		$markdownStore.metadata?.srcKey != null || (isNewPage && $markdownStore.metadata?.title != null);
+		$markdownStore.metadata?.srcKey != null ||
+		(isNewPage && $markdownStore.metadata?.title != null);
 
 	const toast: ToastSettings = {
 		message: 'Loaded posts',
@@ -59,8 +62,8 @@
 		meta: {
 			modalTitle: 'Create new page',
 			showOnlyWithSections: true,
-			onFormSubmit: (template: TemplateNode) => {
-				initiateNewPage(template);
+			onFormSubmit: (template: TemplateNode, parentFolder: FolderNode) => {
+				initiateNewPage(template, parentFolder);
 			}
 		}
 	};
@@ -152,7 +155,7 @@
 		}
 	}
 
-	function initiateNewPage(template: TemplateNode) {
+	function initiateNewPage(template: TemplateNode, folder: FolderNode) {
 		let sectionsObject = template.sections.reduce((obj, item) => {
 			// @ts-expect-error
 			obj[item as string] = '';
@@ -169,7 +172,7 @@
 			new Map<string, string>(),
 			sectionsObject,
 			false,
-			null,
+			folder.srcKey,
 			true
 		);
 		isNewPage = true;
@@ -270,7 +273,7 @@
 	</div>
 
 	<div class="basis-3/4 container flex flex-col w-full">
-		<h3 class="h3 text-center mb-2">{pgTitle}</h3>
+		<h3 class="h3 text-center mb-2">{pgTitle} (isValid: {isValid})</h3>
 		{#if $markdownStore.metadata}
 			<div class="flex flex-row justify-end">
 				<div class="btn-group variant-filled" role="group">
@@ -318,17 +321,14 @@
 					/>
 				</div>
 				<div class="col-span-6 sm:col-span-3 lg:col-span-2">
-					<label class="label" for="isRoot">
-						<span>Is Index Page?</span>
-						<input
-							type="checkbox"
-							bind:checked={$markdownStore.metadata.isRoot}
-							name="isRoot"
-							id="isRoot"
-							class="input h-5 w-5 text-primary-600"
-						/>
-					</label>
-					isValid: {isValid}
+					<TextInput
+						bind:value={$markdownStore.metadata.parent}
+						name="parent"
+						label="Parent"
+						required
+						readonly
+						iconRight={$markdownStore.metadata.isRoot ? homeIcon : undefined}
+					/>
 				</div>
 				<div class="col-span-6">
 					<TextInput

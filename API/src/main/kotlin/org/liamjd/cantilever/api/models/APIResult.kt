@@ -32,6 +32,7 @@ sealed interface APIResult<out R : Any> {
     @Serializable
     data class Error(val message: String) : APIResult<Nothing>
 
+    // FIXME: OK should not have a message, see https://github.com/v79/Cantilever/issues/75
     @Serializable
     data class OK(val message: String) : APIResult<Nothing>
 }
