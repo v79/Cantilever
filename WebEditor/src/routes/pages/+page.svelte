@@ -143,7 +143,7 @@
 	async function initiateSavePage() {
 		console.log('saving page');
 		if ($markdownStore.metadata) {
-			let saveResult = savePage($markdownStore.metadata.srcKey, $userStore.token!!);
+			let saveResult = await savePage($markdownStore.metadata.srcKey, $userStore.token!!);
 			if (saveResult instanceof Error) {
 				errorToast.message = 'Failed to save page';
 				toastStore.trigger(errorToast);

@@ -120,7 +120,8 @@
 					body: JSON.stringify(content.metadata)
 				});
 				if (response.ok) {
-					return await response.text();
+					const data = await response.text();
+					return data;
 				} else {
 					throw new Error('Failed to save page');
 				}
