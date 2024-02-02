@@ -41,6 +41,8 @@
 	import SaveNewTemplateModal from '$lib/modals/saveNewTemplateModal.svelte';
 	import { onMount } from 'svelte';
 	import CreateNewPageModal from '$lib/modals/createNewPageModal.svelte';
+	import { beforeNavigate } from '$app/navigation';
+	import { markdownStore } from '$lib/stores/contentStore.svelte';
 	
 	
 	const modalRegistry: Record<string, ModalComponent> = {
@@ -72,6 +74,9 @@
 		return () => clearInterval(interval);
 	});
 
+	beforeNavigate(() => {
+		markdownStore.clear();
+	});
 
 	// rebuild metadata
 	// TODO: move this to another file eventually
