@@ -40,6 +40,7 @@
 	import SaveNewPostModal from '$lib/modals/saveNewPostModal.svelte';
 	import SaveNewTemplateModal from '$lib/modals/saveNewTemplateModal.svelte';
 	import { onMount } from 'svelte';
+	import SaveNewPageModal from '$lib/modals/saveNewPageModal.svelte';
 	import CreateNewPageModal from '$lib/modals/createNewPageModal.svelte';
 	import { beforeNavigate } from '$app/navigation';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
@@ -49,7 +50,8 @@
 		confirmPostDeleteModal: { ref: ConfirmDeleteModal },
 		saveNewPostModal: { ref: SaveNewPostModal },
 		saveNewTemplateModal: { ref: SaveNewTemplateModal },
-		createNewPageModal: { ref: CreateNewPageModal }
+		createNewPageModal: { ref: CreateNewPageModal },
+		saveNewPageModal: { ref: SaveNewPageModal }
 	};
 	initializeStores();
 

@@ -89,7 +89,7 @@ sealed interface ContentMetaDataBuilder {
                 false
             }
 
-            val parentPath = srcKey.substringBeforeLast("/" + "/")
+            val parentPath = srcKey.substringBeforeLast("/")
 
             return ContentNode.PageNode(
                 title = title,
