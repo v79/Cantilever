@@ -28,8 +28,8 @@
 	<div class="modal-example-form {cBase}">
 		<header class={cHeader}>{$modalStore[0].meta.modalTitle}</header>
 		<article>
-			Delete file '<strong>{$modalStore[0].meta.itemKey ?? '(key missing)'}</strong>'?<br /> This cannot
-			be undone.
+			<p>Delete file '<strong>{$modalStore[0].meta.itemKey ?? '(key missing)'}</strong>'?<br /> This cannot
+			be undone.</p>
 		</article>
 		<!-- Enable for debugging: -->
 		<form class="modal-form {cForm}">

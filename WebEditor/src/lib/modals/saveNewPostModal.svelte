@@ -3,9 +3,9 @@
 	import { onMount, type SvelteComponent } from 'svelte';
 	import { createSlug } from '$lib/stores/contentStore.svelte';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
-
 	import TextInput from '$lib/forms/textInput.svelte';
 	import { validateSlug } from '$lib/functions/validateSlug';
+	
 	export let parent: SvelteComponent;
 	const modalStore = getModalStore();
 
