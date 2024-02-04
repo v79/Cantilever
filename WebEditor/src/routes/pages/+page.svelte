@@ -33,6 +33,7 @@
 		pages,
 		savePage
 	} from './pageStore.svelte';
+	import ParentAndIndexInput from './parentAndIndexInput.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -42,7 +43,7 @@
 	let pgTitle = 'Markdown Editor';
 	let isNewPage = false;
 
-	let homeIcon = Home;
+	
 
 	$: pgAndFoldersLabel = $pages?.count + ' pages in ' + $folders?.count + ' folders';
 	$: isValid =
@@ -440,14 +441,7 @@
 					/>
 				</div>
 				<div class="col-span-6 sm:col-span-3 lg:col-span-2">
-					<TextInput
-						bind:value={$markdownStore.metadata.parent}
-						name="parent"
-						label="Parent"
-						required
-						readonly
-						iconRight={$markdownStore.metadata.isRoot ? homeIcon : undefined}
-					/>
+					<ParentAndIndexInput value={$markdownStore.metadata.parent} bind:isRoot={$markdownStore.metadata.isRoot} />
 				</div>
 				<div class="col-span-6">
 					<TextInput
