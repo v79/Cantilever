@@ -188,4 +188,29 @@
 			return error as Error;
 		}
 	}
+
+	// delete a folder from the server
+	export async function deleteFolder(srcKey: string, token: string): Promise<Error | string> {
+		console.log('pageStore: Deleting folder ' + srcKey);
+		try {
+			const encodedKey = encodeURIComponent(srcKey);
+			const response = await fetch('https://api.cantilevers.org/pages/folder/' + encodedKey, {
+				method: 'DELETE',
+				headers: {
+					Accept: 'text/plain',
+					Authorization: `Bearer ${token}`
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const msg = await response.text();
+				return msg;
+			} else {
+				throw new Error('Failed to delete folder');
+			}
+		} catch (error) {
+			console.error(error);
+			return error as Error;
+		}
+	}
 </script>

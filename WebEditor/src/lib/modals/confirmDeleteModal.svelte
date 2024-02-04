@@ -19,7 +19,7 @@
 	const cForm = 'p-4 space-y-4 rounded-container-token';
 
 	function closeAndSubmit() {
-		$modalStore[0].meta.onFormSubmit();
+		$modalStore[0].meta.onFormSubmit($modalStore[0].meta.itemKey);
 		modalStore.close();
 	}
 </script>

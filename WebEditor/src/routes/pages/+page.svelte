@@ -2,6 +2,9 @@
 	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
 	import NestedFileList from '$lib/components/NestedFileList.svelte';
 	import TextInput from '$lib/forms/textInput.svelte';
+	import { PageItem } from '$lib/models/markdown';
+	import { FolderNode } from '$lib/models/pages.svelte';
+	import { TemplateNode } from '$lib/models/templates.svelte';
 	import { CLEAR_MARKDOWN, markdownStore } from '$lib/stores/contentStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import {
@@ -11,22 +14,17 @@
 		type TreeViewNode
 	} from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
-	import {
-		Add,
-		Delete,
-		Folder,
-		Home,
-		Icon,
-		Refresh,
-		Save
-	} from 'svelte-google-materialdesign-icons';
-	import PostListItem from '../posts/PostListItem.svelte';
+	import { Add, Delete, Home, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
+	import CreateNewFolder from 'svelte-google-materialdesign-icons/Create_new_folder.svelte';
+	import PostListItem from '$lib/components/FileListItem.svelte';
 	import FolderIconComponent from './FolderIconComponent.svelte';
 	import FolderListItem from './FolderListItem.svelte';
 	import IndexPageIconComponent from './IndexPageIconComponent.svelte';
 	import PageIconComponent from './PageIconComponent.svelte';
+	import SectionTabs from './SectionTabs.svelte';
 	import {
 		createFolder,
+		deleteFolder,
 		deletePage,
 		fetchFolders,
 		fetchPage,
@@ -35,12 +33,6 @@
 		pages,
 		savePage
 	} from './pageStore.svelte';
-	import SectionTabs from './SectionTabs.svelte';
-	import { TemplateNode } from '$lib/models/templates.svelte';
-	import { FolderNode, PageNode } from '$lib/models/pages.svelte';
-	import { PageItem } from '$lib/models/markdown';
-	import { createSlug } from '$lib/functions/createSlug';
-	import CreateNewFolder from 'svelte-google-materialdesign-icons/Create_new_folder.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -107,6 +99,21 @@
 			itemKey: $markdownStore.metadata?.srcKey ?? 'unknown',
 			onFormSubmit: () => {
 				initiateDeletePage();
+			}
+		}
+	};
+
+	/**
+	 * @type: {ModalSettings}
+	 */
+	$: deleteFolderModal = {
+		type: 'component',
+		component: 'confirmDeleteModal',
+		meta: {
+			modalTitle: 'Delete folder',
+			itemKey: $markdownStore.metadata?.srcKey ?? 'unknown',
+			onFormSubmit: (srcKey: string) => {
+				initiateDeleteFolder(srcKey);
 			}
 		}
 	};
@@ -218,6 +225,21 @@
 		}
 	}
 
+	async function initiateDeleteFolder(srcKey: string) {
+		console.log('Deleting folder: ' + srcKey);
+		let deleteResult = deleteFolder(srcKey, $userStore.token!!);
+		deleteResult.then((r) => {
+			if (r instanceof Error) {
+				errorToast.message = 'Failed to delete folder';
+				toastStore.trigger(errorToast);
+			} else {
+				toast.message = 'Deleted folder ' + r;
+				toastStore.trigger(toast);
+				loadPagesAndFolders();
+			}
+		});
+	}
+
 	function initiateNewPage(template: TemplateNode, folder: FolderNode) {
 		let sectionsObject = template.sections.reduce((obj, item) => {
 			// @ts-expect-error
@@ -253,6 +275,18 @@
 				loadPagesAndFolders();
 			}
 		});
+	}
+
+	function showFolderDelete(srcKey: string) {
+		if (folders && $folders.folders.find((f) => f.srcKey === srcKey)?.children.length != 0) {
+			toastStore.trigger({
+				message: 'Folder is not empty. Delete the pages in the folder first.',
+				background: 'variant-filled-error'
+			});
+			return;
+		}
+		deleteFolderModal.meta.itemKey = srcKey;
+		modalStore.trigger(deleteFolderModal);
 	}
 
 	const foldersUnsubscribe = folders.subscribe((value) => {
@@ -304,7 +338,12 @@
 					lead: FolderIconComponent,
 					content: FolderListItem,
 					children: childNodes,
-					contentProps: { title: folder.url, count: folder.children.length, srcKey: folder.srcKey }
+					contentProps: {
+						title: folder.url,
+						count: folder.children.length,
+						srcKey: folder.srcKey,
+						onDelete: showFolderDelete
+					}
 				});
 			}
 			pgFolderNodes = [...pgFolderNodes];
