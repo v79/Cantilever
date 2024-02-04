@@ -28,7 +28,7 @@
 	<div class="modal-example-form {cBase}">
 		<header class={cHeader}>{$modalStore[0].meta.modalTitle}</header>
 		<article>
-			Delete file '<strong>{$modalStore[0].meta.itemKey ?? '(title missing)'}</strong>'?<br /> This cannot
+			Delete file '<strong>{$modalStore[0].meta.itemKey ?? '(key missing)'}</strong>'?<br /> This cannot
 			be undone.
 		</article>
 		<!-- Enable for debugging: -->
