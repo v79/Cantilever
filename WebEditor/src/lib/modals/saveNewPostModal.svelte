@@ -5,12 +5,12 @@
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
 
 	import TextInput from '$lib/forms/textInput.svelte';
+	import { validateSlug } from '$lib/functions/validateSlug';
 	export let parent: SvelteComponent;
 	const modalStore = getModalStore();
-	const validChars: RegExp = /^[\a-zA-Z0-9]+(?:-[\w]+)*$/;
 
 	$: newPostSlug = '';
-	$: disabled = newPostSlug === '' || !validChars.test(newPostSlug);
+	$: disabled = newPostSlug === '' || !validateSlug(newPostSlug);
 
 	// Base Classes
 	const cBase = 'card p-4 w-modal shadow-xl space-y-4';

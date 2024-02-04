@@ -7,7 +7,7 @@
 		type TreeViewNode
 	} from '@skeletonlabs/skeleton';
 	import { onMount, tick } from 'svelte';
-	import { Add, Delete, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
+	import { Add, Delete, Folder, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
 	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
 	import DatePicker from '$lib/forms/datePicker.svelte';
 	import MarkdownEditor from '$lib/forms/markdownEditor.svelte';
