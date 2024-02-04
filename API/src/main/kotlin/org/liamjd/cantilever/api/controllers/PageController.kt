@@ -144,7 +144,9 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
                     ResponseEntity.ok(body = APIResult.OK("Source $decoded deleted"))
                 } else {
                     error("Could not delete $decoded; object not found or was not a PageNode")
-                    ResponseEntity.ok(body = APIResult.Error("Could not delete $decoded; object not found or was not a Page"))
+                    ResponseEntity.ok(
+                        body = APIResult.Error("Could not delete $decoded; object not found or was not a Page")
+                    )
                 }
             } else {
                 error("Could not delete $decoded; object not found")
@@ -166,6 +168,38 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             .filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
         val dto = FolderListDTO(folders.size, folders)
         return ResponseEntity.ok(body = APIResult.Success(dto))
+    }
+
+    /**
+     * Delete a folder from the sources bucket and update the content tree.
+     * The folder must be empty and contain no pages.
+     */
+    fun deleteFolder(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val folderKey = request.pathParameters["srcKey"]
+        return if (folderKey != null) {
+            val decoded = URLDecoder.decode(folderKey, Charset.defaultCharset())
+            if (s3Service.objectExists(decoded, sourceBucket)) {
+                val folderNode = contentTree.getNode(decoded)
+                if (folderNode != null && folderNode is ContentNode.FolderNode) {
+                    if (folderNode.children.isEmpty()) {
+                        info("Deleting folder $decoded")
+                        s3Service.deleteObject(decoded, sourceBucket)
+                        contentTree.deleteFolder(folderNode)
+                        saveContentTree()
+                        ResponseEntity.ok(body = APIResult.OK("Folder $decoded deleted"))
+                    } else {
+                        warn("Folder $decoded is not empty so it was not deleted")
+                        ResponseEntity.badRequest(body = APIResult.Error("Folder $decoded is not empty"))
+                    }
+                } else {
+                    ResponseEntity.badRequest(body = APIResult.Error("Folder $decoded not found"))
+                }
+            } else {
+                ResponseEntity.badRequest(body = APIResult.Error("Folder $decoded not found"))
+            }
+        } else {
+            ResponseEntity.badRequest(body = APIResult.Error("No folderKey specified"))
+        }
     }
 
     /**

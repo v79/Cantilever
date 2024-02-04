@@ -90,6 +90,9 @@ class LambdaRouter : RequestHandlerWrapper() {
 
             delete("/$SRCKEY", pageController::deleteMarkdownPageSource).supplies(setOf(MimeType.plainText))
                 .spec(Spec.PathItem("Delete page", "Delete a static page"))
+
+            delete("/folder/{srcKey}", pageController::deleteFolder).supplies(setOf(MimeType.plainText))
+                .spec(Spec.PathItem("Delete folder", "Delete a folder. It must be empty"))
         }
 
         get("/folders", pageController::getFolders).spec(
