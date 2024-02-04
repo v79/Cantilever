@@ -122,7 +122,8 @@
 					body: JSON.stringify(content.metadata)
 				});
 				if (response.ok) {
-					return await response.text();
+					const msg = await response.text();
+					return msg;
 				} else {
 					throw new Error('Failed to save page');
 				}
@@ -156,6 +157,31 @@
 				return msg;
 			} else {
 				throw new Error('Failed to create folder');
+			}
+		} catch (error) {
+			console.error(error);
+			return error as Error;
+		}
+	}
+
+	// delete a page from the server
+	export async function deletePage(srcKey: string, token: string): Promise<Error | string> {
+		console.log('pageStore: Deleting page ' + srcKey);
+		try {
+			const encodedKey = encodeURIComponent(srcKey);
+			const response = await fetch('https://api.cantilevers.org/pages/' + encodedKey, {
+				method: 'DELETE',
+				headers: {
+					Accept: 'text/plain',
+					Authorization: `Bearer ${token}`
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const msg = await response.text();
+				return msg;
+			} else {
+				throw new Error('Failed to delete page');
 			}
 		} catch (error) {
 			console.error(error);

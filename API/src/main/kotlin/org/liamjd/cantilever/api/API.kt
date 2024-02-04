@@ -87,6 +87,9 @@ class LambdaRouter : RequestHandlerWrapper() {
             ).spec(
                 Spec.PathItem("Create folder", "Pages can be nested in folders, but don't go too deep!")
             ).supplies(setOf(MimeType.plainText))
+
+            delete("/$SRCKEY", pageController::deleteMarkdownPageSource).supplies(setOf(MimeType.plainText))
+                .spec(Spec.PathItem("Delete page", "Delete a static page"))
         }
 
         get("/folders", pageController::getFolders).spec(

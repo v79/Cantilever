@@ -46,7 +46,7 @@
 	import CreateNewFolderModal from '$lib/modals/createNewFolderModal.svelte';
 
 	const modalRegistry: Record<string, ModalComponent> = {
-		confirmPostDeleteModal: { ref: ConfirmDeleteModal },
+		confirmDeleteModal: { ref: ConfirmDeleteModal },
 		saveNewPostModal: { ref: SaveNewPostModal },
 		saveNewTemplateModal: { ref: SaveNewTemplateModal },
 		createNewPageModal: { ref: CreateNewPageModal },

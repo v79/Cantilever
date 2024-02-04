@@ -2,7 +2,7 @@
 	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
 	import NestedFileList from '$lib/components/NestedFileList.svelte';
 	import TextInput from '$lib/forms/textInput.svelte';
-	import { markdownStore } from '$lib/stores/contentStore.svelte';
+	import { CLEAR_MARKDOWN, markdownStore } from '$lib/stores/contentStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import {
 		getModalStore,
@@ -27,6 +27,7 @@
 	import PageIconComponent from './PageIconComponent.svelte';
 	import {
 		createFolder,
+		deletePage,
 		fetchFolders,
 		fetchPage,
 		fetchPages,
@@ -91,6 +92,21 @@
 			modalTitle: 'Create new folder',
 			onFormSubmit: (parentFolder: FolderNode, srcKey: string) => {
 				initiateNewFolder(parentFolder, srcKey);
+			}
+		}
+	};
+
+	/**
+	 * @type: {ModalSettings}
+	 */
+	$: deletePageModal = {
+		type: 'component',
+		component: 'confirmDeleteModal',
+		meta: {
+			modalTitle: 'Delete page',
+			itemKey: $markdownStore.metadata?.srcKey ?? 'unknown',
+			onFormSubmit: () => {
+				initiateDeletePage();
 			}
 		}
 	};
@@ -171,14 +187,34 @@
 		console.log('saving page');
 		if ($markdownStore.metadata) {
 			let saveResult = savePage($markdownStore.metadata.srcKey, $userStore.token!!);
-			if (saveResult instanceof Error) {
-				errorToast.message = 'Failed to save page';
-				toastStore.trigger(errorToast);
-			} else {
-				toast.message = 'Saved page ' + saveResult;
-				toastStore.trigger(toast);
-				loadPagesAndFolders();
-			}
+			saveResult.then((r) => {
+				if (r instanceof Error) {
+					errorToast.message = 'Failed to save page';
+					toastStore.trigger(errorToast);
+				} else {
+					toast.message = 'Saved page ' + r;
+					toastStore.trigger(toast);
+					markdownStore.set(CLEAR_MARKDOWN);
+					loadPagesAndFolders();
+				}
+			});
+		}
+	}
+
+	async function initiateDeletePage() {
+		console.log('Deleting page');
+		if ($markdownStore.metadata) {
+			let deleteResult = deletePage($markdownStore.metadata.srcKey, $userStore.token!!);
+			deleteResult.then((r) => {
+				if (r instanceof Error) {
+					errorToast.message = 'Failed to delete page';
+					toastStore.trigger(errorToast);
+				} else {
+					toast.message = 'Deleted page ' + r;
+					toastStore.trigger(toast);
+					loadPagesAndFolders();
+				}
+			});
 		}
 	}
 
@@ -325,7 +361,7 @@
 						class=" variant-filled-error"
 						disabled={isNewPage}
 						on:click={(e) => {
-							// modalStore.trigger(deletePostModal);
+							modalStore.trigger(deletePageModal);
 						}}><Icon icon={Delete} />Delete</button
 					>
 					<button

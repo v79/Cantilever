@@ -111,16 +111,48 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
         val srcKey = URLDecoder.decode(pageToSave.srcKey, Charset.defaultCharset())
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             info("Updating existing file '${pageToSave.srcKey}'")
-            val length = s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
+            val length =
+                s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
             contentTree.updatePage(pageToSave)
             saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
-            val length = s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
+            val length =
+                s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
             contentTree.insertPage(pageToSave)
             saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
+        }
+    }
+
+    /**
+     * Delete a markdown page from the sources bucket and update the content tree
+     */
+    fun deleteMarkdownPageSource(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val markdownSource = request.pathParameters["srcKey"]
+        return if (markdownSource != null) {
+            loadContentTree()
+            val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
+            return if (s3Service.objectExists(decoded, sourceBucket)) {
+                val pageNode = contentTree.getNode(decoded)
+                if (pageNode != null && pageNode is ContentNode.PageNode) {
+                    info("Deleting Markdown file $decoded")
+                    s3Service.deleteObject(decoded, sourceBucket)
+                    contentTree.deletePage(pageNode)
+                    saveContentTree()
+                    ResponseEntity.ok(body = APIResult.OK("Source $decoded deleted"))
+                } else {
+                    error("Could not delete $decoded; object not found or was not a PageNode")
+                    ResponseEntity.ok(body = APIResult.Error("Could not delete $decoded; object not found or was not a Page"))
+                }
+            } else {
+                error("Could not delete $decoded; object not found")
+                ResponseEntity.ok(body = APIResult.Error("Could not delete $decoded; object not found"))
+            }
+        } else {
+            error("Could not delete null markdownSource")
+            ResponseEntity.ok(body = APIResult.Error("Could not delete null markdownSource"))
         }
     }
 
@@ -155,7 +187,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             appendLine(separator)
             appendLine("title: ${page.title}")
             appendLine("templateKey: ${page.templateKey}")
-            if(page.isRoot) {
+            if (page.isRoot) {
                 appendLine("isRoot: true")
             }
             page.attributes.forEach {
