@@ -12,11 +12,11 @@
 	import DatePicker from '$lib/forms/datePicker.svelte';
 	import MarkdownEditor from '$lib/forms/markdownEditor.svelte';
 	import TextInput from '$lib/forms/textInput.svelte';
-	import { markdownStore } from '$lib/stores/contentStore.svelte';
+	import { CLEAR_MARKDOWN, markdownStore } from '$lib/stores/contentStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import BasicFileList from '$lib/components/BasicFileList.svelte';
 	import PostListItem from './PostListItem.svelte';
-	import { fetchPost, fetchPosts, posts, savePost } from './postStore.svelte';
+	import { deletePost, fetchPost, fetchPosts, posts, savePost } from './postStore.svelte';
 	import { MarkdownContent, PostItem } from '$lib/models/markdown';
 
 	const modalStore = getModalStore();
@@ -52,10 +52,10 @@
 	 */
 	$: deletePostModal = {
 		type: 'component',
-		component: 'confirmPostDeleteModal',
+		component: 'confirmDeleteModal',
 		meta: {
 			modalTitle: 'Confirm post deletion',
-			itemTitle: markdownTitle,
+			itemKey: $markdownStore.metadata?.srcKey ?? 'unknown',
 			onFormSubmit: () => {
 				initiateDeletePost();
 			}
@@ -159,6 +159,7 @@
 				toastStore.trigger(errorToast);
 			} else {
 				console.log('postStore: Saved post', metadata.srcKey);
+				isNewPost = false;
 				toast.message = saveResult;
 				toastStore.trigger(toast);
 				reloadPostList();
@@ -167,8 +168,21 @@
 	}
 
 	async function initiateDeletePost() {
-		console.log('delete post (not yet)');
-		modalStore.close();
+		console.log('Deleting post');
+		if ($markdownStore.metadata) {
+			let deleteResult = deletePost($markdownStore.metadata.srcKey, $userStore.token!!);
+			deleteResult.then((r) => {
+				if (r instanceof Error) {
+					errorToast.message = 'Failed to delete post';
+					toastStore.trigger(errorToast);
+				} else {
+					toast.message = 'Deleted post ' + r;
+					markdownStore.set(CLEAR_MARKDOWN);
+					toastStore.trigger(toast);
+					reloadPostList();
+				}
+			});
+		}
 	}
 
 	async function reloadPostList() {

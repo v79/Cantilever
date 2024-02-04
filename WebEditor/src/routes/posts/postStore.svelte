@@ -33,6 +33,7 @@
 		}
 	}
 
+	// load a post from the server
 	export async function fetchPost(srcKey: string, token: string): Promise<Error | string> {
 		console.log('postStore: Fetching post', srcKey);
 		try {
@@ -73,6 +74,7 @@
 		}
 	}
 
+	// save a post to the server
 	export async function savePost(srcKey: string, token: string): Promise<Error | string> {
 		console.log('postStore: Saving post', srcKey);
 		let content: MarkdownContent = get(markdownStore);
@@ -115,6 +117,31 @@
 		} else {
 			console.error('postStore: savePost: metadata is not a PostItem');
 			return new Error('postStore: savePost: metadata is not a PostItem');
+		}
+	}
+
+	// delete a post from the server
+	export async function deletePost(srcKey: string, token: string): Promise<Error | string> {
+		console.log('pageStore: Deleting post ' + srcKey);
+		try {
+			const encodedKey = encodeURIComponent(srcKey);
+			const response = await fetch('https://api.cantilevers.org/posts/' + encodedKey, {
+				method: 'DELETE',
+				headers: {
+					Accept: 'text/plain',
+					Authorization: `Bearer ${token}`
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const msg = await response.text();
+				return msg;
+			} else {
+				throw new Error('Failed to delete post');
+			}
+		} catch (error) {
+			console.error(error);
+			return error as Error;
 		}
 	}
 </script>

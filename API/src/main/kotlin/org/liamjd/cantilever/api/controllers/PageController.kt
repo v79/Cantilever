@@ -137,7 +137,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             return if (s3Service.objectExists(decoded, sourceBucket)) {
                 val pageNode = contentTree.getNode(decoded)
                 if (pageNode != null && pageNode is ContentNode.PageNode) {
-                    info("Deleting Markdown file $decoded")
+                    info("Deleting markdown file $decoded")
                     s3Service.deleteObject(decoded, sourceBucket)
                     contentTree.deletePage(pageNode)
                     saveContentTree()
