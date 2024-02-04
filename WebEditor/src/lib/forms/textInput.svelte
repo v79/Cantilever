@@ -1,6 +1,7 @@
 <script lang="ts">
-	import type { ComponentType } from 'svelte';
+	import { createEventDispatcher } from 'svelte';
 	import { Icon } from 'svelte-google-materialdesign-icons';
+	import type { iconConfigType } from './textInputIconType';
 	export let disabled = false;
 	export let name: string;
 	export let value: string;
@@ -10,8 +11,8 @@
 	export let placeholder = '';
 	export let onChange = (e: Event) => {};
 	export let classes = '';
-	export let iconLeft: ComponentType | undefined = undefined;
-	export let iconRight: ComponentType | undefined = undefined;
+	export let iconLeft: iconConfigType | undefined = undefined;
+	export let iconRight: iconConfigType | undefined = undefined;
 
 	$: classesToApply = `input ${classes}`;
 	$: hasIcons = iconLeft || iconRight;
@@ -21,15 +22,25 @@
 			value = (target as HTMLInputElement).value;
 		}
 	};
+
+	// forward message events to parent as we don't want to handle icon clicks here
+	const dispatch = createEventDispatcher();
+	function handleIconClick(button: string) {
+		dispatch('message', button);
+	}
 </script>
 
 <label class="label" for={name}>
 	<span>{label}</span>
 	<div class={hasIcons ? 'input-group input-group-divider grid-cols-[1fr_auto]' : ''}>
 		{#if iconLeft}
-			<div class="input-group-shim">
-				<Icon icon={iconLeft} />
-			</div>
+			<button
+				class="input-group-shim"
+				on:click={(e) => {
+					handleIconClick('left');
+				}}>
+				<Icon icon={iconLeft.icon} variation={iconLeft.variation} />
+			</button>
 		{/if}
 		<input
 			class={classesToApply}
@@ -42,12 +53,15 @@
 			{placeholder}
 			readonly={readonly || null}
 			on:change={onChange}
-			on:input={onInput}
-		/>
+			on:input={onInput} />
 		{#if iconRight}
-		<div class="input-group-shim">
-			<Icon icon={iconRight} />
-		</div>
+			<button
+				class="input-group-shim"
+				on:click={(e) => {
+					handleIconClick('right');
+				}}>
+				<Icon icon={iconRight.icon} variation={iconRight.variation} />
+			</button>
 		{/if}
 	</div>
 </label>
