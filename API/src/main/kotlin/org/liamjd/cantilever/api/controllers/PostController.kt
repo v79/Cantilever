@@ -70,11 +70,17 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
             loadContentTree()
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
             return if (s3Service.objectExists(decoded, sourceBucket)) {
-                info("Deleting Markdown file $decoded")
-                s3Service.deleteObject(decoded, sourceBucket)
-                contentTree.deletePost(markdownSource)
-                saveContentTree()
-                ResponseEntity.ok(body = APIResult.OK("Source $decoded deleted"))
+                val postNode = contentTree.getNode(decoded)
+                if (postNode != null && postNode is ContentNode.PostNode) {
+                    info("Deleting markdown file $decoded")
+                    s3Service.deleteObject(decoded, sourceBucket)
+                    contentTree.deletePost(postNode)
+                    saveContentTree()
+                    ResponseEntity.ok(body = APIResult.OK("Source $decoded deleted"))
+                } else {
+                    error("Could not delete $decoded; object not found or was not a PostNode")
+                    ResponseEntity.ok(body = APIResult.Error("Could not delete $decoded; object not found or was not a Post"))
+                }
             } else {
                 error("Could not delete $decoded; object not found")
                 ResponseEntity.ok(body = APIResult.Error("Could not delete $decoded; object not found"))

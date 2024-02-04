@@ -451,7 +451,7 @@ class ContentTree {
     /**
      * Find a node in the tree, based on its srcKey
      */
-    private fun getNode(srcKey: SrcKey): ContentNode? {
+    fun getNode(srcKey: SrcKey): ContentNode? {
         return items.find { it.srcKey == srcKey }
     }
 
