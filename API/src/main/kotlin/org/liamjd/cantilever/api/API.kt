@@ -85,7 +85,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                 "/folder/new/{folderName}",
                 pageController::createFolder,
             ).spec(
-                Spec.PathItem("Create folder", "Pages can be nested in folders")
+                Spec.PathItem("Create folder", "Pages can be nested in folders, but don't go too deep!")
             ).supplies(setOf(MimeType.plainText))
         }
 

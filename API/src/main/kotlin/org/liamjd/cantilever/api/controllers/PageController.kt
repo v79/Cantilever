@@ -90,7 +90,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
                 ResponseEntity.ok(body = APIResult.OK("Folder '$slugged' created"))
             } else {
                 warn("Folder '$slugged' already exists")
-                ResponseEntity.accepted(body = APIResult.OK(""))
+                ResponseEntity.accepted(body = APIResult.OK("Folder '$slugged' already exists"))
             }
         } else {
             ResponseEntity.badRequest(body = APIResult.Error("Cannot create a folder with no name"))

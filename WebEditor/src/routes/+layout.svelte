@@ -44,21 +44,21 @@
 	import CreateNewPageModal from '$lib/modals/createNewPageModal.svelte';
 	import { beforeNavigate } from '$app/navigation';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
-	
-	
+	import CreateNewFolderModal from '$lib/modals/createNewFolderModal.svelte';
+
 	const modalRegistry: Record<string, ModalComponent> = {
 		confirmPostDeleteModal: { ref: ConfirmDeleteModal },
 		saveNewPostModal: { ref: SaveNewPostModal },
 		saveNewTemplateModal: { ref: SaveNewTemplateModal },
 		createNewPageModal: { ref: CreateNewPageModal },
-		saveNewPageModal: { ref: SaveNewPageModal }
+		createNewFolderModal: { ref: CreateNewFolderModal }
 	};
 	initializeStores();
 
 	$: loggedIn = $userStore.isLoggedIn();
 
 	export const warmTimer = 60 * 1000;
-	
+
 	onMount(() => {
 		async function warm() {
 			// attempt to warm the lambda by calling /warm (/ping is reserved by API Gateway)
@@ -110,7 +110,13 @@
 		<AppBar gridColumns="grid-cols-3" slotDefault="place-self-center" slotTrail="place-content-end">
 			<svelte:fragment slot="lead">
 				<strong class="text-xl">Cantilever v0.0.9</strong>
-				<button type="button" on:click={rebuildAllMetadata} class="btn btn-sm variant-ghost-secondary"> Rebuild Metadata </button>
+				<button
+					type="button"
+					on:click={rebuildAllMetadata}
+					class="btn btn-sm variant-ghost-secondary"
+				>
+					Rebuild Metadata
+				</button>
 			</svelte:fragment>
 			<h1 class="h1">{$page.route.id}</h1>
 			<!-- TODO: replace with value from my custom navigation store? -->

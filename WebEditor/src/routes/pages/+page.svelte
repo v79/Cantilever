@@ -11,13 +11,22 @@
 		type TreeViewNode
 	} from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
-	import { Add, Delete, Home, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
+	import {
+		Add,
+		Delete,
+		Folder,
+		Home,
+		Icon,
+		Refresh,
+		Save
+	} from 'svelte-google-materialdesign-icons';
 	import PostListItem from '../posts/PostListItem.svelte';
 	import FolderIconComponent from './FolderIconComponent.svelte';
 	import FolderListItem from './FolderListItem.svelte';
 	import IndexPageIconComponent from './IndexPageIconComponent.svelte';
 	import PageIconComponent from './PageIconComponent.svelte';
 	import {
+		createFolder,
 		fetchFolders,
 		fetchPage,
 		fetchPages,
@@ -30,6 +39,7 @@
 	import { FolderNode, PageNode } from '$lib/models/pages.svelte';
 	import { PageItem } from '$lib/models/markdown';
 	import { createSlug } from '$lib/functions/createSlug';
+	import CreateNewFolder from 'svelte-google-materialdesign-icons/Create_new_folder.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -56,7 +66,7 @@
 		background: 'variant-filled-error'
 	};
 
-	const createNewPageModal = {
+	const createNewPostModal = {
 		type: 'component',
 		component: 'createNewPageModal',
 		meta: {
@@ -64,6 +74,20 @@
 			showOnlyWithSections: true,
 			onFormSubmit: (template: TemplateNode, parentFolder: FolderNode) => {
 				initiateNewPage(template, parentFolder);
+			}
+		}
+	};
+
+	/**
+	 * @type: {ModalSettings}
+	 */
+	const createNewFolderModal = {
+		type: 'component',
+		component: 'createNewFolderModal',
+		meta: {
+			modalTitle: 'Create new folder',
+			onFormSubmit: (parentFolder: FolderNode, srcKey: string) => {
+				initiateNewFolder(parentFolder, srcKey);
 			}
 		}
 	};
@@ -197,6 +221,20 @@
 		isNewPage = true;
 	}
 
+	function initiateNewFolder(parentFolder: FolderNode, srcKey: string) {
+		let createResult = createFolder(parentFolder.srcKey + srcKey, $userStore.token!!);
+		createResult.then((r) => {
+			if (r instanceof Error) {
+				errorToast.message = 'Failed to create folder';
+				toastStore.trigger(errorToast);
+			} else {
+				toast.message = 'Created folder ' + createResult;
+				toastStore.trigger(toast);
+				loadPagesAndFolders();
+			}
+		});
+	}
+
 	const foldersUnsubscribe = folders.subscribe((value) => {
 		const rootFolderKey = 'sources/pages/';
 
@@ -267,8 +305,11 @@
 		{#if $userStore.isLoggedIn()}
 			<h3 class="h3 mb-2">Pages</h3>
 			<div class="btn-group variant-filled">
-				<button on:click={loadPagesAndFolders}><Icon icon={Refresh} />Reload</button>
-				<button on:click={(e) => modalStore.trigger(createNewPageModal)}
+				<button on:click={loadPagesAndFolders} title="Reload pages"><Icon icon={Refresh} /></button>
+				<button on:click={(e) => modalStore.trigger(createNewFolderModal)} title="New Folder"
+					><Icon icon={CreateNewFolder} /></button
+				>
+				<button on:click={(e) => modalStore.trigger(createNewPostModal)} title="New Page"
 					><Icon icon={Add} />New Page</button
 				>
 			</div>
@@ -373,7 +414,7 @@
 						class=" variant-filled-primary"
 						on:click={(e) => {
 							if (isNewPage) {
-								modalStore.trigger(saveNewPageModal);
+								// modalStore.trigger(saveNewPostModal);
 							} else {
 								modalStore.trigger(savePageModal);
 							}

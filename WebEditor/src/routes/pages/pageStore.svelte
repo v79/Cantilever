@@ -59,6 +59,7 @@
 		}
 	}
 
+	// fetch a single page from server, converting it to a MarkdownContent object
 	export async function fetchPage(srcKey: string, token: string): Promise<Error | string> {
 		console.log('pageStore: Fetching page', srcKey);
 		try {
@@ -99,6 +100,7 @@
 		}
 	}
 
+	// create a page on the server
 	export async function savePage(srcKey: string, token: string): Promise<Error | string> {
 		console.log('pageStore: Saving page');
 		let content: MarkdownContent = get(markdownStore);
@@ -132,6 +134,33 @@
 		} else {
 			console.error('pageStore: savePage: metadata is not a PageItem');
 			return new Error('pageStore: savePage: metadata is not a PageItem');
+		}
+	}
+
+	// create a new folder on the server
+	export async function createFolder(srcKey: string, token: string): Promise<Error | string> {
+		console.log('pageStore: Creating folder ' + srcKey);
+		try {
+			const encodedKey = encodeURIComponent(srcKey);
+			const response = await fetch('https://api.cantilevers.org/pages/folder/new/' + encodedKey, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'text/plain',
+					Authorization: `Bearer ${token}`,
+					'X-Content-Length': '0'
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const msg = await response.text();
+				return msg;
+			} else {
+				throw new Error('Failed to create folder');
+			}
+		} catch (error) {
+			console.error(error);
+			return error as Error;
 		}
 	}
 </script>

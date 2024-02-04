@@ -98,7 +98,7 @@
 				<div class="placeholder h-4">Loading folders...</div>
 			{:else}
 				<label for="selectParent" class="label">Choose the parent folder for the new page:</label>
-				{#if $templates && $templates.templates}
+				{#if $folders && $folders.folders}
 					<select
 						class="select m-4 w-9/12"
 						id="selectParent"
@@ -109,9 +109,6 @@
 							<option value={folder.srcKey}>{folder.srcKey}</option>
 						{/each}
 					</select>
-					{#if selectedFolder}
-						<p><em> Selected folder: {selectedFolder.srcKey}</em></p>
-					{/if}
 				{/if}
 			{/if}
 		</article>
