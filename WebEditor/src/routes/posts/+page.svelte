@@ -15,7 +15,7 @@
 	import { CLEAR_MARKDOWN, markdownStore } from '$lib/stores/contentStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import BasicFileList from '$lib/components/BasicFileList.svelte';
-	import PostListItem from '$lib/lib/components/FileListItem.svelte';
+	import PostListItem from '$lib/components/FileListItem.svelte';
 	import { deletePost, fetchPost, fetchPosts, posts, savePost } from './postStore.svelte';
 	import { MarkdownContent, PostItem } from '$lib/models/markdown';
 
