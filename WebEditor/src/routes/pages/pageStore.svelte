@@ -1,6 +1,11 @@
 <script lang="ts" context="module">
 	import { MarkdownContent, PageItem } from '$lib/models/markdown';
-	import { type PageList, type FolderList, PageNode } from '$lib/models/pages.svelte';
+	import {
+		type PageList,
+		type FolderList,
+		PageNode,
+		ReassignIndexRequestDTO
+	} from '$lib/models/pages.svelte';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
 	import { writable, get } from 'svelte/store';
 
@@ -207,6 +212,40 @@
 				return msg;
 			} else {
 				throw new Error('Failed to delete folder');
+			}
+		} catch (error) {
+			console.error(error);
+			return error as Error;
+		}
+	}
+
+	// reassign the index page for a folder
+	export async function switchIndexPage(
+		from: string,
+		to: string,
+		folder: string,
+		token: string
+	): Promise<Error | string> {
+		let dto = new ReassignIndexRequestDTO(from, to, folder);
+		console.log(
+			'pageStore: Reassiging index page for folder ' + folder + ' from ' + from + ' to ' + to
+		);
+		try {
+			const response = await fetch('https://api.cantilevers.org/pages/reassignIndex', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'text/plain',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify(dto),
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const msg = await response.text();
+				return msg;
+			} else {
+				throw new Error('Failed to reassign index page');
 			}
 		} catch (error) {
 			console.error(error);

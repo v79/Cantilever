@@ -53,4 +53,16 @@
 			this.children = children;
 		}
 	}
+
+	export class ReassignIndexRequestDTO {
+		from: string;
+		to: string;
+		folder: string;
+
+		constructor(from: string, to: string, folder: string) {
+			this.from = from;
+			this.to = to;
+			this.folder = folder;
+		}
+	}
 </script>

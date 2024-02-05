@@ -93,6 +93,13 @@ class LambdaRouter : RequestHandlerWrapper() {
 
             delete("/folder/{srcKey}", pageController::deleteFolder).supplies(setOf(MimeType.plainText))
                 .spec(Spec.PathItem("Delete folder", "Delete a folder. It must be empty"))
+
+            post("/reassignIndex", pageController::reassignIndex).supplies(setOf(MimeType.plainText)).spec(
+                Spec.PathItem(
+                    "Reassign index page for folder",
+                    "Set a new index page for the folder, so that it becomes index.html for that folder, and unset the previous index page"
+                )
+            )
         }
 
         get("/folders", pageController::getFolders).spec(

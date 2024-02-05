@@ -3,16 +3,33 @@
 	import type { iconConfigType } from '$lib/forms/textInputIconType';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
 	import { Home } from 'svelte-google-materialdesign-icons';
-	import { folders, pages } from './pageStore.svelte';
-	import { getModalStore, type ModalSettings } from '@skeletonlabs/skeleton';
+	import { folders, pages, switchIndexPage } from './pageStore.svelte';
+	import {
+		getModalStore,
+		getToastStore,
+		type ModalSettings,
+		type ToastSettings
+	} from '@skeletonlabs/skeleton';
 	import type { FolderNode, PageNode } from '$lib/models/pages.svelte';
+	import { userStore } from '$lib/stores/userStore.svelte';
 
 	const modalStore = getModalStore();
+	const toastStore = getToastStore();
 
 	export let value = '';
 	export let isRoot = false;
 
 	$: currentIndexPage = findIndexPageForFolder($markdownStore?.metadata?.parent);
+
+	const toast: ToastSettings = {
+		message: 'Updated index page',
+		background: 'variant-filled-success',
+		hideDismiss: true
+	};
+	const errorToast: ToastSettings = {
+		message: 'Failed to update index page',
+		background: 'variant-filled-error'
+	};
 
 	/**
 	 * @type {ModalSettings}
@@ -24,12 +41,7 @@
 			currentPage: $markdownStore.metadata,
 			currentIndexPage: currentIndexPage?.title ?? 'index.md',
 			onFormSubmit: () => {
-				console.log(
-					'initiate index updating from ' +
-						currentIndexPage?.srcKey +
-						' to ' +
-						$markdownStore.metadata?.srcKey
-				);
+				initateIndexUpdate();
 			}
 		}
 	};
@@ -55,6 +67,36 @@
 			// do nothing
 		}
 	};
+
+	async function initateIndexUpdate() {
+		console.log(
+			'initateIndexUpdate. Setting the index page for folder ' +
+				$markdownStore.metadata?.parent +
+				' to ' +
+				$markdownStore.metadata?.srcKey +
+				' (was ' +
+				currentIndexPage?.srcKey +
+				')'
+		);
+		if (currentIndexPage && $markdownStore.metadata && $userStore.token) {
+			const response = switchIndexPage(
+				currentIndexPage.srcKey,
+				$markdownStore.metadata?.srcKey,
+				$markdownStore.metadata?.parent,
+				$userStore.token
+			);
+			response.then((result) => {
+				if (result instanceof Error) {
+					errorToast.message = 'Failed to update index page: ' + result.message;
+					toastStore.trigger(errorToast);
+				} else {
+					$markdownStore.metadata.isRoot = true;
+					toast.message = result;
+					toastStore.trigger(toast);
+				}
+			});
+		}
+	}
 
 	function findIndexPageForFolder(folder: string | undefined): PageNode | undefined {
 		if ($pages) {

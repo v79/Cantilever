@@ -302,6 +302,17 @@ class ContentTree {
     }
 
     /**
+     * Update a folder from the tree
+     */
+    fun updateFolder(folderNode: ContentNode.FolderNode) {
+        val existing = items.find { it.srcKey == folderNode.srcKey } as ContentNode.FolderNode?
+        if (existing != null) {
+            items.remove(existing)
+            items.add(folderNode)
+        }
+    }
+
+    /**
      * Insert a page into the tree. It also attempts to associate the page with its parent folder.
      */
     fun insertPage(page: ContentNode.PageNode) {

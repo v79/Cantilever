@@ -9,6 +9,7 @@ import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.rest.FolderListDTO
 import org.liamjd.cantilever.models.rest.MarkdownPageDTO
 import org.liamjd.cantilever.models.rest.PageListDTO
+import org.liamjd.cantilever.models.rest.ReassignIndexRequestDTO
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 import java.net.URLDecoder
@@ -199,6 +200,66 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             }
         } else {
             ResponseEntity.badRequest(body = APIResult.Error("No folderKey specified"))
+        }
+    }
+
+    /**
+     * Reassign the index page of a folder to another page
+     * @param request [ReassignIndexRequestDTO] containing the source and destination pages and the folder
+     */
+    fun reassignIndex(request: Request<ReassignIndexRequestDTO>): ResponseEntity<APIResult<String>> {
+        val request = request.body
+        loadContentTree()
+        val from = request.from
+        val to = request.to
+        val folder = request.folder
+        // check to see that each of these exist
+        try {
+            if (s3Service.objectExists(from, sourceBucket) && s3Service.objectExists(to, sourceBucket)) {
+                // confirm that from is the index of the folder
+                val folderNode = contentTree.getNode(
+                    if (folder.endsWith("/")) {
+                        folder
+                    } else {
+                        "$folder/"
+                    }
+                )
+                if (folderNode is ContentNode.FolderNode) {
+                    if (folderNode.indexPage == from) {
+                        // update the metadata for each of these pages
+                        val fromString = s3Service.getObjectAsString(from, sourceBucket)
+                        val toString = s3Service.getObjectAsString(to, sourceBucket)
+                        val fromMeta =
+                            ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(fromString, from)
+                        val updatedFrom = fromMeta.copy(isRoot = false)
+
+                         val toMeta =
+                            ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(toString, to)
+                        val updatedTo = toMeta.copy(isRoot = true)
+
+                        println("Writing updated pages '$from' and '$to' to S3 bucket $sourceBucket")
+                        s3Service.putObjectAsString(from, sourceBucket, convertNodeToMarkdown(updatedFrom), "text/markdown")
+                        s3Service.putObjectAsString(to, sourceBucket, convertNodeToMarkdown(updatedTo), "text/markdown")
+                        println("Updating content tree")
+                        contentTree.updatePage(updatedFrom)
+                        contentTree.updatePage(updatedTo)
+                        contentTree.updateFolder(folderNode.copy(indexPage = to))
+                        saveContentTree()
+                        return ResponseEntity.ok(
+                            body = APIResult.OK("Reassigned index from $from to $to in folder $folder")
+                        )
+
+                    } else {
+                        return ResponseEntity.badRequest(body = APIResult.Error("$from is not the index of $folder"))
+                    }
+                } else {
+                    return ResponseEntity.badRequest(body = APIResult.Error("$folder is not a folder"))
+                }
+            } else {
+                return ResponseEntity.badRequest(body = APIResult.Error("Source files not found"))
+            }
+        } catch (e: Exception) {
+            return ResponseEntity.serverError(body = APIResult.Error("Error: ${e.message}"))
         }
     }
 
