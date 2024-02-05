@@ -14,9 +14,9 @@ import org.koin.test.inject
 import org.koin.test.junit5.KoinTestExtension
 import org.koin.test.junit5.mock.MockProviderExtension
 import org.koin.test.mock.declareMock
+import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.Template
 import org.liamjd.cantilever.models.TemplateMetadata
-import org.liamjd.cantilever.models.rest.HandlebarsTemplate
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
@@ -93,7 +93,7 @@ internal class TemplateControllerTest : KoinTest {
 
     @Test
     fun `saves a new template file when none exists`() {
-        val mockHandlebarsContent = mockk<HandlebarsTemplate>()
+        val mockHandlebarsContent = mockk<ContentNode.TemplateNode>()
         val mockTemplate = mockk<Template>()
         val mockTemplateMeta = mockk<TemplateMetadata>()
         val body = """
@@ -102,19 +102,27 @@ internal class TemplateControllerTest : KoinTest {
         every { mockTemplate.srcKey } returns "my-template"
         every { mockTemplate.metadata } returns mockTemplateMeta
         every { mockTemplateMeta.name } returns "My Template"
-        every { mockHandlebarsContent.template } returns mockTemplate
         every { mockHandlebarsContent.body } returns body
+        every { mockHandlebarsContent.srcKey } returns "my-template"
+        every { mockHandlebarsContent.title } returns "My Template"
+        every { mockHandlebarsContent.sections } returns listOf("body")
         every { mockTemplateMeta.sections } returns listOf("body")
+        every { mockHandlebarsContent.body = any() } just runs
 
         declareMock<S3Service> {
             every { mockS3.objectExists("my-template", sourceBucket) } returns true
-            every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/html") } returns 1234
+            every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/plain") } returns 1234
+            every {
+                mockS3.putObjectAsString(
+                    "generated/metadata.json", sourceBucket, any(), "application/json"
+                )
+            } returns 2345
         }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
         val controller = TemplateController(sourceBucket)
-        val request = Request<HandlebarsTemplate>(
+        val request = Request(
             apiRequest = apiProxyEvent,
             body = mockHandlebarsContent,
             pathPattern = "/templates/"
@@ -127,7 +135,7 @@ internal class TemplateControllerTest : KoinTest {
 
     @Test
     fun `updates an existing template file`() {
-        val mockHandlebarsContent = mockk<HandlebarsTemplate>()
+        val mockHandlebarsContent = mockk<ContentNode.TemplateNode>()
         val mockTemplate = mockk<Template>()
         val mockTemplateMeta = mockk<TemplateMetadata>()
         val body = """
@@ -136,19 +144,27 @@ internal class TemplateControllerTest : KoinTest {
         every { mockTemplate.srcKey } returns "my-template"
         every { mockTemplate.metadata } returns mockTemplateMeta
         every { mockTemplateMeta.name } returns "My Template"
-        every { mockHandlebarsContent.template } returns mockTemplate
         every { mockHandlebarsContent.body } returns body
+        every { mockHandlebarsContent.srcKey } returns "my-template"
+        every { mockHandlebarsContent.title } returns "My Template"
+        every { mockHandlebarsContent.sections } returns listOf("body")
         every { mockTemplateMeta.sections } returns listOf("body")
+        every { mockHandlebarsContent.body = any() } just runs
 
         declareMock<S3Service> {
             every { mockS3.objectExists("my-template", sourceBucket) } returns true
-            every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/html") } returns 1234
+            every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/plain") } returns 1234
+            every {
+                mockS3.putObjectAsString(
+                    "generated/metadata.json", sourceBucket, any(), "application/json"
+                )
+            } returns 2345
         }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
         val controller = TemplateController(sourceBucket)
-        val request = Request<HandlebarsTemplate>(
+        val request = Request<ContentNode.TemplateNode>(
             apiRequest = apiProxyEvent,
             body = mockHandlebarsContent,
             pathPattern = "/templates/"
