@@ -110,7 +110,7 @@
 		<!-- App Bar -->
 		<AppBar gridColumns="grid-cols-3" slotDefault="place-self-center" slotTrail="place-content-end">
 			<svelte:fragment slot="lead">
-				<strong class="text-xl">Cantilever v0.0.9</strong>
+				<strong class="text-xl">Cantilever v0.0.11</strong>
 				<button
 					type="button"
 					on:click={rebuildAllMetadata}
