@@ -155,6 +155,10 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         acceptedMediaTypes: List<MimeType>
     ): APIGatewayProxyResponseEvent {
         println("No route match found for $httpMethod $path")
+        val possibleAlts = router.routes.filterKeys { it.pathPattern == path }
+        if(possibleAlts.isNotEmpty()) {
+            println("Possible alternatives: ${possibleAlts.keys}")
+        }
         return APIGatewayProxyResponseEvent()
             .withStatusCode(404)
             .withHeaders(mapOf("Content-Type" to "text/plain"))

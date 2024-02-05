@@ -64,6 +64,50 @@ class LambdaRouter : RequestHandlerWrapper() {
             setOf(MimeType.plainText)
         ).spec(Spec.PathItem("Warm", "Warms the lambda router"))
 
+        group("/pages", Spec.Tag(name = "Pages", description = "Create, update and manage static pages")) {
+            get("", pageController::getPages).spec(Spec.PathItem("Get pages", "Returns a list of all pages"))
+
+            post(
+                "/save",
+                pageController::saveMarkdownPageSource,
+            ).supplies(setOf(MimeType.plainText)).spec(
+                Spec.PathItem("Save page", "Save markdown page source")
+            )
+
+            get(
+                "/$SRCKEY",
+                pageController::loadMarkdownSource,
+            ).spec(
+                Spec.PathItem("Get page source", "Returns the markdown source for a page")
+            )
+
+            put(
+                "/folder/new/{folderName}",
+                pageController::createFolder,
+            ).spec(
+                Spec.PathItem("Create folder", "Pages can be nested in folders, but don't go too deep!")
+            ).supplies(setOf(MimeType.plainText))
+
+            delete("/$SRCKEY", pageController::deleteMarkdownPageSource).supplies(setOf(MimeType.plainText))
+                .spec(Spec.PathItem("Delete page", "Delete a static page"))
+
+            delete("/folder/{srcKey}", pageController::deleteFolder).supplies(setOf(MimeType.plainText))
+                .spec(Spec.PathItem("Delete folder", "Delete a folder. It must be empty"))
+
+            post("/reassignIndex", pageController::reassignIndex).supplies(setOf(MimeType.plainText)).spec(
+                Spec.PathItem(
+                    "Reassign index page for folder",
+                    "Set a new index page for the folder, so that it becomes index.html for that folder, and unset the previous index page"
+                )
+            )
+        }
+
+        get("/folders", pageController::getFolders).spec(
+            Spec.PathItem(
+                "Get folders",
+                "Returns a list of all folders"
+            )
+        )
         group(
             "/project", Spec.Tag(name = "Project", description = "Manage the overall project settings")
         ) {
@@ -82,37 +126,8 @@ class LambdaRouter : RequestHandlerWrapper() {
                 )
 
                 // TODO: move this set of routes outside of the project group
-                group("/pages", Spec.Tag(name = "Pages", description = "Create, update and manage static pages")) {
-                    get("", pageController::getPages).spec(Spec.PathItem("Get pages", "Returns a list of all pages"))
 
-                    post(
-                        "/",
-                        pageController::saveMarkdownPageSource,
-                    ).supplies(setOf(MimeType.plainText)).spec(
-                        Spec.PathItem("Save page", "Save markdown page source")
-                    )
-
-                    get(
-                        "/$SRCKEY",
-                        pageController::loadMarkdownSource,
-                    ).spec(
-                        Spec.PathItem("Get page source", "Returns the markdown source for a page")
-                    )
-
-                    put(
-                        "/folder/new/{folderName}",
-                        pageController::createFolder,
-                    ).spec(
-                        Spec.PathItem("Create folder", "Pages can be nested in folders")
-                    ).supplies(setOf(MimeType.plainText))
-                }
-                get("/folders", pageController::getFolders).spec(
-                    Spec.PathItem(
-                        "Get folders",
-                        "Returns a list of all folders"
-                    )
-                )
-
+                // TODO: I think this is obsolete, replaced with GET /metadata
                 get(
                     "/templates/{templateKey}",
                     templateController::getTemplateMetadata,
@@ -131,7 +146,11 @@ class LambdaRouter : RequestHandlerWrapper() {
                     postController::loadMarkdownSource,
                 ).spec(Spec.PathItem("Get post source", "Returns the markdown source for a post"))
 
-                get(pattern = "/preview/$SRCKEY") { request: Request<Unit> -> ResponseEntity.notImplemented(body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!") }.supplies(
+                get(pattern = "/preview/$SRCKEY") { request: Request<Unit> ->
+                    ResponseEntity.notImplemented(
+                        body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!"
+                    )
+                }.supplies(
                     setOf(MimeType.html)
                 ).spec(Spec.PathItem("Preview post", "When implemented, this will return a preview of a post"))
 
@@ -160,7 +179,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                 ).spec(Spec.PathItem("Get template source", "Returns the handlebars source for a template"))
 
                 post(
-                    "/",
+                    "/save",
                     templateController::saveTemplate,
                 ).supplies(setOf(MimeType.plainText))
                     .spec(Spec.PathItem("Save template", "Save handlebars template source"))
@@ -207,7 +226,11 @@ class LambdaRouter : RequestHandlerWrapper() {
                 ).supplies(setOf(MimeType.plainText))
                     .spec(Spec.PathItem("Regenerate a page", "Trigger the regeneration of a page"))
 
-                put("/images/resolutions") { _: Request<Unit> -> ResponseEntity.notImplemented(body = "Not implemented yet!") }.supplies(
+                put("/images/resolutions") { _: Request<Unit> ->
+                    ResponseEntity.notImplemented(
+                        body = "Not implemented yet!"
+                    )
+                }.supplies(
                     setOf(MimeType.plainText)
                 ).spec(
                     Spec.PathItem(

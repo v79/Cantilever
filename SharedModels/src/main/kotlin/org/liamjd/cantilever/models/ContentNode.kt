@@ -149,6 +149,7 @@ sealed class ContentNode {
         val sections: List<String> = emptyList(),
     ) : ContentNode() {
         override val url = "" // irrelevant for templates
+        var body: String = ""
     }
 
     /**
@@ -301,6 +302,17 @@ class ContentTree {
     }
 
     /**
+     * Update a folder from the tree
+     */
+    fun updateFolder(folderNode: ContentNode.FolderNode) {
+        val existing = items.find { it.srcKey == folderNode.srcKey } as ContentNode.FolderNode?
+        if (existing != null) {
+            items.remove(existing)
+            items.add(folderNode)
+        }
+    }
+
+    /**
      * Insert a page into the tree. It also attempts to associate the page with its parent folder.
      */
     fun insertPage(page: ContentNode.PageNode) {
@@ -356,7 +368,7 @@ class ContentTree {
      * Update a template in the tree. This does a delete then insert
      */
     fun updateTemplate(template: ContentNode.TemplateNode) {
-        val existing = templates.find { it.srcKey == template.srcKey } as ContentNode.TemplateNode?
+        val existing = templates.find { it.srcKey == template.srcKey }
         if (existing != null) {
             deleteTemplate(existing)
             insertTemplate(template)
@@ -450,7 +462,7 @@ class ContentTree {
     /**
      * Find a node in the tree, based on its srcKey
      */
-    private fun getNode(srcKey: SrcKey): ContentNode? {
+    fun getNode(srcKey: SrcKey): ContentNode? {
         return items.find { it.srcKey == srcKey }
     }
 

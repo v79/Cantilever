@@ -32,6 +32,7 @@ class S3ServiceImpl(region: Region) : S3Service {
     }
 
     override fun putObjectAsBytes(key: String, bucket: String, contents: ByteArray, contentType: String?): Int {
+        println("S3Service: putObjectAsBytes: key: $key, ${contents.size} bytes")
         val requestBuilder = byteArrayBuilder(contents, key, bucket, contentType)
         val request = requestBuilder.build()
         s3Client.putObject(request, RequestBody.fromBytes(contents))
