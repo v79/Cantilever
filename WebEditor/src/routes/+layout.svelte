@@ -114,8 +114,7 @@
 				<button
 					type="button"
 					on:click={rebuildAllMetadata}
-					class="btn btn-sm variant-ghost-secondary"
-				>
+					class="btn btn-sm variant-ghost-secondary">
 					Rebuild Metadata
 				</button>
 			</svelte:fragment>
@@ -136,8 +135,10 @@
 				<div data-sveltekit-preload-data="false">
 					<AppRailAnchor href="/" selected={$page.url.pathname === '/'} title="Project">
 						<svelte:fragment slot="lead"
-							><Icon icon={Settings_applications} size={32} variation="outlined" /></svelte:fragment
-						>
+							><Icon
+								icon={Settings_applications}
+								size={32}
+								variation="outlined" /></svelte:fragment>
 						<span>Project</span>
 					</AppRailAnchor>
 
@@ -149,31 +150,29 @@
 						<span>Posts</span>
 					</AppRailAnchor>
 
-					<AppRailAnchor href="/pages" selected={$page.url.pathname == '/pages'} title="Pages">
+					<AppRailAnchor href="/pages" selected={$page.url.pathname === '/pages'} title="Pages">
 						<svelte:fragment slot="lead"
-							><Icon icon={Article} size={32} variation="outlined" /></svelte:fragment
-						>
+							><Icon icon={Article} size={32} variation="outlined" /></svelte:fragment>
 						<span>Pages</span>
-						
 					</AppRailAnchor>
 
-					<AppRailAnchor href="/" title="Media">
+					<AppRailAnchor href="/media" selected={$page.url.pathname === '/media'} title="Media">
 						<svelte:fragment slot="lead"
-							><Icon icon={Perm_media} size={32} variation="filled" /></svelte:fragment
-						>
+							><Icon icon={Perm_media} size={32} variation="outlined" /></svelte:fragment>
 						<span>Media</span>
 					</AppRailAnchor>
 
-					<AppRailAnchor href="/templates" title="Templates">
+					<AppRailAnchor
+						href="/templates"
+						title="Templates"
+						selected={$page.url.pathname === '/templates'}>
 						<svelte:fragment slot="lead">
 							<!-- TODO: this badge might be a nice way of indicating that there are ungenerated changes? -->
 							<div class="relative inline-block">
 								<span class="badge-icon variant-filled-error absolute -bottom-0 -right-0 z-10"
-									>2</span
-								>
+									>2</span>
 								<Icon icon={Document_scanner} size={32} variation="outlined" />
-							</div></svelte:fragment
-						>
+							</div></svelte:fragment>
 						<span>Templates</span>
 					</AppRailAnchor>
 				</div>
