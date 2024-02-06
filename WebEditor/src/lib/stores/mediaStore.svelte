@@ -61,7 +61,6 @@
 		resolution: string,
 		token: string
 	): Promise<ImageDTO | Error> {
-		console.log('mediaStore: Fetching image bytes for ' + srcKey);
 		try {
 			let encodedKey = encodeURIComponent(srcKey);
 			const response = await fetch(
