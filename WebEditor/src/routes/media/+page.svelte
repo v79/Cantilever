@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { ImageDTO, type ImageNode } from '$lib/models/media';
-	import { fetchImageBytes, fetchImages, images } from '$lib/stores/mediaStore.svelte';
+	import { ImageDTO, ImageNode } from '$lib/models/media';
+	import { fetchImageBytes, fetchImages, images, uploadImage } from '$lib/stores/mediaStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import {
 		FileDropzone,
@@ -51,25 +51,32 @@
 		}
 	}
 
-	// load the bytes of an image as an ImageDTO and place it in the DOM
-	function loadImageBytes(image: ImageNode) {
-		console.log('loading image bytes for ' + image.srcKey);
-		const imageBytes = fetchImageBytes(image.srcKey, '__thumb', $userStore.token!!);
-		imageBytes.then((result) => {
-			if (result instanceof Error) {
-				errorToast.message = 'Failed to load image bytes. Message was: ' + result.message;
-				toastStore.trigger(errorToast);
-				console.error(result);
-			} else if (result instanceof ImageDTO) {
-				placeImage(result);
-			} else {
-				console.error('Unknown error fetching image bytes; result was not an error or an ImageDTO');
-			}
-		});
+	// load the bytes of an image as an ImageDTO
+	async function loadImageBytes(image: ImageNode): Promise<ImageDTO | Error> {
+		console.log('loading thumbnail bytes for ' + image.srcKey);
+		const imageBytes = await fetchImageBytes(image.srcKey, '__thumb', $userStore.token!!);
+		if (imageBytes instanceof Error) {
+			errorToast.message = 'Failed to load thumbnail bytes. Message was: ' + imageBytes.message;
+			toastStore.trigger(errorToast);
+			return imageBytes;
+		} else if (imageBytes instanceof ImageDTO) {
+			return imageBytes;
+		} else {
+			console.error(
+				'Unknown error fetching thumbnail bytes for ' +
+					image.srcKey +
+					'; result was not an error or an ImageDTO'
+			);
+			return new Error(
+				'Unknown error fetching thumbnail bytes for ' +
+					image.srcKey +
+					'; result was not an error or an ImageDTO'
+			);
+		}
 	}
 
 	// place an image in the DOM
-	function placeImage(image: ImageDTO) {
+	async function placeImage(image: ImageDTO) {
 		let imageDiv = document.getElementById('img-' + image.srcKey);
 		if (imageDiv) {
 			imageDiv.appendChild(document.createElement('img'));
@@ -98,10 +105,46 @@
 		files = undefined;
 	}
 
-	const imagesUnsubscribe = images.subscribe((value) => {
+	async function intiateImageUpload() {
+		if (files === undefined) {
+			console.log('no files to upload');
+			return;
+		}
+		if (!$userStore.token) {
+			console.log('no token');
+			return;
+		}
+		const response = uploadImage(files[0], $userStore.token);
+		response.then(async (result) => {
+			if (result instanceof Error) {
+				errorToast.message = 'Failed to upload image. Message was: ' + result.message;
+				toastStore.trigger(errorToast);
+				console.error(result);
+			} else if (result instanceof ImageDTO) {
+				toast.message = 'Uploaded image ' + result.srcKey + ' successfully';
+				toastStore.trigger(toast);
+				// it wil be a while before the image is available, so just place the DTO in the DOM
+				// but at this stage, there is no dom element to place it in
+				// so either I need to update the store, which will trigger load and then fail
+				// or i need to create a dom element for it to be placed in
+				// but will that mess things up when the store is updated?
+				await placeImage(result);
+				resetDropzone();
+			} else {
+				console.error('Unknown error uploading image; result was not an error or an ImageDTO');
+			}
+		});
+	}
+
+	const imagesUnsubscribe = images.subscribe(async (value) => {
 		if (value && value.count != -1) {
 			for (const imageFile of value.images) {
-				loadImageBytes(imageFile);
+				const loadedImage = await loadImageBytes(imageFile);
+				if (loadedImage instanceof ImageDTO) {
+					await placeImage(loadedImage);
+				} else {
+					console.error(loadedImage);
+				}
 			}
 		}
 	});
@@ -129,7 +172,8 @@
 							</button>
 							<button
 								type="button"
-								class="rounded-full hover:bg-gray-200 transition-colors duration-300 ease-in-out">
+								class="rounded-full hover:bg-gray-200 transition-colors duration-300 ease-in-out"
+								on:click={intiateImageUpload}>
 								<Icon icon={Done} color="green" size={48} variation="filled" /></button>
 						</div>
 					{/if}

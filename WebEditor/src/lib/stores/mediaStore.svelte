@@ -91,4 +91,46 @@
 			return error as Error;
 		}
 	}
+
+	// upload an image to the server
+	export async function uploadImage(file: File, token: string): Promise<Error | ImageDTO> {
+		try {
+			const reader = new FileReader();
+			reader.readAsDataURL(file);
+			return new Promise((resolve, reject) => {
+				reader.onload = () => {
+					// base64 encode the bytes in file
+					const dto = new ImageDTO(file.name, file.type, reader.result as string);
+					let dtoString = JSON.stringify(dto);
+
+					const response = fetch('https://api.cantilevers.org/media/images/', {
+						method: 'POST',
+						headers: {
+							Accept: 'application/json',
+							Authorization: 'Bearer ' + token,
+							'Content-Type': 'application/json'
+						},
+						body: dtoString
+					});
+					response
+						.then((response) => response.json())
+						.then((data) => {
+							// we set the bytes to the result of the reader, rather than from the API result, because we've already got the bytes
+							let result = new ImageDTO(
+								data.data.srcKey,
+								data.data.contentType,
+								reader.result as string
+							);
+							resolve(result);
+						})
+						.catch((error) => {
+							reject(new Error('Failed to upload image'));
+						});
+				};
+			});
+		} catch (error) {
+			console.error(error);
+			return error as Error;
+		}
+	}
 </script>
