@@ -1,6 +1,12 @@
 <script lang="ts">
 	import { ImageDTO, ImageNode } from '$lib/models/media';
-	import { fetchImageBytes, fetchImages, images, uploadImage } from '$lib/stores/mediaStore.svelte';
+	import {
+		deleteImage,
+		fetchImageBytes,
+		fetchImages,
+		images,
+		uploadImage
+	} from '$lib/stores/mediaStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import {
 		FileDropzone,
@@ -39,7 +45,7 @@
 		buttonTextCancel: 'Cancel',
 		response: (r: boolean) => {
 			if (r) {
-				console.log('deleting image');
+				initiateImageDelete(hoveredImage);
 			}
 			modalStore.close();
 		}
@@ -118,11 +124,13 @@
 		}
 	}
 
+	// reset the dropzone
 	function resetDropzone() {
 		console.log('resetting dropzone');
 		files = undefined;
 	}
 
+	// trigger upload of image to server, and place it if successful
 	async function intiateImageUpload() {
 		if (files === undefined) {
 			console.log('no files to upload');
@@ -154,10 +162,26 @@
 		});
 	}
 
+	// handle image hover
 	function hoverImage(srcKey: string) {
 		console.log('hovering over image ' + srcKey);
 		hoveredImage = srcKey;
 		imageOverlayHover = true;
+	}
+
+	// trigger delete of image from server
+	async function initiateImageDelete(srcKey: string) {
+		console.log('deleting image ' + srcKey);
+		const deleteResponse = await deleteImage(srcKey, $userStore.token!!);
+		if (deleteResponse instanceof Error) {
+			errorToast.message = 'Failed to delete image. Message was: ' + deleteResponse.message;
+			toastStore.trigger(errorToast);
+			console.error(deleteResponse);
+		} else {
+			toast.message = 'Deleted image ' + srcKey + ' successfully';
+			toastStore.trigger(toast);
+			loadImages();
+		}
 	}
 
 	const imagesUnsubscribe = images.subscribe(async (value) => {
@@ -181,7 +205,7 @@
 		</div>
 		<div class="flex flex-col grow">
 			<h3 class="h3 mb-2">
-				{#if $images}{$images.count}{:else}Zero{/if} images
+				{#if $images}{$images.count}{:else}Loading{/if} images
 			</h3>
 			<hr class="!border-t-2" />
 			<div class="mr-10 mt-4 grid grid-cols-4 gap-4 relative z-0">
@@ -235,7 +259,8 @@
 								{image.shortName()}
 							</div>
 							{#if hoveredImage === image.srcKey}
-								<div class="absolute flex flex-col place-items-end inset-0 justify-end z-10 ml-2 mr-2">
+								<div
+									class="absolute flex flex-col place-items-end inset-0 justify-end z-10 ml-2 mr-2">
 									<button
 										type="button"
 										class="rounded-full hover:bg-gray-200 transition-colors duration-300 ease-in-out"
@@ -246,7 +271,6 @@
 									</button>
 								</div>
 							{/if}
-							
 						</div>
 					{/each}
 				{:else}

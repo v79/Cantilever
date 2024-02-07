@@ -133,4 +133,28 @@
 			return error as Error;
 		}
 	}
+
+	// delete an image from the server
+	export async function deleteImage(srcKey: string, token: string): Promise<Error | string> {
+		try {
+			let encodedKey = encodeURIComponent(srcKey);
+			const response = await fetch(`https://api.cantilevers.org/media/images/${encodedKey}`, {
+				method: 'DELETE',
+				headers: {
+					Accept: 'text/plain',
+					Authorization: `Bearer ${token}`
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const data = await response.text();
+				return data;
+			} else {
+				throw new Error('Failed to delete image');
+			}
+		} catch (error) {
+			console.error(error);
+			return error as Error;
+		}
+	}
 </script>
