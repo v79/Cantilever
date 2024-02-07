@@ -121,6 +121,7 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
         s3Service.deleteObject(decodedKey, sourceBucket)
         val ext = decodedKey.substringAfterLast(".")
 
+        // TODO: Do I really want to delete all the generated images? What if the user has used them in a blog post?
         project.imageResolutions.forEach { resolution ->
             val resolutionKey = decodedKey.replace(S3_KEY.imagesPrefix, S3_KEY.generatedImagesPrefix)
                 .removeSuffix(".$ext") + "/${resolution.key}.$ext"

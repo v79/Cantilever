@@ -14,7 +14,7 @@
 		getToastStore,
 		type ToastSettings
 	} from '@skeletonlabs/skeleton';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { Cancel, Done, Icon, Upload_file } from 'svelte-google-materialdesign-icons';
 	import DeleteForever from 'svelte-google-materialdesign-icons/Delete_forever.svelte';
 
@@ -77,7 +77,6 @@
 
 	// load the bytes of an image as an ImageDTO
 	async function loadImageBytes(image: ImageNode): Promise<ImageDTO | Error> {
-		console.log('loading thumbnail bytes for ' + image.srcKey);
 		const imageBytes = await fetchImageBytes(image.srcKey, '__thumb', $userStore.token!!);
 		if (imageBytes instanceof Error) {
 			errorToast.message = 'Failed to load thumbnail bytes. Message was: ' + imageBytes.message;
@@ -147,14 +146,15 @@
 				toastStore.trigger(errorToast);
 				console.error(result);
 			} else if (result instanceof ImageDTO) {
+				console.log('Uploaded image ' + result.srcKey + ' successfully');
 				toast.message = 'Uploaded image ' + result.srcKey + ' successfully';
 				toastStore.trigger(toast);
-				// it wil be a while before the image is available, so just place the DTO in the DOM
-				// but at this stage, there is no dom element to place it in
-				// so either I need to update the store, which will trigger load and then fail
-				// or i need to create a dom element for it to be placed in
-				// but will that mess things up when the store is updated?
-				await placeImage(result);
+				let bytesToPlace = (result.bytes as string).split(',')[1];
+				let imageToPlace = new ImageDTO(result.srcKey, result.contentType, bytesToPlace);
+				$images.images.push(new ImageNode(result.srcKey, new Date(), '', result.contentType, true));
+				$images.count++;
+				await tick();
+				placeImage(imageToPlace);
 				resetDropzone();
 			} else {
 				console.error('Unknown error uploading image; result was not an error or an ImageDTO');
@@ -164,7 +164,6 @@
 
 	// handle image hover
 	function hoverImage(srcKey: string) {
-		console.log('hovering over image ' + srcKey);
 		hoveredImage = srcKey;
 		imageOverlayHover = true;
 	}
@@ -180,6 +179,8 @@
 		} else {
 			toast.message = 'Deleted image ' + srcKey + ' successfully';
 			toastStore.trigger(toast);
+			
+			$images.images.filter((image) => image.srcKey !== srcKey);
 			loadImages();
 		}
 	}
@@ -187,11 +188,14 @@
 	const imagesUnsubscribe = images.subscribe(async (value) => {
 		if (value && value.count != -1) {
 			for (const imageFile of value.images) {
-				const loadedImage = await loadImageBytes(imageFile);
-				if (loadedImage instanceof ImageDTO) {
-					await placeImage(loadedImage);
-				} else {
-					console.error(loadedImage);
+				if (!imageFile.hasBeenPlaced) {
+					const loadedImage = await loadImageBytes(imageFile);
+					if (loadedImage instanceof ImageDTO) {
+						await placeImage(loadedImage);
+						imageFile.hasBeenPlaced = true;
+					} else {
+						console.error(loadedImage);
+					}
 				}
 			}
 		}

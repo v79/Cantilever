@@ -17,6 +17,7 @@
 
 	// fetch the list of images from the server and store in the images store
 	export async function fetchImages(token: string): Promise<number | Error> {
+		images.set({ count: 0, lastUpdated: new Date(), images: [] });
 		console.log('mediaStore: Fetching images');
 		try {
 			const response = await fetch('https://api.cantilevers.org/media/images', {
@@ -80,8 +81,7 @@
 				const tempImage = new ImageDTO(
 					decodeURIComponent(data.data.srcKey),
 					data.data.contentType,
-					data.data.bytes
-				);
+					data.data.bytes				);
 				return tempImage;
 			} else {
 				throw new Error('Failed to fetch image bytes');
@@ -97,10 +97,11 @@
 		try {
 			const reader = new FileReader();
 			reader.readAsDataURL(file);
+			console.log('mediaStore: Uploading image ' + file.name);
 			return new Promise((resolve, reject) => {
 				reader.onload = () => {
 					// base64 encode the bytes in file
-					const dto = new ImageDTO(file.name, file.type, reader.result as string);
+					let dto = new ImageDTO(file.name, file.type, reader.result as string);
 					let dtoString = JSON.stringify(dto);
 
 					const response = fetch('https://api.cantilevers.org/media/images/', {
