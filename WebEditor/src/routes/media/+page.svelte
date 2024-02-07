@@ -10,10 +10,11 @@
 	} from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
 	import { Cancel, Done, Icon, Upload_file } from 'svelte-google-materialdesign-icons';
+	import DeleteForever from 'svelte-google-materialdesign-icons/Delete_forever.svelte';
 
 	let files: FileList | undefined = undefined; // for image uploads
-	let iconHover = false; // for cross and tick icons on image uploads
-	$: iconHovered = iconHover ? 'opacity-100' : 'opacity-100';
+	let imageOverlayHover = false; // for delete image overlay
+	$: hoveredImage = '';
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
 
@@ -25,6 +26,23 @@
 	const errorToast: ToastSettings = {
 		message: 'Failed to load posts',
 		background: 'variant-filled-error'
+	};
+
+	/**
+	 * @type: {ModalSettings}
+	 */
+	$: deleteImageModal = {
+		type: 'confirm',
+		title: 'Delete Image',
+		body: 'Are you sure you want to delete image <strong>' + hoveredImage + '</strong>?',
+		buttonTextConfirm: 'Delete',
+		buttonTextCancel: 'Cancel',
+		response: (r: boolean) => {
+			if (r) {
+				console.log('deleting image');
+			}
+			modalStore.close();
+		}
 	};
 
 	onMount(async () => {
@@ -136,6 +154,12 @@
 		});
 	}
 
+	function hoverImage(srcKey: string) {
+		console.log('hovering over image ' + srcKey);
+		hoveredImage = srcKey;
+		imageOverlayHover = true;
+	}
+
 	const imagesUnsubscribe = images.subscribe(async (value) => {
 		if (value && value.count != -1) {
 			for (const imageFile of value.images) {
@@ -198,11 +222,31 @@
 				{#if $images && $images.count > 0}
 					{#each $images.images as image}
 						<div
+							role="tooltip"
+							on:mouseover={() => {
+								hoverImage(image.srcKey);
+							}}
+							on:focus={() => {
+								hoverImage(image.srcKey);
+							}}
 							id="img-{image.srcKey}"
-							class="relative flex flex-col pb-2 items-center justify-between border border-slate-600 hover:border-white">
+							class="relative flex flex-col pb-2 items-center justify-around border border-slate-600 hover:border-white">
 							<div class="text-lg font-bold text-white">
 								{image.shortName()}
 							</div>
+							{#if hoveredImage === image.srcKey}
+								<div class="absolute flex flex-col place-items-end inset-0 justify-end z-10 ml-2 mr-2">
+									<button
+										type="button"
+										class="rounded-full hover:bg-gray-200 transition-colors duration-300 ease-in-out"
+										on:click={() => {
+											modalStore.trigger(deleteImageModal);
+										}}>
+										<Icon icon={DeleteForever} color="red" size={36} variation="filled" />
+									</button>
+								</div>
+							{/if}
+							
 						</div>
 					{/each}
 				{:else}

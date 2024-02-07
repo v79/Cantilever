@@ -132,8 +132,6 @@
 			if (r) {
 				console.log('save clicked');
 				initiateSavePage();
-			} else {
-				console.log('cancel clicked');
 			}
 			modalStore.close();
 		}
