@@ -227,10 +227,10 @@
 			<h3 class="h3 mb-2">Posts</h3>
 
 			<div class="btn-group variant-filled">
-				<button on:click={reloadPostList}><Icon icon={Refresh} />Reload</button>
-				<button on:click={(e) => modalStore.trigger(newPostModal)}
-					><Icon icon={Add} />New Post</button
-				>
+				<button on:click={reloadPostList} title="Reload post list"
+					><Icon icon={Refresh} />Reload</button>
+				<button on:click={(e) => modalStore.trigger(newPostModal)} title="Create new post"
+					><Icon icon={Add} />New Post</button>
 			</div>
 			<div class="flex flex-row m-4">
 				{#if $posts?.count === undefined || $posts?.count === -1}
@@ -258,13 +258,14 @@
 				<div class="btn-group variant-filled" role="group">
 					<button
 						class=" variant-filled-error"
+						title="Delete post"
 						disabled={isNewPost}
 						on:click={(e) => {
 							modalStore.trigger(deletePostModal);
-						}}><Icon icon={Delete} />Delete</button
-					>
+						}}><Icon icon={Delete} />Delete</button>
 					<button
 						disabled={!postIsValid}
+						title="Save and regenerate post"
 						class=" variant-filled-primary"
 						on:click={(e) => {
 							if (isNewPost) {
@@ -272,8 +273,7 @@
 							} else {
 								modalStore.trigger(savePostModal);
 							}
-						}}>Save<Icon icon={Save} /></button
-					>
+						}}>Save<Icon icon={Save} /></button>
 				</div>
 			</div>
 			<div class="grid grid-cols-6 gap-6">
@@ -286,8 +286,7 @@
 							name="slug"
 							bind:value={$markdownStore.metadata.slug}
 							required
-							readonly
-						/>
+							readonly />
 					{/if}
 				</div>
 				<div class="col-span-6 sm:col-span-3 lg:col-span-2">
@@ -299,16 +298,14 @@
 						name="template"
 						label="Template"
 						required
-						readonly
-					/>
+						readonly />
 				</div>
 				<div class="col-span-6">
 					<TextInput
 						bind:value={$markdownStore.metadata.title}
 						required
 						name="postTitle"
-						label="Title"
-					/>
+						label="Title" />
 				</div>
 				<div class="col-span-6">
 					<label for="markdown" class="label"><span>Markdown</span></label>
@@ -320,14 +317,14 @@
 					<button
 						class="variant-filled-primary"
 						disabled={!postIsValid}
+						title="Save and regenerate post"
 						on:click={(e) => {
 							if (isNewPost) {
 								modalStore.trigger(saveNewPostModal);
 							} else {
 								modalStore.trigger(savePostModal);
 							}
-						}}>Save<Icon icon={Save} /></button
-					>
+						}}>Save<Icon icon={Save} /></button>
 				</div>
 			</div>
 		{/if}

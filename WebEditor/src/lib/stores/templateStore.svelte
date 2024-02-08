@@ -156,4 +156,31 @@
 			return error as Error;
 		}
 	}
+
+	// trigger generation of pages with the given template
+	export async function regenerate(srcKey: string, token: string): Promise<Error | string> {
+		console.log('templateStore: Regenerating content for template ', srcKey);
+		try {
+			const encodedKey = encodeURIComponent(srcKey);
+			const response = await fetch(`https://api.cantilevers.org/generate/template/${encodedKey}`, {
+				method: 'PUT',
+				headers: {
+					Accept: 'text/plain',
+					Authorization: `Bearer ${token}`,
+					'X-Content-Length': '0'
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const message = await response.text();
+				console.log('templateStore: Regenerated pages', message);
+				return message;
+			} else {
+				throw new Error('Failed to regenerate from template');
+			}
+		} catch (error) {
+			console.error(error);
+			return error as Error;
+		}
+	}
 </script>

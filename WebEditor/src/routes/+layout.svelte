@@ -114,6 +114,7 @@
 				<button
 					type="button"
 					on:click={rebuildAllMetadata}
+					title="Regenerate project metadata (temp button)"
 					class="btn btn-sm variant-ghost-secondary">
 					Rebuild Metadata
 				</button>

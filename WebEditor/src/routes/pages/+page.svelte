@@ -398,6 +398,7 @@
 					<button
 						class=" variant-filled-error"
 						disabled={isNewPage}
+						title="Delete page"
 						on:click={(e) => {
 							modalStore.trigger(deletePageModal);
 						}}><Icon icon={Delete} />Delete</button
@@ -405,6 +406,7 @@
 					<button
 						disabled={!isValid}
 						class=" variant-filled-primary"
+						title="Save and regenerate page"
 						on:click={(e) => {
 							if (isNewPage) {
 								// modalStore.trigger(saveNewPostModal);
@@ -463,6 +465,7 @@
 					<button
 						disabled={!isValid}
 						class=" variant-filled-primary"
+						title="Save and regenerate page"
 						on:click={(e) => {
 							if (isNewPage) {
 								// modalStore.trigger(saveNewPostModal);

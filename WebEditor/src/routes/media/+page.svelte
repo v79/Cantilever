@@ -119,6 +119,7 @@
 		if (files === undefined) {
 			document.getElementById('dropPreview')?.setAttribute('src', '');
 		} else {
+			// TODO: verify file type is an image
 			document.getElementById('dropPreview')?.setAttribute('src', URL.createObjectURL(files!![0]));
 		}
 	}
@@ -179,7 +180,6 @@
 		} else {
 			toast.message = 'Deleted image ' + srcKey + ' successfully';
 			toastStore.trigger(toast);
-			
 			$images.images.filter((image) => image.srcKey !== srcKey);
 			loadImages();
 		}
@@ -219,12 +219,14 @@
 							<button
 								type="button"
 								class="rounded-full hover:bg-gray-200 transition-colors duration-300 ease-in-out"
+								title="Cancel image upload"
 								on:click={resetDropzone}>
 								<Icon icon={Cancel} color="red" size={48} variation="filled" />
 							</button>
 							<button
 								type="button"
 								class="rounded-full hover:bg-gray-200 transition-colors duration-300 ease-in-out"
+								title="Confirm and upload image"
 								on:click={intiateImageUpload}>
 								<Icon icon={Done} color="green" size={48} variation="filled" /></button>
 						</div>
@@ -267,6 +269,7 @@
 									class="absolute flex flex-col place-items-end inset-0 justify-end z-10 ml-2 mr-2">
 									<button
 										type="button"
+										title="Delete image"
 										class="rounded-full hover:bg-gray-200 transition-colors duration-300 ease-in-out"
 										on:click={() => {
 											modalStore.trigger(deleteImageModal);

@@ -120,12 +120,11 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
         val templateKey =
             URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset())
         info("DOUBLE DECODED: GeneratorController received request to regenerate pages based on template '$templateKey'")
-        val contentTreeJson = s3Service.getObjectAsString(S3_KEY.metadataKey, sourceBucket)
-        val contentTree = Json.decodeFromString(ContentTree.serializer(), contentTreeJson)
         var count = 0
 
         // We don't know if the template is for a Page or a Post. This is less than ideal as I have to check both. But I could short-circuit the second check if the first one succeeds?
         try {
+            loadContentTree()
             contentTree.getPagesForTemplate(templateKey).forEach { page ->
                 info("Regenerating page ${page.srcKey} because it has template ${page.templateKey}")
                 val pageSource = s3Service.getObjectAsString(page.srcKey, sourceBucket)

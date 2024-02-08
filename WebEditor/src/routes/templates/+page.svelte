@@ -15,9 +15,8 @@
 		templates,
 		saveTemplate,
 		fetchTemplateUsage,
-
-		deleteTemplate
-
+		deleteTemplate,
+		regenerate
 	} from '$lib/stores/templateStore.svelte';
 	import { Refresh, Icon, Save, Delete, Sync, Add } from 'svelte-google-materialdesign-icons';
 	import TemplateListItem from './TemplateListItem.svelte';
@@ -216,11 +215,26 @@
 	}
 
 	function triggerDeleteModal() {
-		if(usageCount === 0) {
+		if (usageCount === 0) {
 			modalStore.trigger(deleteTemplateModal);
 		} else {
-			errorToast.message = 'This template is used by ' + usageCount + ' pages and posts and cannot be deleted';
+			errorToast.message =
+				'This template is used by ' + usageCount + ' pages and posts and cannot be deleted';
 			toastStore.trigger(errorToast);
+		}
+	}
+
+	async function initiateGeneration() {
+		if ($handlebars) {
+			const result = await regenerate($handlebars.srcKey, $userStore.token!!);
+			if (result instanceof Error) {
+				errorToast.message = 'Failed to generate content. Message was: ' + result.message;
+				toastStore.trigger(errorToast);
+				console.error(result);
+			} else {
+				toast.message = result;
+				toastStore.trigger(toast);
+			}
 		}
 	}
 
@@ -253,8 +267,8 @@
 		{#if $userStore.isLoggedIn()}
 			<h3 class="h3 mb-2">Templates</h3>
 			<div class="btn-group variant-filled">
-				<button on:click={reloadPostList}><Icon icon={Refresh} />Reload</button>
-				<button on:click={(e) => createNewTemplate()}><Icon icon={Add} />New Template</button>
+				<button on:click={reloadPostList} title="Reload templates"><Icon icon={Refresh} />Reload</button>
+				<button on:click={(e) => createNewTemplate()} title="Create new template"><Icon icon={Add} />New Template</button>
 			</div>
 			<div class="flex flex-row m-4">
 				{#if $templates?.count === undefined || $templates?.count === -1}
@@ -283,18 +297,21 @@
 					<button
 						class="variant-filled-secondary"
 						disabled={isNewTemplate}
+						title="Regenerate content using this template"
 						on:click={(e) => {
-							// regenerateFromTemplate()
+							initiateGeneration();
 						}}><Icon icon={Sync} />Regenerate</button>
 					<button
 						class=" variant-filled-error"
 						disabled={isNewTemplate}
+						title="Delete template"
 						on:click={(e) => {
 							triggerDeleteModal();
 						}}><Icon icon={Delete} />Delete</button>
 					<button
 						disabled={!templateIsValid}
 						class=" variant-filled-primary"
+						title="Save template"
 						on:click={(e) => {
 							if (isNewTemplate) {
 								modalStore.trigger(saveNewTemplateModal);
@@ -321,7 +338,8 @@
 				<div class="btn-group variant-filled" role="group">
 					<button
 						disabled={!templateIsValid}
-						class=" variant-filled-primary"
+						class="variant-filled-primary"
+						title="Save template"
 						on:click={(e) => {
 							if (isNewTemplate) {
 								modalStore.trigger(saveNewTemplateModal);
