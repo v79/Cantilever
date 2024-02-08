@@ -1,6 +1,6 @@
 <script lang="ts" context="module">
 	import { writable, get } from 'svelte/store';
-	import type { TemplateList, TemplateNode } from '$lib/models/templates.svelte';
+	import type { TemplateList, TemplateNode, TemplateUsageDTO } from '$lib/models/templates.svelte';
 	import { handlebars } from '$lib/stores/contentStore.svelte';
 
 	// complete set of template metadata
@@ -90,6 +90,31 @@
 				return message;
 			} else {
 				throw new Error('Failed to save template');
+			}
+		} catch (error) {
+			console.error(error);
+			return error as Error;
+		}
+	}
+
+	// fetch a list of the pages and posts which use a given template
+	export async function fetchTemplateUsage(srcKey: string, token: string): Promise<Error | TemplateUsageDTO> {
+		console.log('templateStore: Fetching template usage', srcKey);
+		try {
+			const encodedKey = encodeURIComponent(srcKey);
+			const response = await fetch(`https://api.cantilevers.org/templates/usage/${encodedKey}`, {
+				method: 'GET',
+				headers: {
+					Accept: 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const data = await response.json();
+				return data.data as TemplateUsageDTO;
+			} else {
+				throw new Error('Failed to fetch template usage');
 			}
 		} catch (error) {
 			console.error(error);
