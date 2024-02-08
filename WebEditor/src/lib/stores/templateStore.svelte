@@ -98,7 +98,10 @@
 	}
 
 	// fetch a list of the pages and posts which use a given template
-	export async function fetchTemplateUsage(srcKey: string, token: string): Promise<Error | TemplateUsageDTO> {
+	export async function fetchTemplateUsage(
+		srcKey: string,
+		token: string
+	): Promise<Error | TemplateUsageDTO> {
 		console.log('templateStore: Fetching template usage', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -115,6 +118,38 @@
 				return data.data as TemplateUsageDTO;
 			} else {
 				throw new Error('Failed to fetch template usage');
+			}
+		} catch (error) {
+			console.error(error);
+			return error as Error;
+		}
+	}
+
+	// delete template from server
+	export async function deleteTemplate(srcKey: string, token: string): Promise<Error | string> {
+		console.log('templateStore: Deleting template', srcKey);
+		try {
+			const encodedKey = encodeURIComponent(srcKey);
+			const response = await fetch(`https://api.cantilevers.org/templates/${encodedKey}`, {
+				method: 'DELETE',
+				headers: {
+					Accept: 'text/plain',
+					Authorization: `Bearer ${token}`
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const message = await response.text();
+				console.log('templateStore: Deleted template', message);
+				templates.update((value) => {
+					if (value) {
+						value.templates = value.templates.filter((t) => t.srcKey !== srcKey);
+					}
+					return value;
+				});
+				return message;
+			} else {
+				throw new Error('Failed to delete template');
 			}
 		} catch (error) {
 			console.error(error);

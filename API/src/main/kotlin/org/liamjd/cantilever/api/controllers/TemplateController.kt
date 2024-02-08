@@ -183,6 +183,47 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
     }
 
     /**
+     * Delete a handlebars template file if there are no pages or posts using it
+     */
+    fun deleteTemplate(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val templateKey = request.pathParameters["srcKey"]
+        if (templateKey != null) {
+            return if (loadContentTree()) {
+                val decoded = URLDecoder.decode(templateKey, Charsets.UTF_8)
+                info("Deleting template $decoded")
+                val pages = contentTree.getPagesForTemplate(decoded)
+                val posts = contentTree.getPostsForTemplate(decoded)
+                return if (pages.isEmpty() && posts.isEmpty()) {
+                    info("No pages or posts use this template, deleting")
+                    val templateNode = contentTree.getTemplate(decoded)
+                    return if (templateNode == null) {
+                        error("Could not find template $decoded in content tree")
+                        ResponseEntity.badRequest(APIResult.Error("Could not find template $decoded in content tree"))
+                    } else {
+                        val deleted = s3Service.deleteObject(decoded, sourceBucket)
+                        contentTree.deleteTemplate(templateNode)
+                        saveContentTree()
+                        ResponseEntity.ok(APIResult.OK("Deleted template $decoded"))
+                    }
+                } else {
+                    error("Cannot delete template $decoded, it is used by ${pages.size} pages and ${posts.size} posts")
+                    ResponseEntity.badRequest(
+                        APIResult.Error(
+                            "Cannot delete template $decoded, it is used by ${pages.size} pages and ${posts.size} posts"
+                        )
+                    )
+                }
+            } else {
+                error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
+                ResponseEntity.notFound(
+                    body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+                )
+            }
+        }
+        return ResponseEntity.badRequest(APIResult.Error(message = "Invalid request with null templateKey"))
+    }
+
+    /**
      * The front end gives us a JSON representation of a handlebars template, which we need to convert to a YAML frontmatter & body
      */
     private fun convertTemplateToYamlString(template: ContentNode.TemplateNode): String {

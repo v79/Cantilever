@@ -460,10 +460,14 @@ class ContentTree {
     }
 
     /**
-     * Find a node in the tree, based on its srcKey
+     * Find a node in the tree, based on its srcKey.
      */
     fun getNode(srcKey: SrcKey): ContentNode? {
         return items.find { it.srcKey == srcKey }
+    }
+
+    fun getTemplate(srcKey: SrcKey): ContentNode.TemplateNode? {
+        return templates.find { it.srcKey == srcKey }
     }
 
     /**

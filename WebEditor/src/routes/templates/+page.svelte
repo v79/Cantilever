@@ -14,7 +14,10 @@
 		fetchTemplates,
 		templates,
 		saveTemplate,
-		fetchTemplateUsage
+		fetchTemplateUsage,
+
+		deleteTemplate
+
 	} from '$lib/stores/templateStore.svelte';
 	import { Refresh, Icon, Save, Delete, Sync, Add } from 'svelte-google-materialdesign-icons';
 	import TemplateListItem from './TemplateListItem.svelte';
@@ -159,7 +162,16 @@
 	}
 
 	async function initiateDeletePost() {
-		console.log('deleting post (not yet implemented)');
+		const result = await deleteTemplate($handlebars.srcKey, $userStore.token!!);
+		if (result instanceof Error) {
+			errorToast.message = 'Failed to delete template. Message was: ' + result.message;
+			toastStore.trigger(errorToast);
+			console.error(result);
+		} else {
+			toast.message = result;
+			toastStore.trigger(toast);
+			$handlebars = new TemplateNode('', new Date(), '', new Array<string>(), '');
+		}
 	}
 
 	function createNewTemplate() {

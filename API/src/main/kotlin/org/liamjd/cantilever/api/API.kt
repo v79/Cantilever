@@ -190,6 +190,9 @@ class LambdaRouter : RequestHandlerWrapper() {
                             "Get template usage", "Returns the count of pages and posts which use this template"
                         )
                     )
+
+                delete("/$SRCKEY", templateController::deleteTemplate).supplies(setOf(MimeType.plainText))
+                    .spec(Spec.PathItem("Delete template", "Delete a template"))
             }
         }
 
