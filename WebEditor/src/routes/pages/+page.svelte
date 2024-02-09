@@ -63,7 +63,7 @@
 	/**
 	 * @type: {ModalSettings}
 	 */
-	const createNewPostModal = {
+	const createNewPageModal = {
 		type: 'component',
 		component: 'createNewPageModal',
 		meta: {
@@ -137,6 +137,24 @@
 		}
 	};
 
+	/**
+	 * @type: {ModalSettings}
+	*/
+	$: saveNewPageModal = {
+		type: 'component',
+		component: 'saveNewPageModal',
+		meta: {
+			modalTitle: 'Save new page',
+			pageTitle: $markdownStore.metadata?.title ?? 'unknown',
+			templateKey: $markdownStore.metadata?.templateKey ?? 'unknown',
+			parentFolder: $markdownStore.metadata?.parent ?? 'unknown',
+			onFormSubmit: (newPageSlug: string) => {
+				$markdownStore.metadata!!.srcKey = $markdownStore.metadata?.parent + newPageSlug + '.md';
+				initiateSavePage();
+			}
+		}
+	}
+
 	onMount(async () => {
 		if (!$pages) {
 			await loadPagesAndFolders();
@@ -202,6 +220,7 @@
 					toastStore.trigger(toast);
 					markdownStore.set(CLEAR_MARKDOWN);
 					loadPagesAndFolders();
+					isNewPage = false;
 				}
 			});
 		}
@@ -218,6 +237,7 @@
 				} else {
 					toast.message = 'Deleted page ' + r;
 					toastStore.trigger(toast);
+					markdownStore.set(CLEAR_MARKDOWN);
 					loadPagesAndFolders();
 				}
 			});
@@ -367,7 +387,7 @@
 				<button on:click={(e) => modalStore.trigger(createNewFolderModal)} title="New Folder"
 					><Icon icon={CreateNewFolder} /></button
 				>
-				<button on:click={(e) => modalStore.trigger(createNewPostModal)} title="New Page"
+				<button on:click={(e) => modalStore.trigger(createNewPageModal)} title="New Page"
 					><Icon icon={Add} />New Page</button
 				>
 			</div>
@@ -409,7 +429,7 @@
 						title="Save and regenerate page"
 						on:click={(e) => {
 							if (isNewPage) {
-								// modalStore.trigger(saveNewPostModal);
+								modalStore.trigger(saveNewPageModal);
 							} else {
 								modalStore.trigger(savePageModal);
 							}
@@ -468,7 +488,7 @@
 						title="Save and regenerate page"
 						on:click={(e) => {
 							if (isNewPage) {
-								// modalStore.trigger(saveNewPostModal);
+								modalStore.trigger(saveNewPageModal);
 							} else {
 								modalStore.trigger(savePageModal);
 							}

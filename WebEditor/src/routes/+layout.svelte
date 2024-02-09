@@ -45,6 +45,7 @@
 	import { beforeNavigate } from '$app/navigation';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
 	import CreateNewFolderModal from '$lib/modals/createNewFolderModal.svelte';
+	import SaveNewPageModal from '$lib/modals/saveNewPageModal.svelte';
 
 	const modalRegistry: Record<string, ModalComponent> = {
 		confirmDeleteModal: { ref: ConfirmDeleteModal },
@@ -52,7 +53,8 @@
 		saveNewTemplateModal: { ref: SaveNewTemplateModal },
 		createNewPageModal: { ref: CreateNewPageModal },
 		createNewFolderModal: { ref: CreateNewFolderModal },
-		switchIndexPageModal: { ref: SwitchIndexPageModal }
+		switchIndexPageModal: { ref: SwitchIndexPageModal },
+		saveNewPageModal: { ref: SaveNewPageModal}
 	};
 	initializeStores();
 
