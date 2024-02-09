@@ -27,6 +27,7 @@
 		Article,
 		Document_scanner,
 		Feed,
+		Home,
 		Icon,
 		Perm_media,
 		Settings_applications
@@ -136,7 +137,15 @@
 		{#if loggedIn}
 			<AppRail>
 				<div data-sveltekit-preload-data="false">
-					<AppRailAnchor href="/" selected={$page.url.pathname === '/'} title="Project">
+					<AppRailAnchor href="/" selected={$page.url.pathname === '/'} title="Home">
+						<svelte:fragment slot="lead"
+							><Icon
+								icon={Home}
+								size={32}
+								variation="outlined" /></svelte:fragment>
+						<span>Home</span>
+					</AppRailAnchor>
+					<AppRailAnchor href="/project" selected={$page.url.pathname === '/project'} title="Project">
 						<svelte:fragment slot="lead"
 							><Icon
 								icon={Settings_applications}
