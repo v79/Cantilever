@@ -11,6 +11,7 @@
 	export let placeholder = '';
 	export let onChange = (e: Event) => {};
 	export let classes = '';
+	export let type: 'text' | 'number'  = 'text';
 	export let iconLeft: iconConfigType | undefined = undefined;
 	export let iconRight: iconConfigType | undefined = undefined;
 
@@ -44,7 +45,7 @@
 		{/if}
 		<input
 			class={classesToApply}
-			type="text"
+			{type}
 			{value}
 			{name}
 			{disabled}

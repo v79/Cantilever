@@ -18,7 +18,7 @@
 		};
 	}
 
-	/** This store manages the markdown content for the editor, i.e the content of the current Page or Post */
+	// This store manages the markdown content for the editor, i.e the content of the current Page or Post
 	export const markdownStore = createMarkdownStore();
 
 	export function createSlug(title: string) {

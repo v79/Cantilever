@@ -1,10 +1,10 @@
 <script lang="ts" context="module">
 	import { ContentNode } from '$lib/models/common.svelte';
 
-    export interface TemplateList {
-        count: number;
-        templates: TemplateNode[];
-    }
+	export interface TemplateList {
+		count: number;
+		templates: TemplateNode[];
+	}
 
 	/**
 	 * Handlebars template, which is a type of content node.
@@ -26,6 +26,21 @@
 			this.title = title;
 			this.sections = sections;
 			this.body = body;
+		}
+	}
+
+	/**
+	 * DTO for template usage, lists the keys of the pages and posts which use a given template
+	 */
+	export class TemplateUsageDTO {
+		count: number;
+		pages: Array<string>;
+		posts: Array<string>;
+
+		constructor(count: number, pages: Array<string>, posts: Array<string>) {
+			this.count = count;
+			this.pages = pages;
+			this.posts = posts;
 		}
 	}
 </script>

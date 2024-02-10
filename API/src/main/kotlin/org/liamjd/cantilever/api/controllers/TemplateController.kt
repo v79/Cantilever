@@ -12,6 +12,7 @@ import org.liamjd.cantilever.models.Template
 import org.liamjd.cantilever.models.TemplateMetadata
 import org.liamjd.cantilever.models.rest.HandlebarsTemplate
 import org.liamjd.cantilever.models.rest.TemplateListDTO
+import org.liamjd.cantilever.models.rest.TemplateUseDTO
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 import java.net.URLDecoder
@@ -138,8 +139,7 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
      * Return the list of templates
      */
     fun getTemplates(request: Request<Unit>): ResponseEntity<APIResult<TemplateListDTO>> {
-        return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
-            loadContentTree()
+        return if (loadContentTree()) {
             info("Fetching all posts from metadata.json")
             val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
             val templates = contentTree.templates.sortedBy { it.title }
@@ -155,6 +155,72 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
                 body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
             )
         }
+    }
+
+    /**
+     * Get a list of all the nodes which use a given template, and their keys
+     */
+    fun getTemplateUsage(request: Request<Unit>): ResponseEntity<APIResult<TemplateUseDTO>> {
+        val templateKey = request.pathParameters["srcKey"]
+        if (templateKey != null) {
+            return if (loadContentTree()) {
+                val decoded = URLDecoder.decode(templateKey, Charsets.UTF_8)
+                info("Looking for uses of template $decoded")
+                val pages = contentTree.getPagesForTemplate(decoded).map { it.srcKey }
+                val posts = contentTree.getPostsForTemplate(decoded).map { it.srcKey }
+                val count = pages.size + posts.size
+                val dto = TemplateUseDTO(count = count, pageKeys = pages, postKeys = posts)
+                info("Found ${dto.count} uses, across ${dto.pageKeys.size} pages and ${dto.postKeys.size} posts")
+                ResponseEntity.ok(APIResult.Success(dto))
+            } else {
+                error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
+                ResponseEntity.notFound(
+                    body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+                )
+            }
+        }
+        return ResponseEntity.badRequest(APIResult.Error(message = "Invalid request with null templateKey"))
+    }
+
+    /**
+     * Delete a handlebars template file if there are no pages or posts using it
+     */
+    fun deleteTemplate(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val templateKey = request.pathParameters["srcKey"]
+        if (templateKey != null) {
+            return if (loadContentTree()) {
+                val decoded = URLDecoder.decode(templateKey, Charsets.UTF_8)
+                info("Deleting template $decoded")
+                val pages = contentTree.getPagesForTemplate(decoded)
+                val posts = contentTree.getPostsForTemplate(decoded)
+                return if (pages.isEmpty() && posts.isEmpty()) {
+                    info("No pages or posts use this template, deleting")
+                    val templateNode = contentTree.getTemplate(decoded)
+                    return if (templateNode == null) {
+                        error("Could not find template $decoded in content tree")
+                        ResponseEntity.badRequest(APIResult.Error("Could not find template $decoded in content tree"))
+                    } else {
+                        val deleted = s3Service.deleteObject(decoded, sourceBucket)
+                        contentTree.deleteTemplate(templateNode)
+                        saveContentTree()
+                        ResponseEntity.ok(APIResult.OK("Deleted template $decoded"))
+                    }
+                } else {
+                    error("Cannot delete template $decoded, it is used by ${pages.size} pages and ${posts.size} posts")
+                    ResponseEntity.badRequest(
+                        APIResult.Error(
+                            "Cannot delete template $decoded, it is used by ${pages.size} pages and ${posts.size} posts"
+                        )
+                    )
+                }
+            } else {
+                error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
+                ResponseEntity.notFound(
+                    body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+                )
+            }
+        }
+        return ResponseEntity.badRequest(APIResult.Error(message = "Invalid request with null templateKey"))
     }
 
     /**

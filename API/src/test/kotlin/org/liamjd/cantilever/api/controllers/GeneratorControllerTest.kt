@@ -6,6 +6,7 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.mockkClass
 import io.mockk.verify
+import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -27,6 +28,7 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response
 import software.amazon.awssdk.services.s3.model.S3Object
 import software.amazon.awssdk.services.sqs.model.SendMessageResponse
+import java.net.URLEncoder
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -63,15 +65,20 @@ class GeneratorControllerTest : KoinTest {
     @Test
     fun `responds to request to regenerate page and sends to markdown queue`() {
         val mockSqsResponse = mockk<SendMessageResponse>()
+
         declareMock<S3Service> {
-            every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns ""
+            every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns "about page text"
+            every { mockS3.objectExists("generated/metadata.json", sourceBucket) } returns true
+            every { mockS3.getObjectAsString("generated/metadata.json", sourceBucket) } returns mockMetaJson
+
         }
         declareMock<SQSService> {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "1234"
         val controller = GeneratorController(sourceBucket)
-        val request = buildRequest(path = "/generate/page/about.md", pathPattern = "/generate/page/{srcKey}")
+        val encoded = URLEncoder.encode("sources/pages/about.md", "UTF-8")
+        val request = buildRequest(path = "/generate/page/$encoded", pathPattern = "/generate/page/{srcKey}")
 
         val response = controller.generatePage(request)
 
@@ -89,6 +96,9 @@ class GeneratorControllerTest : KoinTest {
                 slug: my-holiday-post
                 date: 2023-10-20
             """.trimIndent()
+            every { mockS3.objectExists("generated/metadata.json", sourceBucket) } returns true
+            every { mockS3.getObjectAsString("generated/metadata.json", sourceBucket) } returns mockMetaJson
+
         }
         declareMock<SQSService> {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
@@ -245,7 +255,113 @@ class GeneratorControllerTest : KoinTest {
 }
         """.trimIndent()
 
-        val mockMetaJson = """
+
+        val mockTodoPage = ""
+        val mockTemplateText = ""
+
+        declareMock<S3Service> {
+            every { mockS3.objectExists(any(), sourceBucket) } returns true
+            every { mockS3.getObjectAsString("generated/metadata.json", sourceBucket) } returns mockMetaJson
+            every {
+                mockS3.getObjectAsString(
+                    "sources/pages/dynamodb-design-thoughts.md", sourceBucket
+                )
+            } returns mockTodoPage
+            every { mockS3.getObjectAsString("sources/pages/bio/about-me.md", sourceBucket) } returns mockTodoPage
+            every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns mockTodoPage
+            every { mockS3.getObjectAsString("sources/pages/new-approach.md", sourceBucket) } returns mockTodoPage
+
+            every {
+                mockS3.getObjectAsString(
+                    "sources/templates/about.html.hbs", sourceBucket
+                )
+            } returns mockTemplateText
+        }
+        declareMock<SQSService> {
+            every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
+        }
+        every { mockSqsResponse.messageId() } returns "2345"
+        val controller = GeneratorController(sourceBucket)
+        val request = buildRequest(
+            path = "/generate/template/sources%252Ftemplates%252Fabout.html.hbs",
+            pathPattern = "/generate/template/{templateKey}"
+        )
+
+        val response = controller.generateTemplate(request)
+
+        assertNotNull(response)
+        println(response)
+        assertEquals(202, response.statusCode)
+        verify(exactly = 4) { mockSQS.sendMarkdownMessage(any(), any(), any()) }
+    }
+
+    @Test
+    fun `responds to request to regenerate all pages with wildcard request`() {
+        val mockSqsResponse = mockk<SendMessageResponse>()
+        val mockPageListResponse = mockk<ListObjectsV2Response>()
+        val mockS3Obj = mockk<S3Object>()
+        every { mockPageListResponse.contents() } returns listOf(mockS3Obj)
+        every { mockPageListResponse.keyCount() } returns 1
+        every { mockS3Obj.key() } returns "sources/pages/about.md"
+        declareMock<S3Service> {
+            every { mockS3.listObjects("sources/pages/", sourceBucket) } returns mockPageListResponse
+            every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns ""
+            every { mockS3.objectExists("generated/metadata.json", sourceBucket) } returns true
+            every { mockS3.getObjectAsString("generated/metadata.json", sourceBucket) } returns mockPageJsonShort
+            every { mockS3.getObjectAsString("sources/pages/bio/about-me.md", sourceBucket) } returns ""
+        }
+        declareMock<SQSService> {
+            every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
+        }
+        every { mockSqsResponse.messageId() } returns "3456"
+        val controller = GeneratorController(sourceBucket)
+        val request = buildRequest(path = "/generate/page/*", pathPattern = "/generate/page/{srcKey}")
+
+        val response = controller.generatePage(request)
+
+        assertNotNull(response)
+        assertEquals(200, response.statusCode)
+        val result = response.body as APIResult.Success
+        assertEquals("Queued 1 pages for regeneration", result.value)
+    }
+
+    /**
+     * Utility function to build the fake request object
+     */
+    private fun buildRequest(path: String, pathPattern: String): Request<Unit> {
+        val apiGatewayProxyRequestEvent = APIGatewayProxyRequestEvent()
+        apiGatewayProxyRequestEvent.body = ""
+        apiGatewayProxyRequestEvent.path = path
+        return Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
+    }
+
+    @Language("JSON")
+    private val mockPageJsonShort = """
+        {
+  "items": [
+    {
+      "type": "page",
+      "srcKey": "sources/pages/about.md",
+      "lastUpdated": "2023-11-12T15:24:05.563049390Z",
+      "title": "About Cantilever",
+      "templateKey": "sources/templates/about.html.hbs",
+      "slug": "about",
+      "isRoot": false,
+      "attributes": {
+        "siteName": "Cantilever",
+        "author": "Liam Davison"
+      },
+      "sections": {
+        "body": ""
+      },
+      "parent": "sources/pages"
+    }
+    ]
+    }
+    """.trimIndent()
+
+    @Language("JSON")
+    private val mockMetaJson = """
 {
   "items": [
     {
@@ -331,76 +447,4 @@ class GeneratorControllerTest : KoinTest {
 ]
 }
             """.trimIndent()
-        val mockTodoPage = ""
-        val mockTemplateText = ""
-
-        declareMock<S3Service> {
-            every { mockS3.objectExists(any(), sourceBucket) } returns true
-            every { mockS3.getObjectAsString("generated/metadata.json", sourceBucket) } returns mockMetaJson
-            every { mockS3.getObjectAsString("sources/pages/dynamodb-design-thoughts.md", sourceBucket) } returns mockTodoPage
-            every { mockS3.getObjectAsString("sources/pages/bio/about-me.md", sourceBucket) } returns mockTodoPage
-            every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns mockTodoPage
-            every { mockS3.getObjectAsString("sources/pages/new-approach.md", sourceBucket) } returns mockTodoPage
-
-            every {
-                mockS3.getObjectAsString(
-                    "sources/templates/about.html.hbs",
-                    sourceBucket
-                )
-            } returns mockTemplateText
-        }
-        declareMock<SQSService> {
-            every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
-        }
-        every { mockSqsResponse.messageId() } returns "2345"
-        val controller = GeneratorController(sourceBucket)
-        val request = buildRequest(
-            path = "/generate/template/sources%252Ftemplates%252Fabout.html.hbs",
-            pathPattern = "/generate/template/{templateKey}"
-        )
-
-        val response = controller.generateTemplate(request)
-
-        assertNotNull(response)
-        println(response)
-        assertEquals(202, response.statusCode)
-        verify(exactly = 4) { mockSQS.sendMarkdownMessage(any(), any(), any()) }
-    }
-
-    @Test
-    fun `responds to request to regenerate all pages with wildcard request`() {
-        val mockSqsResponse = mockk<SendMessageResponse>()
-        val mockPageListResponse = mockk<ListObjectsV2Response>()
-        val mockS3Obj = mockk<S3Object>()
-        every { mockPageListResponse.contents() } returns listOf(mockS3Obj)
-        every { mockPageListResponse.keyCount() } returns 1
-        every { mockS3Obj.key() } returns "sources/pages/about.md"
-        declareMock<S3Service> {
-            every { mockS3.listObjects("sources/pages/", sourceBucket) } returns mockPageListResponse
-            every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns ""
-        }
-        declareMock<SQSService> {
-            every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
-        }
-        every { mockSqsResponse.messageId() } returns "3456"
-        val controller = GeneratorController(sourceBucket)
-        val request = buildRequest(path = "/generate/page/*", pathPattern = "/generate/page/{srcKey}")
-
-        val response = controller.generatePage(request)
-
-        assertNotNull(response)
-        assertEquals(200, response.statusCode)
-        val result = response.body as APIResult.Success
-        assertEquals("1 pages have been regenerated", result.value)
-    }
-
-    /**
-     * Utility function to build the fake request object
-     */
-    private fun buildRequest(path: String, pathPattern: String): Request<Unit> {
-        val apiGatewayProxyRequestEvent = APIGatewayProxyRequestEvent()
-        apiGatewayProxyRequestEvent.body = ""
-        apiGatewayProxyRequestEvent.path = path
-        return Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
-    }
 }

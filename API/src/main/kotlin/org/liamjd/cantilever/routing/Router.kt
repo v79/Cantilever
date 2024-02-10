@@ -249,7 +249,8 @@ class Router internal constructor() {
 
     /**
      * Function to build an OpenAPI 3.0.1 specification from the routes which have been declared.
-     * This really needs to be broken up and rationalize.
+     * This really needs to be broken up and rationalized.
+     * TODO: how to integrate return type information into the spec?
      */
     fun openAPI(): String {
 
@@ -264,7 +265,7 @@ class Router internal constructor() {
         sb.appendLine("info:")
         sb.appendLine("  title: Cantilever API")
         sb.appendLine("  description: API for Cantilever, providing methods for managing the content of a static website")
-        sb.appendLine("  version: 0.0.9")
+        sb.appendLine("  version: 0.0.11")
         sb.appendLine("servers:")
         sb.appendLine("  - url: https://api.cantilevers.org")
         // add tags as defined by the route groups

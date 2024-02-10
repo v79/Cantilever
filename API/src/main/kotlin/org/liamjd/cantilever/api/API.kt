@@ -183,6 +183,16 @@ class LambdaRouter : RequestHandlerWrapper() {
                     templateController::saveTemplate,
                 ).supplies(setOf(MimeType.plainText))
                     .spec(Spec.PathItem("Save template", "Save handlebars template source"))
+
+                get("/usage/$SRCKEY", templateController::getTemplateUsage)
+                    .spec(
+                        Spec.PathItem(
+                            "Get template usage", "Returns the count of pages and posts which use this template"
+                        )
+                    )
+
+                delete("/$SRCKEY", templateController::deleteTemplate).supplies(setOf(MimeType.plainText))
+                    .spec(Spec.PathItem("Delete template", "Delete a template"))
             }
         }
 

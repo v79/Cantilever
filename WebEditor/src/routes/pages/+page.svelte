@@ -38,12 +38,12 @@
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
 
+	$: webPageTitle = $markdownStore.metadata?.title ? ' - ' + $markdownStore.metadata?.title : '';
+
 	let pgFolderNodes = [] as TreeViewNode[]; // for the treeview component#
 	let expandedNodes = [] as string[];
-	let pgTitle = 'Markdown Editor';
+	let pgTitle: string;
 	let isNewPage = false;
-
-	
 
 	$: pgAndFoldersLabel = $pages?.count + ' pages in ' + $folders?.count + ' folders';
 	$: isValid =
@@ -63,7 +63,7 @@
 	/**
 	 * @type: {ModalSettings}
 	 */
-	const createNewPostModal = {
+	const createNewPageModal = {
 		type: 'component',
 		component: 'createNewPageModal',
 		meta: {
@@ -132,10 +132,26 @@
 			if (r) {
 				console.log('save clicked');
 				initiateSavePage();
-			} else {
-				console.log('cancel clicked');
 			}
 			modalStore.close();
+		}
+	};
+
+	/**
+	 * @type: {ModalSettings}
+	 */
+	$: saveNewPageModal = {
+		type: 'component',
+		component: 'saveNewPageModal',
+		meta: {
+			modalTitle: 'Save new page',
+			pageTitle: $markdownStore.metadata?.title ?? 'unknown',
+			templateKey: $markdownStore.metadata?.templateKey ?? 'unknown',
+			parentFolder: $markdownStore.metadata?.parent ?? 'unknown',
+			onFormSubmit: (newPageSlug: string) => {
+				$markdownStore.metadata!!.srcKey = $markdownStore.metadata?.parent + newPageSlug + '.md';
+				initiateSavePage();
+			}
 		}
 	};
 
@@ -204,6 +220,7 @@
 					toastStore.trigger(toast);
 					markdownStore.set(CLEAR_MARKDOWN);
 					loadPagesAndFolders();
+					isNewPage = false;
 				}
 			});
 		}
@@ -220,6 +237,7 @@
 				} else {
 					toast.message = 'Deleted page ' + r;
 					toastStore.trigger(toast);
+					markdownStore.set(CLEAR_MARKDOWN);
 					loadPagesAndFolders();
 				}
 			});
@@ -360,18 +378,25 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Cantilever: Pages {webPageTitle}</title>
+</svelte:head>
+
 <div class="flex flex-row grow mt-2 container justify-center">
 	<div class="basis-1/4 flex flex-col items-center mr-4">
 		{#if $userStore.isLoggedIn()}
 			<h3 class="h3 mb-2">Pages</h3>
 			<div class="btn-group variant-filled">
-				<button on:click={loadPagesAndFolders} title="Reload pages"><Icon icon={Refresh} /></button>
-				<button on:click={(e) => modalStore.trigger(createNewFolderModal)} title="New Folder"
-					><Icon icon={CreateNewFolder} /></button
-				>
-				<button on:click={(e) => modalStore.trigger(createNewPostModal)} title="New Page"
-					><Icon icon={Add} />New Page</button
-				>
+				<button class="variant-filled-secondary" on:click={loadPagesAndFolders} title="Reload pages"
+					><Icon icon={Refresh} /></button>
+				<button
+					class="variant-filled-secondary"
+					on:click={(e) => modalStore.trigger(createNewFolderModal)}
+					title="New Folder"><Icon icon={CreateNewFolder} /></button>
+				<button
+					class="variant-filled-primary"
+					on:click={(e) => modalStore.trigger(createNewPageModal)}
+					title="New Page"><Icon icon={Add} />New Page</button>
 			</div>
 			<div class="flex flex-row m-4">
 				{#if $pages?.count === undefined || $pages?.count === -1}
@@ -393,28 +418,30 @@
 	</div>
 
 	<div class="basis-3/4 container flex flex-col w-full">
-		<h3 class="h3 text-center mb-2">{pgTitle} (isValid: {isValid})</h3>
+		<h3 class="h3 text-center mb-2">
+			{#if pgTitle}{pgTitle}{/if}
+		</h3>
 		{#if $markdownStore.metadata}
 			<div class="flex flex-row justify-end">
 				<div class="btn-group variant-filled" role="group">
 					<button
 						class=" variant-filled-error"
 						disabled={isNewPage}
+						title="Delete page"
 						on:click={(e) => {
 							modalStore.trigger(deletePageModal);
-						}}><Icon icon={Delete} />Delete</button
-					>
+						}}><Icon icon={Delete} />Delete</button>
 					<button
 						disabled={!isValid}
 						class=" variant-filled-primary"
+						title="Save and regenerate page"
 						on:click={(e) => {
 							if (isNewPage) {
-								// modalStore.trigger(saveNewPostModal);
+								modalStore.trigger(saveNewPageModal);
 							} else {
 								modalStore.trigger(savePageModal);
 							}
-						}}>Save<Icon icon={Save} /></button
-					>
+						}}>Save<Icon icon={Save} /></button>
 				</div>
 			</div>
 			<div class="grid grid-cols-6 gap-6">
@@ -427,8 +454,7 @@
 							name="slug"
 							bind:value={$markdownStore.metadata.srcKey}
 							required
-							readonly
-						/>
+							readonly />
 					{/if}
 				</div>
 				<div class="col-span-6 sm:col-span-3 lg:col-span-2">
@@ -437,19 +463,19 @@
 						name="template"
 						label="Template"
 						required
-						readonly
-					/>
+						readonly />
 				</div>
 				<div class="col-span-6 sm:col-span-3 lg:col-span-2">
-					<ParentAndIndexInput value={$markdownStore.metadata.parent} bind:isRoot={$markdownStore.metadata.isRoot} />
+					<ParentAndIndexInput
+						value={$markdownStore.metadata.parent}
+						bind:isRoot={$markdownStore.metadata.isRoot} />
 				</div>
 				<div class="col-span-6">
 					<TextInput
 						bind:value={$markdownStore.metadata.title}
 						required
 						name="postTitle"
-						label="Title"
-					/>
+						label="Title" />
 				</div>
 
 				<div class="col-span-6">
@@ -465,14 +491,14 @@
 					<button
 						disabled={!isValid}
 						class=" variant-filled-primary"
+						title="Save and regenerate page"
 						on:click={(e) => {
 							if (isNewPage) {
-								// modalStore.trigger(saveNewPostModal);
+								modalStore.trigger(saveNewPageModal);
 							} else {
 								modalStore.trigger(savePageModal);
 							}
-						}}>Save<Icon icon={Save} /></button
-					>
+						}}>Save<Icon icon={Save} /></button>
 				</div>
 			</div>
 		{/if}

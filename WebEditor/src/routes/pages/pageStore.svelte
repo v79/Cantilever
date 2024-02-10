@@ -1,13 +1,12 @@
 <script lang="ts" context="module">
 	import { MarkdownContent, PageItem } from '$lib/models/markdown';
 	import {
-		type PageList,
+		ReassignIndexRequestDTO,
 		type FolderList,
-		PageNode,
-		ReassignIndexRequestDTO
+		type PageList
 	} from '$lib/models/pages.svelte';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
-	import { writable, get } from 'svelte/store';
+	import { get, writable } from 'svelte/store';
 
 	export const pages = writable<PageList>();
 	export const folders = writable<FolderList>();

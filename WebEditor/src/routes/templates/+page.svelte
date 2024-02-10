@@ -9,22 +9,34 @@
 
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import { onMount, tick } from 'svelte';
-	import { fetchTemplate, fetchTemplates, templates, saveTemplate } from '$lib/stores/templateStore.svelte';
+	import {
+		fetchTemplate,
+		fetchTemplates,
+		templates,
+		saveTemplate,
+		fetchTemplateUsage,
+		deleteTemplate,
+		regenerate
+	} from '$lib/stores/templateStore.svelte';
 	import { Refresh, Icon, Save, Delete, Sync, Add } from 'svelte-google-materialdesign-icons';
 	import TemplateListItem from './TemplateListItem.svelte';
 	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
 	import PostList from '$lib/components/BasicFileList.svelte';
 	import { handlebars } from '$lib/stores/contentStore.svelte';
 	import TextInput from '$lib/forms/textInput.svelte';
-	import { TemplateNode } from '$lib/models/templates.svelte';
+	import { TemplateNode, TemplateUsageDTO } from '$lib/models/templates.svelte';
+	import { spinner } from '$lib/stores/spinnerStore.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
+
+	$: webPageTitle = $handlebars.title ? '- ' + $handlebars.title : 'Untitled';
 
 	let templateListNodes = [] as TreeViewNode[]; // for the treeview component
 	let pgTitle = 'Template Editor';
 	let isNewTemplate = false;
 	$: templateIsValid = $handlebars.title != null && $handlebars.body != null;
+	let usageCount = 0;
 
 	const errorToast: ToastSettings = {
 		message: 'Failed to fetch templates',
@@ -37,9 +49,9 @@
 		hideDismiss: true
 	};
 
-		/**
-	* @type: {ModalSettings}
-	*/
+	/**
+	 * @type: {ModalSettings}
+	 */
 	$: saveTemplateModal = {
 		type: 'confirm',
 		title: 'Confirm save',
@@ -54,10 +66,10 @@
 			modalStore.close();
 		}
 	};
-	
+
 	/**
-	* @type: {ModalSettings}
-	*/
+	 * @type: {ModalSettings}
+	 */
 	$: saveNewTemplateModal = {
 		type: 'component',
 		component: 'saveNewTemplateModal',
@@ -73,18 +85,18 @@
 	/**
 	 * @type: {ModalSettings}
 	 */
-	 $: deleteTemplateModal = {
+	$: deleteTemplateModal = {
 		type: 'component',
-		component: 'confirmPostDeleteModal',
+		component: 'confirmDeleteModal',
 		meta: {
 			modalTitle: 'Confirm template deletion',
-			itemTitle: $handlebars.title,
+			itemKey: $handlebars.title,
+			furtherInfo: 'This template is used by ' + usageCount + ' pages and posts',
 			onFormSubmit: () => {
 				initiateDeletePost();
 			}
 		}
 	};
-	
 
 	onMount(async () => {
 		if (!$templates) {
@@ -135,7 +147,7 @@
 	async function initiateSaveTemplate() {
 		if ($handlebars) {
 			console.log('initiateSaveTemplate: ', $handlebars.srcKey);
-			if(isNewTemplate) {
+			if (isNewTemplate) {
 				$handlebars.srcKey = 'sources/templates/' + $handlebars.srcKey + '.html.hbs';
 			}
 			const result = await saveTemplate($userStore.token!!);
@@ -152,7 +164,16 @@
 	}
 
 	async function initiateDeletePost() {
-		console.log('deleting post (not yet implemented)');
+		const result = await deleteTemplate($handlebars.srcKey, $userStore.token!!);
+		if (result instanceof Error) {
+			errorToast.message = 'Failed to delete template. Message was: ' + result.message;
+			toastStore.trigger(errorToast);
+			console.error(result);
+		} else {
+			toast.message = result;
+			toastStore.trigger(toast);
+			$handlebars = new TemplateNode('', new Date(), '', new Array<string>(), '');
+		}
 	}
 
 	function createNewTemplate() {
@@ -183,6 +204,46 @@
 		isNewTemplate = true;
 	}
 
+	async function getTemplateUsage(srcKey: string): Promise<TemplateUsageDTO | Error> {
+		const usageResponse = await fetchTemplateUsage(srcKey, $userStore.token!!);
+		if (usageResponse instanceof Error) {
+			errorToast.message = 'Failed to fetch template usage';
+			toastStore.trigger(errorToast);
+			console.error(usageResponse);
+		} else {
+			usageCount = usageResponse.count;
+			return usageResponse;
+		}
+		return new Error('Unknown error when fetching template usage');
+	}
+
+	function triggerDeleteModal() {
+		if (usageCount === 0) {
+			modalStore.trigger(deleteTemplateModal);
+		} else {
+			errorToast.message =
+				'This template is used by ' + usageCount + ' pages and posts and cannot be deleted';
+			toastStore.trigger(errorToast);
+		}
+	}
+
+	async function initiateGeneration() {
+		if ($handlebars) {
+			spinner.show('Regenerating from template ' + $handlebars.srcKey);
+			$spinner = { value: true, label: 'Regenerating from template ' + $handlebars.srcKey };
+			const result = await regenerate($handlebars.srcKey, $userStore.token!!);
+			if (result instanceof Error) {
+				errorToast.message = 'Failed to generate content. Message was: ' + result.message;
+				toastStore.trigger(errorToast);
+				console.error(result);
+			} else {
+				toast.message = result;
+				toastStore.trigger(toast);
+			}
+			spinner.hide();
+		}
+	}
+
 	const templatesUnsubscribe = templates.subscribe((value) => {
 		if (value && value.count != -1) {
 			// build TreeViewNodes from TemplateNodes
@@ -207,13 +268,21 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Cantilever: Templates {webPageTitle}</title>
+</svelte:head>
+
 <div class="flex flex-row grow mt-2 container justify-center">
 	<div class="basis-1/4 flex flex-col items-center mr-4">
 		{#if $userStore.isLoggedIn()}
 			<h3 class="h3 mb-2">Templates</h3>
 			<div class="btn-group variant-filled">
-				<button on:click={reloadPostList}><Icon icon={Refresh} />Reload</button>
-				<button on:click={(e) => createNewTemplate()}><Icon icon={Add} />New Template</button>
+				<button class="variant-filled-secondary" on:click={reloadPostList} title="Reload templates"
+					><Icon icon={Refresh} />Reload</button>
+				<button
+					class="variant-filled-primary"
+					on:click={(e) => createNewTemplate()}
+					title="Create new template"><Icon icon={Add} />New Template</button>
 			</div>
 			<div class="flex flex-row m-4">
 				{#if $templates?.count === undefined || $templates?.count === -1}
@@ -242,33 +311,38 @@
 					<button
 						class="variant-filled-secondary"
 						disabled={isNewTemplate}
+						title="Regenerate content using this template"
 						on:click={(e) => {
-							// regenerateFromTemplate()
-						}}><Icon icon={Sync} />Regenerate</button
-					>
+							initiateGeneration();
+						}}><Icon icon={Sync} />Regenerate</button>
 					<button
 						class=" variant-filled-error"
 						disabled={isNewTemplate}
+						title="Delete template"
 						on:click={(e) => {
-							modalStore.trigger(deleteTemplateModal);
-						}}><Icon icon={Delete} />Delete</button
-					>
+							triggerDeleteModal();
+						}}><Icon icon={Delete} />Delete</button>
 					<button
 						disabled={!templateIsValid}
 						class=" variant-filled-primary"
+						title="Save template"
 						on:click={(e) => {
 							if (isNewTemplate) {
 								modalStore.trigger(saveNewTemplateModal);
 							} else {
 								modalStore.trigger(saveTemplateModal);
 							}
-						}}>Save<Icon icon={Save} /></button
-					>
+						}}>Save<Icon icon={Save} /></button>
 				</div>
 			</div>
 			<div class="grid grid-cols-6 gap-6">
 				<div class="col-span-6 sm:col-span-6 lg:col-span-2">
 					<TextInput label="Title" name="TemplateTitle" bind:value={$handlebars.title} required />
+				</div>
+				<div class="col-span-1 sm:col-span-1 lg:col-span-1">
+					{#await getTemplateUsage($handlebars.srcKey) then value}
+						<TextInput label="Used by" name="TemplateUsage" value={value.count} readonly />
+					{:catch error}??{/await}
 				</div>
 				<div class="col-span-6">
 					<textarea bind:value={$handlebars.body} class="textarea" rows="20"></textarea>
@@ -278,15 +352,15 @@
 				<div class="btn-group variant-filled" role="group">
 					<button
 						disabled={!templateIsValid}
-						class=" variant-filled-primary"
+						class="variant-filled-primary"
+						title="Save template"
 						on:click={(e) => {
 							if (isNewTemplate) {
 								modalStore.trigger(saveNewTemplateModal);
 							} else {
 								modalStore.trigger(saveTemplateModal);
 							}
-						}}>Save<Icon icon={Save} /></button
-					>
+						}}>Save<Icon icon={Save} /></button>
 				</div>
 			</div>
 		{/if}
