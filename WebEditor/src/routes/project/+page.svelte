@@ -16,6 +16,8 @@
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
 
+	$: webPageTitle = $project && $project.projectName ? ' - ' + $project.projectName : '';
+
 	const toast: ToastSettings = {
 		message: 'Loaded posts',
 		background: 'variant-filled-success',
@@ -57,6 +59,10 @@
 		}
 	});
 </script>
+
+<svelte:head>
+	<title>Cantilever: Project Settings {webPageTitle}</title>
+</svelte:head>
 
 <div class="flex flex-col grow mt-2 container">
 	{#if $userStore.isLoggedIn()}

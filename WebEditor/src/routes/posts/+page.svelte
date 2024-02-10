@@ -22,8 +22,10 @@
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
 
+	$: webPageTitle = $markdownStore.metadata?.title ? ' - ' + $markdownStore.metadata?.title : '';
+
 	let postListNodes = [] as TreeViewNode[]; // for the treeview component
-	let pgTitle = 'Markdown Editor';
+	let pgTitle: string;
 	$: markdownTitle = $markdownStore.metadata?.title ?? 'Untitled';
 	$: postIsValid = $markdownStore.metadata?.title != null && $markdownStore.metadata?.title != '';
 	let isNewPost = false;
@@ -221,6 +223,10 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Cantilever: Blog Posts {webPageTitle}</title>
+</svelte:head>
+
 <div class="flex flex-row grow mt-2 container justify-center">
 	<div class="basis-1/4 flex flex-col items-center mr-4">
 		{#if $userStore.isLoggedIn()}
@@ -254,7 +260,9 @@
 	</div>
 
 	<div class="basis-3/4 container flex flex-col w-full">
-		<h3 class="h3 text-center mb-2">{pgTitle}</h3>
+		<h3 class="h3 text-center mb-2">
+			{#if pgTitle}{pgTitle}{/if}
+		</h3>
 		{#if $markdownStore.metadata}
 			<div class="flex flex-row justify-end">
 				<div class="btn-group variant-filled" role="group">

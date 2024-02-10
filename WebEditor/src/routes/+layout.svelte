@@ -44,7 +44,7 @@
 	import SwitchIndexPageModal from '$lib/modals/switchIndexPageModal.svelte';
 	import CreateNewPageModal from '$lib/modals/createNewPageModal.svelte';
 	import { beforeNavigate } from '$app/navigation';
-	import { markdownStore } from '$lib/stores/contentStore.svelte';
+	import { handlebars, markdownStore } from '$lib/stores/contentStore.svelte';
 	import CreateNewFolderModal from '$lib/modals/createNewFolderModal.svelte';
 	import SaveNewPageModal from '$lib/modals/saveNewPageModal.svelte';
 
@@ -55,7 +55,7 @@
 		createNewPageModal: { ref: CreateNewPageModal },
 		createNewFolderModal: { ref: CreateNewFolderModal },
 		switchIndexPageModal: { ref: SwitchIndexPageModal },
-		saveNewPageModal: { ref: SaveNewPageModal}
+		saveNewPageModal: { ref: SaveNewPageModal }
 	};
 	initializeStores();
 
@@ -81,7 +81,9 @@
 	});
 
 	beforeNavigate(() => {
+		// clear content stores on navigation
 		markdownStore.clear();
+		handlebars.clear();
 	});
 
 	// rebuild metadata
@@ -122,8 +124,6 @@
 					Rebuild Metadata
 				</button>
 			</svelte:fragment>
-			<h1 class="h1">{$page.route.id}</h1>
-			<!-- TODO: replace with value from my custom navigation store? -->
 			<svelte:fragment slot="trail">
 				<LoginAvatar />
 			</svelte:fragment>
@@ -139,13 +139,13 @@
 				<div data-sveltekit-preload-data="false">
 					<AppRailAnchor href="/" selected={$page.url.pathname === '/'} title="Home">
 						<svelte:fragment slot="lead"
-							><Icon
-								icon={Home}
-								size={32}
-								variation="outlined" /></svelte:fragment>
+							><Icon icon={Home} size={32} variation="outlined" /></svelte:fragment>
 						<span>Home</span>
 					</AppRailAnchor>
-					<AppRailAnchor href="/project" selected={$page.url.pathname === '/project'} title="Project">
+					<AppRailAnchor
+						href="/project"
+						selected={$page.url.pathname === '/project'}
+						title="Project">
 						<svelte:fragment slot="lead"
 							><Icon
 								icon={Settings_applications}

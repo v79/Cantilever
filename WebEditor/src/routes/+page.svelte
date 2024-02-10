@@ -4,6 +4,10 @@
 	$: isLoggedIn = $userStore.isLoggedIn();
 </script>
 
+<svelte:head>
+	<title>Cantilever</title>
+</svelte:head>
+
 <div class="flex flex-col grow mt-2 container">
 	{#if isLoggedIn}
 		<div class="flex flex-row justify-center w-full">
@@ -12,12 +16,12 @@
 		<div class="flex flex-col grow">
 			<p class="p">This is where I'd put a list of projects, if I had any.</p>
 			<p class="p">Plus provide some shortcut buttons to features like...</p>
-			<ul class="list-inside list-disc ">
-				<li >Creating a new page</li>
+			<ul class="list-inside list-disc">
+				<li>Creating a new page</li>
 				<li>Creating a new post</li>
 				<li>Regenerating all content</li>
 			</ul>
-		</div>	
+		</div>
 	{:else}
 		<h3 class="h3">Please log in to continue</h3>
 	{/if}

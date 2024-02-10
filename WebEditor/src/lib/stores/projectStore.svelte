@@ -3,13 +3,23 @@
 	import { parseResString, CantileverProject, type ImgRes } from '$lib/models/project';
 	import { stringify } from 'yaml';
 
+	export const CLEAR_PROJECT = new CantileverProject(
+		'',
+		'',
+		'',
+		'',
+		new Map<string, ImgRes>(),
+		new Map<string, string>()
+	);
+
 	function createProjectStore() {
 		const { subscribe, set, update } = writable<CantileverProject>();
 
 		return {
 			subscribe,
 			set,
-			update
+			update,
+			clear: () => set(CLEAR_PROJECT)
 		};
 	}
 

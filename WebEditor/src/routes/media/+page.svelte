@@ -202,10 +202,14 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Cantilever: Media & Images</title>
+</svelte:head>
+
 <div class="flex flex-col grow mt-2 container">
 	{#if $userStore.isLoggedIn()}
 		<div class="flex flex-row justify-center w-full">
-			<h3 class="h3 mb-2 text-center">Media</h3>
+			<h1 class="h1 mb-2 text-center">Media</h1>
 		</div>
 		<div class="flex flex-col grow">
 			<h3 class="h3 mb-2">

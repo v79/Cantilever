@@ -29,6 +29,8 @@
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
 
+	$: webPageTitle = $handlebars.title ? '- ' + $handlebars.title : 'Untitled';
+
 	let templateListNodes = [] as TreeViewNode[]; // for the treeview component
 	let pgTitle = 'Template Editor';
 	let isNewTemplate = false;
@@ -261,6 +263,10 @@
 		}
 	});
 </script>
+
+<svelte:head>
+	<title>Cantilever: Templates {webPageTitle}</title>
+</svelte:head>
 
 <div class="flex flex-row grow mt-2 container justify-center">
 	<div class="basis-1/4 flex flex-col items-center mr-4">
