@@ -2,7 +2,7 @@
 	The [CantileverProject] represents some metadata about the entire project.
 */
 export class CantileverProject {
-	name: string;
+	projectName: string;
 	author: string;
 	dateFormat: string;
 	dateTimeFormat: string;
@@ -10,14 +10,14 @@ export class CantileverProject {
 	attributes: Map<string, string>;
 
 	constructor(
-		name: string,
+		projectName: string,
 		author: string,
 		dateFormat: string,
 		dateTimeFormat: string,
 		imageResolutions: Map<string, ImgRes>,
 		attributes: Map<string, string>
 	) {
-		this.name = name;
+		this.projectName = projectName;
 		this.author = author;
 		this.dateFormat = dateFormat;
 		this.dateTimeFormat = dateTimeFormat;
@@ -65,7 +65,7 @@ export class ImgRes {
  * @returns an [ImgRes] object with the appropriate dimensions. If a dimension is not found, it will be returned as NaN.
  */
 export function parseResString(resString: string) {
-	const wS: string = resString.substring(0, resString.indexOf('w'));
-	const hS: string = resString.substring(resString.indexOf('h') + 1);
+	const wS: string = resString.substring(0, resString.indexOf('x'));
+	const hS: string = resString.substring(resString.indexOf('x') + 1);
 	return new ImgRes(parseInt(wS), parseInt(hS));
 }

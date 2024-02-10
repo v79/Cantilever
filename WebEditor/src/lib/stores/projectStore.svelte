@@ -1,17 +1,90 @@
 <script context="module" lang="ts">
 	import { writable } from 'svelte/store';
-	import type { CantileverProject, ImgRes } from '$lib/models/project';
+	import { parseResString, CantileverProject, type ImgRes } from '$lib/models/project';
 
-	export const project = writable<CantileverProject>({
-		name: '',
-		author: '',
-		dateFormat: 'dd/MM/yyyy',
-		dateTimeFormat: 'HH:mm dd/MM/yyyy',
-		imageResolutions: new Map<string, ImgRes>(),
-		attributes: new Map<string, string>()
-	});
+	function createProjectStore() {
+		const { subscribe, set, update } = writable<CantileverProject>();
 
-    export async function fetchProject(token: string): Promise<CantileverProject | Error> {
-        return new Error('Not implemented');
-    }
+		return {
+			subscribe,
+			set,
+			update
+		};
+	}
+
+	// This store manages the overall project
+	export const project = createProjectStore();
+
+	export async function fetchProject(token: string): Promise<CantileverProject | Error> {
+		console.log('projectStore: Fetching project');
+		try {
+			const response = await fetch('https://api.cantilevers.org/project/', {
+				method: 'GET',
+				headers: {
+					Accept: 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const data = await response.json();
+				console.dir(data);
+				var tmpResolutions = Object.entries(data.data.imageResolutions); // Array[key, value]
+				var imageRestMap: Map<string, ImgRes> = new Map<string, ImgRes>();
+				for (const iR of tmpResolutions) {
+					imageRestMap.set(iR[0], parseResString(iR[1] as string));
+				}
+				var tmpAttributes = Object.entries(data.data.attributes);
+				var attributeMap: Map<string, string> = new Map<string, string>();
+				for (const attr of tmpAttributes) {
+					attributeMap.set(attr[0], attr[1] as string);
+				}
+
+				var tmpProject = new CantileverProject(
+					data.data.projectName,
+					data.data.author,
+					data.data.dateFormat,
+					data.data.dateTimeFormat,
+					imageRestMap,
+					attributeMap
+				);
+				project.set(tmpProject);
+				return data.data;
+			} else {
+				throw new Error('Failed to fetch project');
+			}
+		} catch (error) {
+			console.log(error);
+			return error as Error;
+		}
+	}
+
+	// save changes to the project
+	export async function saveProject(
+		token: string,
+		project: CantileverProject
+	): Promise<CantileverProject | Error> {
+		console.log('projectStore: Saving project');
+		try {
+			const response = await fetch('https://api.cantilevers.org/project/', {
+				method: 'PUT',
+				headers: {
+					Accept: 'application/yaml',
+					Authorization: `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(project),
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const data = await response.json();
+				return data.data;
+			} else {
+				throw new Error('Failed to save project');
+			}
+		} catch (error) {
+			console.log(error);
+			return error as Error;
+		}
+	}
 </script>
