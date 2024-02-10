@@ -43,7 +43,7 @@
 	},
 	"type": "module",
 	"dependencies": {
-		"@floating-ui/dom": "1.5.4",
+		"@floating-ui/dom": "^1.5.4",
 		"highlight.js": "11.9.0",
 		"vditor": "^3.9.9",
 		"yaml": "^2.3.2"

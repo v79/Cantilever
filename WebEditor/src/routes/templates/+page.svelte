@@ -25,6 +25,7 @@
 	import { handlebars } from '$lib/stores/contentStore.svelte';
 	import TextInput from '$lib/forms/textInput.svelte';
 	import { TemplateNode, TemplateUsageDTO } from '$lib/models/templates.svelte';
+	import { spinner } from '$lib/stores/spinnerStore.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -228,6 +229,8 @@
 
 	async function initiateGeneration() {
 		if ($handlebars) {
+			spinner.show('Regenerating from template ' + $handlebars.srcKey);
+			$spinner = { value: true, label: 'Regenerating from template ' + $handlebars.srcKey };
 			const result = await regenerate($handlebars.srcKey, $userStore.token!!);
 			if (result instanceof Error) {
 				errorToast.message = 'Failed to generate content. Message was: ' + result.message;
@@ -237,6 +240,7 @@
 				toast.message = result;
 				toastStore.trigger(toast);
 			}
+			spinner.hide();
 		}
 	}
 

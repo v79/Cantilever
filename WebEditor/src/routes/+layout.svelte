@@ -8,7 +8,14 @@
 		Modal,
 		initializeStores,
 		type ModalComponent,
-		Toast
+		Toast,
+		type PopupSettings,
+		popup,
+		ListBox,
+		ListBoxItem,
+		ProgressBar,
+		getToastStore,
+		type ToastSettings
 	} from '@skeletonlabs/skeleton';
 	import '../app.postcss';
 	// Highlight JS
@@ -25,12 +32,14 @@
 	import { storePopup } from '@skeletonlabs/skeleton';
 	import {
 		Article,
+		Dataset_linked,
 		Document_scanner,
 		Feed,
 		Home,
 		Icon,
 		Perm_media,
-		Settings_applications
+		Settings_applications,
+		Sync
 	} from 'svelte-google-materialdesign-icons';
 	import { page } from '$app/stores';
 	import LoginAvatar from '$lib/components/LoginAvatar.svelte';
@@ -47,6 +56,9 @@
 	import { handlebars, markdownStore } from '$lib/stores/contentStore.svelte';
 	import CreateNewFolderModal from '$lib/modals/createNewFolderModal.svelte';
 	import SaveNewPageModal from '$lib/modals/saveNewPageModal.svelte';
+	import ExpandMore from 'svelte-google-materialdesign-icons/Expand_more.svelte';
+	import { rebuildAllMetadata } from '$lib/stores/regenStore.svelte';
+	import SpinnerStore, { spinner } from '$lib/stores/spinnerStore.svelte';
 
 	const modalRegistry: Record<string, ModalComponent> = {
 		confirmDeleteModal: { ref: ConfirmDeleteModal },
@@ -59,9 +71,28 @@
 	};
 	initializeStores();
 
+	const toastStore = getToastStore();
+	const toast: ToastSettings = {
+		message: 'Loaded posts',
+		background: 'variant-filled-success',
+		hideDismiss: true
+	};
+	const errorToast: ToastSettings = {
+		message: 'Failed to load posts',
+		background: 'variant-filled-error'
+	};
+
 	$: loggedIn = $userStore.isLoggedIn();
 
 	export const warmTimer = 60 * 1000;
+
+	let regenComboValue = 'Regenerate...';
+	const regenPopup: PopupSettings = {
+		event: 'click',
+		target: 'regenPopup',
+		placement: 'bottom',
+		closeQuery: '.listbox-item'
+	};
 
 	onMount(() => {
 		async function warm() {
@@ -86,20 +117,24 @@
 		handlebars.clear();
 	});
 
-	// rebuild metadata
-	// TODO: move this to another file eventually
-	async function rebuildAllMetadata() {
-		const response = await fetch('https://api.cantilevers.org/metadata/rebuild', {
-			method: 'PUT',
-			headers: {
-				Accept: 'application/json',
-				Authorization: 'Bearer ' + $userStore.token,
-				'X-Content-Length': '0'
-			},
-			mode: 'cors'
+	async function initiateMetadataRebuild() {
+		spinner.show('Rebuilding metadata...');
+		let response = rebuildAllMetadata($userStore.token!!);
+		response.then((data) => {
+			toast.message = data;
+			toastStore.trigger(toast);
+			spinner.hide();
+			regenComboValue = 'Regenerate...';
 		});
-		const data = await response;
-		console.log(data);
+	}
+	async function initiatePostsRebuild() {
+		console.log('Rebuilding posts');
+	}
+	async function initiatePagesRebuild() {
+		console.log('Rebuilding pages');
+	}
+	async function initiateImageResRebuild() {
+		console.log('Rebuilding image resolutions');
 	}
 </script>
 
@@ -107,7 +142,7 @@
 <Modal components={modalRegistry} />
 
 <!-- Single Toast Container -->
-<Toast position="tr" padding="p-2" />
+<Toast position="t" padding="p-2" />
 
 <!-- App Shell -->
 <AppShell>
@@ -116,13 +151,19 @@
 		<AppBar gridColumns="grid-cols-3" slotDefault="place-self-center" slotTrail="place-content-end">
 			<svelte:fragment slot="lead">
 				<strong class="text-xl">Cantilever v0.0.11</strong>
-				<button
-					type="button"
-					on:click={rebuildAllMetadata}
-					title="Regenerate project metadata (temp button)"
-					class="btn btn-sm variant-ghost-secondary">
-					Rebuild Metadata
-				</button>
+
+				{#if loggedIn}
+					<button
+						class="btn btn-sm variant-ghost-primary w-48 justify-between"
+						use:popup={regenPopup}>
+						<Icon icon={Sync} size={24} />
+						<span class="capitalize">{regenComboValue ?? 'Trigger'}</span>
+						<Icon icon={ExpandMore} size={24} />
+					</button>
+				{/if}
+			</svelte:fragment>
+			<svelte:fragment slot="headline">
+				<SpinnerStore />
 			</svelte:fragment>
 			<svelte:fragment slot="trail">
 				<LoginAvatar />
@@ -197,3 +238,41 @@
 		<slot />
 	</div>
 </AppShell>
+
+<div class="card w-56 shadow-xl py-2 variant-glass-secondary z-20" data-popup="regenPopup">
+	<ListBox rounded="rounded-none">
+		<ListBoxItem
+			bind:group={regenComboValue}
+			name="medium"
+			value="metadata"
+			on:click={(e) => {
+				initiateMetadataRebuild();
+			}}
+			><svelte:fragment slot="lead"><Icon icon={Dataset_linked} /></svelte:fragment>Project metadata</ListBoxItem>
+		<ListBoxItem
+			bind:group={regenComboValue}
+			name="medium"
+			value="posts"
+			on:click={(e) => {
+				initiatePostsRebuild();
+			}}>
+			<svelte:fragment slot="lead"><Icon icon={Feed} /></svelte:fragment>Posts</ListBoxItem>
+		<ListBoxItem
+			bind:group={regenComboValue}
+			name="medium"
+			value="pages"
+			on:click={(e) => {
+				initiatePagesRebuild();
+			}}>
+			<svelte:fragment slot="lead"><Icon icon={Article} /></svelte:fragment>Pages</ListBoxItem>
+		<ListBoxItem
+			bind:group={regenComboValue}
+			name="medium"
+			value="images"
+			on:click={(e) => {
+				initiateImageResRebuild();
+			}}>
+			<svelte:fragment slot="lead"><Icon icon={Perm_media} /></svelte:fragment>Images</ListBoxItem>
+	</ListBox>
+	<div class="arrow bg-surface-100-800-token" />
+</div>
