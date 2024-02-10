@@ -267,8 +267,12 @@
 		{#if $userStore.isLoggedIn()}
 			<h3 class="h3 mb-2">Templates</h3>
 			<div class="btn-group variant-filled">
-				<button on:click={reloadPostList} title="Reload templates"><Icon icon={Refresh} />Reload</button>
-				<button on:click={(e) => createNewTemplate()} title="Create new template"><Icon icon={Add} />New Template</button>
+				<button class="variant-filled-secondary" on:click={reloadPostList} title="Reload templates"
+					><Icon icon={Refresh} />Reload</button>
+				<button
+					class="variant-filled-primary"
+					on:click={(e) => createNewTemplate()}
+					title="Create new template"><Icon icon={Add} />New Template</button>
 			</div>
 			<div class="flex flex-row m-4">
 				{#if $templates?.count === undefined || $templates?.count === -1}

@@ -7,11 +7,12 @@
 		TabGroup,
 		type ToastSettings
 	} from '@skeletonlabs/skeleton';
-	import { fetchProject, project } from '$lib/stores/projectStore.svelte';
+	import { fetchProject, project, saveProject } from '$lib/stores/projectStore.svelte';
 	import { onMount } from 'svelte';
 	import { Icon, Save } from 'svelte-google-materialdesign-icons';
 	import TextInput from '$lib/forms/textInput.svelte';
 	import ImageResolutions from './ImageResolutions.svelte';
+
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
 
@@ -26,6 +27,7 @@
 	};
 
 	let tabSet = 0;
+	$: saveDisabled = $project && ($project.projectName === undefined || $project.projectName === '');
 
 	onMount(async () => {
 		if ($userStore.isLoggedIn()) {
@@ -33,8 +35,20 @@
 		}
 	});
 
-	function initiateSaveProject() {
-		console.log('Saving project');
+	async function initiateSaveProject() {
+		console.dir($project);
+		if ($project.projectName !== '') {
+			let saveResult = saveProject($project, $userStore.token!!);
+			saveResult.then((r) => {
+				if (r instanceof Error) {
+					errorToast.message = 'Failed to save project';
+					toastStore.trigger(errorToast);
+				} else {
+					toast.message = 'Saved project ' + $project.projectName;
+					toastStore.trigger(toast);
+				}
+			});
+		}
 	}
 
 	const projectUnsub = project.subscribe((value) => {
@@ -51,8 +65,13 @@
 				<h3 class="h3 mb-2 text-center">{$project.projectName} settings</h3>
 				<div class="flex flex-row justify-end">
 					<div class="btn-group variant-filled" role="group">
-						<button on:click={() => {}} title="Save project settings" class="variant-filled-primary"
-							>Save<Icon icon={Save} /></button>
+						<button
+							on:click={(e) => {
+								initiateSaveProject();
+							}}
+							disabled={saveDisabled}
+							title="Save project settings"
+							class="variant-filled-primary">Save<Icon icon={Save} /></button>
 					</div>
 				</div>
 
@@ -88,24 +107,23 @@
 							required />
 					</div>
 				</div>
-				
-					<TabGroup justify="justify-center" class="mt-4">
-						<Tab bind:group={tabSet} name="resolutions" value={0}>Resolutions</Tab>
-						<Tab bind:group={tabSet} name="attributes" value={1}>Custom attributes</Tab>
-						<!-- Tab Panels --->
-						<svelte:fragment slot="panel">
-							{#if tabSet === 0}
-                                {#if $project.imageResolutions.size === 0}
-                                    <p class="placeholder">No image resolutions defined</p>
-                                {:else}
-                                    <ImageResolutions />
-                                {/if}
-							{:else if tabSet === 1}
-								(custom attribute panel contents)
+
+				<TabGroup justify="justify-center" class="mt-4">
+					<Tab bind:group={tabSet} name="resolutions" value={0}>Resolutions</Tab>
+					<Tab bind:group={tabSet} name="attributes" value={1}>Custom attributes</Tab>
+					<!-- Tab Panels --->
+					<svelte:fragment slot="panel">
+						{#if tabSet === 0}
+							{#if $project.imageResolutions.size === 0}
+								<p class="placeholder">No image resolutions defined</p>
+							{:else}
+								<ImageResolutions />
 							{/if}
-						</svelte:fragment>
-					</TabGroup>
-				
+						{:else if tabSet === 1}
+							(custom attribute panel contents)
+						{/if}
+					</svelte:fragment>
+				</TabGroup>
 			{:else}
 				<p class="placeholder">Loading project...</p>
 			{/if}

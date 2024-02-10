@@ -227,10 +227,12 @@
 			<h3 class="h3 mb-2">Posts</h3>
 
 			<div class="btn-group variant-filled">
-				<button on:click={reloadPostList} title="Reload post list"
+				<button class="variant-filled-secondary" on:click={reloadPostList} title="Reload post list"
 					><Icon icon={Refresh} />Reload</button>
-				<button on:click={(e) => modalStore.trigger(newPostModal)} title="Create new post"
-					><Icon icon={Add} />New Post</button>
+				<button
+					class="variant-filled-primary"
+					on:click={(e) => modalStore.trigger(newPostModal)}
+					title="Create new post"><Icon icon={Add} />New Post</button>
 			</div>
 			<div class="flex flex-row m-4">
 				{#if $posts?.count === undefined || $posts?.count === -1}

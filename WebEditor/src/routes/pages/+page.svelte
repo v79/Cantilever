@@ -43,8 +43,6 @@
 	let pgTitle = 'Markdown Editor';
 	let isNewPage = false;
 
-	
-
 	$: pgAndFoldersLabel = $pages?.count + ' pages in ' + $folders?.count + ' folders';
 	$: isValid =
 		$markdownStore.metadata?.srcKey != null ||
@@ -139,7 +137,7 @@
 
 	/**
 	 * @type: {ModalSettings}
-	*/
+	 */
 	$: saveNewPageModal = {
 		type: 'component',
 		component: 'saveNewPageModal',
@@ -153,7 +151,7 @@
 				initiateSavePage();
 			}
 		}
-	}
+	};
 
 	onMount(async () => {
 		if (!$pages) {
@@ -383,13 +381,16 @@
 		{#if $userStore.isLoggedIn()}
 			<h3 class="h3 mb-2">Pages</h3>
 			<div class="btn-group variant-filled">
-				<button on:click={loadPagesAndFolders} title="Reload pages"><Icon icon={Refresh} /></button>
-				<button on:click={(e) => modalStore.trigger(createNewFolderModal)} title="New Folder"
-					><Icon icon={CreateNewFolder} /></button
-				>
-				<button on:click={(e) => modalStore.trigger(createNewPageModal)} title="New Page"
-					><Icon icon={Add} />New Page</button
-				>
+				<button class="variant-filled-secondary" on:click={loadPagesAndFolders} title="Reload pages"
+					><Icon icon={Refresh} /></button>
+				<button
+					class="variant-filled-secondary"
+					on:click={(e) => modalStore.trigger(createNewFolderModal)}
+					title="New Folder"><Icon icon={CreateNewFolder} /></button>
+				<button
+					class="variant-filled-primary"
+					on:click={(e) => modalStore.trigger(createNewPageModal)}
+					title="New Page"><Icon icon={Add} />New Page</button>
 			</div>
 			<div class="flex flex-row m-4">
 				{#if $pages?.count === undefined || $pages?.count === -1}
@@ -421,8 +422,7 @@
 						title="Delete page"
 						on:click={(e) => {
 							modalStore.trigger(deletePageModal);
-						}}><Icon icon={Delete} />Delete</button
-					>
+						}}><Icon icon={Delete} />Delete</button>
 					<button
 						disabled={!isValid}
 						class=" variant-filled-primary"
@@ -433,8 +433,7 @@
 							} else {
 								modalStore.trigger(savePageModal);
 							}
-						}}>Save<Icon icon={Save} /></button
-					>
+						}}>Save<Icon icon={Save} /></button>
 				</div>
 			</div>
 			<div class="grid grid-cols-6 gap-6">
@@ -447,8 +446,7 @@
 							name="slug"
 							bind:value={$markdownStore.metadata.srcKey}
 							required
-							readonly
-						/>
+							readonly />
 					{/if}
 				</div>
 				<div class="col-span-6 sm:col-span-3 lg:col-span-2">
@@ -457,19 +455,19 @@
 						name="template"
 						label="Template"
 						required
-						readonly
-					/>
+						readonly />
 				</div>
 				<div class="col-span-6 sm:col-span-3 lg:col-span-2">
-					<ParentAndIndexInput value={$markdownStore.metadata.parent} bind:isRoot={$markdownStore.metadata.isRoot} />
+					<ParentAndIndexInput
+						value={$markdownStore.metadata.parent}
+						bind:isRoot={$markdownStore.metadata.isRoot} />
 				</div>
 				<div class="col-span-6">
 					<TextInput
 						bind:value={$markdownStore.metadata.title}
 						required
 						name="postTitle"
-						label="Title"
-					/>
+						label="Title" />
 				</div>
 
 				<div class="col-span-6">
@@ -492,8 +490,7 @@
 							} else {
 								modalStore.trigger(savePageModal);
 							}
-						}}>Save<Icon icon={Save} /></button
-					>
+						}}>Save<Icon icon={Save} /></button>
 				</div>
 			</div>
 		{/if}
