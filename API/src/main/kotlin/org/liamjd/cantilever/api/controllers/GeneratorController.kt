@@ -38,6 +38,7 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
      */
     fun generatePage(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val requestKey = request.pathParameters["srcKey"]
+            ?: return ResponseEntity.badRequest(body = APIResult.Error("No srcKey provided"))
         var srcKey = ""
         try {
             loadContentTree()
@@ -61,6 +62,7 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
                     return ResponseEntity.notFound(body = APIResult.Error("No pages found to regenerate"))
                 }
             } else {
+                srcKey = URLDecoder.decode(requestKey, Charset.defaultCharset())
                 info("GeneratorController: Received request to regenerate page '$srcKey'")
                 val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
                 queuePageRegeneration(srcKey, sourceString)
@@ -70,6 +72,7 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
             error("${nske.message} for key $srcKey")
             return ResponseEntity.notFound(body = APIResult.Error(message = "Could not find page with key '$srcKey'"))
         } catch (e: Exception) {
+            error("Error generating page: ${e.message}")
             return ResponseEntity.serverError(body = APIResult.Error("Error generating page: ${e.message}"))
         }
     }
