@@ -4,7 +4,6 @@
 		AppRail,
 		AppRailAnchor,
 		AppShell,
-		Avatar,
 		Modal,
 		initializeStores,
 		type ModalComponent,
@@ -13,7 +12,6 @@
 		popup,
 		ListBox,
 		ListBoxItem,
-		ProgressBar,
 		getToastStore,
 		type ToastSettings
 	} from '@skeletonlabs/skeleton';
@@ -57,7 +55,11 @@
 	import CreateNewFolderModal from '$lib/modals/createNewFolderModal.svelte';
 	import SaveNewPageModal from '$lib/modals/saveNewPageModal.svelte';
 	import ExpandMore from 'svelte-google-materialdesign-icons/Expand_more.svelte';
-	import { rebuildAllMetadata } from '$lib/stores/regenStore.svelte';
+	import {
+		rebuildAllMetadata,
+		rebuildAllPages,
+		rebuildAllPosts
+	} from '$lib/stores/regenStore.svelte';
 	import SpinnerStore, { spinner } from '$lib/stores/spinnerStore.svelte';
 
 	const modalRegistry: Record<string, ModalComponent> = {
@@ -128,13 +130,27 @@
 		});
 	}
 	async function initiatePostsRebuild() {
-		console.log('Rebuilding posts');
+		spinner.show('Rebuilding posts...');
+		let response = rebuildAllPosts($userStore.token!!);
+		response.then((data) => {
+			toast.message = data;
+			toastStore.trigger(toast);
+			spinner.hide();
+			regenComboValue = 'Regenerate...';
+		});
 	}
 	async function initiatePagesRebuild() {
-		console.log('Rebuilding pages');
+		spinner.show('Rebuilding pages...');
+		let response = rebuildAllPages($userStore.token!!);
+		response.then((data) => {
+			toast.message = data;
+			toastStore.trigger(toast);
+			spinner.hide();
+			regenComboValue = 'Regenerate...';
+		});
 	}
 	async function initiateImageResRebuild() {
-		console.log('Rebuilding image resolutions');
+		console.log('Rebuilding image resolutions - not yet implemented');
 	}
 </script>
 
@@ -243,7 +259,7 @@
 	<ListBox rounded="rounded-none">
 		<ListBoxItem
 			bind:group={regenComboValue}
-			name="medium"
+			name="metadata"
 			value="metadata"
 			on:click={(e) => {
 				initiateMetadataRebuild();
@@ -251,7 +267,7 @@
 			><svelte:fragment slot="lead"><Icon icon={Dataset_linked} /></svelte:fragment>Project metadata</ListBoxItem>
 		<ListBoxItem
 			bind:group={regenComboValue}
-			name="medium"
+			name="posts"
 			value="posts"
 			on:click={(e) => {
 				initiatePostsRebuild();
@@ -259,7 +275,7 @@
 			<svelte:fragment slot="lead"><Icon icon={Feed} /></svelte:fragment>Posts</ListBoxItem>
 		<ListBoxItem
 			bind:group={regenComboValue}
-			name="medium"
+			name="pages"
 			value="pages"
 			on:click={(e) => {
 				initiatePagesRebuild();
@@ -267,12 +283,14 @@
 			<svelte:fragment slot="lead"><Icon icon={Article} /></svelte:fragment>Pages</ListBoxItem>
 		<ListBoxItem
 			bind:group={regenComboValue}
-			name="medium"
+			name="images"
 			value="images"
 			on:click={(e) => {
 				initiateImageResRebuild();
 			}}>
-			<svelte:fragment slot="lead"><Icon icon={Perm_media} /></svelte:fragment>Images</ListBoxItem>
+			<svelte:fragment slot="lead"
+				><Icon icon={Perm_media} color="text-secondary-200" /></svelte:fragment
+			><span class="text-secondary-200"><em>Images</em></span></ListBoxItem>
 	</ListBox>
 	<div class="arrow bg-surface-100-800-token" />
 </div>
