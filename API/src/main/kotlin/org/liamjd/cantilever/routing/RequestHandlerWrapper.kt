@@ -10,6 +10,7 @@ import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
+import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.routing.Router.Companion.CONTENT_TYPE
 
 /**
@@ -121,9 +122,14 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                                 input.body
                             }
                         } else input.body
-
                         val request = Request(input, bodyObject, routerFunction.requestPredicate.pathPattern)
-                        (handler as HandlerFunction<*, *>)(request)
+                        // call the handler function with the request object; this will return a ResponseEntity; if it catches an error then that's the fault of the handler function
+                        try {
+                            (handler as HandlerFunction<*, *>)(request)
+                        } catch (e: Exception) {
+                            println("Error calling handler function: ${e.message}")
+                            ResponseEntity.serverError(body = "Server error in processing request for ${handler}: ${e.message}")
+                        }
                     } catch (mfe: MissingFieldException) {
                         println("Invalid request. Error is: ${mfe.message}")
                         ResponseEntity.badRequest(body = "Invalid request. Error is: ${mfe.message}")
@@ -131,8 +137,8 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                         println("Could not deserialize body. Error is: ${se.message}")
                         ResponseEntity.badRequest(body = "Could not deserialize body. Error is: ${se.message}")
                     } catch (iae: IllegalArgumentException) {
-                        println("Could not deserialize body. Error is: ${iae.message}")
-                        ResponseEntity.badRequest(body = "Could not deserialize body. Error is: ${iae.message}")
+                        println("Illegal argument exception. Error is: ${iae.message}")
+                        ResponseEntity.badRequest(body = "Could not deserialize body; IllegalArgumentException. Error is: ${iae.message}")
                     }
                 }
             }
@@ -149,6 +155,10 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         acceptedMediaTypes: List<MimeType>
     ): APIGatewayProxyResponseEvent {
         println("No route match found for $httpMethod $path")
+        val possibleAlts = router.routes.filterKeys { it.pathPattern == path }
+        if(possibleAlts.isNotEmpty()) {
+            println("Possible alternatives: ${possibleAlts.keys}")
+        }
         return APIGatewayProxyResponseEvent()
             .withStatusCode(404)
             .withHeaders(mapOf("Content-Type" to "text/plain"))

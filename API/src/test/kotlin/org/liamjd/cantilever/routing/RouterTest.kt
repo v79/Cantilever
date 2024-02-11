@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test
 import org.liamjd.cantilever.api.models.RawJsonString
 import org.liamjd.cantilever.auth.AuthResult
 import org.liamjd.cantilever.auth.Authorizer
+import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.openapi.APISchema
 import java.net.URLEncoder
 import java.nio.charset.Charset
@@ -370,10 +371,31 @@ class RouterTest {
     @Test
     fun `can override response headers for a particular route`() {
         val testR = TestRouter()
-        val event = APIGatewayProxyRequestEvent().withPath("/overrideHeaders").withHttpMethod("GET").withHeaders(acceptJson)
+        val event =
+            APIGatewayProxyRequestEvent().withPath("/overrideHeaders").withHttpMethod("GET").withHeaders(acceptJson)
         val response = testR.handleRequest(event)
         assertEquals(200, response.statusCode)
         assertEquals("*", response.headers["Access-Control-Allow-Origin"])
+    }
+
+    @Test
+    fun `can deserialize an object containing a base64 encoded string`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/base64").withHttpMethod("POST")
+            .withBody("""
+                {
+                    "srcKey": "tiny.png",
+                    "contentType": "image/png",
+                    "bytes": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAFiUAABYlAUlSJPAAAABKSURBVChTY/hPJIArvLZi/f9jrf1QHiaAKwQp6mAQhfIwAVarsZmOVSE20wl6BmY6QYUw0wkqhAGwQmTH4womsEJkxyOzEeD/fwBMTXMyLCsQMwAAAABJRU5ErkJggg=="
+                }
+            """.trimIndent())
+            .withHeaders(contentJson + acceptText)
+        val response = testR.handleRequest(event)
+
+        println(event.body)
+        assertNotNull(response)
+        assertEquals(200, response.statusCode)
+
     }
 }
 
@@ -476,8 +498,23 @@ class TestRouter : RequestHandlerWrapper() {
 
         // contains OpenAPI specifications
         group("/specGroup") {
-        get("/spec", testController::hasSpecification, Spec.PathItem(summary = "This is a summary", description = "This is a description"))
-    }}
+            get(
+                "/spec",
+                testController::hasSpecification,
+                Spec.PathItem(summary = "This is a summary", description = "This is a description")
+            )
+        }
+
+        // base64 encoding
+        post("/base64") { request: Request<Base64DTO> ->
+            val obj = request.body
+            ResponseEntity.ok("Received post for Base64 message=${obj.srcKey}")
+        }.expects(
+            setOf(
+                MimeType.json
+            )
+        ).supplies(setOf(MimeType.plainText))
+    }
 }
 
 class TestController {
@@ -521,6 +558,10 @@ data class PostThis(val name: String, val count: Int)
 @Serializable
 @APISchema
 data class DontPostThis(val year: Long, val truth: Boolean)
+
+@Serializable
+@APISchema
+data class Base64DTO(val srcKey: String, val contentType: String, val bytes: String)
 
 object FakeAuthorizer : Authorizer {
     override val simpleName: String

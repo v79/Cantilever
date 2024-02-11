@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "org.liamjd.cantilever.openapi"
-version = "0.0.9"
+version = "0.0.11"
 
 repositories {
     mavenCentral()

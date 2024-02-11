@@ -6,8 +6,10 @@ import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.toS3Key
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
+import org.liamjd.cantilever.models.rest.FolderListDTO
 import org.liamjd.cantilever.models.rest.MarkdownPageDTO
 import org.liamjd.cantilever.models.rest.PageListDTO
+import org.liamjd.cantilever.models.rest.ReassignIndexRequestDTO
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 import java.net.URLDecoder
@@ -20,7 +22,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
 
     /**
      * Return a list of all the pages in the content tree
-     * @return [PageListDTO] object containing the list of Pages and Folders, a count and the last updated date/time
+     * @return [PageListDTO] object containing the list of Pages, a count and the last updated date/time
      */
     fun getPages(request: Request<Unit>): ResponseEntity<APIResult<PageListDTO>> {
         return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
@@ -28,19 +30,20 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             info("Fetching all pages from metadata.json")
             val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
             val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
-            val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
+//            val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
             val sorted = pages.sortedByDescending { it.srcKey }
-            sorted.forEach { println(it.srcKey) }
+//            sorted.forEach { println(it.srcKey) }
             val pageList = PageListDTO(
                 count = sorted.size,
                 lastUpdated = lastUpdated,
-                pages = pages,
-                folders = folders
+                pages = sorted
             )
             ResponseEntity.ok(body = APIResult.Success(value = pageList))
         } else {
             error("Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
-            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
+            ResponseEntity.notFound(
+                body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+            )
         }
     }
 
@@ -57,7 +60,9 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
                 ResponseEntity.ok(body = APIResult.Success(mdPage))
             } else {
                 error("File '$decoded' not found")
-                ResponseEntity.notFound(body = APIResult.Error("Markdown file $decoded not found in bucket $sourceBucket"))
+                ResponseEntity.notFound(
+                    body = APIResult.Error("Markdown file $decoded not found in bucket $sourceBucket")
+                )
             }
         } else {
             ResponseEntity.badRequest(body = APIResult.Error("Invalid request for null source file"))
@@ -71,6 +76,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
     fun createFolder(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val folderName = request.pathParameters["folderName"]
         return if (folderName != null) {
+            loadContentTree() // TODO: can we move this to the abstract class? Calling it for every function seems wasteful
             // folder name must be web safe
             val slugged = URLDecoder.decode(folderName, Charset.defaultCharset()).toS3Key()
             info("Creating folder '$slugged'")
@@ -79,11 +85,13 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
                 if (result != 0) {
                     ResponseEntity.serverError(body = APIResult.Error("Folder '$slugged' was not created"))
                 }
-                contentTree.insertFolder(ContentNode.FolderNode(folderName)).also { saveContentTree() }
+                contentTree.insertFolder(ContentNode.FolderNode(folderName))
+                saveContentTree()
+
                 ResponseEntity.ok(body = APIResult.OK("Folder '$slugged' created"))
             } else {
                 warn("Folder '$slugged' already exists")
-                ResponseEntity.accepted(body = APIResult.OK(""))
+                ResponseEntity.accepted(body = APIResult.OK("Folder '$slugged' already exists"))
             }
         } else {
             ResponseEntity.badRequest(body = APIResult.Error("Cannot create a folder with no name"))
@@ -93,23 +101,165 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
     /**
      * Save a [MarkdownPageDTO] to the sources bucket
      */
-    fun saveMarkdownPageSource(request: Request<MarkdownPageDTO>): ResponseEntity<APIResult<String>> {
+    fun saveMarkdownPageSource(request: Request<ContentNode.PageNode>): ResponseEntity<APIResult<String>> {
         info("saveMarkdownPageSource")
         val pageToSave = request.body
         pageToSave.also {
-            info("PageToSave: ${it.metadata.title} has ${it.metadata.attributes.keys.size} attributes and ${it.metadata.sections.keys.size} sections")
+            info(
+                "PageToSave: ${it.title} has ${it.attributes.keys.size} attributes and ${it.sections.keys.size} sections"
+            )
         }
-        val srcKey = URLDecoder.decode(pageToSave.metadata.srcKey, Charset.defaultCharset())
+        val srcKey = URLDecoder.decode(pageToSave.srcKey, Charset.defaultCharset())
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
-            info("Updating existing file '${pageToSave.metadata.srcKey}'")
-            val length = s3Service.putObject(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
-            contentTree.updatePage(pageToSave.metadata).also { saveContentTree() }
+            info("Updating existing file '${pageToSave.srcKey}'")
+            val length =
+                s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
+            contentTree.updatePage(pageToSave)
+            saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
-            val length = s3Service.putObject(srcKey, sourceBucket, pageToSave.toString(), "text/markdown")
-            contentTree.insertPage(pageToSave.metadata).also { saveContentTree() }
+            val length =
+                s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
+            contentTree.insertPage(pageToSave)
+            saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
+        }
+    }
+
+    /**
+     * Delete a markdown page from the sources bucket and update the content tree
+     */
+    fun deleteMarkdownPageSource(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val markdownSource = request.pathParameters["srcKey"]
+        return if (markdownSource != null) {
+            loadContentTree()
+            val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
+            return if (s3Service.objectExists(decoded, sourceBucket)) {
+                val pageNode = contentTree.getNode(decoded)
+                if (pageNode != null && pageNode is ContentNode.PageNode) {
+                    info("Deleting markdown file $decoded")
+                    s3Service.deleteObject(decoded, sourceBucket)
+                    contentTree.deletePage(pageNode)
+                    saveContentTree()
+                    ResponseEntity.ok(body = APIResult.OK("Source $decoded deleted"))
+                } else {
+                    error("Could not delete $decoded; object not found or was not a PageNode")
+                    ResponseEntity.ok(
+                        body = APIResult.Error("Could not delete $decoded; object not found or was not a Page")
+                    )
+                }
+            } else {
+                error("Could not delete $decoded; object not found")
+                ResponseEntity.ok(body = APIResult.Error("Could not delete $decoded; object not found"))
+            }
+        } else {
+            error("Could not delete null markdownSource")
+            ResponseEntity.ok(body = APIResult.Error("Could not delete null markdownSource"))
+        }
+    }
+
+    /**
+     * Return a list of all the folders which contain pages (i.e. under /sources/pages/)
+     */
+    fun getFolders(request: Request<Unit>): ResponseEntity<APIResult<FolderListDTO>> {
+        val folders = listOf(
+            ContentNode.FolderNode(S3_KEY.pagesPrefix)
+        ) + contentTree.items.filterIsInstance<ContentNode.FolderNode>()
+            .filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
+        val dto = FolderListDTO(folders.size, folders)
+        return ResponseEntity.ok(body = APIResult.Success(dto))
+    }
+
+    /**
+     * Delete a folder from the sources bucket and update the content tree.
+     * The folder must be empty and contain no pages.
+     */
+    fun deleteFolder(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val folderKey = request.pathParameters["srcKey"]
+        return if (folderKey != null) {
+            val decoded = URLDecoder.decode(folderKey, Charset.defaultCharset())
+            if (s3Service.objectExists(decoded, sourceBucket)) {
+                val folderNode = contentTree.getNode(decoded)
+                if (folderNode != null && folderNode is ContentNode.FolderNode) {
+                    if (folderNode.children.isEmpty()) {
+                        info("Deleting folder $decoded")
+                        s3Service.deleteObject(decoded, sourceBucket)
+                        contentTree.deleteFolder(folderNode)
+                        saveContentTree()
+                        ResponseEntity.ok(body = APIResult.OK("Folder $decoded deleted"))
+                    } else {
+                        warn("Folder $decoded is not empty so it was not deleted")
+                        ResponseEntity.badRequest(body = APIResult.Error("Folder $decoded is not empty"))
+                    }
+                } else {
+                    ResponseEntity.badRequest(body = APIResult.Error("Folder $decoded not found"))
+                }
+            } else {
+                ResponseEntity.badRequest(body = APIResult.Error("Folder $decoded not found"))
+            }
+        } else {
+            ResponseEntity.badRequest(body = APIResult.Error("No folderKey specified"))
+        }
+    }
+
+    /**
+     * Reassign the index page of a folder to another page
+     * @param request [ReassignIndexRequestDTO] containing the source and destination pages and the folder
+     */
+    fun reassignIndex(request: Request<ReassignIndexRequestDTO>): ResponseEntity<APIResult<String>> {
+        val request = request.body
+        loadContentTree()
+        val from = request.from
+        val to = request.to
+        val folder = request.folder
+        // check to see that each of these exist
+        try {
+            if (s3Service.objectExists(from, sourceBucket) && s3Service.objectExists(to, sourceBucket)) {
+                // confirm that from is the index of the folder
+                val folderNode = contentTree.getNode(
+                    if (folder.endsWith("/")) {
+                        folder
+                    } else {
+                        "$folder/"
+                    }
+                )
+                if (folderNode is ContentNode.FolderNode) {
+                    if (folderNode.indexPage == from) {
+                        // update the metadata for each of these pages
+                        val fromString = s3Service.getObjectAsString(from, sourceBucket)
+                        val toString = s3Service.getObjectAsString(to, sourceBucket)
+                        val fromMeta =
+                            ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(fromString, from)
+                        val updatedFrom = fromMeta.copy(isRoot = false)
+
+                         val toMeta =
+                            ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(toString, to)
+                        val updatedTo = toMeta.copy(isRoot = true)
+
+                        println("Writing updated pages '$from' and '$to' to S3 bucket $sourceBucket")
+                        s3Service.putObjectAsString(from, sourceBucket, convertNodeToMarkdown(updatedFrom), "text/markdown")
+                        s3Service.putObjectAsString(to, sourceBucket, convertNodeToMarkdown(updatedTo), "text/markdown")
+                        println("Updating content tree")
+                        contentTree.updatePage(updatedFrom)
+                        contentTree.updatePage(updatedTo)
+                        contentTree.updateFolder(folderNode.copy(indexPage = to))
+                        saveContentTree()
+                        return ResponseEntity.ok(
+                            body = APIResult.OK("Reassigned index from $from to $to in folder $folder")
+                        )
+
+                    } else {
+                        return ResponseEntity.badRequest(body = APIResult.Error("$from is not the index of $folder"))
+                    }
+                } else {
+                    return ResponseEntity.badRequest(body = APIResult.Error("$folder is not a folder"))
+                }
+            } else {
+                return ResponseEntity.badRequest(body = APIResult.Error("Source files not found"))
+            }
+        } catch (e: Exception) {
+            return ResponseEntity.serverError(body = APIResult.Error("Error: ${e.message}"))
         }
     }
 
@@ -120,6 +270,30 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
         val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
         val pageMeta = ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(markdown, srcKey)
         return MarkdownPageDTO(pageMeta)
+    }
+
+    /**
+     * Convert a [ContentNode.PageNode] to a markdown, with each section string
+     */
+    private fun convertNodeToMarkdown(page: ContentNode.PageNode): String {
+        val separator = "---"
+        val sBuilder = StringBuilder()
+        sBuilder.apply {
+            appendLine(separator)
+            appendLine("title: ${page.title}")
+            appendLine("templateKey: ${page.templateKey}")
+            if (page.isRoot) {
+                appendLine("isRoot: true")
+            }
+            page.attributes.forEach {
+                appendLine("#${it.key}: ${it.value}")
+            }
+            page.sections.forEach {
+                appendLine("$separator #${it.key}")
+                appendLine(it.value)
+            }
+        }
+        return sBuilder.toString().trim()
     }
 
     override fun info(message: String) = println("INFO: PageController: $message")

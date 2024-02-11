@@ -1,13 +1,11 @@
 package org.liamjd.cantilever.api.controllers
 
-import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
-import org.liamjd.cantilever.models.ContentTree
 import org.liamjd.cantilever.models.rest.PostListDTO
 import org.liamjd.cantilever.models.rest.PostNodeRestDTO
 import org.liamjd.cantilever.routing.Request
@@ -50,13 +48,13 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             loadContentTree()
             info("Updating existing file '${postToSave.srcKey}'")
-            val length = s3Service.putObject(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
+            val length = s3Service.putObjectAsString(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
             contentTree.updatePost(postToSave.toPostNode())
             saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
-            val length = s3Service.putObject(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
+            val length = s3Service.putObjectAsString(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
             contentTree.insertPost(postToSave.toPostNode())
             saveContentTree()
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
@@ -72,11 +70,17 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
             loadContentTree()
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
             return if (s3Service.objectExists(decoded, sourceBucket)) {
-                info("Deleting Markdown file $decoded")
-                s3Service.deleteObject(decoded, sourceBucket)
-                contentTree.deletePost(markdownSource)
-                saveContentTree()
-                ResponseEntity.ok(body = APIResult.OK("Source $decoded deleted"))
+                val postNode = contentTree.getNode(decoded)
+                if (postNode != null && postNode is ContentNode.PostNode) {
+                    info("Deleting markdown file $decoded")
+                    s3Service.deleteObject(decoded, sourceBucket)
+                    contentTree.deletePost(postNode)
+                    saveContentTree()
+                    ResponseEntity.ok(body = APIResult.OK("Source $decoded deleted"))
+                } else {
+                    error("Could not delete $decoded; object not found or was not a PostNode")
+                    ResponseEntity.ok(body = APIResult.Error("Could not delete $decoded; object not found or was not a Post"))
+                }
             } else {
                 error("Could not delete $decoded; object not found")
                 ResponseEntity.ok(body = APIResult.Error("Could not delete $decoded; object not found"))

@@ -1,8 +1,7 @@
 package org.liamjd.cantilever.routing
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
-
-data class Header(val name: String, val value: String)
+import org.liamjd.cantilever.common.MimeType
 
 /**
  * General helper function to get a named header

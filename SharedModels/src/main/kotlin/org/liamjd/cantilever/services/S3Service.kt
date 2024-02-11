@@ -18,6 +18,7 @@ interface S3Service {
      * @param key the S3 object key
      * @param bucket the S3 bucket name
      * @return the object response
+     * This isn't particularly useful, as you can't get the bytes from the response
      */
     fun getObject(key: String, bucket: String): GetObjectResponse?
 
@@ -29,6 +30,15 @@ interface S3Service {
      */
     fun getObjectAsString(key: String, bucket: String): String
 
+
+    /**
+     * Get an S3 Object, read its bytestream, and return it as a ByteArray
+     * @param key the S3 object key
+     * @param bucket the S3 bucket name
+     * @return the contents of the file as a ByteArray, or an empty ByteArray if failed
+     */
+    fun getObjectAsBytes(key: String, bucket: String): ByteArray
+
     /**
      * Write a string to an S3 bucket
      * @param key the S3 object key to write
@@ -37,7 +47,17 @@ interface S3Service {
      * @param contentType the mime type of the file; optional
      * @return size of object in bytes
      */
-    fun putObject(key: String, bucket: String, contents: String, contentType: String?): Int
+    fun putObjectAsString(key: String, bucket: String, contents: String, contentType: String?): Int
+
+    /**
+     * Write a ByteArray to an S3 bucket
+     * @param key the S3 object key to write
+     * @param bucket the s3 bucket name
+     * @param contents the ByteArray to write to the object
+     * @param contentType the mime type of the file; optional
+     * @return size of object in bytes
+     */
+    fun putObjectAsBytes(key: String, bucket: String, contents: ByteArray, contentType: String?): Int
 
     /**
      * Check to see if the object with the given key exists
@@ -87,4 +107,39 @@ interface S3Service {
      */
     fun getUpdatedTime(key: String, bucket: String): Instant
 
+    /**
+     * Return the metadata for the given object
+     * @param key the object to check
+     * @param bucket the s3 bucket name
+     * @param metadataKey the key of the metadata to return
+     * @return the metadata as a String, or null if not found
+     */
+    fun getMetadata(key: String, bucket: String, metadataKey: String): String?
+
+    /**
+     * Return the content type for the given object
+     * @param key the object to check
+     * @param bucket the s3 bucket name
+     * @return the content type as a String, or null if not found
+     */
+    fun getContentType(key: String, bucket: String): String?
+
+    /**
+     * Copy an object from one location to another in the same bucket
+     * @param srcKey the object to copy
+     * @param destKey the destination object name
+     * @param bucket the s3 bucket name
+     * @return 0, or -1 if not created
+     */
+    fun copyObject(srcKey: String, destKey: String, bucket: String): Int
+
+    /**
+     * Copy an object from one location to another in a different bucket
+     * @param srcKey the object to copy
+     * @param destKey the destination object name
+     * @param srcBucket the source bucket name
+     * @param destBucket the destination bucket name
+     * @return 0, or -1 if not created
+     */
+    fun copyObject(srcKey: String, destKey: String, srcBucket: String, destBucket: String): Int
 }

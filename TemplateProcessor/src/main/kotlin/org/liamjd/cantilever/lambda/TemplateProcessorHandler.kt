@@ -10,7 +10,6 @@ import kotlinx.serialization.json.Json
 import org.liamjd.cantilever.common.FILES.INDEX_HTML
 import org.liamjd.cantilever.common.FILES.INDEX_MD
 import org.liamjd.cantilever.common.FILE_TYPE.MD
-import org.liamjd.cantilever.common.S3_KEY.fragments
 import org.liamjd.cantilever.common.S3_KEY.projectKey
 import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.CantileverProject
@@ -117,7 +116,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             renderer.render(model = model, template = templateString)
         }
 
-        s3Service.putObject(pageMsg.metadata.url, destinationBucket, html, "text/html")
+        s3Service.putObjectAsString(pageMsg.metadata.url, destinationBucket, html, "text/html")
         logger.info("Written final HTML file to '${pageMsg.metadata.url}'")
     }
 
@@ -161,7 +160,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         }
 
         // save to S3
-        s3Service.putObject(postMsg.metadata.url, destinationBucket, html, "text/html")
+        s3Service.putObjectAsString(postMsg.metadata.url, destinationBucket, html, "text/html")
         logger.info("Written final HTML file to '${postMsg.metadata.url}'")
     }
 
@@ -190,7 +189,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             renderer.render(model = model, template = cssTemplateString)
         }
 
-        s3Service.putObject(staticFileMsg.destinationKey, destinationBucket, css, "text/css")
+        s3Service.putObjectAsString(staticFileMsg.destinationKey, destinationBucket, css, "text/css")
         logger.info("Written final CSS file to '${staticFileMsg.destinationKey}'")
     }
 

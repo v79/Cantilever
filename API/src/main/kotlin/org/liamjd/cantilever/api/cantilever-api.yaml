@@ -2,28 +2,173 @@ openapi: 3.0.3
 info:
   title: Cantilever API
   description: API for Cantilever, providing methods for managing the content of a static website
-  version: 0.0.8
+  version: 0.0.11
 servers:
   - url: https://api.cantilevers.org
 tags:
+  - name: Pages
+    description: Create, update and manage static pages
   - name: Project
     description: Manage the overall project settings
   - name: Posts
     description: Create, update and manage blog posts
   - name: Templates
     description: Create, update and manage templates
+  - name: Media
+    description: Create, update and manage images and other media files
   - name: Generation
     description: Trigger the regeneration of pages and blog posts
   - name: Metadata
-    description: Manage the metadata.yaml file for the project
+    description: Manage the metadata.json file for the project
 paths:
   /warm:
     get:
+      summary: Warm
+      description: Warms the lambda router
       responses:
         200:
           description: OK
           content:
             text/plain:
+              schema:
+                type: string
+  /pages:
+    get:
+      summary: Get pages
+      description: Returns a list of all pages
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+  /pages/save:
+    post:
+      tags:
+        - Pages
+      summary: Save page
+      description: Save markdown page source
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: org.liamjd.cantilever.models.ContentNode$PageNode
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /pages/{srcKey}:
+    get:
+      tags:
+        - Pages
+      summary: Get page source
+      description: Returns the markdown source for a page
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+    delete:
+      tags:
+        - Pages
+      summary: Delete page
+      description: Delete a static page
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /pages/folder/new/{folderName}:
+    put:
+      tags:
+        - Pages
+      summary: Create folder
+      description: Pages can be nested in folders, but don't go too deep!
+      parameters:
+        - name: folderName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /pages/folder/{srcKey}:
+    delete:
+      tags:
+        - Pages
+      summary: Delete folder
+      description: Delete a folder. It must be empty
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /pages/reassignIndex:
+    post:
+      tags:
+        - Pages
+      summary: Reassign index page for folder
+      description: Set a new index page for the folder, so that it becomes index.html for that folder, and unset the previous index page
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/org.liamjd.cantilever.models.rest.ReassignIndexRequestDTO'
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /folders:
+    get:
+      summary: Get folders
+      description: Returns a list of all folders
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
               schema:
                 type: string
   /project/:
@@ -52,94 +197,12 @@ paths:
         content:
           application/yaml:
             schema:
-              type: string
+              $ref: '#/components/schemas/org.liamjd.cantilever.models.CantileverProject'
       responses:
         200:
           description: OK
           content:
             application/json:
-              schema:
-                type: string
-  /project/pages:
-    get:
-      tags:
-        - Project
-      summary: Get pages
-      description: Returns a list of all pages
-      security:
-        - cognitojwt-bearer-token-authorizer: []
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: string
-  /project/pages/:
-    post:
-      tags:
-        - Project
-      summary: Save page
-      description: Save markdown page source
-      security:
-        - cognitojwt-bearer-token-authorizer: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: string
-      responses:
-        200:
-          description: OK
-          content:
-            text/plain:
-              schema:
-                type: string
-  /project/pages/{srcKey}:
-    get:
-      tags:
-        - Project
-      summary: Get page source
-      description: Returns the markdown source for a page
-      security:
-        - cognitojwt-bearer-token-authorizer: []
-      parameters:
-        - name: srcKey
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: string
-  /project/pages/folder/new/{folderName}:
-    put:
-      tags:
-        - Project
-      summary: Create folder
-      description: Pages can be nested in folders
-      security:
-        - cognitojwt-bearer-token-authorizer: []
-      parameters:
-        - name: folderName
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: string
-      responses:
-        200:
-          description: OK
-          content:
-            text/plain:
               schema:
                 type: string
   /project/templates/{templateKey}:
@@ -221,6 +284,8 @@ paths:
     get:
       tags:
         - Posts
+      summary: Preview post
+      description: When implemented, this will return a preview of a post
       security:
         - cognitojwt-bearer-token-authorizer: []
       parameters:
@@ -248,7 +313,7 @@ paths:
         content:
           application/json:
             schema:
-              type: string
+              $ref: '#/components/schemas/org.liamjd.cantilever.models.rest.PostNodeRestDTO'
       responses:
         200:
           description: OK
@@ -290,7 +355,7 @@ paths:
             application/json:
               schema:
                 type: string
-  /templates/:
+  /templates/save:
     post:
       tags:
         - Templates
@@ -302,7 +367,111 @@ paths:
         content:
           application/json:
             schema:
-              type: string
+              type: object
+              description: org.liamjd.cantilever.models.ContentNode$TemplateNode
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+  /templates/usage/{srcKey}:
+    get:
+      tags:
+        - Templates
+      summary: Get template usage
+      description: Returns the count of pages and posts which use this template
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+  /media/images:
+    get:
+      tags:
+        - Media
+      summary: Get images
+      description: Returns a list of all images
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+  /media/images/{srcKey}/{resolution}:
+    get:
+      tags:
+        - Media
+      summary: Get image
+      description: Returns an image with the given key and image resolution
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: resolution
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+  /media/images/:
+    post:
+      tags:
+        - Media
+      summary: Upload image
+      description: Upload an image to the source bucket
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/org.liamjd.cantilever.models.ImageDTO'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+  /media/images/{srcKey}:
+    delete:
+      tags:
+        - Media
+      summary: Delete image
+      description: Delete an image from the source bucket
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      parameters:
+        - name: srcKey
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: OK
@@ -362,6 +531,26 @@ paths:
             text/plain:
               schema:
                 type: string
+  /generate/images/resolutions:
+    put:
+      tags:
+        - Generation
+      summary: Regenerate images
+      description: Trigger the regeneration of all images at all resolutions - NOT IMPLEMENTED
+      security:
+        - cognitojwt-bearer-token-authorizer: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
   /generate/template/{templateKey}:
     put:
       tags:
@@ -390,14 +579,11 @@ paths:
       tags:
         - Metadata
       summary: Rebuild metadata
-      description: Rebuild the metadata.yaml file from the source files
+      description: Rebuild the metadata.json file from the source pages, posts, templates and images
       security:
         - cognitojwt-bearer-token-authorizer: []
       requestBody:
         content:
-          application/json:
-            schema:
-              type: string
       responses:
         200:
           description: OK
@@ -407,6 +593,8 @@ paths:
                 type: string
   /openAPI:
     get:
+      summary: OpenAPI
+      description: Returns the OpenAPI specification for this API
       responses:
         200:
           description: OK
@@ -416,6 +604,8 @@ paths:
                 type: string
   /showAllRoutes:
     get:
+      summary: Show all routes
+      description: Returns a list of all routes in the API, a rather clumsy text list.
       responses:
         200:
           description: OK
@@ -429,3 +619,170 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  schemas:
+    org.liamjd.cantilever.models.CantileverProject:
+      type: object
+      properties:
+        projectName:
+          type: string
+        author:
+          type: string
+        dateFormat:
+          type: string
+        dateTimeFormat:
+          type: string
+        imageResolutions:
+          type: object
+          description: object(Map<String, ImgRes>)
+        attributes:
+          type: object
+          description: object(Map<String, String>?)
+    org.liamjd.cantilever.models.ImageDTO:
+      type: object
+      properties:
+        srcKey:
+          type: string
+        contentType:
+          type: string
+        bytes:
+          type: string
+    org.liamjd.cantilever.models.TemplateList:
+      type: object
+      properties:
+        count:
+          type: number
+        lastUpdated:
+          type: object
+          description: object(Instant)
+        templates:
+          type: object
+          description: object(List<Template>)
+    org.liamjd.cantilever.models.Template:
+      type: object
+      properties:
+        srcKey:
+          type: string
+        lastUpdated:
+          type: object
+          description: object(Instant)
+        metadata:
+          type: object
+          description: object(TemplateMetadata)
+    org.liamjd.cantilever.models.TemplateMetadata:
+      type: object
+      properties:
+        name:
+          type: string
+        sections:
+          type: object
+          description: object(List<String>?)
+    org.liamjd.cantilever.models.rest.FolderListDTO:
+      type: object
+      properties:
+        count:
+          type: number
+        folders:
+          type: object
+          description: object(List<FolderNode>)
+    org.liamjd.cantilever.models.rest.HandlebarsTemplate:
+      type: object
+      properties:
+        template:
+          type: object
+          description: object(Template)
+        body:
+          type: string
+    org.liamjd.cantilever.models.rest.ImageListDTO:
+      type: object
+      properties:
+        count:
+          type: number
+        lastUpdated:
+          type: object
+          description: object(Instant)
+        images:
+          type: object
+          description: object(List<ImageNode>)
+    org.liamjd.cantilever.models.rest.MarkdownPageDTO:
+      type: object
+      properties:
+        metadata:
+          type: object
+          description: object(PageNode)
+        body:
+          type: string
+        type:
+          type: object
+          description: object(String?)
+    org.liamjd.cantilever.models.rest.PageListDTO:
+      type: object
+      properties:
+        count:
+          type: number
+        lastUpdated:
+          type: object
+          description: object(Instant)
+        pages:
+          type: object
+          description: object(List<PageNode>)
+    org.liamjd.cantilever.models.rest.PostListDTO:
+      type: object
+      properties:
+        count:
+          type: number
+        lastUpdated:
+          type: object
+          description: object(Instant)
+        posts:
+          type: object
+          description: object(List<PostNode>)
+    org.liamjd.cantilever.models.rest.PostNodeRestDTO:
+      type: object
+      properties:
+        srcKey:
+          type: string
+        title:
+          type: string
+        templateKey:
+          type: string
+        date:
+          type: object
+          description: object(LocalDate)
+        slug:
+          type: string
+        body:
+          type: string
+        attributes:
+          type: object
+          description: object(Map<String, String>)
+    org.liamjd.cantilever.models.rest.ReassignIndexRequestDTO:
+      type: object
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        folder:
+          type: string
+    org.liamjd.cantilever.models.rest.TemplateListDTO:
+      type: object
+      properties:
+        count:
+          type: number
+        lastUpdated:
+          type: object
+          description: object(Instant)
+        templates:
+          type: object
+          description: object(List<TemplateNode>)
+    org.liamjd.cantilever.models.rest.TemplateUseDTO:
+      type: object
+      properties:
+        count:
+          type: number
+        pageKeys:
+          type: object
+          description: object(List<String>)
+        postKeys:
+          type: object
+          description: object(List<String>)

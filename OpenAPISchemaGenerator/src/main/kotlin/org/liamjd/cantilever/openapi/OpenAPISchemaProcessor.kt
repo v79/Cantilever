@@ -33,7 +33,7 @@ class OpenAPISchemaProcessor(environment: SymbolProcessorEnvironment) : SymbolPr
                 sBuilder.appendLine(" - className: ${kClassDeclaration.qualifiedName?.asString()}")
                 sBuilder.appendLine("   properties:")
                 kClassDeclaration.getAllProperties().forEach { property ->
-                    logger.warn("\tProperty: ${property.simpleName.asString()}: ${property.type}")
+//                    logger.warn("\tProperty: ${property.simpleName.asString()}: ${property.type}")
                     sBuilder.appendLine("    - name: ${property.simpleName.asString()}")
                     val type = lookupType(property.type.resolve())
                     sBuilder.appendLine("      type: $type")

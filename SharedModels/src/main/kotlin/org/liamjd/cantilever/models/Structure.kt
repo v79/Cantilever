@@ -50,13 +50,13 @@ data class PostMeta(
 
 /**
  * Represents a Handlebars template file. It does not contain the content. There is no yaml front-matter, and hence no metadata, for Templates.
- * @property key the full S3 key for this template ('sources/templates/myTemplate.hbs'). Note that [PageMeta] and [PostMeta] only refer to the leaf of this, i.e. 'myTemplate'
+ * @property srcKey the full S3 key for this template ('sources/templates/myTemplate.hbs'). Note that [PageMeta] and [PostMeta] only refer to the leaf of this, i.e. 'myTemplate'
  * @property metadata the [TemplateMetadata] object for this template, containing name and sections
  * @property lastUpdated internal property updated whenever the template is saved.
  */
 @Serializable
 @APISchema
-data class Template(val key: String, val lastUpdated: Instant = Clock.System.now(), val metadata: TemplateMetadata)
+data class Template(val srcKey: String, val lastUpdated: Instant = Clock.System.now(), val metadata: TemplateMetadata)
 
 /**
  * Represents the frontmatter metadata for a handlebars template file
@@ -66,11 +66,3 @@ data class Template(val key: String, val lastUpdated: Instant = Clock.System.now
 @Serializable
 @APISchema
 data class TemplateMetadata(val name: String, val sections: List<String>? = emptyList())
-
-@Deprecated(message = "This is obsolete, not used.")
-@Serializable
-data class Layouts(val templates: MutableMap<String, Template>)
-
-@Deprecated(message = "Not implemented yet, not used.")
-@Serializable
-data class Project(val name: String)

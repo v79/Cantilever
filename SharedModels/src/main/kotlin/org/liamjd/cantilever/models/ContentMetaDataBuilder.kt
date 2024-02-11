@@ -89,7 +89,7 @@ sealed interface ContentMetaDataBuilder {
                 false
             }
 
-            val parentPath = srcKey.substringBeforeLast("/" + "/")
+            val parentPath = srcKey.substringBeforeLast("/")
 
             return ContentNode.PageNode(
                 title = title,
@@ -124,6 +124,14 @@ sealed interface ContentMetaDataBuilder {
                 emptyMap()
             }
             return customSections
+        }
+    }
+
+    object ImageBuilder : ContentMetaDataBuilder {
+        override fun buildFromSourceString(sourceString: String, srcKey: SrcKey): ContentNode.ImageNode {
+            return ContentNode.ImageNode(
+                srcKey = srcKey
+            )
         }
     }
 }

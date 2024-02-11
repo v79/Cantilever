@@ -126,7 +126,7 @@ internal class ProjectControllerTest : KoinTest {
         declareMock<S3Service> {
             every { mockS3.getObjectAsString(srcKey, sourceBucket) } returns mockYaml
             every {
-                mockS3.putObject(
+                mockS3.putObjectAsString(
                     srcKey,
                     sourceBucket,
                     any(),

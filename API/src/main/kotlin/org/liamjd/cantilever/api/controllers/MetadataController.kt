@@ -60,6 +60,11 @@ class MetadataController(sourceBucket: String) : KoinComponent, APIController(so
                             contentTree.insertStatic(static)
                             filesProcessed++
                         }
+                        if (it.key().startsWith(S3_KEY.imagesPrefix) && it.key() != S3_KEY.imagesPrefix) {
+                            val media = ContentNode.ImageNode(it.key())
+                            contentTree.insertImage(media)
+                            filesProcessed++
+                        }
                     }
                 }
             }
@@ -79,13 +84,13 @@ class MetadataController(sourceBucket: String) : KoinComponent, APIController(so
             info("Found $filesProcessed files in sources/ bucket; writing metadata.json to generated/ bucket")
             val pretty = Json { prettyPrint = true }
             val treeJson = pretty.encodeToString(ContentTree.serializer(), contentTree)
-            s3Service.putObject(S3_KEY.metadataKey, sourceBucket, treeJson, "application/json")
+            s3Service.putObjectAsString(S3_KEY.metadataKey, sourceBucket, treeJson, "application/json")
         } else {
             error("No source files found in 'sources/ which match the requirements to build a project metadata' file.")
             return ResponseEntity.serverError(body = APIResult.Error(message = "No source files found in $sourceBucket which match the requirements to build a ${S3_KEY.postsKey} file."))
         }
 
-        return ResponseEntity.notImplemented(APIResult.Error(message = "Metadata generation is a WIP"))
+        return ResponseEntity.ok(body = APIResult.Success("Rebuilt metadata.json file in $sourceBucket with $filesProcessed (${contentTree.postCount} posts, ${contentTree.pageCount} pages, ${contentTree.images.size} images, ${contentTree.templates.size} templates, ${contentTree.statics.size} statics)"))
     }
 
     /**

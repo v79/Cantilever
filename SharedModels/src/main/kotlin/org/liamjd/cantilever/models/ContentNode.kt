@@ -3,11 +3,7 @@ package org.liamjd.cantilever.models
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.EncodeDefault
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
+import kotlinx.serialization.*
 import org.liamjd.cantilever.common.S3_KEY
 
 /**
@@ -96,7 +92,7 @@ sealed class ContentNode {
         val attributes: Map<String, String> = emptyMap()
     ) : ContentNode() {
 
-        // I'd like to make this configurable, but lets try a folder structure based on the date
+        // I'd like to make this configurable, but let's try a folder structure based on the date
         override val url: String
             get() {
                 val year = date.year.toString()
@@ -153,6 +149,7 @@ sealed class ContentNode {
         val sections: List<String> = emptyList(),
     ) : ContentNode() {
         override val url = "" // irrelevant for templates
+        var body: String = ""
     }
 
     /**
@@ -167,6 +164,22 @@ sealed class ContentNode {
     ) {
         var fileType: String? = null
         override val url = srcKey.removePrefix(S3_KEY.sources) + "/"
+    }
+
+    /**
+     * An image is a node in the tree which represents an image file. It is copied to the generated bucket without modification
+     */
+    @Serializable
+    @SerialName("image")
+    data class ImageNode(
+        override val srcKey: SrcKey,
+        override val lastUpdated: Instant = Clock.System.now(),
+    ) : ContentNode(
+    ) {
+        var contentType: String? = null
+        override val url = "" // irrelevant for images, or rather, handled differently because of the image resolutions
+
+        // should I be recording image resolutions here?
     }
 }
 
@@ -198,6 +211,10 @@ class ContentTree {
     val items: MutableList<ContentNode> = mutableListOf()
     val templates: MutableList<ContentNode.TemplateNode> = mutableListOf()
     val statics: MutableList<ContentNode.StaticNode> = mutableListOf()
+    val images: MutableList<ContentNode.ImageNode> = mutableListOf()
+
+    val postCount = items.filterIsInstance<ContentNode.PostNode>().size // FIXME: not working as I expected
+    val pageCount = items.filterIsInstance<ContentNode.PageNode>().size // FIXME: not working as I expected
 
     /**
      * Insert a node into the tree. It performs the appropriate insert based on the type of node.
@@ -209,6 +226,7 @@ class ContentTree {
             is ContentNode.PostNode -> insertPost(node)
             is ContentNode.TemplateNode -> insertTemplate(node)
             is ContentNode.StaticNode -> insertStatic(node)
+            is ContentNode.ImageNode -> insertImage(node)
         }
     }
 
@@ -223,6 +241,9 @@ class ContentTree {
      * Insert a Template into the tree
      */
     fun insertTemplate(templateNode: ContentNode.TemplateNode) {
+        if (templates.contains(templateNode)) {
+            templates.remove(templateNode)
+        }
         templates.add(templateNode)
     }
 
@@ -230,20 +251,43 @@ class ContentTree {
      * Insert a static file, such as a .css file or image, into the tree
      */
     fun insertStatic(staticNode: ContentNode.StaticNode) {
+        if (statics.contains(staticNode)) {
+            statics.remove(staticNode)
+        }
         statics.add(staticNode)
+    }
+
+    /**
+     * Insert an image into the tree
+     */
+    fun insertImage(imageNode: ContentNode.ImageNode) {
+        if (images.contains(imageNode)) {
+            images.remove(imageNode)
+        }
+        images.add(imageNode)
     }
 
     /**
      * Delete a template from the tree.
      */
     fun deleteTemplate(templateNode: ContentNode.TemplateNode) {
-        templates.remove(templateNode)
+        println("Removing template ${templateNode.srcKey} from ContentTree")
+        templates.removeIf { it.srcKey == templateNode.srcKey }
+    }
+
+    /**
+     * Delete an image from the tree
+     */
+    fun deleteImage(imageNode: ContentNode.ImageNode) {
+        println("Removing image ${imageNode.srcKey} from ContentTree")
+        images.removeIf { it.srcKey == imageNode.srcKey }
     }
 
     /**
      * Insert a folder into the tree.
      */
     fun insertFolder(folderNode: ContentNode.FolderNode) {
+        // not sure I want to delete first, but I don't want duplicates either
         items.add(folderNode)
     }
 
@@ -258,9 +302,21 @@ class ContentTree {
     }
 
     /**
+     * Update a folder from the tree
+     */
+    fun updateFolder(folderNode: ContentNode.FolderNode) {
+        val existing = items.find { it.srcKey == folderNode.srcKey } as ContentNode.FolderNode?
+        if (existing != null) {
+            items.remove(existing)
+            items.add(folderNode)
+        }
+    }
+
+    /**
      * Insert a page into the tree. It also attempts to associate the page with its parent folder.
      */
     fun insertPage(page: ContentNode.PageNode) {
+        // check if page exists first??
         items.add(page)
         val parent = items.find { it.srcKey == page.parent } as ContentNode.FolderNode?
         parent?.children?.add(page.srcKey).also {
@@ -274,6 +330,7 @@ class ContentTree {
      *  Insert a page into the tree, and associate it with the specified parent folder.
      */
     fun insertPage(page: ContentNode.PageNode, folder: ContentNode.FolderNode) {
+        // check if page exists first??
         items.add(page)
         folder.children.add(page.srcKey)
         page.parent = folder.srcKey
@@ -311,7 +368,7 @@ class ContentTree {
      * Update a template in the tree. This does a delete then insert
      */
     fun updateTemplate(template: ContentNode.TemplateNode) {
-        val existing = templates.find { it.srcKey == template.srcKey } as ContentNode.TemplateNode?
+        val existing = templates.find { it.srcKey == template.srcKey }
         if (existing != null) {
             deleteTemplate(existing)
             insertTemplate(template)
@@ -403,10 +460,14 @@ class ContentTree {
     }
 
     /**
-     * Find a node in the tree, based on its srcKey
+     * Find a node in the tree, based on its srcKey.
      */
-    private fun getNode(srcKey: SrcKey): ContentNode? {
+    fun getNode(srcKey: SrcKey): ContentNode? {
         return items.find { it.srcKey == srcKey }
+    }
+
+    fun getTemplate(srcKey: SrcKey): ContentNode.TemplateNode? {
+        return templates.find { it.srcKey == srcKey }
     }
 
     /**
@@ -430,5 +491,6 @@ class ContentTree {
         items.clear()
         templates.clear()
         statics.clear()
+        images.clear()
     }
 }
