@@ -65,49 +65,54 @@ class LambdaRouter : RequestHandlerWrapper() {
         ).spec(Spec.PathItem("Warm", "Warms the lambda router"))
 
         group("/pages", Spec.Tag(name = "Pages", description = "Create, update and manage static pages")) {
-            get("", pageController::getPages).spec(Spec.PathItem("Get pages", "Returns a list of all pages"))
+            auth(cognitoJWTAuthorizer) {
+                get("", pageController::getPages).spec(Spec.PathItem("Get pages", "Returns a list of all pages"))
 
-            post(
-                "/save",
-                pageController::saveMarkdownPageSource,
-            ).supplies(setOf(MimeType.plainText)).spec(
-                Spec.PathItem("Save page", "Save markdown page source")
-            )
+                post(
+                    "/save",
+                    pageController::saveMarkdownPageSource,
+                ).supplies(setOf(MimeType.plainText)).spec(
+                    Spec.PathItem("Save page", "Save markdown page source")
+                )
 
-            get(
-                "/$SRCKEY",
-                pageController::loadMarkdownSource,
-            ).spec(
-                Spec.PathItem("Get page source", "Returns the markdown source for a page")
-            )
+                get(
+                    "/$SRCKEY",
+                    pageController::loadMarkdownSource,
+                ).spec(
+                    Spec.PathItem("Get page source", "Returns the markdown source for a page")
+                )
 
-            put(
-                "/folder/new/{folderName}",
-                pageController::createFolder,
-            ).spec(
-                Spec.PathItem("Create folder", "Pages can be nested in folders, but don't go too deep!")
-            ).supplies(setOf(MimeType.plainText))
+                put(
+                    "/folder/new/{folderName}",
+                    pageController::createFolder,
+                ).spec(
+                    Spec.PathItem("Create folder", "Pages can be nested in folders, but don't go too deep!")
+                ).supplies(setOf(MimeType.plainText))
 
-            delete("/$SRCKEY", pageController::deleteMarkdownPageSource).supplies(setOf(MimeType.plainText))
-                .spec(Spec.PathItem("Delete page", "Delete a static page"))
+                delete("/$SRCKEY", pageController::deleteMarkdownPageSource).supplies(setOf(MimeType.plainText))
+                    .spec(Spec.PathItem("Delete page", "Delete a static page"))
 
-            delete("/folder/{srcKey}", pageController::deleteFolder).supplies(setOf(MimeType.plainText))
-                .spec(Spec.PathItem("Delete folder", "Delete a folder. It must be empty"))
+                delete("/folder/{srcKey}", pageController::deleteFolder).supplies(setOf(MimeType.plainText))
+                    .spec(Spec.PathItem("Delete folder", "Delete a folder. It must be empty"))
 
-            post("/reassignIndex", pageController::reassignIndex).supplies(setOf(MimeType.plainText)).spec(
+                post("/reassignIndex", pageController::reassignIndex).supplies(setOf(MimeType.plainText)).spec(
+                    Spec.PathItem(
+                        "Reassign index page for folder",
+                        "Set a new index page for the folder, so that it becomes index.html for that folder, and unset the previous index page"
+                    )
+                )
+            }
+        }
+
+        auth(cognitoJWTAuthorizer) {
+            get("/folders", pageController::getFolders).spec(
                 Spec.PathItem(
-                    "Reassign index page for folder",
-                    "Set a new index page for the folder, so that it becomes index.html for that folder, and unset the previous index page"
+                    "Get folders",
+                    "Returns a list of all folders"
                 )
             )
         }
 
-        get("/folders", pageController::getFolders).spec(
-            Spec.PathItem(
-                "Get folders",
-                "Returns a list of all folders"
-            )
-        )
         group(
             "/project", Spec.Tag(name = "Project", description = "Manage the overall project settings")
         ) {

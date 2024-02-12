@@ -218,7 +218,6 @@
 				} else {
 					toast.message = 'Saved page ' + r;
 					toastStore.trigger(toast);
-					markdownStore.set(CLEAR_MARKDOWN);
 					loadPagesAndFolders();
 					isNewPage = false;
 				}
