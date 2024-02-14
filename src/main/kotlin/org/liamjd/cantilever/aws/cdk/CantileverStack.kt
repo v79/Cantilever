@@ -152,7 +152,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
 
         println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
         val cloudfrontSubstack = CloudFrontSubstack(versionString)
-        cloudfrontSubstack.createCloudfrontDistribution(this, sourceBucket, destinationBucket)
+        cloudfrontSubstack.createCloudfrontDistribution(this, destinationBucket)
 
         // I suspect this isn't the most secure way to do this. Better a new IAM role?
         println("Granting lambda permissions to buckets and queues")
@@ -310,7 +310,6 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         .removalPolicy(RemovalPolicy.DESTROY)
         .autoDeleteObjects(true)
         .publicReadAccess(true)
-        .websiteIndexDocument("index.html")
         .build()
 
     private fun createBucket(name: String, public: Boolean = false): Bucket = Bucket.Builder.create(this, name)
