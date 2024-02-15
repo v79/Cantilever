@@ -43,20 +43,29 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
 
         logger.info("Received ${event.records.size} events received for image processing")
 
-        event.records.forEach { eventRecord ->
-            logger.info("Event record: ${eventRecord.body}")
+        try {
+            val projectYaml= s3Service.getObjectAsString(S3_KEY.projectKey, sourceBucket)
+            val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
 
-            when (val sqsMsg = Json.decodeFromString<ImageSQSMessage>(eventRecord.body)) {
-                is ImageSQSMessage.ResizeImageMsg -> {
-                    response = processImageResize(sqsMsg, sourceBucket)
-                }
-                is ImageSQSMessage.CopyImagesMsg -> {
-                    logger.info("Received request to copy images from source to destination bucket")
-                    response =  processImageCopy(sqsMsg, sourceBucket, destinationBucket)
+            event.records.forEach { eventRecord ->
+                logger.info("Event record: ${eventRecord.body}")
+
+                when (val sqsMsg = Json.decodeFromString<ImageSQSMessage>(eventRecord.body)) {
+                    is ImageSQSMessage.ResizeImageMsg -> {
+                        response = processImageResize(sqsMsg, sourceBucket)
+                    }
+
+                    is ImageSQSMessage.CopyImagesMsg -> {
+                        logger.info("Received request to copy images from source to destination bucket")
+                        response = processImageCopy(sqsMsg, project, sourceBucket, destinationBucket)
+                    }
                 }
             }
+            return response
+        } catch (e: Exception) {
+            logger.error("Failed to process image file; ${e.message}")
+            return "500 Internal Server Error"
         }
-        return response
     }
 
     /**
@@ -133,7 +142,8 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
         return responseString
     }
 
-    private fun processImageCopy(imageMessage: ImageSQSMessage.CopyImagesMsg, sourceBucket: String, destinationBucket: String): String {
+    // TODO: Need stronger error handling here; there's a good chance that the source image won't exist
+    private fun processImageCopy(imageMessage: ImageSQSMessage.CopyImagesMsg, project: CantileverProject, sourceBucket: String, destinationBucket: String): String {
         var responseString = "200 OK"
 
         try {
@@ -143,7 +153,7 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
                 // and destination key will be the full path in the destination bucket, e.g. images/my-image.jpg (no leading slash)
                 // TODO: this requires the user to always request images in a folder called images.
                 val sourceKey = "${S3_KEY.generated}${imageKey}"
-                val destinationKey = imageKey.removePrefix("/")
+                val destinationKey = project.domainKey + imageKey.removePrefix("/")
                 logger.info("Copying $sourceKey to $destinationKey, from $sourceBucket to $destinationBucket")
                 val copyResult = s3Service.copyObject(sourceKey, destinationKey, sourceBucket, destinationBucket)
                 if(copyResult == -1) {
