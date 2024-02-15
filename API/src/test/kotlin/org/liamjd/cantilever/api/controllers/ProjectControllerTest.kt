@@ -58,6 +58,7 @@ internal class ProjectControllerTest : KoinTest {
             author: "Author name"
             dateFormat: "dd/MM/yyyy"
             dateTimeFormat: "HH:mm dd/MM/yyyy"
+            domain: "https://example.com"
         """.trimIndent()
         declareMock<S3Service> {
             every { mockS3.objectExists(srcKey, sourceBucket) } returns true
@@ -121,7 +122,8 @@ internal class ProjectControllerTest : KoinTest {
             dateFormat = "dd/MM/yyyy",
             dateTimeFormat = "HH:mm dd/MM/yyyy",
             imageResolutions = emptyMap(),
-            attributes = null
+            attributes = null,
+            domain = "https://example.com"
         )
         declareMock<S3Service> {
             every { mockS3.getObjectAsString(srcKey, sourceBucket) } returns mockYaml
@@ -157,7 +159,8 @@ internal class ProjectControllerTest : KoinTest {
             dateFormat = "dd/MM/yyyy",
             dateTimeFormat = "HH:mm dd/MM/yyyy",
             imageResolutions = emptyMap(),
-            attributes = null
+            attributes = null,
+            domain = "https://example.com"
         )
 
 

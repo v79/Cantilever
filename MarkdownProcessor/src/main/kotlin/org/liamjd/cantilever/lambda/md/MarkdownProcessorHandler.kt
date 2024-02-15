@@ -8,8 +8,11 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import com.charleskorn.kaml.Yaml
 import org.liamjd.cantilever.common.QUEUE
+import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.S3_KEY.fragments
+import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentMetaDataBuilder.PageBuilder.extractSectionsFromSource
 import org.liamjd.cantilever.models.sqs.ImageSQSMessage
 import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
@@ -48,18 +51,35 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 
         logger.info("Received ${event.records.size} events received for Markdown processing")
 
-        event.records.forEach { eventRecord ->
-            logger.info("Event record: ${eventRecord.body}")
+        try {
+            // load project defintion from S3
+            val projectString = s3Service.getObjectAsString(S3_KEY.projectKey, sourceBucket)
+            val project = Yaml.default.decodeFromString<CantileverProject>(projectString)
+            event.records.forEach { eventRecord ->
+                logger.info("Event record: ${eventRecord.body}")
 
-            when (val sqsMsg = Json.decodeFromString<MarkdownSQSMessage>(eventRecord.body)) {
-                is MarkdownSQSMessage.PostUploadMsg -> {
-                    processPostUpload(sqsMsg, sourceBucket, handlebarQueueUrl)
-                }
+                when (val sqsMsg = Json.decodeFromString<MarkdownSQSMessage>(eventRecord.body)) {
+                    is MarkdownSQSMessage.PostUploadMsg -> {
+                        processPostUpload(sqsMsg, project, sourceBucket, handlebarQueueUrl)
+                    }
 
-                is MarkdownSQSMessage.PageUploadMsg -> {
-                    processPageUpload(sqsMsg, sourceBucket, handlebarQueueUrl)
+                    is MarkdownSQSMessage.PageUploadMsg -> {
+                        processPageUpload(sqsMsg, project, sourceBucket, handlebarQueueUrl)
+                    }
                 }
             }
+        } catch (se: SerializationException) {
+            logger.error("Failed to parse project definition string; ${se.message}")
+            return "500 Internal Server Error"
+        } catch (iae: IllegalArgumentException) {
+            logger.error("Failed to parse project definition string; ${iae.message}")
+            return "500 Internal Server Error"
+        } catch (e: Exception) {
+            logger.error("Error processing markdown: ${e.message}")
+            return "500 Internal Server Error"
+        } catch (e: Exception) {
+            logger.error("Error processing markdown: ${e.message}")
+            return "500 Internal Server Error"
         }
         return response
     }
@@ -72,6 +92,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
      */
     private fun processPageUpload(
         sqsMsgBody: MarkdownSQSMessage.PageUploadMsg,
+        project: CantileverProject,
         sourceBucket: String,
         handlebarQueueUrl: String
     ): String {
@@ -79,61 +100,65 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         val sectionMap = mutableMapOf<String, String>()
         var bytesWritten = 0
         var responseString = "200 OK"
-        // TODO: catch exceptions for s3Service
-        val fullSourceText = s3Service.getObjectAsString(sqsMsgBody.metadata.srcKey, sourceBucket)
-        val sections = extractSectionsFromSource(fullSourceText, true)
-        sections.forEach { section ->
-            try {
-                logger.info("Writing ${section.key} to ${fragmentPrefix}${section.key}")
-                val html = converter.convertMDToHTML(section.value)
-                logger.info("HTML output is ${html.length} characters long.")
-                bytesWritten += s3Service.putObjectAsString(
-                    fragmentPrefix + section.key,
-                    sourceBucket,
-                    html,
-                    "text/html"
+        try {
+            val fullSourceText = s3Service.getObjectAsString(sqsMsgBody.metadata.srcKey, sourceBucket)
+            val sections = extractSectionsFromSource(fullSourceText, true)
+            sections.forEach { section ->
+                try {
+                    logger.info("Writing ${section.key} to ${project.domainKey}${fragmentPrefix}${section.key}")
+                    val html = converter.convertMDToHTML(section.value)
+                    logger.info("HTML output is ${html.length} characters long.")
+                    bytesWritten += s3Service.putObjectAsString(
+                        project.domainKey + fragmentPrefix + section.key,
+                        sourceBucket,
+                        html,
+                        "text/html"
+                    )
+                    sectionMap[section.key] = project.domainKey + fragmentPrefix + section.key
+
+                    // copy any images referenced in the markdown to the destination bucket
+                    copyImages("${sqsMsgBody.metadata.srcKey}§${section.key}",  section.value)
+                } catch (qdne: QueueDoesNotExistException) {
+                    logger.error("queue '$handlebarQueueUrl' does not exist; ${qdne.message}")
+                    responseString = "500 Internal Server Error"
+                } catch (se: SerializationException) {
+                    logger.error("Failed to parse metadata string; ${se.message}")
+                    responseString = "500 Internal Server Error"
+                } catch (e: Exception) {
+                    logger.error("${e.message}")
+                    responseString = "500 Internal Server Error"
+
+                }
+
+                // [ContentNode.PageNode] isn't quite suitable for sending to the handlebars queue, so we need to build a new message
+                // But the only important difference is how we handle sections.
+                // [ContentNode.PageNode.sections] is a Map<String, String>, which is fine, but we need to store a Map<String,SrcKey> (which is a typealias for String anyway)
+
+                val updatedPageNode = sqsMsgBody.metadata.copy(sections = sectionMap.toMap())
+                // I don't like the number of times I have to force this value.
+                updatedPageNode.parent = sqsMsgBody.metadata.srcKey.substringBeforeLast("/") + "/"
+
+                val message = TemplateSQSMessage.RenderPageMsg(
+                    fragmentSrcKey = fragmentPrefix + updatedPageNode.srcKey,
+                    metadata = updatedPageNode
                 )
-                sectionMap[section.key] = fragmentPrefix + section.key
 
-                // copy any images referenced in the markdown to the destination bucket
-                copyImages("${sqsMsgBody.metadata.srcKey}§${section.key}", section.value)
-            } catch (qdne: QueueDoesNotExistException) {
-                logger.error("queue '$handlebarQueueUrl' does not exist; ${qdne.message}")
-                responseString = "500 Internal Server Error"
-            } catch (se: SerializationException) {
-                logger.error("Failed to parse metadata string; ${se.message}")
-                responseString = "500 Internal Server Error"
-            } catch (e: Exception) {
-                logger.error("${e.message}")
-                responseString = "500 Internal Server Error"
+                logger.info("${updatedPageNode.sections.size} sections written, totalling $bytesWritten bytes")
+                logger.info("Prepared message: $message")
 
+                val msgResponse = sqsService.sendTemplateMessage(
+                    toQueue = handlebarQueueUrl,
+                    body = message
+                )
+                logger.info("Message '${Json.encodeToString(message)}' sent, message ID is ${msgResponse?.messageId()}")
+                if (msgResponse == null) {
+                    logger.warn("No response received for message")
+                    responseString = "500 Internal Server Error"
+                }
             }
-
-            // [ContentNode.PageNode] isn't quite suitable for sending to the handlebars queue, so we need to build a new message
-            // But the only important difference is how we handle sections.
-            // [ContentNode.PageNode.sections] is a Map<String, String>, which is fine, but we need to store a Map<String,SrcKey> (which is a typealias for String anyway)
-
-            val updatedPageNode = sqsMsgBody.metadata.copy(sections = sectionMap.toMap())
-            // I don't like the number of times I have to force this value.
-            updatedPageNode.parent = sqsMsgBody.metadata.srcKey.substringBeforeLast("/") + "/"
-
-            val message = TemplateSQSMessage.RenderPageMsg(
-                fragmentSrcKey = fragmentPrefix + updatedPageNode.srcKey,
-                metadata = updatedPageNode
-            )
-
-            logger.info("${updatedPageNode.sections.size} sections written, totalling $bytesWritten bytes")
-            logger.info("Prepared message: $message")
-
-            val msgResponse = sqsService.sendTemplateMessage(
-                toQueue = handlebarQueueUrl,
-                body = message
-            )
-            logger.info("Message '${Json.encodeToString(message)}' sent, message ID is ${msgResponse?.messageId()}")
-            if (msgResponse == null) {
-                logger.warn("No response received for message")
-                responseString = "500 Internal Server Error"
-            }
+        } catch (e: Exception) {
+            logger.error("Error processing page: ${e.message}")
+            responseString = "500 Internal Server Error"
         }
         return responseString
     }
@@ -143,6 +168,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
      */
     private fun processPostUpload(
         sqsMsgBody: MarkdownSQSMessage.PostUploadMsg,
+        project: CantileverProject,
         sourceBucket: String,
         handlebarQueueUrl: String
     ): String {
@@ -153,7 +179,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
         outputStream.bufferedWriter().write(html)
 
         try {
-            val htmlKey = fragments + sqsMsgBody.metadata.slug
+            val htmlKey = project.domainKey + fragments + sqsMsgBody.metadata.slug
             s3Service.putObjectAsString(htmlKey, sourceBucket, html, "text/html")
             logger.info("Wrote HTML file '$htmlKey'")
             logger.info("Sending message to handlebars handler")
@@ -198,7 +224,9 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                 if (msgResponse == null) {
                     logger.warn("No response received for message")
                 } else {
-                    logger.info("Message '${Json.encodeToString(message)}' sent, message ID is ${msgResponse.messageId()}")
+                    logger.info(
+                        "Message '${Json.encodeToString(message)}' sent, message ID is ${msgResponse.messageId()}"
+                    )
                 }
             } catch (qdne: QueueDoesNotExistException) {
                 logger.error("queue '${QUEUE.IMAGES}' does not exist; ${qdne.message}")
