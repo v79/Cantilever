@@ -116,8 +116,8 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             renderer.render(model = model, template = templateString)
         }
 
-        s3Service.putObjectAsString(pageMsg.metadata.url, destinationBucket, html, "text/html")
-        logger.info("Written final HTML file to '${pageMsg.metadata.url}'")
+        s3Service.putObjectAsString(project.domainKey + pageMsg.metadata.url, destinationBucket, html, "text/html")
+        logger.info("Written final HTML file to '${project.domainKey}${pageMsg.metadata.url}'")
     }
 
     /**
@@ -160,8 +160,8 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
         }
 
         // save to S3
-        s3Service.putObjectAsString(postMsg.metadata.url, destinationBucket, html, "text/html")
-        logger.info("Written final HTML file to '${postMsg.metadata.url}'")
+        s3Service.putObjectAsString(project.domainKey + postMsg.metadata.url, destinationBucket, html, "text/html")
+        logger.info("Written final HTML file to '${project.domainKey}${postMsg.metadata.url}'")
     }
 
     /**
@@ -189,8 +189,8 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             renderer.render(model = model, template = cssTemplateString)
         }
 
-        s3Service.putObjectAsString(staticFileMsg.destinationKey, destinationBucket, css, "text/css")
-        logger.info("Written final CSS file to '${staticFileMsg.destinationKey}'")
+        s3Service.putObjectAsString(project.domainKey + staticFileMsg.destinationKey, destinationBucket, css, "text/css")
+        logger.info("Written final CSS file to '${project.domainKey}${staticFileMsg.destinationKey}'")
     }
 
 
