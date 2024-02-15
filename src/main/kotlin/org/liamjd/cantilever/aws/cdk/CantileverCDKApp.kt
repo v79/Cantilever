@@ -7,12 +7,14 @@ import software.amazon.awscdk.StackProps
 fun main() {
     println("Initiating CDK Application")
     val app = App()
-    val versionString = "v0.0.10"
+    val versionString = "v0.0.12"
+
+    val euWest = makeEnv(System.getenv("CDK_DEFAULT_ACCOUNT"), "eu-west-2")
 
     val stack = CantileverStack(
         app,
         "CantileverStack",
-        StackProps.builder().description("Cantilever is cloud-native static site generator").build(),
+        StackProps.builder().description("Cantilever is cloud-native static site generator").env(euWest).build(),
         versionString
     )
 

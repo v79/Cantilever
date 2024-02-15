@@ -3,7 +3,6 @@ author: "Liam Davison"
 dateFormat: "dd/MM/yyyy"
 dateTimeFormat: "HH:mm dd/MM/yyyy"
 imageResolutions:
-  "bigSquare": "640x640"
-  "Wider": "512x1024"
-attributes:
-  "Greep2": "Wibble3"
+  "big-square": "640x640"
+  "wider": "1024x512"
+attributes: {}
