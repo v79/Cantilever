@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "org.liamjd.cantilever"
-version = "0.0.11"
+version = "0.0.12"
 
 repositories {
     mavenCentral()
@@ -16,7 +16,7 @@ repositories {
 
 dependencies {
     // serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
     implementation("com.charleskorn.kaml:kaml:0.55.0")
 
     // openAPI dependency scanning

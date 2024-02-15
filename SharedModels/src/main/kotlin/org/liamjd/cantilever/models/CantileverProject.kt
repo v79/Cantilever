@@ -1,9 +1,6 @@
 package org.liamjd.cantilever.models
 
-import kotlinx.serialization.EncodeDefault
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
@@ -19,6 +16,7 @@ import org.liamjd.cantilever.openapi.APISchema
  * @property dateTimeFormat the default format for rendering dates and times. Not currently used.
  * @property imageResolutions a map of image resolutions; if empty uploaded images will not be scaled. Otherwise, images will be scaled and named according to this map. Written in the format "name: 320x260". Eg. if the map contains the key "square" and an [ImgRes] of x=320,y=320, then when an image is uploaded a scaled copy will be created with name '<original-name>-square.jpg`.
  * @property attributes a map of additional custom values which will be passed when rendering pages, posts etc.
+ * @property domain the domain name of the site. Required.
  */
 @APISchema
 @Serializable
@@ -28,9 +26,14 @@ data class CantileverProject @OptIn(ExperimentalSerializationApi::class) constru
     val dateFormat: String = "dd/MM/yyyy",
     val dateTimeFormat: String = "HH:mm dd/MM/yyyy",
     val imageResolutions: Map<String, ImgRes> = emptyMap(),
+    val domain: String,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     var attributes: Map<String,String>? = null
-)
+) {
+    // Generation domain needs to end in /
+    @Transient
+    val domainKey: String = if(domain.endsWith("/")) domain else "$domain/"
+}
 
 /**
  * Represents an image resolution in pixels.

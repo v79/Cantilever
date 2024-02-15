@@ -9,7 +9,8 @@
 		'',
 		'',
 		new Map<string, ImgRes>(),
-		new Map<string, string>()
+		new Map<string, string>(),
+		''
 	);
 
 	function createProjectStore() {
@@ -56,7 +57,8 @@
 					data.data.dateFormat,
 					data.data.dateTimeFormat,
 					imageRestMap,
-					attributeMap
+					attributeMap,
+					data.data.domain
 				);
 				project.set(tmpProject);
 				return data.data;

@@ -112,6 +112,14 @@
 							bind:value={$project.dateTimeFormat}
 							required />
 					</div>
+					<div class="col-span-6 sm:col-span-6 lg:col-span-2">
+						<TextInput
+							label="Website domain"
+							name="domain"
+							readonly
+							bind:value={$project.domain}
+							required />
+					</div>
 				</div>
 
 				<TabGroup justify="justify-center" class="mt-4">
