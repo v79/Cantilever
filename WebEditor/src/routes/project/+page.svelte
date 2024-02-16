@@ -165,16 +165,12 @@
 				</div>
 
 				<TabGroup justify="justify-center" class="mt-4">
-					<Tab bind:group={tabSet} name="resolutions" value={0}>Resolutions</Tab>
+					<Tab bind:group={tabSet} name="resolutions" value={0}>Resolutions ({$project.imageResolutions.size})</Tab>
 					<Tab bind:group={tabSet} name="attributes" value={1}>Custom attributes</Tab>
 					<!-- Tab Panels --->
 					<svelte:fragment slot="panel">
 						{#if tabSet === 0}
-							{#if $project.imageResolutions.size === 0}
-								<p class="placeholder">No image resolutions defined</p>
-							{:else}
-								<ImageResolutions />
-							{/if}
+							<ImageResolutions />
 						{:else if tabSet === 1}
 							(custom attribute panel contents)
 						{/if}

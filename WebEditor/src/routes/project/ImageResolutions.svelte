@@ -30,11 +30,16 @@
 	}
 
 	function addResolutionRow() {
+		if (!$project.imageResolutions) {
+			$project.imageResolutions = new Map();
+		}
 		$project.imageResolutions.set('new', new ImgRes(0, 0));
+		$project = $project;
 	}
 
 	function deleteResolutionRow() {
 		$project.imageResolutions.delete(hoveredRes);
+		$project = $project;
 	}
 </script>
 
@@ -42,31 +47,35 @@
 	<div class="grid grid-cols-6 gap-6">
 		<div class="col-span-6 sm:col-span-6 lg:col-span-6">
 			<p><em>Changing image resolutions won't trigger regeneration of images at this time.</em></p>
-			{#each [...$project.imageResolutions] as [key, res], index}
-				<div
-					class="flex items-center"
-					role="row"
-					tabindex={index}
-					on:mouseover={(e) => {
-						hoverRes(key);
-					}}
-					on:focus={(e) => {
-						hoverRes(key);
-					}}>
-					<ImageResEdit {index} bind:key bind:res />
-					<div class="items-start ml-4 mt-8">
-						{#if hoveredRes === key}
-							<button
-								on:click={() => {
-									modalStore.trigger(deleteResolutionModal);
-								}}
-								title="Delete resolution"
-								class="rounded-full hover:bg-gray-200 transition-colors duration-300 ease-in-out"
-								><Icon icon={Delete} color="red" /></button>
-						{/if}
+			{#if $project.imageResolutions.size === 0}
+				<p>No image resolutions defined.</p>
+			{:else}
+				{#each [...$project.imageResolutions] as [key, res], index}
+					<div
+						class="flex items-center"
+						role="row"
+						tabindex={index}
+						on:mouseover={(e) => {
+							hoverRes(key);
+						}}
+						on:focus={(e) => {
+							hoverRes(key);
+						}}>
+						<ImageResEdit {index} bind:key bind:res />
+						<div class="items-start ml-4 mt-8">
+							{#if hoveredRes === key}
+								<button
+									on:click={() => {
+										modalStore.trigger(deleteResolutionModal);
+									}}
+									title="Delete resolution"
+									class="rounded-full hover:bg-gray-200 transition-colors duration-300 ease-in-out"
+									><Icon icon={Delete} color="red" /></button>
+							{/if}
+						</div>
 					</div>
-				</div>
-			{/each}
+				{/each}
+			{/if}
 			<div class="mt-1 grid grid-cols-1 gap-6 w-6/12">
 				<div class="col-span-2 sm:col-span-2 lg:col-span-2 flex justify-end">
 					<div class="btn-group variant-filled mt-4">
