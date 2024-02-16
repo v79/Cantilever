@@ -36,6 +36,7 @@
 		Home,
 		Icon,
 		Perm_media,
+		Save,
 		Settings_applications,
 		Sync
 	} from 'svelte-google-materialdesign-icons';
@@ -54,6 +55,7 @@
 	import { handlebars, markdownStore } from '$lib/stores/contentStore.svelte';
 	import CreateNewFolderModal from '$lib/modals/createNewFolderModal.svelte';
 	import SaveNewPageModal from '$lib/modals/saveNewPageModal.svelte';
+	import SaveNewProjectModal from '$lib/modals/SaveNewProjectModal.svelte';
 	import ExpandMore from 'svelte-google-materialdesign-icons/Expand_more.svelte';
 	import {
 		rebuildAllMetadata,
@@ -69,7 +71,8 @@
 		createNewPageModal: { ref: CreateNewPageModal },
 		createNewFolderModal: { ref: CreateNewFolderModal },
 		switchIndexPageModal: { ref: SwitchIndexPageModal },
-		saveNewPageModal: { ref: SaveNewPageModal }
+		saveNewPageModal: { ref: SaveNewPageModal },
+		createNewProjectModal: { ref: SaveNewProjectModal }
 	};
 	initializeStores();
 

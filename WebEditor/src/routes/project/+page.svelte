@@ -12,9 +12,11 @@
 	import { Icon, Save } from 'svelte-google-materialdesign-icons';
 	import TextInput from '$lib/forms/textInput.svelte';
 	import ImageResolutions from './ImageResolutions.svelte';
+	import { page } from '$app/stores';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
+	let mode = 'edit';
 
 	$: webPageTitle = $project && $project.projectName ? ' - ' + $project.projectName : '';
 
@@ -28,29 +30,63 @@
 		background: 'variant-filled-error'
 	};
 
+	/**
+	 * @type: {ModalSettings}
+	 */
+	$: createNewProjectModal = {
+		type: 'component',
+		component: 'createNewProjectModal',
+		meta: {
+			modalTitle: 'Create new project',
+			projectTitle: $project ? $project.projectName : '',
+			domain: $project ? $project.domain : '',
+			onFormSubmit: (domain: string) => {
+				initiateCreateProject(domain);
+			}
+		}
+	};
+
 	let tabSet = 0;
-	$: saveDisabled = $project && ($project.projectName === undefined || $project.projectName === '');
+	$: saveDisabled =
+		$project &&
+		($project.projectName === undefined ||
+			$project.projectName === '' ||
+			$project.domain === undefined ||
+			$project.domain === '');
 
 	onMount(async () => {
 		if ($userStore.isLoggedIn()) {
-			fetchProject($userStore.token!!);
+			console.dir($page.url.searchParams);
+			// if the query string contains mode=new, clear the project store
+			if ($page.url.searchParams.get('mode') === 'new') {
+				project.clear();
+				mode = 'new';
+			} else {
+				// else fetch the project
+				fetchProject($userStore.token!!);
+			}
 		}
 	});
 
 	async function initiateSaveProject() {
 		console.dir($project);
-		if ($project.projectName !== '') {
-			let saveResult = saveProject($project, $userStore.token!!);
-			saveResult.then((r) => {
-				if (r instanceof Error) {
-					errorToast.message = 'Failed to save project';
-					toastStore.trigger(errorToast);
-				} else {
-					toast.message = 'Saved project ' + $project.projectName;
-					toastStore.trigger(toast);
-				}
-			});
+		if (!saveDisabled) {
+			// let saveResult = saveProject($project, $userStore.token!!);
+			// saveResult.then((r) => {
+			// 	if (r instanceof Error) {
+			// 		errorToast.message = 'Failed to save project';
+			// 		toastStore.trigger(errorToast);
+			// 	} else {
+			// 		toast.message = 'Saved project ' + $project.projectName;
+			// 		toastStore.trigger(toast);
+			// 	}
+			// });
 		}
+	}
+
+	async function initiateCreateProject(domain: string) {
+		console.log('initiateCreateProject: ', domain);
+		console.dir($project);
 	}
 
 	const projectUnsub = project.subscribe((value) => {
@@ -68,12 +104,18 @@
 	{#if $userStore.isLoggedIn()}
 		<div class="flex flex-col justify-center w-full">
 			{#if $project}
-				<h3 class="h3 mb-2 text-center">{$project.projectName} settings</h3>
+				<h3 class="h3 mb-2 text-center">
+					{#if mode === 'new'}Create new project{:else}{$project.projectName} settings{/if}
+				</h3>
 				<div class="flex flex-row justify-end">
 					<div class="btn-group variant-filled" role="group">
 						<button
 							on:click={(e) => {
-								initiateSaveProject();
+								if (mode === 'new') {
+									modalStore.trigger(createNewProjectModal);
+								} else {
+									initiateSaveProject();
+								}
 							}}
 							disabled={saveDisabled}
 							title="Save project settings"
@@ -116,7 +158,7 @@
 						<TextInput
 							label="Website domain"
 							name="domain"
-							readonly
+							readonly={mode === 'edit'}
 							bind:value={$project.domain}
 							required />
 					</div>

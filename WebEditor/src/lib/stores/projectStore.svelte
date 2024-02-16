@@ -6,8 +6,8 @@
 	export const CLEAR_PROJECT = new CantileverProject(
 		'',
 		'',
-		'',
-		'',
+		'dd/MM/yyyy',
+		'dd/MM/yyyy HH:mm:ss',
 		new Map<string, ImgRes>(),
 		new Map<string, string>(),
 		''

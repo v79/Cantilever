@@ -64,6 +64,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             setOf(MimeType.plainText)
         ).spec(Spec.PathItem("Warm", "Warms the lambda router"))
 
+        /** ============ /pages ================ **/
         group("/pages", Spec.Tag(name = "Pages", description = "Create, update and manage static pages")) {
             auth(cognitoJWTAuthorizer) {
                 get("", pageController::getPages).spec(Spec.PathItem("Get pages", "Returns a list of all pages"))
@@ -104,6 +105,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
+        /** ============ /folders ================ **/
         auth(cognitoJWTAuthorizer) {
             get("/folders", pageController::getFolders).spec(
                 Spec.PathItem(
@@ -113,6 +115,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             )
         }
 
+        /** ============ /project ================ **/
         group(
             "/project", Spec.Tag(name = "Project", description = "Manage the overall project settings")
         ) {
@@ -130,8 +133,16 @@ class LambdaRouter : RequestHandlerWrapper() {
                     Spec.PathItem("Update project definition", "Supply an updated cantilever.yaml definition file")
                 )
 
-                // TODO: move this set of routes outside of the project group
+                post(
+                    "/new",
+                    projectController::createProject,
+                ).expects(
+                    setOf(MimeType.yaml)
+                ).supplies(setOf(MimeType.json)).spec(
+                    Spec.PathItem("Create new project", "Supply a new yaml definition file for a new project")
+                )
 
+                // TODO: move this set of routes outside of the project group
                 // TODO: I think this is obsolete, replaced with GET /metadata
                 get(
                     "/templates/{templateKey}",
@@ -142,6 +153,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
+        /** ============ /posts ================ **/
         group("/posts", Spec.Tag(name = "Posts", description = "Create, update and manage blog posts")) {
             auth(cognitoJWTAuthorizer) {
                 get("", postController::getPosts).spec(Spec.PathItem("Get posts", "Returns a list of all posts"))
@@ -171,6 +183,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
+        /** ============ /templates ================ **/
         group("/templates", Spec.Tag(name = "Templates", description = "Create, update and manage templates")) {
             auth(cognitoJWTAuthorizer) {
                 get(
@@ -201,6 +214,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
+        /** ============ /media ================ **/
         group(
             "/media",
             Spec.Tag(name = "Media", description = "Create, update and manage images and other media files")
@@ -227,6 +241,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
+        /** ============ /generate ================ **/
         group("/generate", Spec.Tag("Generation", "Trigger the regeneration of pages and blog posts")) {
             auth(cognitoJWTAuthorizer) {
                 put(
@@ -266,6 +281,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
+        /** ============ /metadata ================ **/
         group("/metadata", Spec.Tag("Metadata", "Manage the metadata.json file for the project")) {
             auth(cognitoJWTAuthorizer) {
                 put(
@@ -280,6 +296,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             }
         }
 
+        /** ============ route overviews ================ **/
         get("/openAPI") { _: Request<Unit> ->
             val openAPI = this.openAPI()
             ResponseEntity.ok(openAPI)
