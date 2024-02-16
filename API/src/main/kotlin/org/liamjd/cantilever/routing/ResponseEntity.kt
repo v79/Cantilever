@@ -9,6 +9,7 @@ import kotlin.reflect.typeOf
 /**
  * A ResponseEntity contents all the components needed to respond to any request
  * @param statusCode the HTTP Status Code
+ * @param statusText the HTTP Status Text, which is optional
  * @param body the object returned from the server, which could be text, an object to be serialized later, or null
  * @param headers the HTTP response headers, which should always include a Content-Type header
  * @property kType internal property to keep track of the type of the body, for serialization
@@ -87,6 +88,17 @@ data class ResponseEntity<T : Any>(
         ): ResponseEntity<T> {
             val tt: KType = typeOf<T>()
             return ResponseEntity<T>(HttpCodes.NOT_FOUND.code, body, headers).apply { kType = tt }
+        }
+
+        /**
+         * 409
+         */
+        inline fun <reified T : Any> conflict(
+            body: T? = null,
+            headers: Map<String, String> = emptyMap()
+        ): ResponseEntity<T> {
+            val tt: KType = typeOf<T>()
+            return ResponseEntity<T>(HttpCodes.CONFLICT.code, body, headers).apply { kType = tt }
         }
 
         /**

@@ -42,7 +42,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
         } else {
             error("Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
             ResponseEntity.notFound(
-                body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+                body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
             )
         }
     }

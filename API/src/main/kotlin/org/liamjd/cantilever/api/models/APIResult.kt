@@ -29,8 +29,9 @@ sealed interface APIResult<out R : Any> {
     @JvmInline
     value class JsonSuccess(val jsonString: RawJsonString) : APIResult<RawJsonString>
 
+    // FIXME: none of these should have a message or status text, sadly.
     @Serializable
-    data class Error(val message: String) : APIResult<Nothing>
+    data class Error(val statusText: String) : APIResult<Nothing>
 
     // FIXME: OK should not have a message, see https://github.com/v79/Cantilever/issues/75
     @Serializable
@@ -89,7 +90,7 @@ class ResultSerializer<R : Any>(rSerializer: KSerializer<R>) : KSerializer<APIRe
 
     override fun serialize(encoder: Encoder, value: APIResult<R>) {
         val surrogate = when (value) {
-            is APIResult.Error -> APIResultSurrogate(type = APIResultSurrogate.ResultType.Error, message = value.message)
+            is APIResult.Error -> APIResultSurrogate(type = APIResultSurrogate.ResultType.Error, message = value.statusText)
             is APIResult.OK -> APIResultSurrogate(type = APIResultSurrogate.ResultType.OK, message = value.message)
             is APIResult.Success -> APIResultSurrogate(type = APIResultSurrogate.ResultType.Success, data = value.value)
             is APIResult.JsonSuccess -> {

@@ -244,7 +244,9 @@ class Router internal constructor() {
      * Utility function to list all the routes which have been declared. Useful for debugging.
      */
     fun listRoutes(): String {
-        return routes.values.joinToString(separator = " ;") { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern}  <${it.requestPredicate.accepts} (${it.requestPredicate.kType}) -> ${it.requestPredicate.supplies}>" }
+        return routes.values.joinToString(
+            separator = " ;"
+        ) { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern}  <${it.requestPredicate.accepts} (${it.requestPredicate.kType}) -> ${it.requestPredicate.supplies}>" }
     }
 
     /**
@@ -264,7 +266,9 @@ class Router internal constructor() {
         sb.appendLine("openapi: 3.0.3")
         sb.appendLine("info:")
         sb.appendLine("  title: Cantilever API")
-        sb.appendLine("  description: API for Cantilever, providing methods for managing the content of a static website")
+        sb.appendLine(
+            "  description: API for Cantilever, providing methods for managing the content of a static website"
+        )
         sb.appendLine("  version: 0.0.11")
         sb.appendLine("servers:")
         sb.appendLine("  - url: https://api.cantilevers.org")
@@ -473,5 +477,6 @@ enum class HttpCodes(val code: Int, val message: String) {
         405,
         "Method Not Allowed"
     ),
+    CONFLICT(409, "Conflict"),
     TEAPOT(418, "I'm a teapot"), SERVER_ERROR(500, "Internal Server Error"), NOT_IMPLEMENTED(501, "Not Implemented"),
 }

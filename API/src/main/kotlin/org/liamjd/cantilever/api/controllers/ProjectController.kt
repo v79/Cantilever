@@ -42,7 +42,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
                 error(se.message ?: "Error deserializing cantilever.yaml. Project is broken.")
                 ResponseEntity.serverError(
                     body = APIResult.Error(
-                        message = se.message ?: "Error deserializing cantilever.yaml. Project is broken."
+                        statusText = se.message ?: "Error deserializing cantilever.yaml. Project is broken."
                     )
                 )
             }
@@ -50,7 +50,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
             error("Cannot find file '$projectKey' in bucket '$sourceBucket'. Project is broken.")
             ResponseEntity.notFound(
                 body = APIResult.Error(
-                    message = "Cannot find file '$projectKey' in bucket '$sourceBucket'. Project is broken."
+                    statusText = "Cannot find file '$projectKey' in bucket '$sourceBucket'. Project is broken."
                 )
             )
         }
@@ -64,7 +64,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
         val updatedDefinition = request.body
         if (updatedDefinition.projectName.isBlank()) {
             return ResponseEntity.badRequest(
-                APIResult.Error(message = "Unable to update project definition where 'project name' is blank")
+                APIResult.Error(statusText = "Unable to update project definition where 'project name' is blank")
             )
         }
         info("Updated project: $updatedDefinition")
@@ -88,20 +88,26 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
         val newProject = request.body
         if (newProject.projectName.isBlank()) {
             return ResponseEntity.badRequest(
-                APIResult.Error(message = "Unable to create project where 'project name' is blank")
+                APIResult.Error(statusText = "Unable to create project where 'project name' is blank")
             )
         }
         if (newProject.domain.isBlank()) {
             return ResponseEntity.badRequest(
-                APIResult.Error(message = "Unable to create project where 'domain' is blank")
+                APIResult.Error(statusText = "Unable to create project where 'domain' is blank")
             )
         }
         info("New project: $newProject")
-
+        val projectKey = newProject.projectName.toSlug() + ".yaml"
         // TODO: check if the project already exists
+        if(s3Service.objectExists(projectKey, sourceBucket)) {
+            error("Project ${newProject.projectName} already exists")
+            return ResponseEntity.conflict(
+                APIResult.Error(statusText = "Project ${newProject.projectName} already exists")
+            )
+        }
         val yamlToSave = Yaml.default.encodeToString(CantileverProject.serializer(), request.body)
         s3Service.putObjectAsString(
-            newProject.projectName.toSlug(),
+            projectKey,
             sourceBucket,
             yamlToSave,
             MimeType.yaml.toString()
@@ -133,7 +139,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
         } else {
             ResponseEntity.notFound(
                 body = APIResult.Error(
-                    message = "Cannot find file '$postsKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/posts/rebuild"
+                    statusText = "Cannot find file '$postsKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/posts/rebuild"
                 )
             )
         }
@@ -155,7 +161,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
             )
             ResponseEntity.notFound(
                 body = APIResult.Error(
-                    message = "Cannot find file '$pagesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/pages/rebuild"
+                    statusText = "Cannot find file '$pagesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/pages/rebuild"
                 )
             )
         }
@@ -177,7 +183,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
             )
             ResponseEntity.notFound(
                 body = APIResult.Error(
-                    message = "Cannot find file '$templatesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/templates/rebuild"
+                    statusText = "Cannot find file '$templatesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/templates/rebuild"
                 )
             )
         }
@@ -222,7 +228,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
             error("No source files found in $sourceBucket which match the requirements to build a $templatesKey file.")
             return ResponseEntity.serverError(
                 body = APIResult.Error(
-                    message = "No source files found in $sourceBucket which match the requirements to build a $templatesKey file."
+                    statusText = "No source files found in $sourceBucket which match the requirements to build a $templatesKey file."
                 )
             )
         }

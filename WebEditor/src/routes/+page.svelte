@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { project } from '$lib/stores/projectStore.svelte';
+	import { fetchProject, project } from '$lib/stores/projectStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import { Add, Icon } from 'svelte-google-materialdesign-icons';
 	import PlusOne from 'svelte-google-materialdesign-icons/Plus_one.svelte';
@@ -14,7 +13,12 @@
 		let nav = await goto('/project?mode=new');
 	}
 
-	function navCreateNewPost() {}
+	async function loadCantileverProject() {
+		console.log('loadCantileverProject');
+		if ($userStore.isLoggedIn()) {
+			await fetchProject($userStore.token!!);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -43,7 +47,9 @@
 				><Icon icon={Add} />New blog post</button>
 			<button class=" variant-filled-primary" on:click={() => {}}
 				><Icon icon={Add} />New page post</button>
+				<button class="btn" on:click={() => loadCantileverProject()}>TEMP: Load Cantilever</button>
 		</div>
+
 	{:else}
 		<h3 class="h3">Please log in to continue</h3>
 	{/if}

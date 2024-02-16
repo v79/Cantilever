@@ -101,4 +101,37 @@
 			return error as Error;
 		}
 	}
+
+	// yes, this is almost identical to saveProject, but it's a different endpoint
+	export async function createProject(
+		project: CantileverProject,
+		token: string
+	): Promise<CantileverProject | Error> {
+		console.log('projectStore: Saving project');
+		let yaml = stringify(project);
+		try {
+			const response = await fetch('https://api.cantilevers.org/project/new', {
+				method: 'POST',
+				headers: {
+					Accept: 'application/json',
+					Authorization: `Bearer ${token}`,
+					'Content-Type': 'application/yaml'
+				},
+				body: yaml,
+				mode: 'cors'
+			});
+			console.log(response);
+			if(response.status === 409) {
+				throw new Error('Project already exists');
+			} else if (response.ok) {
+				const data = await response.json();
+				return data.data;
+			} else {
+				throw new Error('Failed to save project');
+			}
+		} catch (error) {
+			console.log('I caught an error and I am expecting it to be the 409 that the server sent');
+			return error as Error;
+		}
+	}
 </script>

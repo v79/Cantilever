@@ -7,7 +7,7 @@
 		TabGroup,
 		type ToastSettings
 	} from '@skeletonlabs/skeleton';
-	import { fetchProject, project, saveProject } from '$lib/stores/projectStore.svelte';
+	import { createProject, fetchProject, project, saveProject } from '$lib/stores/projectStore.svelte';
 	import { onMount } from 'svelte';
 	import { Icon, Save } from 'svelte-google-materialdesign-icons';
 	import TextInput from '$lib/forms/textInput.svelte';
@@ -71,22 +71,33 @@
 	async function initiateSaveProject() {
 		console.dir($project);
 		if (!saveDisabled) {
-			// let saveResult = saveProject($project, $userStore.token!!);
-			// saveResult.then((r) => {
-			// 	if (r instanceof Error) {
-			// 		errorToast.message = 'Failed to save project';
-			// 		toastStore.trigger(errorToast);
-			// 	} else {
-			// 		toast.message = 'Saved project ' + $project.projectName;
-			// 		toastStore.trigger(toast);
-			// 	}
-			// });
+			let saveResult = saveProject($project, $userStore.token!!);
+			saveResult.then((r) => {
+				if (r instanceof Error) {
+					errorToast.message = 'Failed to save project';
+					toastStore.trigger(errorToast);
+				} else {
+					toast.message = 'Saved project ' + $project.projectName;
+					toastStore.trigger(toast);
+				}
+			});
 		}
 	}
 
 	async function initiateCreateProject(domain: string) {
 		console.log('initiateCreateProject: ', domain);
-		console.dir($project);
+		let saveResult = createProject($project, $userStore.token!!);
+			saveResult.then((r) => {
+				if (r instanceof Error) {
+					console.dir(r);
+					errorToast.message = r.message;
+					toastStore.trigger(errorToast);
+				} else {
+					toast.message = 'Saved project ' + $project.projectName;
+					toastStore.trigger(toast);
+					mode='edit';
+				}
+			});
 	}
 
 	const projectUnsub = project.subscribe((value) => {

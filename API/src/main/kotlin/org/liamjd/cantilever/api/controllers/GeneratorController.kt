@@ -70,7 +70,7 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
             }
         } catch (nske: NoSuchKeyException) {
             error("${nske.message} for key $srcKey")
-            return ResponseEntity.notFound(body = APIResult.Error(message = "Could not find page with key '$srcKey'"))
+            return ResponseEntity.notFound(body = APIResult.Error(statusText = "Could not find page with key '$srcKey'"))
         } catch (e: Exception) {
             error("Error generating page: ${e.message}")
             return ResponseEntity.serverError(body = APIResult.Error("Error generating page: ${e.message}"))
@@ -118,7 +118,7 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
             }
         } catch (nske: NoSuchKeyException) {
             error("${nske.message} for key $srcKey")
-            return ResponseEntity.notFound(body = APIResult.Error(message = "Could not find post with key '$srcKey'"))
+            return ResponseEntity.notFound(body = APIResult.Error(statusText = "Could not find post with key '$srcKey'"))
         } catch (e: Exception) {
             return ResponseEntity.serverError(body = APIResult.Error("Error generating post: ${e.message}"))
         }

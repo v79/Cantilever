@@ -110,7 +110,7 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
             ResponseEntity.ok(body = APIResult.Success(value = postList))
         } else {
             error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
-            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
+            ResponseEntity.notFound(body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
         }
     }
 

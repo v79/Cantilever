@@ -1,7 +1,6 @@
 package org.liamjd.cantilever.api.models
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.*
@@ -25,7 +24,7 @@ class APIResultTests {
 
     @Test
     fun `can serialize non-generic Result Error object`() {
-        val error = APIResult.Error(message = "Error message")
+        val error = APIResult.Error(statusText = "Error message")
 
         val result = Json.encodeToString(error)
 

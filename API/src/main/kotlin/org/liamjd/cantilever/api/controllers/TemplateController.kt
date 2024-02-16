@@ -8,9 +8,7 @@ import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.ContentNode
-import org.liamjd.cantilever.models.Template
 import org.liamjd.cantilever.models.TemplateMetadata
-import org.liamjd.cantilever.models.rest.HandlebarsTemplate
 import org.liamjd.cantilever.models.rest.TemplateListDTO
 import org.liamjd.cantilever.models.rest.TemplateUseDTO
 import org.liamjd.cantilever.routing.Request
@@ -152,7 +150,7 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
         } else {
             error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
             ResponseEntity.notFound(
-                body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+                body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
             )
         }
     }
@@ -175,11 +173,11 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
             } else {
                 error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
                 ResponseEntity.notFound(
-                    body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+                    body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
                 )
             }
         }
-        return ResponseEntity.badRequest(APIResult.Error(message = "Invalid request with null templateKey"))
+        return ResponseEntity.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
     }
 
     /**
@@ -216,11 +214,11 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
             } else {
                 error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
                 ResponseEntity.notFound(
-                    body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+                    body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
                 )
             }
         }
-        return ResponseEntity.badRequest(APIResult.Error(message = "Invalid request with null templateKey"))
+        return ResponseEntity.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
     }
 
     /**

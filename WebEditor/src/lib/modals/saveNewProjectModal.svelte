@@ -19,7 +19,6 @@
 	const cForm = 'p-4 space-y-4 rounded-container-token';
 
 	onMount(() => {
-        console.log('SaveNewProjectModal: onMount');
 		newProjectSlug = createSlug($modalStore[0].meta.projectTitle);
 		if ($project) {
 			saveDomain = $project.domain;
@@ -36,7 +35,6 @@
 
     function updateAndSubmit() {
         if ($project) {
-            console.log('updateAndSubmit: ', saveDomain);
             $project.domain = saveDomain;
             $modalStore[0].meta.onFormSubmit(saveDomain);
             modalStore.close();
