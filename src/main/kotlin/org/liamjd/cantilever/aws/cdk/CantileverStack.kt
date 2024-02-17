@@ -317,6 +317,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         .removalPolicy(RemovalPolicy.DESTROY)
         .autoDeleteObjects(true)
         .publicReadAccess(public)
+        .versioned(true)
         .build()
 
     private fun createEditorBucket(): Bucket = Bucket.Builder.create(this, "cantilever-editor")

@@ -120,9 +120,12 @@ class LambdaRouter : RequestHandlerWrapper() {
             "/project", Spec.Tag(name = "Project", description = "Manage the overall project settings")
         ) {
             auth(cognitoJWTAuthorizer) {
-                get(
-                    "/", projectController::getProject
-                ).spec(Spec.PathItem("Get project definition", "Returns the cantilever.yaml definition file"))
+                get("/load/{domainKey}", projectController::getProject).spec(
+                    Spec.PathItem("Get project definition", "Returns the <project>.yaml definition file"))
+
+                get("/list", projectController::getProjectList).spec(
+                    Spec.PathItem("Get all projects", "Returns a list of all projects")
+                )
 
                 put(
                     "/",

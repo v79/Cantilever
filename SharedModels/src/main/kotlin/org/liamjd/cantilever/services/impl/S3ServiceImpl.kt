@@ -88,6 +88,12 @@ class S3ServiceImpl(region: Region) : S3Service {
         return s3Client.listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).build())
     }
 
+    override fun listObjectsDelim(prefix: String, delimiter: String, bucket: String): ListObjectsV2Response {
+        return s3Client.listObjectsV2(
+            ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).delimiter(delimiter).build()
+        )
+    }
+
     override fun listFolders(prefix: String, bucket: String): List<String> {
         val request =
             s3Client.listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).delimiter("/").build())

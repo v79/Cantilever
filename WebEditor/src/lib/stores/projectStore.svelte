@@ -27,10 +27,10 @@
 	// This store manages the overall project
 	export const project = createProjectStore();
 
-	export async function fetchProject(token: string): Promise<CantileverProject | Error> {
-		console.log('projectStore: Fetching project');
+	export async function fetchProject(token: string, projectName: string): Promise<CantileverProject | Error> {
+		console.log('projectStore: Fetching project ' + projectName);
 		try {
-			const response = await fetch('https://api.cantilevers.org/project/', {
+			const response = await fetch('https://api.cantilevers.org/project/load/' + projectName, {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -78,7 +78,6 @@
 	): Promise<CantileverProject | Error> {
 		console.log('projectStore: Saving project');
 		let yaml = stringify(project);
-		console.log(yaml);
 		try {
 			const response = await fetch('https://api.cantilevers.org/project/', {
 				method: 'PUT',
@@ -120,8 +119,7 @@
 				body: yaml,
 				mode: 'cors'
 			});
-			console.log(response);
-			if(response.status === 409) {
+			if (response.status === 409) {
 				throw new Error('Project already exists');
 			} else if (response.ok) {
 				const data = await response.json();
@@ -131,6 +129,39 @@
 			}
 		} catch (error) {
 			console.log('I caught an error and I am expecting it to be the 409 that the server sent');
+			return error as Error;
+		}
+	}
+
+	// get a list of projects
+	export async function fetchProjectList(token: string): Promise<Map<string,string> | Error> {
+		console.log('projectStore: Fetching project list');
+		try {
+			const response = await fetch('https://api.cantilevers.org/project/list', {
+				method: 'GET',
+				headers: {
+					Accept: 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				
+				const data = await response.json();
+				let array  = Object.entries(data.data);
+				let projectList: Map<string,string> = new Map<string,string>();
+				for (const p of array) {
+					console.dir('*** p: ');
+					console.dir(p);
+					projectList.set(String((p[1] as { second: string }).second), String((p[1] as { first: string }).first));
+				}
+				console.dir('projectList: ' + projectList);
+				return projectList;
+			} else {
+				throw new Error('Failed to fetch project list');
+			}
+		} catch (error) {
+			console.log(error);
 			return error as Error;
 		}
 	}

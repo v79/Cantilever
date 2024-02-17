@@ -32,9 +32,15 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
      * Return the 'cantilever.yaml' project definition file, in yaml format.
      */
     fun getProject(request: Request<Unit>): ResponseEntity<APIResult<CantileverProject>> {
-        info("Retrieving 'cantilever.yaml' file")
-        return if (s3Service.objectExists(projectKey, sourceBucket)) {
-            val projectYaml = s3Service.getObjectAsString(projectKey, sourceBucket)
+        val domainKey = request.pathParameters["domainKey"]
+        if (domainKey.isNullOrEmpty()) {
+            return ResponseEntity.badRequest(
+                APIResult.Error(statusText = "Unable to retrieve project definition where 'domain key' is blank")
+            )
+        }
+        info("Retrieving '$domainKey.yaml' file")
+        return if (s3Service.objectExists("$domainKey.yaml", sourceBucket)) {
+            val projectYaml = s3Service.getObjectAsString("$projectKey.yaml", sourceBucket)
             try {
                 val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
                 ResponseEntity.ok(body = APIResult.Success(value = project))
@@ -50,10 +56,31 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
             error("Cannot find file '$projectKey' in bucket '$sourceBucket'. Project is broken.")
             ResponseEntity.notFound(
                 body = APIResult.Error(
-                    statusText = "Cannot find file '$projectKey' in bucket '$sourceBucket'. Project is broken."
+                    statusText = "Cannot find file '$projectKey' in bucket '$sourceBucket'."
                 )
             )
         }
+    }
+
+    /**
+     * Return a list of all the projects
+     */
+    fun getProjectList(request: Request<Unit>): ResponseEntity<APIResult<List<Pair<String, String>>>> {
+        info("Retrieving list of projects")
+        val projects = s3Service.listObjectsDelim("", "/", sourceBucket)
+        val projectList = mutableListOf<Pair<String, String>>()
+        projects.contents().forEach { obj ->
+            if (obj.key().endsWith(".yaml")) {
+                val projectYaml = s3Service.getObjectAsString(obj.key(), sourceBucket)
+                try {
+                    val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
+                    projectList.add(Pair(obj.key().removeSuffix(".yaml"), project.projectName))
+                } catch (se: SerializationException) {
+                    error(se.message ?: "Error deserializing ${obj.key()}. Project is broken.")
+                }
+            }
+        }
+        return ResponseEntity.ok(body = APIResult.Success(value = projectList))
     }
 
     /**
@@ -99,7 +126,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
         info("New project: $newProject")
         val projectKey = newProject.projectName.toSlug() + ".yaml"
         // TODO: check if the project already exists
-        if(s3Service.objectExists(projectKey, sourceBucket)) {
+        if (s3Service.objectExists(projectKey, sourceBucket)) {
             error("Project ${newProject.projectName} already exists")
             return ResponseEntity.conflict(
                 APIResult.Error(statusText = "Project ${newProject.projectName} already exists")
