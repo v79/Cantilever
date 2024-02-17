@@ -133,7 +133,7 @@ class LambdaRouter : RequestHandlerWrapper() {
                 ).expects(
                     setOf(MimeType.yaml)
                 ).supplies(setOf(MimeType.json)).spec(
-                    Spec.PathItem("Update project definition", "Supply an updated cantilever.yaml definition file")
+                    Spec.PathItem("Update project definition", "Supply an updated <project>.yaml definition file")
                 )
 
                 post(

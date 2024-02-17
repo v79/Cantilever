@@ -16,7 +16,7 @@
 		type ToastSettings
 	} from '@skeletonlabs/skeleton';
 	import '../app.postcss';
-// Highlight JS
+	// Highlight JS
 	import 'highlight.js/styles/github-dark.css';
 	import { page } from '$app/stores';
 	import LoginAvatar from '$lib/components/LoginAvatar.svelte';
@@ -201,7 +201,7 @@
 							><Icon icon={Home} size={32} variation="outlined" /></svelte:fragment>
 						<span>Home</span>
 					</AppRailAnchor>
-					{#if $project}
+					{#if $project && $project.projectName !== ''}
 						<AppRailAnchor
 							href="/project"
 							selected={$page.url.pathname === '/project'}

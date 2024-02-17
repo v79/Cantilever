@@ -21,14 +21,14 @@
 
 	$: isLoggedIn = $userStore.isLoggedIn();
 
-	$: projectList = new Map<string,string>();
+	$: projectList = new Map<string, string>();
 
 	onMount(async () => {
 		if ($userStore.isLoggedIn()) {
 			let list = await fetchProjectList($userStore.token!!);
-			if(list instanceof Error) {
+			if (list instanceof Error) {
 				console.error('Error fetching project list');
-				errorToast.message = "Failed to load project list";
+				errorToast.message = 'Failed to load project list';
 				toastStore.trigger(errorToast);
 			} else {
 				projectList = list;
@@ -41,15 +41,6 @@
 		project.clear();
 		let nav = await goto('/project?mode=new');
 	}
-
-	async function loadCantileverProject() {
-		console.log('loadCantileverProject');
-		if ($userStore.isLoggedIn()) {
-			await fetchProject($userStore.token!!,"cantilever.yaml");
-		}
-	}
-
-	
 </script>
 
 <svelte:head>
@@ -61,24 +52,20 @@
 		<div class="flex flex-row justify-center w-full">
 			<h3 class="h3 mb-2 text-center">Welcome</h3>
 		</div>
-		
 
 		<div class="flex flex-row justify-center m-4">
 			{#if projectList}
-				<ProjectSelectMenu projectList={projectList} />
+				<ProjectSelectMenu {projectList} />
 			{:else}
 				<div class="placeholder">Loading projects...</div>
 			{/if}
 		</div>
 
-		<div class="flex flex-row justify-center w-full btn-group m-4">
-			<button class=" variant-filled-primary" on:click={() => navCreateNewProject()}
-				><Icon icon={PlusOne} />Create a new project</button>
-			<button class=" variant-filled-primary" on:click={() => {}}
-				><Icon icon={Add} />New blog post</button>
-			<button class=" variant-filled-primary" on:click={() => {}}
-				><Icon icon={Add} />New page post</button>
-				<button class="btn" on:click={() => loadCantileverProject()}>TEMP: Load Cantilever</button>
+		<div class="flex flex-row justify-center w-full m-4">
+			<div class="btn-group variant-filled">
+				<button class=" variant-filled-primary" on:click={() => navCreateNewProject()}
+					><Icon icon={PlusOne} />Create a new project</button>
+			</div>
 		</div>
 
 		<div class="flex flex-col">
@@ -90,7 +77,6 @@
 				<li>Regenerating all content</li>
 			</ul>
 		</div>
-
 	{:else}
 		<h3 class="h3">Please log in to continue</h3>
 	{/if}

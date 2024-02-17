@@ -7,6 +7,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.common.S3_KEY.pagesKey
 import org.liamjd.cantilever.common.S3_KEY.pagesPrefix
 import org.liamjd.cantilever.common.S3_KEY.postsKey
@@ -14,9 +15,8 @@ import org.liamjd.cantilever.common.S3_KEY.projectKey
 import org.liamjd.cantilever.common.S3_KEY.templatesKey
 import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
 import org.liamjd.cantilever.common.getFrontMatter
-import org.liamjd.cantilever.models.*
-import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.common.toSlug
+import org.liamjd.cantilever.models.*
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
 
@@ -40,15 +40,15 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
         }
         info("Retrieving '$domainKey.yaml' file")
         return if (s3Service.objectExists("$domainKey.yaml", sourceBucket)) {
-            val projectYaml = s3Service.getObjectAsString("$projectKey.yaml", sourceBucket)
+            val projectYaml = s3Service.getObjectAsString("$domainKey.yaml", sourceBucket)
             try {
                 val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
                 ResponseEntity.ok(body = APIResult.Success(value = project))
             } catch (se: SerializationException) {
-                error(se.message ?: "Error deserializing cantilever.yaml. Project is broken.")
+                error(se.message ?: "Error deserializing '$domainKey'.yaml. Project is broken.")
                 ResponseEntity.serverError(
                     body = APIResult.Error(
-                        statusText = se.message ?: "Error deserializing cantilever.yaml. Project is broken."
+                        statusText = se.message ?: "Error deserializing '$domainKey'.yaml. Project is broken."
                     )
                 )
             }
