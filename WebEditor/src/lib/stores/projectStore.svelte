@@ -27,7 +27,10 @@
 	// This store manages the overall project
 	export const project = createProjectStore();
 
-	export async function fetchProject(token: string, projectName: string): Promise<CantileverProject | Error> {
+	export async function fetchProject(
+		token: string,
+		projectName: string
+	): Promise<CantileverProject | Error> {
 		console.log('projectStore: Fetching project ' + projectName);
 		try {
 			const response = await fetch('https://api.cantilevers.org/project/load/' + projectName, {
@@ -134,7 +137,7 @@
 	}
 
 	// get a list of projects
-	export async function fetchProjectList(token: string): Promise<Map<string,string> | Error> {
+	export async function fetchProjectList(token: string): Promise<Map<string, string> | Error> {
 		console.log('projectStore: Fetching project list');
 		try {
 			const response = await fetch('https://api.cantilevers.org/project/list', {
@@ -146,16 +149,15 @@
 				mode: 'cors'
 			});
 			if (response.ok) {
-				
 				const data = await response.json();
-				let array  = Object.entries(data.data);
-				let projectList: Map<string,string> = new Map<string,string>();
+				let array = Object.entries(data.data);
+				let projectList: Map<string, string> = new Map<string, string>();
 				for (const p of array) {
-					console.dir('*** p: ');
-					console.dir(p);
-					projectList.set(String((p[1] as { second: string }).second), String((p[1] as { first: string }).first));
+					projectList.set(
+						String((p[1] as { second: string }).second),
+						String((p[1] as { first: string }).first)
+					);
 				}
-				console.dir('projectList: ' + projectList);
 				return projectList;
 			} else {
 				throw new Error('Failed to fetch project list');

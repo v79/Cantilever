@@ -7,7 +7,12 @@
 		TabGroup,
 		type ToastSettings
 	} from '@skeletonlabs/skeleton';
-	import { createProject, fetchProject, project, saveProject } from '$lib/stores/projectStore.svelte';
+	import {
+		createProject,
+		fetchProject,
+		project,
+		saveProject
+	} from '$lib/stores/projectStore.svelte';
 	import { onMount } from 'svelte';
 	import { Icon, Save } from 'svelte-google-materialdesign-icons';
 	import TextInput from '$lib/forms/textInput.svelte';
@@ -61,9 +66,6 @@
 			if ($page.url.searchParams.get('mode') === 'new') {
 				project.clear();
 				mode = 'new';
-			} else {
-				// else fetch the project
-				fetchProject($userStore.token!!);
 			}
 		}
 	});
@@ -87,17 +89,17 @@
 	async function initiateCreateProject(domain: string) {
 		console.log('initiateCreateProject: ', domain);
 		let saveResult = createProject($project, $userStore.token!!);
-			saveResult.then((r) => {
-				if (r instanceof Error) {
-					console.dir(r);
-					errorToast.message = r.message;
-					toastStore.trigger(errorToast);
-				} else {
-					toast.message = 'Saved project ' + $project.projectName;
-					toastStore.trigger(toast);
-					mode='edit';
-				}
-			});
+		saveResult.then((r) => {
+			if (r instanceof Error) {
+				console.dir(r);
+				errorToast.message = r.message;
+				toastStore.trigger(errorToast);
+			} else {
+				toast.message = 'Saved project ' + $project.projectName;
+				toastStore.trigger(toast);
+				mode = 'edit';
+			}
+		});
 	}
 
 	const projectUnsub = project.subscribe((value) => {
@@ -176,7 +178,8 @@
 				</div>
 
 				<TabGroup justify="justify-center" class="mt-4">
-					<Tab bind:group={tabSet} name="resolutions" value={0}>Resolutions ({$project.imageResolutions.size})</Tab>
+					<Tab bind:group={tabSet} name="resolutions" value={0}
+						>Resolutions ({$project.imageResolutions.size})</Tab>
 					<Tab bind:group={tabSet} name="attributes" value={1}>Custom attributes</Tab>
 					<!-- Tab Panels --->
 					<svelte:fragment slot="panel">

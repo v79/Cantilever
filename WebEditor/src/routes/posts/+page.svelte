@@ -18,6 +18,7 @@
 	import PostListItem from '$lib/components/FileListItem.svelte';
 	import { deletePost, fetchPost, fetchPosts, posts, savePost } from './postStore.svelte';
 	import { MarkdownContent, PostItem } from '$lib/models/markdown';
+	import { project } from '$lib/stores/projectStore.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -108,11 +109,11 @@
 	});
 
 	async function loadPostList() {
-		if (!$userStore.token) {
-			console.log('no token');
+		if (!$userStore.token || $project.domain === '') {
+			console.log('no token or domain');
 			return;
 		} else {
-			let fetchResult = await fetchPosts($userStore.token);
+			let fetchResult = await fetchPosts($userStore.token, $project.domain);
 			if (fetchResult instanceof Error) {
 				errorToast.message = 'Failed to load posts. Message was: ' + fetchResult.message;
 				toastStore.trigger(errorToast);

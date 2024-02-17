@@ -11,11 +11,9 @@ import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.common.S3_KEY.pagesKey
 import org.liamjd.cantilever.common.S3_KEY.pagesPrefix
 import org.liamjd.cantilever.common.S3_KEY.postsKey
-import org.liamjd.cantilever.common.S3_KEY.projectKey
 import org.liamjd.cantilever.common.S3_KEY.templatesKey
 import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
 import org.liamjd.cantilever.common.getFrontMatter
-import org.liamjd.cantilever.common.toSlug
 import org.liamjd.cantilever.models.*
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.routing.ResponseEntity
@@ -32,23 +30,24 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
      * Return the 'cantilever.yaml' project definition file, in yaml format.
      */
     fun getProject(request: Request<Unit>): ResponseEntity<APIResult<CantileverProject>> {
-        val domainKey = request.pathParameters["domainKey"]
-        if (domainKey.isNullOrEmpty()) {
+        val projectKey = request.pathParameters["projectKey"]
+        if (projectKey.isNullOrEmpty()) {
+            error("Unable to retrieve project definition where 'project key' is blank")
             return ResponseEntity.badRequest(
-                APIResult.Error(statusText = "Unable to retrieve project definition where 'domain key' is blank")
+                APIResult.Error(statusText = "Unable to retrieve project definition where 'project key' is blank")
             )
         }
-        info("Retrieving '$domainKey.yaml' file")
-        return if (s3Service.objectExists("$domainKey.yaml", sourceBucket)) {
-            val projectYaml = s3Service.getObjectAsString("$domainKey.yaml", sourceBucket)
+        info("Retrieving '$projectKey' file")
+        return if (s3Service.objectExists(projectKey, sourceBucket)) {
+            val projectYaml = s3Service.getObjectAsString(projectKey, sourceBucket)
             try {
                 val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
                 ResponseEntity.ok(body = APIResult.Success(value = project))
             } catch (se: SerializationException) {
-                error(se.message ?: "Error deserializing '$domainKey'.yaml. Project is broken.")
+                error(se.message ?: "Error deserializing '$projectKey'. Project is broken.")
                 ResponseEntity.serverError(
                     body = APIResult.Error(
-                        statusText = se.message ?: "Error deserializing '$domainKey'.yaml. Project is broken."
+                        statusText = se.message ?: "Error deserializing '$projectKey'. Project is broken."
                     )
                 )
             }
@@ -74,7 +73,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
                 val projectYaml = s3Service.getObjectAsString(obj.key(), sourceBucket)
                 try {
                     val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
-                    projectList.add(Pair(obj.key().removeSuffix(".yaml"), project.projectName))
+                    projectList.add(Pair(obj.key(), project.projectName))
                 } catch (se: SerializationException) {
                     error(se.message ?: "Error deserializing ${obj.key()}. Project is broken.")
                 }
@@ -87,18 +86,19 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
      * Update the 'cantilever.yaml' project definition file. This will come to us as yaml document, not json, but it will return as json.
      */
     fun updateProjectDefinition(request: Request<CantileverProject>): ResponseEntity<APIResult<CantileverProject>> {
-        info("Updating 'cantilever.yaml' file")
+        info("Updating '<project>.yaml' file")
         val updatedDefinition = request.body
-        if (updatedDefinition.projectName.isBlank()) {
+        if (updatedDefinition.projectName.isBlank() || updatedDefinition.domain.isBlank()) {
             return ResponseEntity.badRequest(
-                APIResult.Error(statusText = "Unable to update project definition where 'project name' is blank")
+                APIResult.Error(statusText = "Unable to update project definition where 'project name' or 'domain' is blank")
             )
         }
         info("Updated project: $updatedDefinition")
+
         val yamlToSave = Yaml.default.encodeToString(CantileverProject.serializer(), request.body)
         val jsonResponse = Json.encodeToString(CantileverProject.serializer(), request.body)
         s3Service.putObjectAsString(
-            projectKey,
+            updatedDefinition.projectKey,
             sourceBucket,
             yamlToSave,
             MimeType.yaml.toString()
@@ -109,6 +109,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
     /**
      * Create a new project
      * This will come to us as yaml document, not json
+     * The yaml file will be based on the domain name, e.g. www.example.com.yaml
      */
     fun createProject(request: Request<CantileverProject>): ResponseEntity<APIResult<String>> {
         info("Creating new project")
@@ -124,12 +125,12 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
             )
         }
         info("New project: $newProject")
-        val projectKey = newProject.projectName.toSlug() + ".yaml"
+        val projectKey = newProject.projectKey
         // TODO: check if the project already exists
         if (s3Service.objectExists(projectKey, sourceBucket)) {
-            error("Project ${newProject.projectName} already exists")
+            error("Project ${newProject.domain} already exists")
             return ResponseEntity.conflict(
-                APIResult.Error(statusText = "Project ${newProject.projectName} already exists")
+                APIResult.Error(statusText = "Project ${newProject.domain} already exists")
             )
         }
         val yamlToSave = Yaml.default.encodeToString(CantileverProject.serializer(), request.body)

@@ -33,6 +33,8 @@ data class CantileverProject @OptIn(ExperimentalSerializationApi::class) constru
     // Generation domain needs to end in /
     @Transient
     val domainKey: String = if(domain.endsWith("/")) domain else "$domain/"
+    @Transient
+    val projectKey: String = domainKey.substringBefore('/') + ".yaml"
 }
 
 /**
