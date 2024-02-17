@@ -2,6 +2,7 @@ package org.liamjd.cantilever.routing
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import org.liamjd.cantilever.common.MimeType
+import java.util.*
 import kotlin.reflect.KType
 
 /**
@@ -34,6 +35,9 @@ data class RequestPredicate(
         get() = routeParts.filter { it.startsWith("{") && it.endsWith("}") }.map { it.removeSurrounding("{", "}") }
 
     var headerOverrides = mutableMapOf<String, String>()
+        private set
+
+    var requirements: MutableSet<(APIGatewayProxyRequestEvent) -> Boolean> = mutableSetOf()
         private set
 
     // OpenAPI specifications
@@ -100,8 +104,23 @@ data class RequestPredicate(
     fun addSpecs(newSpecs: Set<Spec>) {
         specs.addAll(newSpecs)
     }
-}
 
+    /**
+     * Add a requirement to this route, which must be satisfied for the route to be processed
+     */
+    fun addRequirement(newRequirement: (APIGatewayProxyRequestEvent) -> Boolean) {
+        requirements.add(newRequirement)
+    }
+
+    override fun toString(): String {
+        val sB = StringBuilder()
+        sB.append(method.uppercase(Locale.getDefault())).append(" ")
+        sB.append(pathPattern).append("")
+        sB.append("[" + { consumes.joinToString(", ") } + "]->[" + produces.joinToString(", ") + "]")
+        sB.append(" requirements: $requirements")
+        return sB.toString()
+    }
+}
 
 /**
  * Override the default consumes mime type

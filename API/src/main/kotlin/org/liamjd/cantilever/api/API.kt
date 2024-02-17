@@ -121,7 +121,8 @@ class LambdaRouter : RequestHandlerWrapper() {
         ) {
             auth(cognitoJWTAuthorizer) {
                 get("/load/{projectKey}", projectController::getProject).spec(
-                    Spec.PathItem("Get project definition", "Returns the <project>.yaml definition file"))
+                    Spec.PathItem("Get project definition", "Returns the <project>.yaml definition file")
+                )
 
                 get("/list", projectController::getProjectList).spec(
                     Spec.PathItem("Get all projects", "Returns a list of all projects")
@@ -159,33 +160,32 @@ class LambdaRouter : RequestHandlerWrapper() {
         /** ============ /posts ================ **/
         group("/posts", Spec.Tag(name = "Posts", description = "Create, update and manage blog posts")) {
             auth(cognitoJWTAuthorizer) {
+                require({ request -> request.headers?.get("cantilever-project-domain") != null }) {
+                    get("", postController::getPosts).spec(Spec.PathItem("Get posts", "Returns a list of all posts"))
 
-                // TODO: implement something like:
-                // filter { request -> request.headers["cantilever-project-domain"] != null }
-                get("", postController::getPosts).spec(Spec.PathItem("Get posts", "Returns a list of all posts"))
+                    get(
+                        "/$SRCKEY",
+                        postController::loadMarkdownSource,
+                    ).spec(Spec.PathItem("Get post source", "Returns the markdown source for a post"))
 
-                get(
-                    "/$SRCKEY",
-                    postController::loadMarkdownSource,
-                ).spec(Spec.PathItem("Get post source", "Returns the markdown source for a post"))
+                    get(pattern = "/preview/$SRCKEY") { request: Request<Unit> ->
+                        ResponseEntity.notImplemented(
+                            body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!"
+                        )
+                    }.supplies(
+                        setOf(MimeType.html)
+                    ).spec(Spec.PathItem("Preview post", "When implemented, this will return a preview of a post"))
 
-                get(pattern = "/preview/$SRCKEY") { request: Request<Unit> ->
-                    ResponseEntity.notImplemented(
-                        body = "Not actually returning a preview of ${request.pathParameters["srcKey"]} yet!"
-                    )
-                }.supplies(
-                    setOf(MimeType.html)
-                ).spec(Spec.PathItem("Preview post", "When implemented, this will return a preview of a post"))
+                    post(
+                        "/save", postController::saveMarkdownPost
+                    ).supplies(
+                        setOf(MimeType.plainText)
+                    ).spec(Spec.PathItem("Save post", "Save markdown post source"))
 
-                post(
-                    "/save", postController::saveMarkdownPost
-                ).supplies(
-                    setOf(MimeType.plainText)
-                ).spec(Spec.PathItem("Save post", "Save markdown post source"))
-
-                delete(
-                    "/$SRCKEY", postController::deleteMarkdownPost
-                ).supplies(setOf(MimeType.plainText)).spec(Spec.PathItem("Delete post", "Delete a blog post"))
+                    delete(
+                        "/$SRCKEY", postController::deleteMarkdownPost
+                    ).supplies(setOf(MimeType.plainText)).spec(Spec.PathItem("Delete post", "Delete a blog post"))
+                }
             }
         }
 

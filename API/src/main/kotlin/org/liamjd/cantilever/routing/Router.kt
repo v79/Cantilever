@@ -241,12 +241,27 @@ class Router internal constructor() {
     }
 
     /**
+     * Create a grouping of routes which require a specific condition to be met
+     * It does this by creating a new instance of the Router, then copying its routes into the parent router, adding the requirement to each
+     */
+    fun require(requirement: (APIGatewayProxyRequestEvent) -> Boolean, block: Router.() -> Unit) {
+        val childRouter = Router()
+        childRouter.block()
+        childRouter.routes.forEach {
+            val reqPredCopy = it.key.copy()
+            reqPredCopy.addRequirement(requirement)
+            routes[reqPredCopy] = it.value
+        }
+        groups.addAll(childRouter.groups)
+    }
+
+    /**
      * Utility function to list all the routes which have been declared. Useful for debugging.
      */
     fun listRoutes(): String {
         return routes.values.joinToString(
             separator = " ;"
-        ) { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern}  <${it.requestPredicate.accepts} (${it.requestPredicate.kType}) -> ${it.requestPredicate.supplies}>" }
+        ) { "${it.requestPredicate.method} ${it.requestPredicate.pathPattern}  <${it.requestPredicate.accepts} (${it.requestPredicate.kType}) -> ${it.requestPredicate.supplies} (${it.requestPredicate.requirements.size})>\n" }
     }
 
     /**
@@ -447,6 +462,7 @@ data class RouterFunction<I, T : Any>(
  * @property body the body, which will be empty for a GET but should have a value for PUT, POST etc
  * @property pathPattern the path pattern from the predicate, with the {parameters} etc
  * @property pathParameters a map of matching path parameters and their values, i.e. path /get/{id} with id = 3 becomes `map[id] = 3`
+ * @property headers a wrapper around apiRequest.headers
  */
 data class Request<I>(
     val apiRequest: APIGatewayProxyRequestEvent, val body: I, val pathPattern: String

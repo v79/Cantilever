@@ -49,19 +49,29 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                 )
             }->${input.acceptedMediaTypes()}>"
         )
-        // find matching route
-        val routes: List<RouterFunction<*, *>> = router.routes.values.toList()
-        routes.map { routerFunction: RouterFunction<*, *> ->
-            val matchResult = routerFunction.requestPredicate.match(input)
-            if (matchResult.matches) {
-                val matchedAcceptType = routerFunction.requestPredicate.matchedAcceptType(input.acceptedMediaTypes())
-                    ?: router.produceByDefault.first()
 
-                val entity: ResponseEntity<out Any> = processRoute(input, routerFunction)
-                return createResponse(entity, matchedAcceptType, routerFunction.requestPredicate.headerOverrides)
+        router.routes.entries.map { route: MutableMap.MutableEntry<RequestPredicate, RouterFunction<*, *>> ->
+            val matchResult = route.key.match(input)
+            if (matchResult.matches) {
+                val matchedAcceptType = route.key.matchedAcceptType(input.acceptedMediaTypes())
+                    ?: router.produceByDefault.first()
+                // check the requirements and fail very early, even before authorizing
+                // I think this should be in processRoute, really
+                route.key.requirements.forEach { requirement ->
+                    println("Checking requirement: $requirement")
+                    if (!requirement.invoke(input)) {
+                        println("Requirement failed")
+                        return createResponse(
+                            ResponseEntity.badRequest("Request did not meet requirements"),
+                            MimeType.plainText
+                        )
+                    }
+                }
+
+                val entity: ResponseEntity<out Any> = processRoute(input, route.value)
+                return createResponse(entity, matchedAcceptType, route.key.headerOverrides)
             }
             matchResult
-
         }
         return createNoMatchingRouteResponse(input.httpMethod, input.path, input.acceptedMediaTypes())
     }
@@ -157,7 +167,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
     ): APIGatewayProxyResponseEvent {
         println("No route match found for $httpMethod $path")
         val possibleAlts = router.routes.filterKeys { it.pathPattern == path }
-        if(possibleAlts.isNotEmpty()) {
+        if (possibleAlts.isNotEmpty()) {
             println("Possible alternatives: ${possibleAlts.keys}")
         }
         return APIGatewayProxyResponseEvent()
