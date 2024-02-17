@@ -94,6 +94,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
             val request = Request(input, null, routerFunction.requestPredicate.pathPattern)
             (handler as HandlerFunction<*, *>)(request)
         } else {
+            // TODO: I should probably stop using this custom abuse of the HTTP standards
             if (input.xContentLengthHeader() == "0") {
                 // body can be null in this case
                 val request = Request(input, null, routerFunction.requestPredicate.pathPattern)
@@ -205,8 +206,9 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
         }
 
         val responseHeaders = mutableMapOf(CONTENT_TYPE to contentType, "Access-Control-Allow-Origin" to corsDomain)
-        // A route may supply additional or overriding headers
+        // A route may supply additional or overriding headers. There are two mechanisms to add headers
         responseHeaders.putAll(headerOverrides)
+        responseHeaders.putAll(responseEntity.headers)
         return APIGatewayProxyResponseEvent().withStatusCode(responseEntity.statusCode)
             .withHeaders(responseHeaders)
             .withBody(body)

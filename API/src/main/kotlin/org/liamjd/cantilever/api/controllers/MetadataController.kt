@@ -23,6 +23,11 @@ class MetadataController(sourceBucket: String) : KoinComponent, APIController(so
      */
     fun rebuildFromSources(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         info("Rebuilding project metadata from sources")
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val contentTree = ContentTree()
         var filesProcessed = 0
         // TODO: this only returns 1000 items, need to paginate

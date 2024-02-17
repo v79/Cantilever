@@ -463,6 +463,7 @@ data class Request<I>(
             }
         }
     }
+    val headers: MutableMap<String, String> = if(apiRequest.headers != null) apiRequest.headers else mutableMapOf()
 }
 
 /**

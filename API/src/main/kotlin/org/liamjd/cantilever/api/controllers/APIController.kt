@@ -4,12 +4,10 @@ import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentTree
-import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.S3Service
 
 abstract class APIController(val sourceBucket: String) : KoinComponent {
@@ -21,11 +19,12 @@ abstract class APIController(val sourceBucket: String) : KoinComponent {
     /**
      * Load the content tree from the S3 bucket
      */
-    fun loadContentTree(): Boolean {
-        if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
-            info("Reading metadata.json from bucket $sourceBucket")
+    fun loadContentTree(domain: String): Boolean {
+        val metadataKey = domain + "/" +  S3_KEY.metadataKey
+        if (s3Service.objectExists(metadataKey, sourceBucket)) {
+            info("Reading $metadataKey from bucket $sourceBucket")
             contentTree.clear()
-            val metadata = s3Service.getObjectAsString(S3_KEY.metadataKey, sourceBucket)
+            val metadata = s3Service.getObjectAsString(metadataKey, sourceBucket)
             val newTree = Json.decodeFromString(ContentTree.serializer(), metadata)
             contentTree.items.addAll(newTree.items)
             contentTree.templates.addAll(newTree.templates)
@@ -33,7 +32,7 @@ abstract class APIController(val sourceBucket: String) : KoinComponent {
             contentTree.images.addAll(newTree.images)
             return true
         } else {
-            warn("No '${S3_KEY.metadataKey}' file found in bucket $sourceBucket; please regenerate new empty tree")
+            warn("No '$metadataKey' file found in bucket $sourceBucket; please regenerate new empty tree")
             return false
         }
     }
@@ -41,23 +40,25 @@ abstract class APIController(val sourceBucket: String) : KoinComponent {
     /**
      * Save the content tree to the S3 bucket after a change
      */
-    fun saveContentTree() {
-        info("Saving content tree to bucket $sourceBucket")
+    fun saveContentTree(domain: String) {
+        val metadataKey = domain + "/" +  S3_KEY.metadataKey
+        info("Saving content tree $metadataKey to bucket $sourceBucket")
         val json = Json { prettyPrint = true }
         val metadata = json.encodeToString(ContentTree.serializer(), contentTree)
-        s3Service.putObjectAsString(S3_KEY.metadataKey, sourceBucket, metadata, MimeType.json.toString())
+        s3Service.putObjectAsString(metadataKey, sourceBucket, metadata, MimeType.json.toString())
     }
 
     /**
      * Load the project definition  'cantilever.yaml' from the S3 bucket
      */
-    fun loadProjectDefinition() {
-        if (s3Service.objectExists(S3_KEY.projectKey, sourceBucket)) {
-            info("Reading cantilever.yaml from bucket $sourceBucket")
-            val projectYaml = s3Service.getObjectAsString(S3_KEY.projectKey, sourceBucket)
+    fun loadProjectDefinition(domain: String) {
+        val projectKey = "$domain.yaml"
+        if (s3Service.objectExists(projectKey, sourceBucket)) {
+            info("Reading $projectKey from bucket $sourceBucket")
+            val projectYaml = s3Service.getObjectAsString(projectKey, sourceBucket)
             project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
         } else {
-            error("No '${S3_KEY.projectKey}' file found in bucket $sourceBucket!")
+            error("No '$projectKey' file found in bucket $sourceBucket!")
         }
     }
 

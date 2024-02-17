@@ -126,7 +126,7 @@
 	}
 
 	async function initiateLoadPost(srcKey: string) {
-		let loadResponse = fetchPost(srcKey, $userStore.token!!);
+		let loadResponse = fetchPost(srcKey, $userStore.token!!, $project.domain);
 		loadResponse.then((r) => {
 			if (r instanceof Error) {
 				errorToast.message = 'Failed to load post';
@@ -156,7 +156,7 @@
 				metadata.srcKey = 'sources/posts/' + metadata.slug + '.md';
 				$markdownStore.metadata = metadata;
 			}
-			let saveResult = await savePost(metadata?.srcKey, $userStore.token!!);
+			let saveResult = await savePost(metadata?.srcKey, $userStore.token!!, $project.domain);
 			if (saveResult instanceof Error) {
 				errorToast.message = 'Failed to save post';
 				toastStore.trigger(errorToast);
@@ -173,7 +173,11 @@
 	async function initiateDeletePost() {
 		console.log('Deleting post');
 		if ($markdownStore.metadata) {
-			let deleteResult = deletePost($markdownStore.metadata.srcKey, $userStore.token!!);
+			let deleteResult = deletePost(
+				$markdownStore.metadata.srcKey,
+				$userStore.token!!,
+				$project.domain
+			);
 			deleteResult.then((r) => {
 				if (r instanceof Error) {
 					errorToast.message = 'Failed to delete post';

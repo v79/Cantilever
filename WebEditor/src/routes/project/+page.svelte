@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { page } from '$app/stores';
+	import TextInput from '$lib/forms/textInput.svelte';
+	import { createProject, project, saveProject } from '$lib/stores/projectStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import {
 		getModalStore,
@@ -7,17 +10,9 @@
 		TabGroup,
 		type ToastSettings
 	} from '@skeletonlabs/skeleton';
-	import {
-		createProject,
-		fetchProject,
-		project,
-		saveProject
-	} from '$lib/stores/projectStore.svelte';
 	import { onMount } from 'svelte';
 	import { Icon, Save } from 'svelte-google-materialdesign-icons';
-	import TextInput from '$lib/forms/textInput.svelte';
 	import ImageResolutions from './ImageResolutions.svelte';
-	import { page } from '$app/stores';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -61,7 +56,6 @@
 
 	onMount(async () => {
 		if ($userStore.isLoggedIn()) {
-			console.dir($page.url.searchParams);
 			// if the query string contains mode=new, clear the project store
 			if ($page.url.searchParams.get('mode') === 'new') {
 				project.clear();

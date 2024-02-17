@@ -22,8 +22,13 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
      * @return [ImageListDTO] object containing the list of images, a count and the last updated date/time
      */
     fun getImages(request: Request<Unit>): ResponseEntity<APIResult<ImageListDTO>> {
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
-            loadContentTree()
+            loadContentTree(projectKeyHeader)
             info("Fetching all images from metadata.json")
             val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
             val images = contentTree.images.toList()
@@ -52,6 +57,11 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
             request.pathParameters["srcKey"] ?: return ResponseEntity.badRequest(APIResult.Error("No srcKey provided"))
         val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
         val resolution = request.pathParameters["resolution"]
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         info("Fetching image $decodedKey at resolution $resolution")
         // srcKey will be /sources/images/<image-name>.<ext> so we need to strip off the /sources/images/ prefix and add the /generated/images/ prefix
         // I also need to move the <ext> to the end of the generated key
@@ -82,7 +92,12 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
      */
     @OptIn(ExperimentalEncodingApi::class)
     fun uploadImage(request: Request<ImageDTO>): ResponseEntity<APIResult<ImageDTO>> {
-        loadContentTree()
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        loadContentTree(projectKeyHeader)
 
         val imageBody = request.body
         val srcKey = "sources/images/${imageBody.srcKey}"
@@ -98,7 +113,7 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
             val metadata = ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", srcKey)
             dto = ImageDTO(srcKey, contentType, "") // we don't really need to return the bytes, the browser already has them
             contentTree.insertImage(metadata)
-            saveContentTree()
+            saveContentTree(projectKeyHeader)
         } catch (e: Exception) {
             error("Error uploading image $srcKey: ${e.message}")
             return ResponseEntity.badRequest(APIResult.Error("Error uploading image $srcKey: ${e.message}"))
@@ -113,9 +128,14 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
     fun deleteImage(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val srcKey =
             request.pathParameters["srcKey"] ?: return ResponseEntity.badRequest(APIResult.Error("No srcKey provided"))
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
-        loadContentTree()
-        loadProjectDefinition()
+        loadContentTree(projectKeyHeader)
+        loadProjectDefinition(projectKeyHeader)
 
         info("Deleting image $decodedKey and all its generated versions")
         s3Service.deleteObject(decodedKey, sourceBucket)
@@ -136,7 +156,7 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
 
         contentTree.deleteImage(ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", decodedKey))
         println("Content tree now has ${contentTree.images.size} images")
-        saveContentTree()
+        saveContentTree(projectKeyHeader)
 
         return ResponseEntity.ok(APIResult.Success(value = "Image'${srcKey}' deleted successfully"))
     }

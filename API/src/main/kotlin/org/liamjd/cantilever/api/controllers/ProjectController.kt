@@ -150,7 +150,7 @@ class ProjectController(sourceBucket: String) : KoinComponent, APIController(sou
      */
     @Deprecated("Replaced with [PostController.getPosts]")
     fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostList>> {
-        println("ProjectController: Retrieving all posts")
+        info("ProjectController: Retrieving all posts")
         return if (s3Service.objectExists(postsKey, sourceBucket)) {
             val postListJson = s3Service.getObjectAsString(postsKey, sourceBucket)
             val postList = Json.decodeFromString(PostList.serializer(), postListJson)

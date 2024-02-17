@@ -67,9 +67,9 @@ class GeneratorControllerTest : KoinTest {
         val mockSqsResponse = mockk<SendMessageResponse>()
 
         declareMock<S3Service> {
-            every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns "about page text"
-            every { mockS3.objectExists("generated/metadata.json", sourceBucket) } returns true
-            every { mockS3.getObjectAsString("generated/metadata.json", sourceBucket) } returns mockMetaJson
+            every { mockS3.getObjectAsString("test/sources/pages/about.md", sourceBucket) } returns "about page text"
+            every { mockS3.objectExists("test/generated/metadata.json", sourceBucket) } returns true
+            every { mockS3.getObjectAsString("test/generated/metadata.json", sourceBucket) } returns mockMetaJson
 
         }
         declareMock<SQSService> {
@@ -96,8 +96,8 @@ class GeneratorControllerTest : KoinTest {
                 slug: my-holiday-post
                 date: 2023-10-20
             """.trimIndent()
-            every { mockS3.objectExists("generated/metadata.json", sourceBucket) } returns true
-            every { mockS3.getObjectAsString("generated/metadata.json", sourceBucket) } returns mockMetaJson
+            every { mockS3.objectExists("test/generated/metadata.json", sourceBucket) } returns true
+            every { mockS3.getObjectAsString("test/generated/metadata.json", sourceBucket) } returns mockMetaJson
 
         }
         declareMock<SQSService> {
@@ -261,7 +261,7 @@ class GeneratorControllerTest : KoinTest {
 
         declareMock<S3Service> {
             every { mockS3.objectExists(any(), sourceBucket) } returns true
-            every { mockS3.getObjectAsString("generated/metadata.json", sourceBucket) } returns mockMetaJson
+            every { mockS3.getObjectAsString("test/generated/metadata.json", sourceBucket) } returns mockMetaJson
             every {
                 mockS3.getObjectAsString(
                     "sources/pages/dynamodb-design-thoughts.md", sourceBucket
@@ -302,13 +302,13 @@ class GeneratorControllerTest : KoinTest {
         val mockS3Obj = mockk<S3Object>()
         every { mockPageListResponse.contents() } returns listOf(mockS3Obj)
         every { mockPageListResponse.keyCount() } returns 1
-        every { mockS3Obj.key() } returns "sources/pages/about.md"
+        every { mockS3Obj.key() } returns "test/sources/pages/about.md"
         declareMock<S3Service> {
-            every { mockS3.listObjects("sources/pages/", sourceBucket) } returns mockPageListResponse
-            every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns ""
-            every { mockS3.objectExists("generated/metadata.json", sourceBucket) } returns true
-            every { mockS3.getObjectAsString("generated/metadata.json", sourceBucket) } returns mockPageJsonShort
-            every { mockS3.getObjectAsString("sources/pages/bio/about-me.md", sourceBucket) } returns ""
+            every { mockS3.listObjects("test/sources/pages/", sourceBucket) } returns mockPageListResponse
+            every { mockS3.getObjectAsString("test/sources/pages/about.md", sourceBucket) } returns ""
+            every { mockS3.objectExists("test/generated/metadata.json", sourceBucket) } returns true
+            every { mockS3.getObjectAsString("test/generated/metadata.json", sourceBucket) } returns mockPageJsonShort
+            every { mockS3.getObjectAsString("test/sources/pages/bio/about-me.md", sourceBucket) } returns ""
         }
         declareMock<SQSService> {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
@@ -332,6 +332,7 @@ class GeneratorControllerTest : KoinTest {
         val apiGatewayProxyRequestEvent = APIGatewayProxyRequestEvent()
         apiGatewayProxyRequestEvent.body = ""
         apiGatewayProxyRequestEvent.path = path
+        apiGatewayProxyRequestEvent.headers = mapOf("cantilever-project-domain" to "test")
         return Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
     }
 

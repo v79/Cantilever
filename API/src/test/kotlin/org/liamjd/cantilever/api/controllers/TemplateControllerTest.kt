@@ -114,18 +114,18 @@ internal class TemplateControllerTest : KoinTest {
             every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/plain") } returns 1234
             every {
                 mockS3.putObjectAsString(
-                    "generated/metadata.json", sourceBucket, any(), "application/json"
+                    "test/generated/metadata.json", sourceBucket, any(), "application/json"
                 )
             } returns 2345
         }
 
-        val apiProxyEvent = APIGatewayProxyRequestEvent()
+        val apiProxyEvent = APIGatewayProxyRequestEvent().withHeaders(mapOf("cantilever-project-domain" to "test"))
 
         val controller = TemplateController(sourceBucket)
         val request = Request(
             apiRequest = apiProxyEvent,
             body = mockHandlebarsContent,
-            pathPattern = "/templates/"
+            pathPattern = "/templates/",
         )
         val response = controller.saveTemplate(request)
 
@@ -156,12 +156,12 @@ internal class TemplateControllerTest : KoinTest {
             every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/plain") } returns 1234
             every {
                 mockS3.putObjectAsString(
-                    "generated/metadata.json", sourceBucket, any(), "application/json"
+                    "test/generated/metadata.json", sourceBucket, any(), "application/json"
                 )
             } returns 2345
         }
 
-        val apiProxyEvent = APIGatewayProxyRequestEvent()
+        val apiProxyEvent = APIGatewayProxyRequestEvent().withHeaders(mapOf("cantilever-project-domain" to "test"))
 
         val controller = TemplateController(sourceBucket)
         val request = Request<ContentNode.TemplateNode>(
@@ -180,8 +180,9 @@ internal class TemplateControllerTest : KoinTest {
      */
     private fun buildRequest(path: String, pathPattern: String, body: String = ""): Request<Unit> {
         val apiGatewayProxyRequestEvent = APIGatewayProxyRequestEvent()
-        apiGatewayProxyRequestEvent.body = body
+        apiGatewayProxyRequestEvent.body = ""
         apiGatewayProxyRequestEvent.path = path
+        apiGatewayProxyRequestEvent.headers = mapOf("cantilever-project-domain" to "test")
         return Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
     }
 }

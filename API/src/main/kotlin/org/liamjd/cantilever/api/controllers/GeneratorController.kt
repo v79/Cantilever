@@ -40,15 +40,20 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
         val requestKey = request.pathParameters["srcKey"]
             ?: return ResponseEntity.badRequest(body = APIResult.Error("No srcKey provided"))
         var srcKey = ""
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         try {
-            loadContentTree()
+            loadContentTree(projectKeyHeader)
             if (requestKey == "*") {
                 info("GeneratorController: Received request to regenerate all pages")
                 val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
                 var count = 0
                 if (pages.isNotEmpty()) {
                     pages.forEach { page ->
-                        val sourceString = s3Service.getObjectAsString(page.srcKey, sourceBucket)
+                        val sourceString = s3Service.getObjectAsString("$projectKeyHeader/${page.srcKey}", sourceBucket)
                         val msgResponse = queuePageRegeneration(page.srcKey, sourceString)
                         if (msgResponse != null) {
                             count++
@@ -64,7 +69,7 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
             } else {
                 srcKey = URLDecoder.decode(requestKey, Charset.defaultCharset())
                 info("GeneratorController: Received request to regenerate page '$srcKey'")
-                val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
+                val sourceString = s3Service.getObjectAsString("$projectKeyHeader/${srcKey}", sourceBucket)
                 queuePageRegeneration(srcKey, sourceString)
                 return ResponseEntity.ok(body = APIResult.Success(value = "Regenerated page '$requestKey'"))
             }
@@ -86,15 +91,20 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
     fun generatePost(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val requestKey = request.pathParameters["srcKey"]
         var srcKey = ""
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         try {
-            loadContentTree()
+            loadContentTree(projectKeyHeader)
             if (requestKey == "*") {
                 info("GeneratorController: Received request to regenerate all posts")
                 val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
                 var count = 0
                 if (posts.isNotEmpty()) {
                     posts.forEach { post ->
-                        val sourceString = s3Service.getObjectAsString(post.srcKey, sourceBucket)
+                        val sourceString = s3Service.getObjectAsString("$projectKeyHeader/${post.srcKey}", sourceBucket)
                         val postSrcKey = post.srcKey.removePrefix(postsPrefix)
                         val msgResponse = queuePostRegeneration(postSrcKey, sourceString)
                         if (msgResponse != null) {
@@ -136,6 +146,11 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
                 body = APIResult.Error("Regeneration of all templates is not supported.")
             )
         }
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         info("ENCODED: GeneratorController received request to regenerate pages based on template '$requestKey'")
         // TODO: https://github.com/v79/Cantilever/issues/26 this only works for HTML handlebars templates, i.e. those whose file names end in ".index.html" in the "templates" folder.
         // Also, annoying that I have to double-decode this.
@@ -148,7 +163,7 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
 
         // We don't know if the template is for a Page or a Post. This is less than ideal as I have to check both. But I could short-circuit the second check if the first one succeeds?
         try {
-            loadContentTree()
+            loadContentTree(projectKeyHeader)
             contentTree.getPagesForTemplate(templateKey).forEach { page ->
                 info("Regenerating page ${page.srcKey} because it has template ${page.templateKey}")
                 val pageSource = s3Service.getObjectAsString(page.srcKey, sourceBucket)

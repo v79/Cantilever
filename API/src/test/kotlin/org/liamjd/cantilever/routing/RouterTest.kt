@@ -379,16 +379,27 @@ class RouterTest {
     }
 
     @Test
+    fun `a controller can add additional headers to a response`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/controller-headers").withHttpMethod("GET").withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+        assertEquals(200, response.statusCode)
+        assertEquals("MyCookie=Bimble", response.headers["Set-Cookie"])
+    }
+
+    @Test
     fun `can deserialize an object containing a base64 encoded string`() {
         val testR = TestRouter()
         val event = APIGatewayProxyRequestEvent().withPath("/base64").withHttpMethod("POST")
-            .withBody("""
+            .withBody(
+                """
                 {
                     "srcKey": "tiny.png",
                     "contentType": "image/png",
                     "bytes": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAFiUAABYlAUlSJPAAAABKSURBVChTY/hPJIArvLZi/f9jrf1QHiaAKwQp6mAQhfIwAVarsZmOVSE20wl6BmY6QYUw0wkqhAGwQmTH4womsEJkxyOzEeD/fwBMTXMyLCsQMwAAAABJRU5ErkJggg=="
                 }
-            """.trimIndent())
+            """.trimIndent()
+            )
             .withHeaders(contentJson + acceptText)
         val response = testR.handleRequest(event)
 
@@ -496,6 +507,8 @@ class TestRouter : RequestHandlerWrapper() {
             )
         )
 
+        get("/controller-headers", testController::addHeader)
+
         // contains OpenAPI specifications
         group("/specGroup") {
             get(
@@ -532,6 +545,14 @@ class TestController {
     fun hasSpecification(request: Request<Unit>): ResponseEntity<SimpleClass> {
         println("TestController hasSpecification()")
         return ResponseEntity.ok(body = SimpleClass(message = "TestController has a specification"))
+    }
+
+    fun addHeader(request: Request<Unit>): ResponseEntity<SimpleClass> {
+        println("TestController addHeader()")
+        return ResponseEntity.ok(
+            body = SimpleClass(message = "TestController has added a header"),
+            headers = mapOf("Set-Cookie" to "MyCookie=Bimble")
+        )
     }
 }
 

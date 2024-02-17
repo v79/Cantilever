@@ -23,8 +23,13 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
      */
     fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<ContentNode.PostNode>> {
         val markdownSource = request.pathParameters["srcKey"]
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (markdownSource != null) {
-            val srcKey = URLDecoder.decode(markdownSource, Charset.defaultCharset())
+            val srcKey = projectKeyHeader + "/" + URLDecoder.decode(markdownSource, Charset.defaultCharset())
             info("Loading Markdown file $srcKey")
             return if (s3Service.objectExists(srcKey, sourceBucket)) {
                 val mdPost = buildPostNode(srcKey)
@@ -44,19 +49,25 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
     fun saveMarkdownPost(request: Request<PostNodeRestDTO>): ResponseEntity<APIResult<String>> {
         info("saveMarkdownPost")
         val postToSave = request.body
-        val srcKey = URLDecoder.decode(postToSave.srcKey, Charset.defaultCharset())
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        val srcKey = projectKeyHeader + "/" + URLDecoder.decode(postToSave.srcKey, Charset.defaultCharset())
+
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
-            loadContentTree()
+            loadContentTree(projectKeyHeader)
             info("Updating existing file '${postToSave.srcKey}'")
             val length = s3Service.putObjectAsString(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
             contentTree.updatePost(postToSave.toPostNode())
-            saveContentTree()
+            saveContentTree(projectKeyHeader)
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
             val length = s3Service.putObjectAsString(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
             contentTree.insertPost(postToSave.toPostNode())
-            saveContentTree()
+            saveContentTree(projectKeyHeader)
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
     }
@@ -66,8 +77,13 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
      */
     fun deleteMarkdownPost(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val markdownSource = request.pathParameters["srcKey"]
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (markdownSource != null) {
-            loadContentTree()
+            loadContentTree(projectKeyHeader)
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
             return if (s3Service.objectExists(decoded, sourceBucket)) {
                 val postNode = contentTree.getNode(decoded)
@@ -75,7 +91,7 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
                     info("Deleting markdown file $decoded")
                     s3Service.deleteObject(decoded, sourceBucket)
                     contentTree.deletePost(postNode)
-                    saveContentTree()
+                    saveContentTree(projectKeyHeader)
                     ResponseEntity.ok(body = APIResult.OK("Source $decoded deleted"))
                 } else {
                     error("Could not delete $decoded; object not found or was not a PostNode")
@@ -93,13 +109,21 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
 
     /**
      * Return a list of all the posts in the content tree
+     * [Request.headers] must contain a "cantilever-project-domain" header
      * @return [PostListDTO] object containing the list of posts, a count and the last updated date/time
      */
     fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostListDTO>> {
-        return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
-            loadContentTree()
-            info("Fetching all posts from metadata.json")
-            val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
+
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        val projectMetadataKey = request.headers["cantilever-project-domain"] + "/" + S3_KEY.metadataKey
+        return if (s3Service.objectExists(projectMetadataKey, sourceBucket)) {
+            loadContentTree(request.headers["cantilever-project-domain"]!!)
+            info("Fetching all posts from $projectMetadataKey")
+            val lastUpdated = s3Service.getUpdatedTime(projectMetadataKey, sourceBucket)
             val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
             val sorted = posts.sortedByDescending { it.date }
             val postList = PostListDTO(
@@ -107,10 +131,15 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
                 lastUpdated = lastUpdated,
                 posts = sorted
             )
-            ResponseEntity.ok(body = APIResult.Success(value = postList))
+            if(postList.posts.isEmpty()) {
+                error("No posts found in content tree")
+                ResponseEntity.serverError(body = APIResult.Error("No posts found in content tree for project $projectMetadataKey"))
+            } else {
+                ResponseEntity.ok(body = APIResult.Success(value = postList))
+            }
         } else {
             error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
-            ResponseEntity.notFound(body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
+            ResponseEntity.notFound(body = APIResult.Error(statusText = "Cannot find file '${projectMetadataKey}' in bucket $sourceBucket"))
         }
     }
 

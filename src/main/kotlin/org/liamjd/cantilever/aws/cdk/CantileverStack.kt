@@ -229,6 +229,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             "arn:aws:acm:us-east-1:086949310404:certificate/9b8f27c6-87be-4c14-a368-e6ad3ac4fb68"
         )
         // The API Gateway
+        // I don't like how much I have to hardcode the allowed headers here. I would like this to be configurable by the router.
         LambdaRestApi.Builder.create(this, "cantilever-rest-api")
             .restApiName("Cantilever REST API")
             .description("Gateway function to Cantilever services, handling routing")
@@ -247,7 +248,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
                             "Authorization",
                             "X-Api-Key",
                             "X-Amz-Security-Token",
-                            "X-Content-Length"
+                            "X-Content-Length",
+                            "Cantilever-Project-Domain",
                         )
                     )
                     .allowMethods(listOf("GET", "PUT", "POST", "OPTIONS", "DELETE"))

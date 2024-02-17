@@ -8,14 +8,15 @@
 	export const posts = writable<PostList>();
 
 	// fetch list of posts from server
-	export async function fetchPosts(token: string, projectKey: string): Promise<number | Error> {
-		console.log('postStore: Fetching posts');
+	export async function fetchPosts(token: string, projectDomain: string): Promise<number | Error> {
+		console.log('postStore: Fetching posts for project ' + projectDomain);
 		try {
 			const response = await fetch('https://api.cantilevers.org/posts', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -34,7 +35,11 @@
 	}
 
 	// load a post from the server
-	export async function fetchPost(srcKey: string, token: string): Promise<Error | string> {
+	export async function fetchPost(
+		srcKey: string,
+		token: string,
+		projectDomain
+	): Promise<Error | string> {
 		console.log('postStore: Fetching post', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -42,7 +47,8 @@
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -75,7 +81,11 @@
 	}
 
 	// save a post to the server
-	export async function savePost(srcKey: string, token: string): Promise<Error | string> {
+	export async function savePost(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		console.log('postStore: Saving post', srcKey);
 		let content: MarkdownContent = get(markdownStore);
 		if (content.metadata && content.metadata instanceof PostItem) {
@@ -97,7 +107,8 @@
 					headers: {
 						Accept: 'text/plain',
 						Authorization: `Bearer ${token}`,
-						'Content-Type': 'application/json'
+						'Content-Type': 'application/json',
+						'cantilever-project-domain': projectDomain
 					},
 					mode: 'cors',
 					body: postJson
@@ -121,7 +132,11 @@
 	}
 
 	// delete a post from the server
-	export async function deletePost(srcKey: string, token: string): Promise<Error | string> {
+	export async function deletePost(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		console.log('pageStore: Deleting post ' + srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -129,7 +144,8 @@
 				method: 'DELETE',
 				headers: {
 					Accept: 'text/plain',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});

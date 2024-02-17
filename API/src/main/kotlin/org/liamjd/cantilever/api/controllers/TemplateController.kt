@@ -23,6 +23,11 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
      */
     fun loadHandlebarsSource(request: Request<Unit>): ResponseEntity<APIResult<ContentNode.TemplateNode>> {
         val handlebarSource = request.pathParameters["srcKey"]
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (handlebarSource != null) {
             val decoded = URLDecoder.decode(handlebarSource, Charset.defaultCharset())
             info("Loading handlebar file $decoded")
@@ -65,6 +70,11 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
      */
     fun saveTemplate(request: Request<ContentNode.TemplateNode>): ResponseEntity<APIResult<String>> {
         val templateNode = request.body
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val srcKey = URLDecoder.decode(templateNode.srcKey, Charset.defaultCharset())
 
         // both branches do the same thing
@@ -80,7 +90,7 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
             contentTree.updateTemplate(
                 templateNode
             )
-            saveContentTree()
+            saveContentTree(projectKeyHeader)
             ResponseEntity.ok(
                 body =
                 APIResult.OK("Updated file ${templateNode.srcKey}, $length bytes")
@@ -97,7 +107,7 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
             contentTree.insertTemplate(
                 templateNode
             )
-            saveContentTree()
+            saveContentTree(projectKeyHeader)
             ResponseEntity.ok(
                 body =
                 APIResult.OK("Updated file ${templateNode.srcKey}, $length bytes")
@@ -111,6 +121,11 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
      */
     fun getTemplateMetadata(request: Request<Unit>): ResponseEntity<APIResult<TemplateMetadata>> {
         val handlebarKey = request.pathParameters["templateKey"]
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (handlebarKey != null) {
             val srcKey = URLDecoder.decode(handlebarKey, Charset.defaultCharset())
             return if (s3Service.objectExists(srcKey, sourceBucket)) {
@@ -137,7 +152,12 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
      * Return the list of templates
      */
     fun getTemplates(request: Request<Unit>): ResponseEntity<APIResult<TemplateListDTO>> {
-        return if (loadContentTree()) {
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        return if (loadContentTree(projectKeyHeader)) {
             info("Fetching all posts from metadata.json")
             val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
             val templates = contentTree.templates.sortedBy { it.title }
@@ -160,8 +180,13 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
      */
     fun getTemplateUsage(request: Request<Unit>): ResponseEntity<APIResult<TemplateUseDTO>> {
         val templateKey = request.pathParameters["srcKey"]
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         if (templateKey != null) {
-            return if (loadContentTree()) {
+            return if (loadContentTree(projectKeyHeader)) {
                 val decoded = URLDecoder.decode(templateKey, Charsets.UTF_8)
                 info("Looking for uses of template $decoded")
                 val pages = contentTree.getPagesForTemplate(decoded).map { it.srcKey }
@@ -185,8 +210,13 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
      */
     fun deleteTemplate(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val templateKey = request.pathParameters["srcKey"]
+        if(request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         if (templateKey != null) {
-            return if (loadContentTree()) {
+            return if (loadContentTree(projectKeyHeader)) {
                 val decoded = URLDecoder.decode(templateKey, Charsets.UTF_8)
                 info("Deleting template $decoded")
                 val pages = contentTree.getPagesForTemplate(decoded)
@@ -200,7 +230,7 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
                     } else {
                         val deleted = s3Service.deleteObject(decoded, sourceBucket)
                         contentTree.deleteTemplate(templateNode)
-                        saveContentTree()
+                        saveContentTree(projectKeyHeader)
                         ResponseEntity.ok(APIResult.OK("Deleted template $decoded"))
                     }
                 } else {

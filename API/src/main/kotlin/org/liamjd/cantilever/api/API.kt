@@ -120,7 +120,7 @@ class LambdaRouter : RequestHandlerWrapper() {
             "/project", Spec.Tag(name = "Project", description = "Manage the overall project settings")
         ) {
             auth(cognitoJWTAuthorizer) {
-                get("/load/{domainKey}", projectController::getProject).spec(
+                get("/load/{projectKey}", projectController::getProject).spec(
                     Spec.PathItem("Get project definition", "Returns the <project>.yaml definition file"))
 
                 get("/list", projectController::getProjectList).spec(
@@ -159,6 +159,9 @@ class LambdaRouter : RequestHandlerWrapper() {
         /** ============ /posts ================ **/
         group("/posts", Spec.Tag(name = "Posts", description = "Create, update and manage blog posts")) {
             auth(cognitoJWTAuthorizer) {
+
+                // TODO: implement something like:
+                // filter { request -> request.headers["cantilever-project-domain"] != null }
                 get("", postController::getPosts).spec(Spec.PathItem("Get posts", "Returns a list of all posts"))
 
                 get(

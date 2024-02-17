@@ -29,7 +29,7 @@ internal class ProjectControllerTest : KoinTest {
 
     private val mockS3: S3Service by inject()
     private val sourceBucket = "sourceBucket"
-    private val srcKey = "www.cantilevers.org.yaml"
+    private val srcKey = "www.cantilevers.org"
     private val postsKey = "generated/posts.json"
 
     @JvmField
@@ -66,7 +66,7 @@ internal class ProjectControllerTest : KoinTest {
         }
 
         val controller = ProjectController(sourceBucket)
-        val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{domainKey}")
+        val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{projectKey}")
         val response = controller.getProject(request)
 
         assertNotNull(response)
@@ -80,7 +80,7 @@ internal class ProjectControllerTest : KoinTest {
         }
 
         val controller = ProjectController(sourceBucket)
-        val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{domainKey}")
+        val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{projectKey}")
         val response = controller.getProject(request)
 
         assertNotNull(response)
@@ -101,7 +101,7 @@ internal class ProjectControllerTest : KoinTest {
         }
 
         val controller = ProjectController(sourceBucket)
-        val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{domainKey}")
+        val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{projectKey}")
         val response = controller.getProject(request)
 
         assertNotNull(response)
@@ -144,7 +144,7 @@ internal class ProjectControllerTest : KoinTest {
         val request = Request(
             apiRequest = apiProxyEvent,
             body = mockProject,
-            pathPattern = "/project/{domainKey}"
+            pathPattern = "/project/{projectKey}"
         )
         val response = controller.updateProjectDefinition(request)
 
@@ -229,6 +229,10 @@ internal class ProjectControllerTest : KoinTest {
      * Utility function to build the fake request object
      */
     private fun buildRequest(path: String, pathPattern: String, body: String = ""): Request<Unit> {
-        return Request(APIGatewayProxyRequestEvent().withPath(path).withBody(body),Unit, pathPattern)
+        val apiGatewayProxyRequestEvent = APIGatewayProxyRequestEvent()
+        apiGatewayProxyRequestEvent.body = ""
+        apiGatewayProxyRequestEvent.path = path
+        apiGatewayProxyRequestEvent.headers = mapOf("cantilever-project-domain" to "test")
+        return Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
     }
 }
