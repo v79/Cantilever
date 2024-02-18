@@ -115,35 +115,42 @@
 	});
 
 	async function initiateMetadataRebuild() {
-		spinner.show('Rebuilding metadata...');
-		let response = rebuildAllMetadata($userStore.token!!);
-		response.then((data) => {
-			toast.message = data;
-			toastStore.trigger(toast);
-			spinner.hide();
-			regenComboValue = 'Regenerate...';
-		});
+		if ($project && $project.domain) {
+			spinner.show('Rebuilding metadata...');
+			let response = rebuildAllMetadata($userStore.token!!, $project.domain);
+			response.then((data) => {
+				toast.message = data;
+				toastStore.trigger(toast);
+				spinner.hide();
+				regenComboValue = 'Regenerate...';
+			});
+		}
 	}
 	async function initiatePostsRebuild() {
-		spinner.show('Rebuilding posts...');
-		let response = rebuildAllPosts($userStore.token!!);
-		response.then((data) => {
-			toast.message = data;
-			toastStore.trigger(toast);
-			spinner.hide();
-			regenComboValue = 'Regenerate...';
-		});
+		if ($project && $project.domain) {
+			spinner.show('Rebuilding posts...');
+			let response = rebuildAllPosts($userStore.token!!, $project.domain);
+			response.then((data) => {
+				toast.message = data;
+				toastStore.trigger(toast);
+				spinner.hide();
+				regenComboValue = 'Regenerate...';
+			});
+		}
 	}
 	async function initiatePagesRebuild() {
-		spinner.show('Rebuilding pages...');
-		let response = rebuildAllPages($userStore.token!!);
-		response.then((data) => {
-			toast.message = data;
-			toastStore.trigger(toast);
-			spinner.hide();
-			regenComboValue = 'Regenerate...';
-		});
+		if ($project && $project.domain) {
+			spinner.show('Rebuilding pages...');
+			let response = rebuildAllPages($userStore.token!!, $project.domain);
+			response.then((data) => {
+				toast.message = data;
+				toastStore.trigger(toast);
+				spinner.hide();
+				regenComboValue = 'Regenerate...';
+			});
+		}
 	}
+
 	async function initiateImageResRebuild() {
 		console.log('Rebuilding image resolutions - not yet implemented');
 	}
@@ -163,7 +170,7 @@
 			<svelte:fragment slot="lead">
 				<strong class="text-xl">Cantilever v0.0.11</strong>
 
-				{#if loggedIn}
+				{#if loggedIn && $project && $project.domain}
 					<button
 						class="btn btn-sm variant-ghost-primary w-48 justify-between"
 						use:popup={regenPopup}>

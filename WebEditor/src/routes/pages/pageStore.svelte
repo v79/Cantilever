@@ -12,14 +12,15 @@
 	export const folders = writable<FolderList>();
 
 	// fetch list of pages (not folders) from server
-	export async function fetchPages(token: string): Promise<number | Error> {
+	export async function fetchPages(token: string, projectDomain: string): Promise<number | Error> {
 		console.log('pageStore: Fetching pages and folders');
 		try {
 			const response = await fetch('https://api.cantilevers.org/pages', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -38,14 +39,18 @@
 	}
 
 	// fetch the list of folders from server
-	export async function fetchFolders(token: string): Promise<number | Error> {
+	export async function fetchFolders(
+		token: string,
+		projectDomain: string
+	): Promise<number | Error> {
 		console.log('pageStore: Fetching folders');
 		try {
 			const response = await fetch('https://api.cantilevers.org/folders', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -64,7 +69,11 @@
 	}
 
 	// fetch a single page from server, converting it to a MarkdownContent object
-	export async function fetchPage(srcKey: string, token: string): Promise<Error | string> {
+	export async function fetchPage(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		console.log('pageStore: Fetching page', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -72,7 +81,8 @@
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -105,7 +115,11 @@
 	}
 
 	// create a page on the server
-	export async function savePage(srcKey: string, token: string): Promise<Error | string> {
+	export async function savePage(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		console.log('pageStore: Saving page');
 		let content: MarkdownContent = get(markdownStore);
 		if (content.metadata && content.metadata instanceof PageItem) {
@@ -120,7 +134,8 @@
 					headers: {
 						'Content-Type': 'application/json',
 						Accept: 'text/plain',
-						Authorization: `Bearer ${token}`
+						Authorization: `Bearer ${token}`,
+						'cantilever-project-domain': projectDomain
 					},
 					mode: 'cors',
 					body: JSON.stringify(content.metadata)
@@ -142,7 +157,11 @@
 	}
 
 	// create a new folder on the server
-	export async function createFolder(srcKey: string, token: string): Promise<Error | string> {
+	export async function createFolder(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		console.log('pageStore: Creating folder ' + srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -152,6 +171,7 @@
 					'Content-Type': 'application/json',
 					Accept: 'text/plain',
 					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain,
 					'X-Content-Length': '0'
 				},
 				mode: 'cors'
@@ -169,7 +189,11 @@
 	}
 
 	// delete a page from the server
-	export async function deletePage(srcKey: string, token: string): Promise<Error | string> {
+	export async function deletePage(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		console.log('pageStore: Deleting page ' + srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -177,7 +201,8 @@
 				method: 'DELETE',
 				headers: {
 					Accept: 'text/plain',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -194,7 +219,11 @@
 	}
 
 	// delete a folder from the server
-	export async function deleteFolder(srcKey: string, token: string): Promise<Error | string> {
+	export async function deleteFolder(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		console.log('pageStore: Deleting folder ' + srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -202,7 +231,8 @@
 				method: 'DELETE',
 				headers: {
 					Accept: 'text/plain',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -223,7 +253,8 @@
 		from: string,
 		to: string,
 		folder: string,
-		token: string
+		token: string,
+		projectDomain: string
 	): Promise<Error | string> {
 		let dto = new ReassignIndexRequestDTO(from, to, folder);
 		console.log(
@@ -235,7 +266,8 @@
 				headers: {
 					'Content-Type': 'application/json',
 					Accept: 'text/plain',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				body: JSON.stringify(dto),
 				mode: 'cors'

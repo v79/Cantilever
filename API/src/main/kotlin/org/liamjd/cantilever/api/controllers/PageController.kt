@@ -25,15 +25,11 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * @return [PageListDTO] object containing the list of Pages, a count and the last updated date/time
      */
     fun getPages(request: Request<Unit>): ResponseEntity<APIResult<PageListDTO>> {
-        if(request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
-        }
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
-            loadContentTree(projectKeyHeader)
-            info("Fetching all pages from metadata.json")
-            val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
+        val projectMetadataKey = request.headers["cantilever-project-domain"] + "/" + S3_KEY.metadataKey
+        return if (s3Service.objectExists(projectMetadataKey, sourceBucket)) {
+            loadContentTree(request.headers["cantilever-project-domain"]!!)
+            info("Fetching all pages from $projectMetadataKey")
+            val lastUpdated = s3Service.getUpdatedTime(projectMetadataKey, sourceBucket)
             val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
 //            val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
             val sorted = pages.sortedByDescending { it.srcKey }
@@ -45,7 +41,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             )
             ResponseEntity.ok(body = APIResult.Success(value = pageList))
         } else {
-            error("Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+            error("Cannot find file '${projectMetadataKey}' in bucket $sourceBucket")
             ResponseEntity.notFound(
                 body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
             )
@@ -56,10 +52,6 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * Load a markdown file with the specified `srcKey` and return it as [MarkdownPageDTO] response
      */
     fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<MarkdownPageDTO>> {
-        if(request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
-        }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val markdownSource = request.pathParameters["srcKey"]
         return if (markdownSource != null) {
@@ -84,14 +76,18 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * This should be the full path.
      */
     fun createFolder(request: Request<Unit>): ResponseEntity<APIResult<String>> {
-        if(request.headers["cantilever-project-domain"] === null) {
+        if (request.headers["cantilever-project-domain"] === null) {
             error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+            return ResponseEntity.badRequest(
+                body = APIResult.Error("Missing required header 'cantilever-project-domain'")
+            )
         }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val folderName = request.pathParameters["folderName"]
         return if (folderName != null) {
-            loadContentTree(projectKeyHeader) // TODO: can we move this to the abstract class? Calling it for every function seems wasteful
+            loadContentTree(
+                projectKeyHeader
+            ) // TODO: can we move this to the abstract class? Calling it for every function seems wasteful
             // folder name must be web safe
             val slugged = URLDecoder.decode(folderName, Charset.defaultCharset()).toS3Key()
             info("Creating folder '$slugged'")
@@ -117,9 +113,11 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * Save a [MarkdownPageDTO] to the sources bucket
      */
     fun saveMarkdownPageSource(request: Request<ContentNode.PageNode>): ResponseEntity<APIResult<String>> {
-        if(request.headers["cantilever-project-domain"] === null) {
+        if (request.headers["cantilever-project-domain"] === null) {
             error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+            return ResponseEntity.badRequest(
+                body = APIResult.Error("Missing required header 'cantilever-project-domain'")
+            )
         }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         info("saveMarkdownPageSource")
@@ -152,9 +150,11 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      */
     fun deleteMarkdownPageSource(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val markdownSource = request.pathParameters["srcKey"]
-        if(request.headers["cantilever-project-domain"] === null) {
+        if (request.headers["cantilever-project-domain"] === null) {
             error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+            return ResponseEntity.badRequest(
+                body = APIResult.Error("Missing required header 'cantilever-project-domain'")
+            )
         }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (markdownSource != null) {
@@ -188,16 +188,13 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * Return a list of all the folders which contain pages (i.e. under /sources/pages/)
      */
     fun getFolders(request: Request<Unit>): ResponseEntity<APIResult<FolderListDTO>> {
-        if(request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
-        }
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        val folders = listOf(
-            ContentNode.FolderNode(S3_KEY.pagesPrefix)
-        ) + contentTree.items.filterIsInstance<ContentNode.FolderNode>()
-            .filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
-        val dto = FolderListDTO(folders.size, folders)
+        info("Loading page folders")
+        val projectFolder = request.headers["cantilever-project-domain"]!!
+        loadContentTree(projectFolder)
+        val folders = mutableListOf<ContentNode.FolderNode>()
+        folders += contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith("$projectFolder/${S3_KEY.pagesPrefix}") }
+        folders += ContentNode.FolderNode("$projectFolder/${S3_KEY.pagesPrefix}")
+        val dto = FolderListDTO(folders.size, folders.toList())
         return ResponseEntity.ok(body = APIResult.Success(dto))
     }
 
@@ -206,10 +203,6 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * The folder must be empty and contain no pages.
      */
     fun deleteFolder(request: Request<Unit>): ResponseEntity<APIResult<String>> {
-        if(request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
-        }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val folderKey = request.pathParameters["srcKey"]
         return if (folderKey != null) {
@@ -243,9 +236,11 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * @param request [ReassignIndexRequestDTO] containing the source and destination pages and the folder
      */
     fun reassignIndex(request: Request<ReassignIndexRequestDTO>): ResponseEntity<APIResult<String>> {
-        if(request.headers["cantilever-project-domain"] === null) {
+        if (request.headers["cantilever-project-domain"] === null) {
             error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
+            return ResponseEntity.badRequest(
+                body = APIResult.Error("Missing required header 'cantilever-project-domain'")
+            )
         }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val requestBody = request.body
@@ -273,12 +268,14 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
                             ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(fromString, from)
                         val updatedFrom = fromMeta.copy(isRoot = false)
 
-                         val toMeta =
+                        val toMeta =
                             ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(toString, to)
                         val updatedTo = toMeta.copy(isRoot = true)
 
                         println("Writing updated pages '$from' and '$to' to S3 bucket $sourceBucket")
-                        s3Service.putObjectAsString(from, sourceBucket, convertNodeToMarkdown(updatedFrom), "text/markdown")
+                        s3Service.putObjectAsString(
+                            from, sourceBucket, convertNodeToMarkdown(updatedFrom), "text/markdown"
+                        )
                         s3Service.putObjectAsString(to, sourceBucket, convertNodeToMarkdown(updatedTo), "text/markdown")
                         println("Updating content tree")
                         contentTree.updatePage(updatedFrom)

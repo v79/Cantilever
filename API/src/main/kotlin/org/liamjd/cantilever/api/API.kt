@@ -67,52 +67,57 @@ class LambdaRouter : RequestHandlerWrapper() {
         /** ============ /pages ================ **/
         group("/pages", Spec.Tag(name = "Pages", description = "Create, update and manage static pages")) {
             auth(cognitoJWTAuthorizer) {
-                get("", pageController::getPages).spec(Spec.PathItem("Get pages", "Returns a list of all pages"))
+                require({ request -> request.headers?.get("cantilever-project-domain") != null }) {
 
-                post(
-                    "/save",
-                    pageController::saveMarkdownPageSource,
-                ).supplies(setOf(MimeType.plainText)).spec(
-                    Spec.PathItem("Save page", "Save markdown page source")
-                )
+                    get("", pageController::getPages).spec(Spec.PathItem("Get pages", "Returns a list of all pages"))
 
-                get(
-                    "/$SRCKEY",
-                    pageController::loadMarkdownSource,
-                ).spec(
-                    Spec.PathItem("Get page source", "Returns the markdown source for a page")
-                )
-
-                put(
-                    "/folder/new/{folderName}",
-                    pageController::createFolder,
-                ).spec(
-                    Spec.PathItem("Create folder", "Pages can be nested in folders, but don't go too deep!")
-                ).supplies(setOf(MimeType.plainText))
-
-                delete("/$SRCKEY", pageController::deleteMarkdownPageSource).supplies(setOf(MimeType.plainText))
-                    .spec(Spec.PathItem("Delete page", "Delete a static page"))
-
-                delete("/folder/{srcKey}", pageController::deleteFolder).supplies(setOf(MimeType.plainText))
-                    .spec(Spec.PathItem("Delete folder", "Delete a folder. It must be empty"))
-
-                post("/reassignIndex", pageController::reassignIndex).supplies(setOf(MimeType.plainText)).spec(
-                    Spec.PathItem(
-                        "Reassign index page for folder",
-                        "Set a new index page for the folder, so that it becomes index.html for that folder, and unset the previous index page"
+                    post(
+                        "/save",
+                        pageController::saveMarkdownPageSource,
+                    ).supplies(setOf(MimeType.plainText)).spec(
+                        Spec.PathItem("Save page", "Save markdown page source")
                     )
-                )
+
+                    get(
+                        "/$SRCKEY",
+                        pageController::loadMarkdownSource,
+                    ).spec(
+                        Spec.PathItem("Get page source", "Returns the markdown source for a page")
+                    )
+
+                    put(
+                        "/folder/new/{folderName}",
+                        pageController::createFolder,
+                    ).spec(
+                        Spec.PathItem("Create folder", "Pages can be nested in folders, but don't go too deep!")
+                    ).supplies(setOf(MimeType.plainText))
+
+                    delete("/$SRCKEY", pageController::deleteMarkdownPageSource).supplies(setOf(MimeType.plainText))
+                        .spec(Spec.PathItem("Delete page", "Delete a static page"))
+
+                    delete("/folder/{srcKey}", pageController::deleteFolder).supplies(setOf(MimeType.plainText))
+                        .spec(Spec.PathItem("Delete folder", "Delete a folder. It must be empty"))
+
+                    post("/reassignIndex", pageController::reassignIndex).supplies(setOf(MimeType.plainText)).spec(
+                        Spec.PathItem(
+                            "Reassign index page for folder",
+                            "Set a new index page for the folder, so that it becomes index.html for that folder, and unset the previous index page"
+                        )
+                    )
+                }
             }
         }
 
         /** ============ /folders ================ **/
         auth(cognitoJWTAuthorizer) {
-            get("/folders", pageController::getFolders).spec(
-                Spec.PathItem(
-                    "Get folders",
-                    "Returns a list of all folders"
+            require({ request -> request.headers?.get("cantilever-project-domain") != null }) {
+                get("/folders", pageController::getFolders).spec(
+                    Spec.PathItem(
+                        "Get folders",
+                        "Returns a list of all folders"
+                    )
                 )
-            )
+            }
         }
 
         /** ============ /project ================ **/
@@ -250,40 +255,43 @@ class LambdaRouter : RequestHandlerWrapper() {
         /** ============ /generate ================ **/
         group("/generate", Spec.Tag("Generation", "Trigger the regeneration of pages and blog posts")) {
             auth(cognitoJWTAuthorizer) {
-                put(
-                    "/post/$SRCKEY",
-                    generatorController::generatePost,
-                ).supplies(setOf(MimeType.plainText))
-                    .spec(Spec.PathItem("Regenerate a post", "Trigger the regeneration of a post"))
+                require({ request -> request.headers?.get("cantilever-project-domain") != null }) {
 
-                put(
-                    "/page/$SRCKEY",
-                    generatorController::generatePage,
-                ).supplies(setOf(MimeType.plainText))
-                    .spec(Spec.PathItem("Regenerate a page", "Trigger the regeneration of a page"))
+                    put(
+                        "/post/$SRCKEY",
+                        generatorController::generatePost,
+                    ).supplies(setOf(MimeType.plainText))
+                        .spec(Spec.PathItem("Regenerate a post", "Trigger the regeneration of a post"))
 
-                put("/images/resolutions") { _: Request<Unit> ->
-                    ResponseEntity.notImplemented(
-                        body = "Not implemented yet!"
-                    )
-                }.supplies(
-                    setOf(MimeType.plainText)
-                ).spec(
-                    Spec.PathItem(
-                        "Regenerate images",
-                        "Trigger the regeneration of all images at all resolutions - NOT IMPLEMENTED"
-                    )
-                )
+                    put(
+                        "/page/$SRCKEY",
+                        generatorController::generatePage,
+                    ).supplies(setOf(MimeType.plainText))
+                        .spec(Spec.PathItem("Regenerate a page", "Trigger the regeneration of a page"))
 
-                put(
-                    "/template/{templateKey}", generatorController::generateTemplate
-                ).supplies(setOf(MimeType.plainText)).expects(emptySet())
-                    .spec(
+                    put("/images/resolutions") { _: Request<Unit> ->
+                        ResponseEntity.notImplemented(
+                            body = "Not implemented yet!"
+                        )
+                    }.supplies(
+                        setOf(MimeType.plainText)
+                    ).spec(
                         Spec.PathItem(
-                            "Regenerate content based on a template",
-                            "Regenerate all the pages or posts that use this template"
+                            "Regenerate images",
+                            "Trigger the regeneration of all images at all resolutions - NOT IMPLEMENTED"
                         )
                     )
+
+                    put(
+                        "/template/{templateKey}", generatorController::generateTemplate
+                    ).supplies(setOf(MimeType.plainText)).expects(emptySet())
+                        .spec(
+                            Spec.PathItem(
+                                "Regenerate content based on a template",
+                                "Regenerate all the pages or posts that use this template"
+                            )
+                        )
+                }
             }
         }
 

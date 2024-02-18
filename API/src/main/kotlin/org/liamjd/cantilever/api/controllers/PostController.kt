@@ -26,13 +26,12 @@ class PostController(sourceBucket: String) : KoinComponent, APIController(source
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (markdownSource != null) {
             val srcKey = URLDecoder.decode(markdownSource, Charset.defaultCharset())
-            val fullPathKey = "$projectKeyHeader/$srcKey"
-            info("Loading Markdown file $fullPathKey")
-            return if (s3Service.objectExists(fullPathKey, sourceBucket)) {
-                val mdPost = buildPostNode(fullPathKey,srcKey)
+            info("Loading Markdown file $srcKey")
+            return if (s3Service.objectExists(srcKey, sourceBucket)) {
+                val mdPost = buildPostNode(srcKey,srcKey)
                 ResponseEntity.ok(body = APIResult.Success(mdPost))
             } else {
-                error("File '$fullPathKey' not found")
+                error("File '$srcKey' not found")
                 ResponseEntity.notFound(body = APIResult.Error("Markdown file $srcKey not found in bucket $sourceBucket"))
             }
         } else {
@@ -48,12 +47,12 @@ class PostController(sourceBucket: String) : KoinComponent, APIController(source
         val postToSave = request.body
         val srcKey = postToSave.srcKey
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        val fullPathKey = projectKeyHeader + "/" + URLDecoder.decode(postToSave.srcKey, Charset.defaultCharset())
+//        val fullPathKey = projectKeyHeader + "/" + URLDecoder.decode(postToSave.srcKey, Charset.defaultCharset())
 
-        return if (s3Service.objectExists(fullPathKey, sourceBucket)) {
+        return if (s3Service.objectExists(srcKey, sourceBucket)) {
             loadContentTree(projectKeyHeader)
-            info("Updating existing file '${fullPathKey}'")
-            val length = s3Service.putObjectAsString(fullPathKey, sourceBucket, postToSave.toString(), "text/markdown")
+            info("Updating existing file '${srcKey}'")
+            val length = s3Service.putObjectAsString(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
             contentTree.updatePost(postToSave.toPostNode())
             saveContentTree(projectKeyHeader)
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
