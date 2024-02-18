@@ -1,8 +1,8 @@
 <script context="module" lang="ts">
-	import { writable, get } from 'svelte/store';
+	import { MarkdownContent, PostItem } from '$lib/models/markdown';
 	import type { PostList } from '$lib/models/posts.svelte';
-	import { PostItem, MarkdownContent } from '$lib/models/markdown';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
+	import { get, writable } from 'svelte/store';
 
 	// complete set of post metadata
 	export const posts = writable<PostList>();
@@ -38,7 +38,7 @@
 	export async function fetchPost(
 		srcKey: string,
 		token: string,
-		projectDomain
+		projectDomain: string
 	): Promise<Error | string> {
 		console.log('postStore: Fetching post', srcKey);
 		try {
@@ -72,7 +72,9 @@
 				markdownStore.set(tmpPost);
 				return 'Loaded post ' + srcKey;
 			} else {
-				throw new Error('Failed to fetch post');
+				let msg = await response.json();
+				console.dir(msg);
+				throw new Error('Failed to fetch post: ' + msg.message);
 			}
 		} catch (error) {
 			console.error(error);

@@ -16,26 +16,23 @@ import java.nio.charset.Charset
 /**
  * Load, save and delete Posts from the S3 bucket. Operations will update the content tree.
  */
-class PostController( sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
+class PostController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
 
     /**
-     * Load a markdown file with the specified `srcKey` and return it as [ContentNode.PostNode] response
+     * Load a markdown file with the specified `srcKey` from the project folder `cantilever-project-domain` and return it as [ContentNode.PostNode] response
      */
     fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<ContentNode.PostNode>> {
         val markdownSource = request.pathParameters["srcKey"]
-        if(request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
-        }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (markdownSource != null) {
-            val srcKey = projectKeyHeader + "/" + URLDecoder.decode(markdownSource, Charset.defaultCharset())
-            info("Loading Markdown file $srcKey")
-            return if (s3Service.objectExists(srcKey, sourceBucket)) {
-                val mdPost = buildPostNode(srcKey)
+            val srcKey = URLDecoder.decode(markdownSource, Charset.defaultCharset())
+            val fullPathKey = "$projectKeyHeader/$srcKey"
+            info("Loading Markdown file $fullPathKey")
+            return if (s3Service.objectExists(fullPathKey, sourceBucket)) {
+                val mdPost = buildPostNode(fullPathKey,srcKey)
                 ResponseEntity.ok(body = APIResult.Success(mdPost))
             } else {
-                error("File '$srcKey' not found")
+                error("File '$fullPathKey' not found")
                 ResponseEntity.notFound(body = APIResult.Error("Markdown file $srcKey not found in bucket $sourceBucket"))
             }
         } else {
@@ -49,17 +46,14 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
     fun saveMarkdownPost(request: Request<PostNodeRestDTO>): ResponseEntity<APIResult<String>> {
         info("saveMarkdownPost")
         val postToSave = request.body
-        if(request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
-        }
+        val srcKey = postToSave.srcKey
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        val srcKey = projectKeyHeader + "/" + URLDecoder.decode(postToSave.srcKey, Charset.defaultCharset())
+        val fullPathKey = projectKeyHeader + "/" + URLDecoder.decode(postToSave.srcKey, Charset.defaultCharset())
 
-        return if (s3Service.objectExists(srcKey, sourceBucket)) {
+        return if (s3Service.objectExists(fullPathKey, sourceBucket)) {
             loadContentTree(projectKeyHeader)
-            info("Updating existing file '${postToSave.srcKey}'")
-            val length = s3Service.putObjectAsString(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
+            info("Updating existing file '${fullPathKey}'")
+            val length = s3Service.putObjectAsString(fullPathKey, sourceBucket, postToSave.toString(), "text/markdown")
             contentTree.updatePost(postToSave.toPostNode())
             saveContentTree(projectKeyHeader)
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
@@ -77,10 +71,6 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
      */
     fun deleteMarkdownPost(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val markdownSource = request.pathParameters["srcKey"]
-        if(request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
-        }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (markdownSource != null) {
             loadContentTree(projectKeyHeader)
@@ -114,11 +104,6 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
      */
     fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostListDTO>> {
 
-        if(request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
-        }
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val projectMetadataKey = request.headers["cantilever-project-domain"] + "/" + S3_KEY.metadataKey
         return if (s3Service.objectExists(projectMetadataKey, sourceBucket)) {
             loadContentTree(request.headers["cantilever-project-domain"]!!)
@@ -127,11 +112,9 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
             val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
             val sorted = posts.sortedByDescending { it.date }
             val postList = PostListDTO(
-                count = sorted.size,
-                lastUpdated = lastUpdated,
-                posts = sorted
+                count = sorted.size, lastUpdated = lastUpdated, posts = sorted
             )
-            if(postList.posts.isEmpty()) {
+            if (postList.posts.isEmpty()) {
                 error("No posts found in content tree")
                 ResponseEntity.serverError(body = APIResult.Error("No posts found in content tree for project $projectMetadataKey"))
             } else {
@@ -147,9 +130,10 @@ class PostController( sourceBucket: String) : KoinComponent, APIController(sourc
      * Build a [ContentNode.PostNode] object from the source specified, and add the full body text
      */
     private fun buildPostNode(
+        fullPathKey: String,
         srcKey: String
     ): ContentNode.PostNode {
-        val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
+        val markdown = s3Service.getObjectAsString(fullPathKey, sourceBucket)
         val metadata = ContentMetaDataBuilder.PostBuilder.buildFromSourceString(markdown.getFrontMatter(), srcKey)
         val body = markdown.substringAfter("---").substringAfter("---").trim()
         return metadata.apply { this.body = body }

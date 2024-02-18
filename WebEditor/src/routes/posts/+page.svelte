@@ -323,7 +323,8 @@
 						label="Title" />
 				</div>
 				<div class="col-span-6">
-					<label for="markdown" class="label"><span>Markdown</span></label>
+					<label for="markdown" class="label"
+						><span>Markdown</span> <code>{$markdownStore.metadata.srcKey}</code></label>
 					<MarkdownEditor bind:body={$markdownStore.body} />
 				</div>
 			</div>
