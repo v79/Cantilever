@@ -211,7 +211,11 @@
 	async function initiateSavePage() {
 		console.log('saving page');
 		if ($markdownStore.metadata) {
-			let saveResult = savePage($markdownStore.metadata.srcKey, $userStore.token!!, $project.domain);
+			let saveResult = savePage(
+				$markdownStore.metadata.srcKey,
+				$userStore.token!!,
+				$project.domain
+			);
 			saveResult.then((r) => {
 				if (r instanceof Error) {
 					errorToast.message = 'Failed to save page';
@@ -229,7 +233,11 @@
 	async function initiateDeletePage() {
 		console.log('Deleting page');
 		if ($markdownStore.metadata) {
-			let deleteResult = deletePage($markdownStore.metadata.srcKey, $userStore.token!!, $project.domain);
+			let deleteResult = deletePage(
+				$markdownStore.metadata.srcKey,
+				$userStore.token!!,
+				$project.domain
+			);
 			deleteResult.then((r) => {
 				if (r instanceof Error) {
 					errorToast.message = 'Failed to delete page';
@@ -283,7 +291,11 @@
 	}
 
 	function initiateNewFolder(parentFolder: FolderNode, srcKey: string) {
-		let createResult = createFolder(parentFolder.srcKey + srcKey, $userStore.token!!, $project.domain);
+		let createResult = createFolder(
+			parentFolder.srcKey + srcKey,
+			$userStore.token!!,
+			$project.domain
+		);
 		createResult.then((r) => {
 			if (r instanceof Error) {
 				errorToast.message = 'Failed to create folder';
@@ -310,38 +322,21 @@
 
 	const foldersUnsubscribe = folders.subscribe((value) => {
 		const rootFolderKey = $project.domain + '/sources/pages/';
-		console.dir(rootFolderKey)
+		// console.dir(rootFolderKey);
 
 		if (value && value.count != -1) {
 			// build TreeViewNodes from FolderNodes
 			pgFolderNodes = [];
 			expandedNodes = [rootFolderKey];
-			value.folders[0].children = [];
-			// TODO: the root folder '/sources/pages/' doesn't have a FolderNode, and so has no children. Put the root pages into this folder
-			console.dir('Looking for pages whose parent is ' + rootFolderKey);
-			let rootPages = $pages?.pages.filter((p) => p.parent === rootFolderKey);
-			if (rootPages) {
-				for (const p of rootPages) {
-					console.log('Adding ' + p.srcKey + ' to root folder ' + rootFolderKey);
-					value.folders[0].children.push(p.srcKey);
-				}
-			}
-
-			// TODO: This has broken in strange ways
 			for (const folder of value.folders) {
 				let childNodes = [] as TreeViewNode[];
-				// start with the root folder
-				// then the remainder of the folders
-				console.log('Iterating through folder ' + folder.srcKey)
+				console.log('Iterating through folder ' + folder.srcKey);
 				if (folder.children.length > 0) {
 					for (const child of folder.children) {
 						// child is just the srcKey of the page
 						// find it in the pages list
-						console.log('Finding a page with a source key equal to ' + child);
 						let page = $pages?.pages.find((p) => p.srcKey === child);
 						if (page) {
-							console.log('Found page ' + page.srcKey + ' which has parent ' + page.parent + ' and adding it to folder ' + folder.srcKey);
-							
 							let displaySrcKey = page.srcKey.slice($project.domain.length + 1);
 							if (page.isRoot) {
 								childNodes.push({

@@ -192,8 +192,12 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
         val projectFolder = request.headers["cantilever-project-domain"]!!
         loadContentTree(projectFolder)
         val folders = mutableListOf<ContentNode.FolderNode>()
+        val rootFolder = ContentNode.FolderNode("$projectFolder/${S3_KEY.pagesPrefix}")
+        // The root folder isn't in the content tree, so we need to add it manually, and find all the pages that have it as their parent
+        rootFolder.children.addAll( contentTree.items.filterIsInstance<ContentNode.PageNode>().filter { it.parent == rootFolder.srcKey }.map { it.srcKey })
+        folders.add(rootFolder)
+        // Then we can add all the other folders
         folders += contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith("$projectFolder/${S3_KEY.pagesPrefix}") }
-        folders += ContentNode.FolderNode("$projectFolder/${S3_KEY.pagesPrefix}")
         val dto = FolderListDTO(folders.size, folders.toList())
         return ResponseEntity.ok(body = APIResult.Success(dto))
     }
