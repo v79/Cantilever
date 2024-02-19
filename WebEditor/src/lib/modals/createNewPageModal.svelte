@@ -4,6 +4,7 @@
 	import { getModalStore, getToastStore, type ToastSettings } from '@skeletonlabs/skeleton';
 	import { onMount, type SvelteComponent } from 'svelte';
 	import { folders } from '../../routes/pages/pageStore.svelte';
+	import { project } from '$lib/stores/projectStore.svelte';
 
 	export let parent: SvelteComponent;
 	const modalStore = getModalStore();
@@ -31,7 +32,7 @@
 	onMount(async () => {
 		if (!templatesLoaded) {
 			console.log('No templates found');
-			const result = await fetchTemplates($userStore.token!!);
+			const result = await fetchTemplates($userStore.token!!, $project.domain);
 			if (result instanceof Error) {
 				errorToast.message = 'Failed to fetch templates. Message was: ' + result.message;
 				toastStore.trigger(errorToast);
@@ -73,8 +74,7 @@
 						class="select m-4 w-9/12"
 						id="selectTemplate"
 						name="selectTemplate"
-						bind:value={selectedTemplateKey}
-					>
+						bind:value={selectedTemplateKey}>
 						{#each $templates.templates as template}
 							{#if $modalStore[0].meta.showOnlyWithSections}
 								{#if template.sections.length > 0}
@@ -88,8 +88,7 @@
 					{#if selectedTemplate}
 						<p>
 							<em>
-								Selected template: {selectedTemplate.title} has {selectedTemplate.sections.length} section(s)</em
-							>
+								Selected template: {selectedTemplate.title} has {selectedTemplate.sections.length} section(s)</em>
 						</p>
 					{/if}
 				{/if}
@@ -103,8 +102,7 @@
 						class="select m-4 w-9/12"
 						id="selectParent"
 						name="selectParent"
-						bind:value={selectedFolderKey}
-					>
+						bind:value={selectedFolderKey}>
 						{#each $folders.folders as folder}
 							<option value={folder.srcKey}>{folder.srcKey}</option>
 						{/each}

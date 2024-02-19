@@ -26,6 +26,7 @@
 	import TextInput from '$lib/forms/textInput.svelte';
 	import { TemplateNode, TemplateUsageDTO } from '$lib/models/templates.svelte';
 	import { spinner } from '$lib/stores/spinnerStore.svelte';
+	import { project } from '$lib/stores/projectStore.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -118,7 +119,7 @@
 		}
 		const token = $userStore.token;
 		if (token) {
-			const result = await fetchTemplates(token);
+			const result = await fetchTemplates(token, $project.domain);
 			if (result instanceof Error) {
 				errorToast.message = 'Failed to fetch templates. Message was: ' + result.message;
 				toastStore.trigger(errorToast);
@@ -131,7 +132,7 @@
 	}
 
 	async function initiateLoadTemplate(srcKey: string) {
-		let loadResponse = fetchTemplate(srcKey, $userStore.token!!);
+		let loadResponse = fetchTemplate(srcKey, $userStore.token!!, $project.domain);
 		loadResponse.then((r) => {
 			if (r instanceof Error) {
 				errorToast.message = 'Failed to load template';
@@ -150,7 +151,7 @@
 			if (isNewTemplate) {
 				$handlebars.srcKey = 'sources/templates/' + $handlebars.srcKey + '.html.hbs';
 			}
-			const result = await saveTemplate($userStore.token!!);
+			const result = await saveTemplate($userStore.token!!, $project.domain);
 			if (result instanceof Error) {
 				errorToast.message = 'Failed to save template. Message was: ' + result.message;
 				toastStore.trigger(errorToast);
@@ -164,7 +165,7 @@
 	}
 
 	async function initiateDeletePost() {
-		const result = await deleteTemplate($handlebars.srcKey, $userStore.token!!);
+		const result = await deleteTemplate($handlebars.srcKey, $userStore.token!!, $project.domain);
 		if (result instanceof Error) {
 			errorToast.message = 'Failed to delete template. Message was: ' + result.message;
 			toastStore.trigger(errorToast);
@@ -205,7 +206,7 @@
 	}
 
 	async function getTemplateUsage(srcKey: string): Promise<TemplateUsageDTO | Error> {
-		const usageResponse = await fetchTemplateUsage(srcKey, $userStore.token!!);
+		const usageResponse = await fetchTemplateUsage(srcKey, $userStore.token!!, $project.domain);
 		if (usageResponse instanceof Error) {
 			errorToast.message = 'Failed to fetch template usage';
 			toastStore.trigger(errorToast);
@@ -231,7 +232,7 @@
 		if ($handlebars) {
 			spinner.show('Regenerating from template ' + $handlebars.srcKey);
 			$spinner = { value: true, label: 'Regenerating from template ' + $handlebars.srcKey };
-			const result = await regenerate($handlebars.srcKey, $userStore.token!!);
+			const result = await regenerate($handlebars.srcKey, $userStore.token!!, $project.domain);
 			if (result instanceof Error) {
 				errorToast.message = 'Failed to generate content. Message was: ' + result.message;
 				toastStore.trigger(errorToast);

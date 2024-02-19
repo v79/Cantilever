@@ -7,14 +7,18 @@
 	export const templates = writable<TemplateList>();
 
 	// fetch list of templates from server
-	export async function fetchTemplates(token: string): Promise<number | Error> {
+	export async function fetchTemplates(
+		token: string,
+		projectDomain: string
+	): Promise<number | Error> {
 		console.log('templateStore: Fetching templates');
 		try {
 			const response = await fetch('https://api.cantilevers.org/templates', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -32,7 +36,11 @@
 	}
 
 	// fetch template from server
-	export async function fetchTemplate(srcKey: string, token: string): Promise<Error | string> {
+	export async function fetchTemplate(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		console.log('templateStore: Fetching template', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -40,7 +48,8 @@
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -59,7 +68,10 @@
 	}
 
 	// save template to server
-	export async function saveTemplate(token: string): Promise<Error | string> {
+	export async function saveTemplate(
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		let template: TemplateNode = get(handlebars);
 		console.log('templateStore: Saving template', template.srcKey);
 		try {
@@ -68,7 +80,8 @@
 				headers: {
 					Accept: 'text/plain',
 					Authorization: `Bearer ${token}`,
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors',
 				body: JSON.stringify(template)
@@ -100,7 +113,8 @@
 	// fetch a list of the pages and posts which use a given template
 	export async function fetchTemplateUsage(
 		srcKey: string,
-		token: string
+		token: string,
+		projectDomain: string
 	): Promise<Error | TemplateUsageDTO> {
 		console.log('templateStore: Fetching template usage', srcKey);
 		try {
@@ -109,7 +123,8 @@
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -126,7 +141,11 @@
 	}
 
 	// delete template from server
-	export async function deleteTemplate(srcKey: string, token: string): Promise<Error | string> {
+	export async function deleteTemplate(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		console.log('templateStore: Deleting template', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -134,7 +153,8 @@
 				method: 'DELETE',
 				headers: {
 					Accept: 'text/plain',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -158,7 +178,11 @@
 	}
 
 	// trigger generation of pages with the given template
-	export async function regenerate(srcKey: string, token: string): Promise<Error | string> {
+	export async function regenerate(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		console.log('templateStore: Regenerating content for template ', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -167,7 +191,8 @@
 				headers: {
 					Accept: 'text/plain',
 					Authorization: `Bearer ${token}`,
-					'X-Content-Length': '0'
+					'X-Content-Length': '0',
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});

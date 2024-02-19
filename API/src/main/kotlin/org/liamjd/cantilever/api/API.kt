@@ -197,31 +197,33 @@ class LambdaRouter : RequestHandlerWrapper() {
         /** ============ /templates ================ **/
         group("/templates", Spec.Tag(name = "Templates", description = "Create, update and manage templates")) {
             auth(cognitoJWTAuthorizer) {
-                get(
-                    "",
-                    templateController::getTemplates,
-                ).spec(Spec.PathItem("Get templates", "Returns a list of all templates"))
+                require({ request -> request.headers?.get("cantilever-project-domain") != null }) {
+                    get(
+                        "",
+                        templateController::getTemplates,
+                    ).spec(Spec.PathItem("Get templates", "Returns a list of all templates"))
 
-                get(
-                    "/$SRCKEY",
-                    templateController::loadHandlebarsSource,
-                ).spec(Spec.PathItem("Get template source", "Returns the handlebars source for a template"))
+                    get(
+                        "/$SRCKEY",
+                        templateController::loadHandlebarsSource,
+                    ).spec(Spec.PathItem("Get template source", "Returns the handlebars source for a template"))
 
-                post(
-                    "/save",
-                    templateController::saveTemplate,
-                ).supplies(setOf(MimeType.plainText))
-                    .spec(Spec.PathItem("Save template", "Save handlebars template source"))
+                    post(
+                        "/save",
+                        templateController::saveTemplate,
+                    ).supplies(setOf(MimeType.plainText))
+                        .spec(Spec.PathItem("Save template", "Save handlebars template source"))
 
-                get("/usage/$SRCKEY", templateController::getTemplateUsage)
-                    .spec(
-                        Spec.PathItem(
-                            "Get template usage", "Returns the count of pages and posts which use this template"
+                    get("/usage/$SRCKEY", templateController::getTemplateUsage)
+                        .spec(
+                            Spec.PathItem(
+                                "Get template usage", "Returns the count of pages and posts which use this template"
+                            )
                         )
-                    )
 
-                delete("/$SRCKEY", templateController::deleteTemplate).supplies(setOf(MimeType.plainText))
-                    .spec(Spec.PathItem("Delete template", "Delete a template"))
+                    delete("/$SRCKEY", templateController::deleteTemplate).supplies(setOf(MimeType.plainText))
+                        .spec(Spec.PathItem("Delete template", "Delete a template"))
+                }
             }
         }
 
