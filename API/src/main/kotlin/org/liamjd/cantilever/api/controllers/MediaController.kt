@@ -22,15 +22,11 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
      * @return [ImageListDTO] object containing the list of images, a count and the last updated date/time
      */
     fun getImages(request: Request<Unit>): ResponseEntity<APIResult<ImageListDTO>> {
-        if(request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
-        }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
+        return if (s3Service.objectExists(projectKeyHeader + "/" + S3_KEY.metadataKey, sourceBucket)) {
             loadContentTree(projectKeyHeader)
             info("Fetching all images from metadata.json")
-            val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
+            val lastUpdated = s3Service.getUpdatedTime(projectKeyHeader + "/" + S3_KEY.metadataKey, sourceBucket)
             val images = contentTree.images.toList()
             info("Loaded ${images.size} images")
             val sorted = images.sortedByDescending { it.srcKey }
@@ -57,10 +53,6 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
             request.pathParameters["srcKey"] ?: return ResponseEntity.badRequest(APIResult.Error("No srcKey provided"))
         val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
         val resolution = request.pathParameters["resolution"]
-        if(request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
-        }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         info("Fetching image $decodedKey at resolution $resolution")
         // srcKey will be /sources/images/<image-name>.<ext> so we need to strip off the /sources/images/ prefix and add the /generated/images/ prefix
@@ -92,10 +84,6 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
      */
     @OptIn(ExperimentalEncodingApi::class)
     fun uploadImage(request: Request<ImageDTO>): ResponseEntity<APIResult<ImageDTO>> {
-        if(request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
-        }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         loadContentTree(projectKeyHeader)
 
@@ -128,10 +116,6 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
     fun deleteImage(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val srcKey =
             request.pathParameters["srcKey"] ?: return ResponseEntity.badRequest(APIResult.Error("No srcKey provided"))
-        if(request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(body = APIResult.Error("Missing required header 'cantilever-project-domain'"))
-        }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
         loadContentTree(projectKeyHeader)

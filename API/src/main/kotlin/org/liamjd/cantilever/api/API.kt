@@ -233,24 +233,27 @@ class LambdaRouter : RequestHandlerWrapper() {
             Spec.Tag(name = "Media", description = "Create, update and manage images and other media files")
         ) {
             auth(cognitoJWTAuthorizer) {
-                get(
-                    "/images",
-                    mediaController::getImages,
-                ).spec(Spec.PathItem("Get images", "Returns a list of all images"))
+                require({ request -> request.headers?.get("cantilever-project-domain") != null }) {
 
-                get("/images/$SRCKEY/{resolution}", mediaController::getImage).spec(
-                    Spec.PathItem(
-                        "Get image",
-                        "Returns an image with the given key and image resolution"
+                    get(
+                        "/images",
+                        mediaController::getImages,
+                    ).spec(Spec.PathItem("Get images", "Returns a list of all images"))
+
+                    get("/images/$SRCKEY/{resolution}", mediaController::getImage).spec(
+                        Spec.PathItem(
+                            "Get image", "Returns an image with the given key and image resolution"
+                        )
                     )
-                )
 
-                post("/images/", mediaController::uploadImage)
-                    .spec(Spec.PathItem("Upload image", "Upload an image to the source bucket"))
+                    post("/images/", mediaController::uploadImage).spec(
+                            Spec.PathItem("Upload image", "Upload an image to the source bucket")
+                        )
 
-                delete("/images/$SRCKEY", mediaController::deleteImage).supplies(setOf(MimeType.plainText))
-                    .spec(Spec.PathItem("Delete image", "Delete an image from the source bucket"))
+                    delete("/images/$SRCKEY", mediaController::deleteImage).supplies(setOf(MimeType.plainText))
+                        .spec(Spec.PathItem("Delete image", "Delete an image from the source bucket"))
 
+                }
             }
         }
 
