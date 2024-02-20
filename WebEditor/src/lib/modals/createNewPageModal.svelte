@@ -20,25 +20,28 @@
 	const cHeader = 'text-2xl font-bold';
 	const cForm = 'p-4 space-y-4 rounded-container-token';
 
+	$: templatesLoading = true;
+	$: templatesReady = false;
+
 	let selectedTemplateKey: string | undefined;
 	let selectedFolderKey: string | undefined;
 
 	$: selectedTemplate = $templates?.templates.find((t) => t.srcKey === selectedTemplateKey);
-	$: templatesLoaded = $templates && $templates.count > 0;
-
 	$: selectedFolder = $folders?.folders.find((f) => f.srcKey === selectedFolderKey);
 	$: foldersLoaded = $folders && $folders.count > 0;
 
 	onMount(async () => {
-		if (!templatesLoaded) {
-			console.log('No templates found');
+		if (templates.isEmpty()) {
 			const result = await fetchTemplates($userStore.token!!, $project.domain);
 			if (result instanceof Error) {
 				errorToast.message = 'Failed to fetch templates. Message was: ' + result.message;
 				toastStore.trigger(errorToast);
-				console.error(result);
+				templatesReady = false;
+				templatesLoading = false;
 			} else {
 				// templates loaded into store
+				templatesReady = true;
+				templatesLoading = false;
 			}
 		} else {
 			// templates already loaded
@@ -65,9 +68,9 @@
 			{$modalStore[0].meta.modalTitle}
 		</header>
 		<article>
-			{#if !templatesLoaded}
+			{#if templatesLoading}
 				<div class="placeholder h-4">Loading templates...</div>
-			{:else}
+			{:else if templatesReady}
 				<label for="selectTemplate" class="label">Choose the template for the new page:</label>
 				{#if $templates && $templates.templates}
 					<select
@@ -92,8 +95,13 @@
 						</p>
 					{/if}
 				{/if}
+			{:else}
+				<p>
+					No template found. Create a template first - it is recommended that you have an "index"
+					template at the very least, for non-post items.
+				</p>
 			{/if}
-			{#if !foldersLoaded}
+			{#if !foldersLoaded || !templatesReady}
 				<div class="placeholder h-4">Loading folders...</div>
 			{:else}
 				<label for="selectParent" class="label">Choose the parent folder for the new page:</label>
@@ -113,7 +121,7 @@
 		<!-- prettier-ignore -->
 		<footer class="modal-footer {parent.regionFooter}">
 			<button class="btn {parent.buttonNeutral}" on:click={parent.onClose}>{parent.buttonTextCancel}</button>
-			<button class="btn variant-filled-primary" on:click={closeAndSubmit}>Create</button>
+			<button class="btn variant-filled-primary" disabled={!templatesReady} on:click={closeAndSubmit}>Create</button>
 		</footer>
 	</div>
 {/if}

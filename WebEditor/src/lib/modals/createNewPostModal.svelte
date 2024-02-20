@@ -58,7 +58,7 @@
 			{:else if templatesReady}
 				<p>Create a new post?</p>
 			{:else}
-				<p>No template called "post" found. Create a "post" template first</p>
+				<p>No template called "post" found. Create a template called "post" first.</p>
 			{/if}
 		</article>
 		<footer class="modal-footer {parent.regionFooter}">
