@@ -11,7 +11,7 @@
 	const toastStore = getToastStore();
 
 	const errorToast: ToastSettings = {
-		message: 'Failed to load posts',
+		message: 'Failed to load pages',
 		background: 'variant-filled-error'
 	};
 

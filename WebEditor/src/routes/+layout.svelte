@@ -55,6 +55,7 @@
 	import SpinnerStore, { spinner } from '$lib/stores/spinnerStore.svelte';
 	import { onMount } from 'svelte';
 	import ExpandMore from 'svelte-google-materialdesign-icons/Expand_more.svelte';
+	import CreateNewPostModal from '$lib/modals/createNewPostModal.svelte';
 
 	const modalRegistry: Record<string, ModalComponent> = {
 		confirmDeleteModal: { ref: ConfirmDeleteModal },
@@ -64,7 +65,8 @@
 		createNewFolderModal: { ref: CreateNewFolderModal },
 		switchIndexPageModal: { ref: SwitchIndexPageModal },
 		saveNewPageModal: { ref: SaveNewPageModal },
-		createNewProjectModal: { ref: SaveNewProjectModal }
+		createNewProjectModal: { ref: SaveNewProjectModal },
+		createNewPostModal: { ref: CreateNewPostModal }
 	};
 	initializeStores();
 

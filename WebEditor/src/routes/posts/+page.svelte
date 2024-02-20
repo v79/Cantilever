@@ -1,24 +1,23 @@
 <script lang="ts">
-	import {
-		getModalStore,
-		getToastStore,
-		type ModalSettings,
-		type ToastSettings,
-		type TreeViewNode
-	} from '@skeletonlabs/skeleton';
-	import { onMount, tick } from 'svelte';
-	import { Add, Delete, Folder, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
+	import BasicFileList from '$lib/components/BasicFileList.svelte';
+	import PostListItem from '$lib/components/FileListItem.svelte';
 	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
 	import DatePicker from '$lib/forms/datePicker.svelte';
 	import MarkdownEditor from '$lib/forms/markdownEditor.svelte';
 	import TextInput from '$lib/forms/textInput.svelte';
-	import { CLEAR_MARKDOWN, markdownStore } from '$lib/stores/contentStore.svelte';
-	import { userStore } from '$lib/stores/userStore.svelte';
-	import BasicFileList from '$lib/components/BasicFileList.svelte';
-	import PostListItem from '$lib/components/FileListItem.svelte';
-	import { deletePost, fetchPost, fetchPosts, posts, savePost } from '../../lib/stores/postStore.svelte';
 	import { MarkdownContent, PostItem } from '$lib/models/markdown';
+	import { CLEAR_MARKDOWN, markdownStore } from '$lib/stores/contentStore.svelte';
 	import { project } from '$lib/stores/projectStore.svelte';
+	import { userStore } from '$lib/stores/userStore.svelte';
+	import {
+		getModalStore,
+		getToastStore,
+		type ToastSettings,
+		type TreeViewNode
+	} from '@skeletonlabs/skeleton';
+	import { onMount, tick } from 'svelte';
+	import { Add, Delete, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
+	import { deletePost, fetchPost, fetchPosts, posts, savePost } from '../../lib/stores/postStore.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -81,12 +80,15 @@
 		}
 	};
 
-	const newPostModal: ModalSettings = {
-		type: 'confirm',
-		title: 'Create new post',
-		body: 'Create a new post?',
-		response: (r: boolean) => {
-			if (r) {
+	/**
+	 * @type: {ModalSettings}
+	 */
+	$: createNewPostModal = {
+		type: 'component',
+		component: 'createNewPostModal',
+		meta: {
+			modalTitle: 'Create new post',
+			onFormSubmit: () => {
 				initiateNewPost();
 			}
 		}
@@ -242,7 +244,7 @@
 					><Icon icon={Refresh} />Reload</button>
 				<button
 					class="variant-filled-primary"
-					on:click={(e) => modalStore.trigger(newPostModal)}
+					on:click={(e) => modalStore.trigger(createNewPostModal)}
 					title="Create new post"><Icon icon={Add} />New Post</button>
 			</div>
 			<div class="flex flex-row m-4">
