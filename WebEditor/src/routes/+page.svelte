@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import ProjectSelectMenu from '$lib/components/projectSelectMenu.svelte';
-	import { fetchProject, fetchProjectList, project } from '$lib/stores/projectStore.svelte';
+	import { fetchProjectList, project } from '$lib/stores/projectStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import { getToastStore, type ToastSettings } from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
-	import { Add, Icon } from 'svelte-google-materialdesign-icons';
+	import { Icon } from 'svelte-google-materialdesign-icons';
 	import PlusOne from 'svelte-google-materialdesign-icons/Plus_one.svelte';
 
 	const toastStore = getToastStore();

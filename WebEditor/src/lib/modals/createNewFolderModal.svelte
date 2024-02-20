@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { getModalStore, getToastStore, type ToastSettings } from '@skeletonlabs/skeleton';
 	import type { SvelteComponent } from 'svelte';
-	import { folders } from '../../routes/pages/pageStore.svelte';
-	import { userStore } from '$lib/stores/userStore.svelte';
+	import { folders } from '$lib/stores/pageStore.svelte';
 	import TextInput from '$lib/forms/textInput.svelte';
 	import { validateSlug } from '$lib/functions/validateSlug';
 

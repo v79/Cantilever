@@ -8,12 +8,15 @@
 		return {
 			subscribe,
 			set,
-			update
+			update,
+			clear: () => set(CLEAR_IMAGES),
+			isEmpty: () => get(images).count === 0
 		};
 	}
 
 	// This store manages media, such as images
 	export const images = createImageStore();
+	const CLEAR_IMAGES = { count: 0, lastUpdated: new Date(), images: [] };
 
 	// fetch the list of images from the server and store in the images store
 	export async function fetchImages(token: string, projectDomain: string): Promise<number | Error> {

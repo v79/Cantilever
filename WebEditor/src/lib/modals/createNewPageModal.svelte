@@ -3,7 +3,7 @@
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import { getModalStore, getToastStore, type ToastSettings } from '@skeletonlabs/skeleton';
 	import { onMount, type SvelteComponent } from 'svelte';
-	import { folders } from '../../routes/pages/pageStore.svelte';
+	import { folders } from '$lib/stores/pageStore.svelte';
 	import { project } from '$lib/stores/projectStore.svelte';
 
 	export let parent: SvelteComponent;

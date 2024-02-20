@@ -16,7 +16,7 @@
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import BasicFileList from '$lib/components/BasicFileList.svelte';
 	import PostListItem from '$lib/components/FileListItem.svelte';
-	import { deletePost, fetchPost, fetchPosts, posts, savePost } from './postStore.svelte';
+	import { deletePost, fetchPost, fetchPosts, posts, savePost } from '../../lib/stores/postStore.svelte';
 	import { MarkdownContent, PostItem } from '$lib/models/markdown';
 	import { project } from '$lib/stores/projectStore.svelte';
 
@@ -103,7 +103,7 @@
 	};
 
 	onMount(async () => {
-		if (!$posts) {
+		if (posts.isEmpty()) {
 			await loadPostList();
 		}
 	});

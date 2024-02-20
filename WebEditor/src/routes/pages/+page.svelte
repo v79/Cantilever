@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PostListItem from '$lib/components/FileListItem.svelte';
 	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
 	import NestedFileList from '$lib/components/NestedFileList.svelte';
 	import TextInput from '$lib/forms/textInput.svelte';
@@ -6,6 +7,7 @@
 	import { FolderNode } from '$lib/models/pages.svelte';
 	import { TemplateNode } from '$lib/models/templates.svelte';
 	import { CLEAR_MARKDOWN, markdownStore } from '$lib/stores/contentStore.svelte';
+	import { project } from '$lib/stores/projectStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import {
 		getModalStore,
@@ -14,14 +16,8 @@
 		type TreeViewNode
 	} from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
-	import { Add, Delete, Home, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
+	import { Add, Delete, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
 	import CreateNewFolder from 'svelte-google-materialdesign-icons/Create_new_folder.svelte';
-	import PostListItem from '$lib/components/FileListItem.svelte';
-	import FolderIconComponent from './FolderIconComponent.svelte';
-	import FolderListItem from './FolderListItem.svelte';
-	import IndexPageIconComponent from './IndexPageIconComponent.svelte';
-	import PageIconComponent from './PageIconComponent.svelte';
-	import SectionTabs from './SectionTabs.svelte';
 	import {
 		createFolder,
 		deleteFolder,
@@ -32,9 +28,13 @@
 		folders,
 		pages,
 		savePage
-	} from './pageStore.svelte';
+	} from '$lib/stores/pageStore.svelte';
+	import FolderIconComponent from './FolderIconComponent.svelte';
+	import FolderListItem from './FolderListItem.svelte';
+	import IndexPageIconComponent from './IndexPageIconComponent.svelte';
+	import PageIconComponent from './PageIconComponent.svelte';
+	import SectionTabs from './SectionTabs.svelte';
 	import ParentAndIndexInput from './parentAndIndexInput.svelte';
-	import { project } from '$lib/stores/projectStore.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -157,7 +157,7 @@
 	};
 
 	onMount(async () => {
-		if (!$pages) {
+		if (pages.isEmpty()) {
 			await loadPagesAndFolders();
 		}
 	});

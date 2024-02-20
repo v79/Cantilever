@@ -8,8 +8,32 @@
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
 	import { get, writable } from 'svelte/store';
 
-	export const pages = writable<PageList>();
-	export const folders = writable<FolderList>();
+	export const pages = createPagesStore();
+	export const folders = createFoldersStore();
+	const CLEAR_PAGES = { count: 0, pages: [] };
+	const CLEAR_FOLDERS = { count: 0, folders: [] };
+
+	function createPagesStore() {
+		const { subscribe, set, update } = writable<PageList>();
+		return {
+			subscribe,
+			set,
+			update,
+			clear: () => set(CLEAR_PAGES),
+			isEmpty: () => get(pages).count === 0
+		};
+	}
+
+	function createFoldersStore() {
+		const { subscribe, set, update } = writable<FolderList>();
+		return {
+			subscribe,
+			set,
+			update,
+			clear: () => set(CLEAR_FOLDERS),
+			isEmpty: () => get(folders).count === 0
+		};
+	}
 
 	// fetch list of pages (not folders) from server
 	export async function fetchPages(token: string, projectDomain: string): Promise<number | Error> {

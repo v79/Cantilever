@@ -4,9 +4,22 @@
 	import { handlebars } from '$lib/stores/contentStore.svelte';
 
 	// complete set of template metadata
-	export const templates = writable<TemplateList>();
+	export const templates = createTemplatesStore()
+	const CLEAR_TEMPLATES = { count: 0, templates: [] };
+
+	function createTemplatesStore() {
+		const { subscribe, set, update } = writable<TemplateList>();
+		return {
+			subscribe,
+			set,
+			update,
+			clear: () => set(CLEAR_TEMPLATES),
+			isEmpty: () => get(templates).count === 0
+		};
+	}
 
 	// fetch list of templates from server
+
 	export async function fetchTemplates(
 		token: string,
 		projectDomain: string

@@ -1,17 +1,17 @@
 <script lang="ts">
 	import TextInput from '$lib/forms/textInput.svelte';
 	import type { iconConfigType } from '$lib/forms/textInputIconType';
+	import type { FolderNode, PageNode } from '$lib/models/pages.svelte';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
-	import { Home } from 'svelte-google-materialdesign-icons';
-	import { folders, pages, switchIndexPage } from './pageStore.svelte';
+	import { userStore } from '$lib/stores/userStore.svelte';
 	import {
 		getModalStore,
 		getToastStore,
 		type ModalSettings,
 		type ToastSettings
 	} from '@skeletonlabs/skeleton';
-	import type { FolderNode, PageNode } from '$lib/models/pages.svelte';
-	import { userStore } from '$lib/stores/userStore.svelte';
+	import { Home } from 'svelte-google-materialdesign-icons';
+	import { folders, pages, switchIndexPage } from '../../lib/stores/pageStore.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();

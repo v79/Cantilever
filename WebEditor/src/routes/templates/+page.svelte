@@ -100,7 +100,7 @@
 	};
 
 	onMount(async () => {
-		if (!$templates) {
+		if (templates.isEmpty()) {
 			await loadTemplateList();
 		}
 	});

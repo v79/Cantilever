@@ -5,7 +5,19 @@
 	import { get, writable } from 'svelte/store';
 
 	// complete set of post metadata
-	export const posts = writable<PostList>();
+	export const posts = createPostStore();
+
+	function createPostStore() {
+		const { subscribe, set, update } = writable<PostList>();
+
+		return {
+			subscribe,
+			set,
+			update,
+			clear: () => set({ count: 0, posts: [] }),
+			isEmpty: () => get(posts).count === 0
+		};
+	}
 
 	// fetch list of posts from server
 	export async function fetchPosts(token: string, projectDomain: string): Promise<number | Error> {
@@ -26,7 +38,7 @@
 				posts.set(data.data);
 				return data.data.count as number;
 			} else {
-				throw new Error('Failed to fetch posts');
+				throw new Error("Failed to fetch posts");
 			}
 		} catch (error) {
 			console.error(error);

@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { images } from '$lib/stores/mediaStore.svelte';
+	import { folders, pages } from '$lib/stores/pageStore.svelte';
+	import { posts } from '$lib/stores/postStore.svelte';
 	import { fetchProject } from '$lib/stores/projectStore.svelte';
+	import { templates } from '$lib/stores/templateStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import { getToastStore, type ToastSettings } from '@skeletonlabs/skeleton';
 	import { Download, Icon } from 'svelte-google-materialdesign-icons';
@@ -29,6 +33,12 @@
 				errorToast.message = 'Failed to load project: ' + loadResponse.message;
 				toastStore.trigger(errorToast);
 			} else {
+				// clear stores
+				posts.clear();
+				pages.clear();
+				folders.clear();
+				templates.clear();
+				images.clear();
 				toast.message = 'Loaded project ' + loadResponse.projectName;
 				toastStore.trigger(toast);
 				goto('/project');
