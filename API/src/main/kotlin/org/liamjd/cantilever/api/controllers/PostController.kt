@@ -47,8 +47,6 @@ class PostController(sourceBucket: String) : KoinComponent, APIController(source
         val postToSave = request.body
         val srcKey = postToSave.srcKey
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-//        val fullPathKey = projectKeyHeader + "/" + URLDecoder.decode(postToSave.srcKey, Charset.defaultCharset())
-
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             loadContentTree(projectKeyHeader)
             info("Updating existing file '${srcKey}'")
@@ -102,7 +100,6 @@ class PostController(sourceBucket: String) : KoinComponent, APIController(source
      * @return [PostListDTO] object containing the list of posts, a count and the last updated date/time
      */
     fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostListDTO>> {
-
         val projectMetadataKey = request.headers["cantilever-project-domain"] + "/" + S3_KEY.metadataKey
         return if (s3Service.objectExists(projectMetadataKey, sourceBucket)) {
             loadContentTree(request.headers["cantilever-project-domain"]!!)
@@ -120,7 +117,7 @@ class PostController(sourceBucket: String) : KoinComponent, APIController(source
                 ResponseEntity.ok(body = APIResult.Success(value = postList))
             }
         } else {
-            error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
+            error("Cannot find file '$projectMetadataKey' in bucket $sourceBucket")
             ResponseEntity.notFound(body = APIResult.Error(statusText = "Cannot find file '${projectMetadataKey}' in bucket $sourceBucket"))
         }
     }

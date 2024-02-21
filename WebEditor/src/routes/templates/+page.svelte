@@ -37,7 +37,7 @@
 	let pgTitle = 'Template Editor';
 	let isNewTemplate = false;
 	$: templateIsValid = $handlebars.title != null && $handlebars.body != null;
-	let usageCount = 0;
+	$: usageCount = 0;
 
 	const errorToast: ToastSettings = {
 		message: 'Failed to fetch templates',
@@ -141,6 +141,15 @@
 				toast.message = r;
 				toastStore.trigger(toast);
 				isNewTemplate = false;
+				let usageResponse = getTemplateUsage(srcKey);
+				usageResponse.then((r) => {
+					if (r instanceof Error) {
+						errorToast.message = 'Failed to fetch template usage';
+						toastStore.trigger(errorToast);
+					} else {
+						usageCount = r.count;
+					}
+				});
 			}
 		});
 	}
@@ -148,6 +157,7 @@
 	async function initiateSaveTemplate() {
 		if ($handlebars) {
 			console.log('initiateSaveTemplate: ', $handlebars.srcKey);
+			console.dir($handlebars);
 			if (isNewTemplate) {
 				$handlebars.srcKey = 'sources/templates/' + $handlebars.srcKey + '.html.hbs';
 			}
@@ -173,6 +183,7 @@
 		} else {
 			toast.message = result;
 			toastStore.trigger(toast);
+			$templates.count--;
 			$handlebars = new TemplateNode('', new Date(), '', new Array<string>(), '');
 		}
 	}
@@ -260,7 +271,7 @@
 		templateListNodes = [...templateListNodes];
 	});
 
-	const hanldebarsUnsubscribe = handlebars.subscribe((value) => {
+	const handlebarsUnsubscribe = handlebars.subscribe((value) => {
 		if (value) {
 			if (value.title != null) {
 				pgTitle = value.title;
@@ -341,9 +352,13 @@
 					<TextInput label="Title" name="TemplateTitle" bind:value={$handlebars.title} required />
 				</div>
 				<div class="col-span-1 sm:col-span-1 lg:col-span-1">
-					{#await getTemplateUsage($handlebars.srcKey) then value}
-						<TextInput label="Used by" name="TemplateUsage" value={value.count} readonly />
-					{:catch error}??{/await}
+					{#if !isNewTemplate}
+						<TextInput
+							label="Used by"
+							name="TemplateUsage"
+							value={usageCount.toString()}
+							readonly />
+					{/if}
 				</div>
 				<div class="col-span-6">
 					<textarea bind:value={$handlebars.body} class="textarea" rows="20"></textarea>

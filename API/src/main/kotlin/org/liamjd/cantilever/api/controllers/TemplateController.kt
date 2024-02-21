@@ -34,6 +34,7 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
                 if (templateObj != null) {
                     val body = s3Service.getObjectAsString(decoded, sourceBucket)
                     val frontmatter = body.getFrontMatter()
+                    // TODO: need to return a ContentNode.TemplateNode instead of a TemplateMetadata
                     // TODO: this throws exception if a value is missing from the frontmatter, even though it should encode the default
                     val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
                     info("Handlebar frontmatter: $metadata")
@@ -89,21 +90,24 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
                 APIResult.OK("Updated file ${templateNode.srcKey}, $length bytes")
             )
         } else {
-            info("Creating new file '${templateNode.srcKey}'")
+            info("Creating new file '$projectKeyHeader/$srcKey' by copying from '${templateNode.srcKey}'")
+            // we need to update the sourcekey to include the projectHeaderKey, and we need to remove the body before adding into the contentTree
+            val newNode = templateNode.copy(srcKey = "$projectKeyHeader/$srcKey")
+            newNode.body = templateNode.body
             val length = s3Service.putObjectAsString(
-                templateNode.srcKey,
+                "$projectKeyHeader/$srcKey",
                 sourceBucket,
-                convertTemplateToYamlString(templateNode),
+                convertTemplateToYamlString(newNode),
                 "text/plain"
             )
-            templateNode.body = ""
+            newNode.body = ""
             contentTree.insertTemplate(
-                templateNode
+                newNode
             )
             saveContentTree(projectKeyHeader)
             ResponseEntity.ok(
                 body =
-                APIResult.OK("Updated file ${templateNode.srcKey}, $length bytes")
+                APIResult.OK("Updated file ${newNode.srcKey}, $length bytes")
             )
         }
     }
@@ -239,13 +243,15 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
      * The front end gives us a JSON representation of a handlebars template, which we need to convert to a YAML frontmatter & body
      */
     private fun convertTemplateToYamlString(template: ContentNode.TemplateNode): String {
-        val templateMetadata = TemplateMetadata(
-            name = template.title,
-            sections = template.sections
-        )
         val sBuilder: StringBuilder = StringBuilder()
         sBuilder.appendLine("---")
-        sBuilder.appendLine(Yaml.default.encodeToString(TemplateMetadata.serializer(), templateMetadata))
+        sBuilder.appendLine("name: ${template.title}")
+        if(template.sections.isNotEmpty()) {
+            sBuilder.appendLine("sections:")
+            template.sections.forEach {
+                sBuilder.appendLine("  - $it")
+            }
+        }
         sBuilder.appendLine("---")
         sBuilder.appendLine(template.body)
         return sBuilder.toString()
