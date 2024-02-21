@@ -34,11 +34,8 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
                 if (templateObj != null) {
                     val body = s3Service.getObjectAsString(decoded, sourceBucket)
                     val frontmatter = body.getFrontMatter()
-                    // TODO: need to return a ContentNode.TemplateNode instead of a TemplateMetadata
                     // TODO: this throws exception if a value is missing from the frontmatter, even though it should encode the default
                     val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
-                    info("Handlebar frontmatter: $metadata")
-
                     val templateNode: ContentNode.TemplateNode = ContentNode.TemplateNode(
                         srcKey = decoded,
                         title = metadata.name,
@@ -169,7 +166,6 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
      */
     fun getTemplateUsage(request: Request<Unit>): ResponseEntity<APIResult<TemplateUseDTO>> {
         val templateKey = request.pathParameters["srcKey"]
-
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         if (templateKey != null) {
             return if (loadContentTree(projectKeyHeader)) {
@@ -177,8 +173,8 @@ class TemplateController(sourceBucket: String) : KoinComponent, APIController(so
                 info("Looking for uses of template $decoded")
                 // unfortunately need to strip away projectKeyHeader from the srcKey
                 val srcKey = decoded.removePrefix("$projectKeyHeader/")
-                val pages = contentTree.getPagesForTemplate(decoded).map { srcKey }
-                val posts = contentTree.getPostsForTemplate(decoded).map { srcKey }
+                val pages = contentTree.getPagesForTemplate(srcKey).map { it.srcKey }
+                val posts = contentTree.getPostsForTemplate(srcKey).map { it.srcKey }
                 val count = pages.size + posts.size
                 val dto = TemplateUseDTO(count = count, pageKeys = pages, postKeys = posts)
                 info("Found ${dto.count} uses, across ${dto.pageKeys.size} pages and ${dto.postKeys.size} posts")

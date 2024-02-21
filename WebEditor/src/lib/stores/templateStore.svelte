@@ -19,7 +19,6 @@
 	}
 
 	// fetch list of templates from server
-
 	export async function fetchTemplates(
 		token: string,
 		projectDomain: string
@@ -70,7 +69,7 @@
 				const data = await response.json();
 				// console.log('templateStore: Fetched template', data.data);
 				handlebars.set(data.data);
-				return 'Loaded template' + srcKey;
+				return 'Loaded template ' + srcKey;
 			} else {
 				throw new Error('Failed to fetch template');
 			}
