@@ -155,7 +155,7 @@
 			let metadata = $markdownStore.metadata;
 			if (isNewPost || metadata.srcKey === '') {
 				console.log('Is a new post / srcKey is blank, so setting it to the slug', metadata.slug);
-				metadata.srcKey = 'sources/posts/' + metadata.slug + '.md';
+				metadata.srcKey = $project.domain + '/sources/posts/' + metadata.slug + '.md';
 				$markdownStore.metadata = metadata;
 			}
 			let saveResult = await savePost(metadata?.srcKey, $userStore.token!!, $project.domain);
