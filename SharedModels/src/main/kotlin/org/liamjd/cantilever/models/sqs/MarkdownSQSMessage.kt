@@ -13,11 +13,11 @@ sealed class MarkdownSQSMessage {
      * Data class representing a message sent whenever a markdown [ContentNode.PostNode] file is uploaded to the source bucket
      */
     @Serializable
-    data class PostUploadMsg(val metadata: ContentNode.PostNode, val markdownText: String) : MarkdownSQSMessage()
+    data class PostUploadMsg(val projectDomain: String, val metadata: ContentNode.PostNode, val markdownText: String) : MarkdownSQSMessage()
 
     /**
      * Data class representing a message sent whenever a markdown [ContentNode.PageNode] file is uploaded to the source bucket
      */
     @Serializable
-    data class PageUploadMsg(val metadata: ContentNode.PageNode, val markdownText: String) : MarkdownSQSMessage()
+    data class PageUploadMsg(val projectDomain: String, val metadata: ContentNode.PageNode, val markdownText: String) : MarkdownSQSMessage()
 }

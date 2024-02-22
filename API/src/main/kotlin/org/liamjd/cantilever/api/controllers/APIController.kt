@@ -10,7 +10,7 @@ import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentTree
 import org.liamjd.cantilever.services.S3Service
 
-abstract class APIController(val sourceBucket: String) : KoinComponent {
+abstract class APIController(val sourceBucket: String, val generationBucket: String) : KoinComponent {
 
     val s3Service: S3Service by inject()
     val contentTree: ContentTree = ContentTree()
@@ -21,10 +21,10 @@ abstract class APIController(val sourceBucket: String) : KoinComponent {
      */
     fun loadContentTree(domain: String): Boolean {
         val metadataKey = domain + "/" +  S3_KEY.metadataKey
-        if (s3Service.objectExists(metadataKey, sourceBucket)) {
-            info("Reading $metadataKey from bucket $sourceBucket")
+        if (s3Service.objectExists(metadataKey, generationBucket)) {
+            info("Reading $metadataKey from bucket $generationBucket")
             contentTree.clear()
-            val metadata = s3Service.getObjectAsString(metadataKey, sourceBucket)
+            val metadata = s3Service.getObjectAsString(metadataKey, generationBucket)
             val newTree = Json.decodeFromString(ContentTree.serializer(), metadata)
             contentTree.items.addAll(newTree.items)
             contentTree.templates.addAll(newTree.templates)
@@ -32,7 +32,7 @@ abstract class APIController(val sourceBucket: String) : KoinComponent {
             contentTree.images.addAll(newTree.images)
             return true
         } else {
-            warn("No '$metadataKey' file found in bucket $sourceBucket; please regenerate new empty tree")
+            warn("No '$metadataKey' file found in bucket $generationBucket; please regenerate new empty tree")
             return false
         }
     }
@@ -45,7 +45,7 @@ abstract class APIController(val sourceBucket: String) : KoinComponent {
         info("Saving content tree $metadataKey to bucket $sourceBucket")
         val json = Json { prettyPrint = true }
         val metadata = json.encodeToString(ContentTree.serializer(), contentTree)
-        s3Service.putObjectAsString(metadataKey, sourceBucket, metadata, MimeType.json.toString())
+        s3Service.putObjectAsString(metadataKey, generationBucket, metadata, MimeType.json.toString())
     }
 
     /**

@@ -92,9 +92,10 @@ class GeneratorControllerTest : KoinTest {
         declareMock<S3Service> {
             every { mockS3.getObjectAsString("sources/posts/my-holiday-post.md", sourceBucket) } returns """
                 title: My holiday post
-                templateKey: post
+                templateKey: domain.com/sources/templates/post
                 slug: my-holiday-post
                 date: 2023-10-20
+                attributes: {}
             """.trimIndent()
             every { mockS3.objectExists("test/generated/metadata.json", sourceBucket) } returns true
             every { mockS3.getObjectAsString("test/generated/metadata.json", sourceBucket) } returns mockMetaJson

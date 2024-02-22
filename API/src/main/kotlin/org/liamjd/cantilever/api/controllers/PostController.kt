@@ -16,7 +16,7 @@ import java.nio.charset.Charset
 /**
  * Load, save and delete Posts from the S3 bucket. Operations will update the content tree.
  */
-class PostController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
+class PostController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
 
     /**
      * Load a markdown file with the specified `srcKey` from the project folder `cantilever-project-domain` and return it as [ContentNode.PostNode] response

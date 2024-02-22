@@ -16,7 +16,7 @@ import org.liamjd.cantilever.routing.ResponseEntity
 import java.net.URLDecoder
 import java.nio.charset.Charset
 
-class TemplateController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
+class TemplateController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
 
     /**
      * Load a handlebars template file with the specified 'srcKey' and return it as a [ContentNode.TemplateNode] response

@@ -16,7 +16,7 @@ import org.liamjd.cantilever.routing.ResponseEntity
 /**
  * Generate metadata across posts, pages, templates etc
  **/
-class MetadataController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
+class MetadataController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
 
     /**
      * Perform a complete scan of the sources/ bucket and rebuild the metadata.json file in the generated/ folder
@@ -104,7 +104,7 @@ class MetadataController(sourceBucket: String) : KoinComponent, APIController(so
             info("Found $filesProcessed files in sources/ bucket; writing metadata.json to generated/ bucket")
             val pretty = Json { prettyPrint = true }
             val treeJson = pretty.encodeToString(ContentTree.serializer(), contentTree)
-            s3Service.putObjectAsString(projectMetadataKey, sourceBucket, treeJson, "application/json")
+            s3Service.putObjectAsString(projectMetadataKey, generationBucket, treeJson, "application/json")
         } else {
             error("No source files found in 'sources/ which match the requirements to build a project metadata' file.")
             return ResponseEntity.serverError(

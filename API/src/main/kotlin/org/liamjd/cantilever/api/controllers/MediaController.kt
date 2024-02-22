@@ -15,7 +15,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 /**
  * Load, save and delete Images from the S3 bucket
  */
-class MediaController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
+class MediaController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
 
     /**
      * Return a list of all the images in the content tree

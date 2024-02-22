@@ -24,7 +24,7 @@ private const val APP_JSON = "application/json"
  * Manages all the project-wide configuration and json models
  * TODO: there is a lot of duplication in this class
  */
-class ProjectController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
+class ProjectController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
 
     /**
      * Return the 'cantilever.yaml' project definition file, in yaml format.

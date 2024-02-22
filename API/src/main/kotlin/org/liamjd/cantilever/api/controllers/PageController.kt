@@ -18,7 +18,7 @@ import java.nio.charset.Charset
 /**
  * Load, save and delete Pages from the S3 bucket
  */
-class PageController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
+class PageController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
 
     /**
      * Return a list of all the pages in the content tree

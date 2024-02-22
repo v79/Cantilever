@@ -26,7 +26,7 @@ val appModule = module {
 class LambdaRouter : RequestHandlerWrapper() {
 
     private val sourceBucket: String = System.getenv("source_bucket")
-    private val destinationBucket: String = System.getenv("destination_bucket")
+    private val generationBucket: String = System.getenv("generation_bucket")
     override val corsDomain: String = System.getenv("cors_domain") ?: "https://www.cantilevers.org/"
 
     init {
@@ -36,13 +36,16 @@ class LambdaRouter : RequestHandlerWrapper() {
     }
 
     // May need some DI here once I start needing to add services for S3 etc
-    private val postController = PostController(sourceBucket = sourceBucket)
-    private val pageController = PageController(sourceBucket = sourceBucket)
-    private val templateController = TemplateController(sourceBucket = sourceBucket)
-    private val generatorController = GeneratorController(sourceBucket = sourceBucket)
-    private val projectController = ProjectController(sourceBucket = sourceBucket)
-    private val metadataController = MetadataController(sourceBucket = sourceBucket)
-    private val mediaController = MediaController(sourceBucket = sourceBucket)
+    private val postController = PostController(sourceBucket = sourceBucket, generationBucket = generationBucket)
+    private val pageController = PageController(sourceBucket = sourceBucket, generationBucket = generationBucket)
+    private val templateController =
+        TemplateController(sourceBucket = sourceBucket, generationBucket = generationBucket)
+    private val generatorController =
+        GeneratorController(sourceBucket = sourceBucket, generationBucket = generationBucket)
+    private val projectController = ProjectController(sourceBucket = sourceBucket, generationBucket = generationBucket)
+    private val metadataController =
+        MetadataController(sourceBucket = sourceBucket, generationBucket = generationBucket)
+    private val mediaController = MediaController(sourceBucket = sourceBucket, generationBucket = generationBucket)
 
     private val cognitoJWTAuthorizer = CognitoJWTAuthorizer(
         mapOf(
@@ -247,8 +250,8 @@ class LambdaRouter : RequestHandlerWrapper() {
                     )
 
                     post("/images/", mediaController::uploadImage).spec(
-                            Spec.PathItem("Upload image", "Upload an image to the source bucket")
-                        )
+                        Spec.PathItem("Upload image", "Upload an image to the source bucket")
+                    )
 
                     delete("/images/$SRCKEY", mediaController::deleteImage).supplies(setOf(MimeType.plainText))
                         .spec(Spec.PathItem("Delete image", "Delete an image from the source bucket"))

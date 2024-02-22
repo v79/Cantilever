@@ -10,8 +10,8 @@ import org.liamjd.cantilever.models.ContentNode
 sealed class ImageSQSMessage {
 
     @Serializable
-    data class ResizeImageMsg(val metadata: ContentNode.ImageNode) : ImageSQSMessage()
+    data class ResizeImageMsg(val projectDomain: String, val metadata: ContentNode.ImageNode) : ImageSQSMessage()
 
     @Serializable
-    data class CopyImagesMsg(val imageList: List<String>) : ImageSQSMessage()
+    data class CopyImagesMsg(val projectDomain: String, val imageList: List<String>) : ImageSQSMessage()
 }
