@@ -49,7 +49,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                 var count = 0
                 if (pages.isNotEmpty()) {
                     pages.forEach { page ->
-                        val sourceString = s3Service.getObjectAsString("$projectKeyHeader/${page.srcKey}", sourceBucket)
+                        val sourceString = s3Service.getObjectAsString(page.srcKey, sourceBucket)
                         val msgResponse = queuePageRegeneration(projectKeyHeader, page.srcKey, sourceString)
                         if (msgResponse != null) {
                             count++
@@ -65,7 +65,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
             } else {
                 srcKey = URLDecoder.decode(requestKey, Charset.defaultCharset())
                 info("GeneratorController: Received request to regenerate page '$srcKey'")
-                val sourceString = s3Service.getObjectAsString("$projectKeyHeader/${srcKey}", sourceBucket)
+                val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
                 queuePageRegeneration(projectKeyHeader, srcKey, sourceString)
                 return ResponseEntity.ok(body = APIResult.Success(value = "Regenerated page '$requestKey'"))
             }
@@ -96,7 +96,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                 var count = 0
                 if (posts.isNotEmpty()) {
                     posts.forEach { post ->
-                        val sourceString = s3Service.getObjectAsString("$projectKeyHeader/${post.srcKey}", sourceBucket)
+                        val sourceString = s3Service.getObjectAsString(post.srcKey, sourceBucket)
                         val postSrcKey = post.srcKey.removePrefix(postsPrefix)
                         val msgResponse = queuePostRegeneration(
                             postSrcKey = postSrcKey,

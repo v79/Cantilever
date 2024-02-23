@@ -41,6 +41,7 @@ class GeneratorControllerTest : KoinTest {
     private val mockS3: S3Service by inject()
     private val mockSQS: SQSService by inject()
     private val sourceBucket = "sourceBucket"
+    private val generationBucket = "generationBucket"
 
     @JvmField
     @RegisterExtension
@@ -68,16 +69,16 @@ class GeneratorControllerTest : KoinTest {
 
         declareMock<S3Service> {
             every { mockS3.getObjectAsString("test/sources/pages/about.md", sourceBucket) } returns "about page text"
-            every { mockS3.objectExists("test/generated/metadata.json", sourceBucket) } returns true
-            every { mockS3.getObjectAsString("test/generated/metadata.json", sourceBucket) } returns mockMetaJson
+            every { mockS3.objectExists("test/metadata.json", generationBucket) } returns true
+            every { mockS3.getObjectAsString("test/metadata.json", generationBucket) } returns mockMetaJson
 
         }
         declareMock<SQSService> {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "1234"
-        val controller = GeneratorController(sourceBucket)
-        val encoded = URLEncoder.encode("sources/pages/about.md", "UTF-8")
+        val controller = GeneratorController(sourceBucket,generationBucket)
+        val encoded = URLEncoder.encode("test/sources/pages/about.md", "UTF-8")
         val request = buildRequest(path = "/generate/page/$encoded", pathPattern = "/generate/page/{srcKey}")
 
         val response = controller.generatePage(request)
@@ -92,21 +93,21 @@ class GeneratorControllerTest : KoinTest {
         declareMock<S3Service> {
             every { mockS3.getObjectAsString("sources/posts/my-holiday-post.md", sourceBucket) } returns """
                 title: My holiday post
-                templateKey: domain.com/sources/templates/post
+                templateKey: sources/templates/post
                 slug: my-holiday-post
                 date: 2023-10-20
                 attributes: {}
             """.trimIndent()
-            every { mockS3.objectExists("test/generated/metadata.json", sourceBucket) } returns true
-            every { mockS3.getObjectAsString("test/generated/metadata.json", sourceBucket) } returns mockMetaJson
+            every { mockS3.objectExists("test/metadata.json", generationBucket) } returns true
+            every { mockS3.getObjectAsString("test/metadata.json", generationBucket) } returns mockMetaJson
 
         }
         declareMock<SQSService> {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "1234"
-        val controller = GeneratorController(sourceBucket)
-        val request = buildRequest(path = "/generate/post/my-holiday-post.md", pathPattern = "/generate/page/{srcKey}")
+        val controller = GeneratorController(sourceBucket,generationBucket)
+        val request = buildRequest(path = "/generate/test/my-holiday-post.md", pathPattern = "/generate/page/{srcKey}")
 
         val response = controller.generatePost(request)
 
@@ -130,7 +131,7 @@ class GeneratorControllerTest : KoinTest {
           {
             "type": "page",
             "title": "About me",
-            "srcKey": "sources/pages/bio/about-me.md",
+            "srcKey": "test/sources/pages/bio/about-me.md",
             "templateKey": "sources/templates/about.html.hbs",
             "url": "bio/about-me",
             "attributes": {},
@@ -145,7 +146,7 @@ class GeneratorControllerTest : KoinTest {
       },
       {
         "type": "folder",
-        "srcKey": "sources/pages/folder/",
+        "srcKey": "test/sources/pages/folder/",
         "children": null,
         "isRoot": false,
         "count": 0
@@ -157,7 +158,7 @@ class GeneratorControllerTest : KoinTest {
           {
             "type": "page",
             "title": "About Cantilever",
-            "srcKey": "sources/pages/about.md",
+            "srcKey": "test/sources/pages/about.md",
             "templateKey": "sources/templates/about.html.hbs",
             "url": "about",
             "attributes": {
@@ -172,7 +173,7 @@ class GeneratorControllerTest : KoinTest {
           {
             "type": "page",
             "title": "Testing Emoji",
-            "srcKey": "sources/pages/about.md",
+            "srcKey": "test/sources/pages/about.md",
             "templateKey": "sources/templates/about.html.hbs",
             "url": "emoji",
             "attributes": {
@@ -187,7 +188,7 @@ class GeneratorControllerTest : KoinTest {
           {
             "type": "page",
             "title": "Cantilever",
-            "srcKey": "sources/pages/index.md",
+            "srcKey": "test/sources/pages/index.md",
             "templateKey": "index",
             "url": "index",
             "attributes": {
@@ -204,7 +205,7 @@ class GeneratorControllerTest : KoinTest {
           {
             "type": "page",
             "title": "Page Model",
-            "srcKey": "sources/pages/about.md",
+            "srcKey": "test/sources/pages/about.md",
             "templateKey": "sources/templates/about.html.hbs",
             "url": "page-model",
             "attributes": {},
@@ -216,7 +217,7 @@ class GeneratorControllerTest : KoinTest {
           {
             "type": "page",
             "title": "Todo",
-            "srcKey": "sources/pages/about.md",
+            "srcKey": "test/sources/pages/about.md",
             "templateKey": "sources/templates/about.html.hbs",
             "url": "todo",
             "attributes": {
@@ -246,7 +247,7 @@ class GeneratorControllerTest : KoinTest {
   "posts": [
     {
       "title": "Momentum lost",
-      "srcKey": "sources/posts/momentum-lost.md",
+      "srcKey": "test/sources/posts/momentum-lost.md",
       "url": "momentum-lost",
       "date": "2023-05-13",
       "lastUpdated": "2023-07-03T19:46:46.686504Z",
@@ -262,15 +263,16 @@ class GeneratorControllerTest : KoinTest {
 
         declareMock<S3Service> {
             every { mockS3.objectExists(any(), sourceBucket) } returns true
-            every { mockS3.getObjectAsString("test/generated/metadata.json", sourceBucket) } returns mockMetaJson
+            every { mockS3.objectExists("test/metadata.json", generationBucket) } returns true
+            every { mockS3.getObjectAsString("test/metadata.json", generationBucket) } returns mockMetaJson
             every {
                 mockS3.getObjectAsString(
-                    "sources/pages/dynamodb-design-thoughts.md", sourceBucket
+                    "test/sources/pages/dynamodb-design-thoughts.md", sourceBucket
                 )
             } returns mockTodoPage
-            every { mockS3.getObjectAsString("sources/pages/bio/about-me.md", sourceBucket) } returns mockTodoPage
-            every { mockS3.getObjectAsString("sources/pages/about.md", sourceBucket) } returns mockTodoPage
-            every { mockS3.getObjectAsString("sources/pages/new-approach.md", sourceBucket) } returns mockTodoPage
+            every { mockS3.getObjectAsString("test/sources/pages/bio/about-me.md", sourceBucket) } returns mockTodoPage
+            every { mockS3.getObjectAsString("test/sources/pages/about.md", sourceBucket) } returns mockTodoPage
+            every { mockS3.getObjectAsString("test/sources/pages/new-approach.md", sourceBucket) } returns mockTodoPage
 
             every {
                 mockS3.getObjectAsString(
@@ -282,7 +284,7 @@ class GeneratorControllerTest : KoinTest {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "2345"
-        val controller = GeneratorController(sourceBucket)
+        val controller = GeneratorController(sourceBucket,generationBucket)
         val request = buildRequest(
             path = "/generate/template/sources%252Ftemplates%252Fabout.html.hbs",
             pathPattern = "/generate/template/{templateKey}"
@@ -307,15 +309,15 @@ class GeneratorControllerTest : KoinTest {
         declareMock<S3Service> {
             every { mockS3.listObjects("test/sources/pages/", sourceBucket) } returns mockPageListResponse
             every { mockS3.getObjectAsString("test/sources/pages/about.md", sourceBucket) } returns ""
-            every { mockS3.objectExists("test/generated/metadata.json", sourceBucket) } returns true
-            every { mockS3.getObjectAsString("test/generated/metadata.json", sourceBucket) } returns mockPageJsonShort
+            every { mockS3.objectExists("test/metadata.json", generationBucket) } returns true
+            every { mockS3.getObjectAsString("test/metadata.json", generationBucket) } returns mockPageJsonShort
             every { mockS3.getObjectAsString("test/sources/pages/bio/about-me.md", sourceBucket) } returns ""
         }
         declareMock<SQSService> {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "3456"
-        val controller = GeneratorController(sourceBucket)
+        val controller = GeneratorController(sourceBucket,generationBucket)
         val request = buildRequest(path = "/generate/page/*", pathPattern = "/generate/page/{srcKey}")
 
         val response = controller.generatePage(request)
@@ -343,7 +345,7 @@ class GeneratorControllerTest : KoinTest {
   "items": [
     {
       "type": "page",
-      "srcKey": "sources/pages/about.md",
+      "srcKey": "test/sources/pages/about.md",
       "lastUpdated": "2023-11-12T15:24:05.563049390Z",
       "title": "About Cantilever",
       "templateKey": "sources/templates/about.html.hbs",
@@ -368,7 +370,7 @@ class GeneratorControllerTest : KoinTest {
   "items": [
     {
       "type": "page",
-      "srcKey": "sources/pages/about.md",
+      "srcKey": "test/sources/pages/about.md",
       "lastUpdated": "2023-11-12T15:24:05.563049390Z",
       "title": "About Cantilever",
       "templateKey": "sources/templates/about.html.hbs",
@@ -385,7 +387,7 @@ class GeneratorControllerTest : KoinTest {
     },
     {
       "type": "page",
-      "srcKey": "sources/pages/bio/about-me.md",
+      "srcKey": "test/sources/pages/bio/about-me.md",
       "lastUpdated": "2023-11-12T15:24:05.627497495Z",
       "title": "About me",
       "templateKey": "sources/templates/about.html.hbs",
@@ -400,7 +402,7 @@ class GeneratorControllerTest : KoinTest {
     },
     {
       "type": "page",
-      "srcKey": "sources/pages/dynamodb-design-thoughts.md",
+      "srcKey": "test/sources/pages/dynamodb-design-thoughts.md",
       "lastUpdated": "2023-11-12T15:24:05.735423913Z",
       "title": "DynamoDB Design Thoughts",
       "templateKey": "sources/templates/about.html.hbs",
@@ -415,7 +417,7 @@ class GeneratorControllerTest : KoinTest {
     },
     {
       "type": "page",
-      "srcKey": "sources/pages/index.md",
+      "srcKey": "test/sources/pages/index.md",
       "lastUpdated": "2023-11-12T15:24:05.768820097Z",
       "title": "Cantilever",
       "templateKey": "sources/templates/index.html.hbs",
@@ -433,7 +435,7 @@ class GeneratorControllerTest : KoinTest {
     },
     {
       "type": "page",
-      "srcKey": "sources/pages/new-approach.md",
+      "srcKey": "test/sources/pages/new-approach.md",
       "lastUpdated": "2023-11-12T15:24:05.819663508Z",
       "title": "New Approach",
       "templateKey": "sources/templates/about.html.hbs",

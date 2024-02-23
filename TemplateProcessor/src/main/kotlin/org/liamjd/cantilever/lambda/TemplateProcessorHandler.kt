@@ -110,9 +110,14 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
                 val renderer = HandlebarsRenderer()
                 renderer.render(model = model, template = templateString)
             }
-
-            s3Service.putObjectAsString(project.domainKey + pageMsg.metadata.url, destinationBucket, html, "text/html")
-            logger.info("Written final HTML file to '${project.domainKey}${pageMsg.metadata.url}'")
+            logger.info("Calculated URL for page: ${pageMsg.metadata.url} from parentFolder: ${pageMsg.metadata.parent} and srcKey: ${pageMsg.metadata.srcKey}")
+            logger.info(
+                "(Expected ${
+                    pageMsg.metadata.parent.substringBeforeLast("/").replaceFirst("/sources/pages", "")
+                }/${pageMsg.metadata.slug}"
+            )
+            s3Service.putObjectAsString(pageMsg.metadata.url, destinationBucket, html, "text/html")
+            logger.info("Written final HTML file to '${pageMsg.metadata.url}'")
         } catch (nske: NoSuchKeyException) {
             logger.error("Could not load file from S3, exception: ${nske.message}")
         }

@@ -20,7 +20,7 @@ abstract class APIController(val sourceBucket: String, val generationBucket: Str
      * Load the content tree from the S3 bucket
      */
     fun loadContentTree(domain: String): Boolean {
-        val metadataKey = domain + "/" +  S3_KEY.metadataKey
+        val metadataKey = "$domain/metadata.json"
         if (s3Service.objectExists(metadataKey, generationBucket)) {
             info("Reading $metadataKey from bucket $generationBucket")
             contentTree.clear()
@@ -41,7 +41,8 @@ abstract class APIController(val sourceBucket: String, val generationBucket: Str
      * Save the content tree to the S3 bucket after a change
      */
     fun saveContentTree(domain: String) {
-        val metadataKey = domain + "/" +  S3_KEY.metadataKey
+        val metadataKey =
+            "$domain/metadata.json"
         info("Saving content tree $metadataKey to bucket $sourceBucket")
         val json = Json { prettyPrint = true }
         val metadata = json.encodeToString(ContentTree.serializer(), contentTree)

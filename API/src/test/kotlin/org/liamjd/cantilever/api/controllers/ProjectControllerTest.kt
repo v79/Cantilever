@@ -29,6 +29,7 @@ internal class ProjectControllerTest : KoinTest {
 
     private val mockS3: S3Service by inject()
     private val sourceBucket = "sourceBucket"
+    private val generationBucket = "generationBucket"
     private val srcKey = "www.cantilevers.org"
     private val postsKey = "generated/posts.json"
 
@@ -65,7 +66,7 @@ internal class ProjectControllerTest : KoinTest {
             every { mockS3.getObjectAsString(srcKey, sourceBucket) } returns mockYaml
         }
 
-        val controller = ProjectController(sourceBucket)
+        val controller = ProjectController(sourceBucket,generationBucket)
         val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{projectKey}")
         val response = controller.getProject(request)
 
@@ -79,7 +80,7 @@ internal class ProjectControllerTest : KoinTest {
             every { mockS3.objectExists(srcKey, sourceBucket) } returns false
         }
 
-        val controller = ProjectController(sourceBucket)
+        val controller = ProjectController(sourceBucket,generationBucket)
         val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{projectKey}")
         val response = controller.getProject(request)
 
@@ -100,7 +101,7 @@ internal class ProjectControllerTest : KoinTest {
             every { mockS3.getObjectAsString(srcKey, sourceBucket) } returns mockYaml
         }
 
-        val controller = ProjectController(sourceBucket)
+        val controller = ProjectController(sourceBucket,generationBucket)
         val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{projectKey}")
         val response = controller.getProject(request)
 
@@ -140,7 +141,7 @@ internal class ProjectControllerTest : KoinTest {
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
-        val controller = ProjectController(sourceBucket)
+        val controller = ProjectController(sourceBucket,generationBucket)
         val request = Request(
             apiRequest = apiProxyEvent,
             body = mockProject,
@@ -167,7 +168,7 @@ internal class ProjectControllerTest : KoinTest {
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
-        val controller = ProjectController(sourceBucket)
+        val controller = ProjectController(sourceBucket,generationBucket)
         val request = Request(
             apiRequest = apiProxyEvent,
             body = mockProject,
@@ -199,7 +200,7 @@ internal class ProjectControllerTest : KoinTest {
             every { mockS3.objectExists(postsKey, sourceBucket) } returns true
             every { mockS3.getObjectAsString(postsKey, sourceBucket) } returns mockPostsJson
         }
-        val controller = ProjectController(sourceBucket)
+        val controller = ProjectController(sourceBucket,generationBucket)
         val request = buildRequest(path = "/project/posts", pathPattern = "/project/posts")
         val response = controller.getPosts(request)
 
@@ -217,7 +218,7 @@ internal class ProjectControllerTest : KoinTest {
             every { mockS3.objectExists(postsKey, sourceBucket) } returns false
         }
 
-        val controller = ProjectController(sourceBucket)
+        val controller = ProjectController(sourceBucket,generationBucket)
         val request = buildRequest(path = "/project/posts", pathPattern = "/project/posts")
         val response = controller.getPosts(request)
 
