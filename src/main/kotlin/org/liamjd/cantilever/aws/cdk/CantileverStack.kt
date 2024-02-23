@@ -176,6 +176,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         }
         apiRoutingLambda.apply {
             sourceBucket.grantRead(this)
+            generationBucket.grantRead(this)
             generationBucket.grantWrite(this)
         }
         imageProcessorLambda.apply {

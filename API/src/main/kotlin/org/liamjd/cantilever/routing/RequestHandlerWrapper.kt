@@ -58,6 +58,7 @@ abstract class RequestHandlerWrapper(open val corsDomain: String = "https://www.
                 // check the requirements and fail very early, even before authorizing
                 // I think this should be in processRoute, really
                 route.key.requirements.forEach { requirement ->
+                    // TODO: how might I make this more user-friendly?
                     println("Checking requirement: $requirement")
                     if (!requirement.invoke(input)) {
                         println("Requirement failed")

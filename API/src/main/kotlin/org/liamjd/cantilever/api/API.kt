@@ -56,6 +56,7 @@ class LambdaRouter : RequestHandlerWrapper() {
 
     companion object {
         const val SRCKEY = "{srcKey}"
+        const val DOMAIN_HEADER = "cantilever-project-domain"
     }
 
     override val router = lambdaRouter {
@@ -70,7 +71,7 @@ class LambdaRouter : RequestHandlerWrapper() {
         /** ============ /pages ================ **/
         group("/pages", Spec.Tag(name = "Pages", description = "Create, update and manage static pages")) {
             auth(cognitoJWTAuthorizer) {
-                require({ request -> request.headers?.get("cantilever-project-domain") != null }) {
+                require({ request -> request.headers?.get(DOMAIN_HEADER) != null }) {
 
                     get("", pageController::getPages).spec(Spec.PathItem("Get pages", "Returns a list of all pages"))
 
@@ -113,7 +114,7 @@ class LambdaRouter : RequestHandlerWrapper() {
 
         /** ============ /folders ================ **/
         auth(cognitoJWTAuthorizer) {
-            require({ request -> request.headers?.get("cantilever-project-domain") != null }) {
+            require({ request -> request.headers?.get(DOMAIN_HEADER) != null }) {
                 get("/folders", pageController::getFolders).spec(
                     Spec.PathItem(
                         "Get folders",
@@ -168,7 +169,7 @@ class LambdaRouter : RequestHandlerWrapper() {
         /** ============ /posts ================ **/
         group("/posts", Spec.Tag(name = "Posts", description = "Create, update and manage blog posts")) {
             auth(cognitoJWTAuthorizer) {
-                require({ request -> request.headers?.get("cantilever-project-domain") != null }) {
+                require({ request -> request.headers?.get(DOMAIN_HEADER) != null }) {
                     get("", postController::getPosts).spec(Spec.PathItem("Get posts", "Returns a list of all posts"))
 
                     get(

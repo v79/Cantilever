@@ -2,7 +2,6 @@ package org.liamjd.cantilever.api.controllers
 
 import org.koin.core.component.KoinComponent
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
@@ -16,7 +15,8 @@ import java.nio.charset.Charset
 /**
  * Load, save and delete Posts from the S3 bucket. Operations will update the content tree.
  */
-class PostController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
+class PostController(sourceBucket: String, generationBucket: String) : KoinComponent,
+    APIController(sourceBucket, generationBucket) {
 
     /**
      * Load a markdown file with the specified `srcKey` from the project folder `cantilever-project-domain` and return it as [ContentNode.PostNode] response
@@ -28,7 +28,7 @@ class PostController(sourceBucket: String, generationBucket: String) : KoinCompo
             val srcKey = URLDecoder.decode(markdownSource, Charset.defaultCharset())
             info("Loading Markdown file $srcKey")
             return if (s3Service.objectExists(srcKey, sourceBucket)) {
-                val mdPost = buildPostNode(srcKey,srcKey)
+                val mdPost = buildPostNode(srcKey, srcKey)
                 ResponseEntity.ok(body = APIResult.Success(mdPost))
             } else {
                 error("File '$srcKey' not found")
@@ -100,25 +100,32 @@ class PostController(sourceBucket: String, generationBucket: String) : KoinCompo
      * @return [PostListDTO] object containing the list of posts, a count and the last updated date/time
      */
     fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostListDTO>> {
-        val projectMetadataKey = request.headers["cantilever-project-domain"] + "/" + S3_KEY.metadataKey
-        return if (s3Service.objectExists(projectMetadataKey, sourceBucket)) {
-            loadContentTree(request.headers["cantilever-project-domain"]!!)
-            info("Fetching all posts from $projectMetadataKey")
-            val lastUpdated = s3Service.getUpdatedTime(projectMetadataKey, sourceBucket)
-            val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
-            val sorted = posts.sortedByDescending { it.date }
-            val postList = PostListDTO(
-                count = sorted.size, lastUpdated = lastUpdated, posts = sorted
-            )
-            if (postList.posts.isEmpty()) {
-                error("No posts found in content tree")
-                ResponseEntity.serverError(body = APIResult.Error("No posts found in content tree for project $projectMetadataKey"))
+        try {
+            val domain = request.headers["cantilever-project-domain"]!!
+            return if (loadContentTree(domain)) {
+                info("Fetching all posts ")
+                val lastUpdated = s3Service.getUpdatedTime("$domain/metadata.json", generationBucket)
+                val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
+                val sorted = posts.sortedByDescending { it.date }
+                val postList = PostListDTO(
+                    count = sorted.size, lastUpdated = lastUpdated, posts = sorted
+                )
+                if (postList.posts.isEmpty()) {
+                    error("No posts found in content tree")
+                    ResponseEntity.serverError(body = APIResult.Error("No posts found in content tree for project $domain; create some?"))
+                } else {
+                    ResponseEntity.ok(body = APIResult.Success(value = postList))
+                }
             } else {
-                ResponseEntity.ok(body = APIResult.Success(value = postList))
+                error("Cannot find metadata.json for project $domain")
+                ResponseEntity.notFound(body = APIResult.Error(statusText = "Cannot find file '${domain}/metadata.json' in bucket $generationBucket. Please regenerate the metadata."))
             }
-        } else {
-            error("Cannot find file '$projectMetadataKey' in bucket $sourceBucket")
-            ResponseEntity.notFound(body = APIResult.Error(statusText = "Cannot find file '${projectMetadataKey}' in bucket $sourceBucket"))
+        } catch (nsk: NoSuchElementException) {
+            error("No project metadata found")
+            return ResponseEntity.notFound(body = APIResult.Error(statusText = "No project metadata found"))
+        } catch (e: Exception) {
+            error("Error getting posts: ${e.message}")
+            return ResponseEntity.serverError(body = APIResult.Error(statusText = "Error getting posts: ${e.message}"))
         }
     }
 

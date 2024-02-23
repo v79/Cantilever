@@ -24,7 +24,6 @@ class S3ServiceImpl(region: Region) : S3Service {
     override fun putObjectAsString(key: String, bucket: String, contents: String, contentType: String?): Int {
         val bytes = contents.toByteArray(Charsets.UTF_8)
         println("S3Service: putObject: key: $key, ${bytes.size} bytes")
-
         val requestBuilder = byteArrayBuilder(bytes, key, bucket, contentType)
         val request = requestBuilder.build()
         s3Client.putObject(request, RequestBody.fromBytes(bytes))
@@ -37,22 +36,6 @@ class S3ServiceImpl(region: Region) : S3Service {
         val request = requestBuilder.build()
         s3Client.putObject(request, RequestBody.fromBytes(contents))
         return contents.size
-    }
-
-    private fun byteArrayBuilder(
-        contents: ByteArray,
-        key: String,
-        bucket: String,
-        contentType: String?
-    ): PutObjectRequest.Builder {
-        val requestBuilder = PutObjectRequest.builder()
-            .contentLength(contents.size.toLong())
-            .key(key)
-            .bucket(bucket)
-        contentType?.let {
-            requestBuilder.contentType(it)
-        }
-        return requestBuilder
     }
 
     override fun getObject(key: String, bucket: String): GetObjectResponse? {
@@ -77,8 +60,10 @@ class S3ServiceImpl(region: Region) : S3Service {
             s3Client
                 .headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build())
         } catch (e: NoSuchKeyException) {
+            println("S3Service.objectExists: NoSuchKeyException: $key")
             exists = false
         } catch (se: S3Exception) {
+            println("S3Service.objectExists: Exception: ${se.message}")
             exists = false
         }
         return exists
@@ -154,7 +139,7 @@ class S3ServiceImpl(region: Region) : S3Service {
         return response.contentType()
     }
 
-    override fun copyObject(srcKey:String, destKey: String, bucket: String): Int {
+    override fun copyObject(srcKey: String, destKey: String, bucket: String): Int {
         val request = CopyObjectRequest.builder()
             .sourceBucket(bucket)
             .sourceKey(srcKey)
@@ -178,5 +163,21 @@ class S3ServiceImpl(region: Region) : S3Service {
         return if (response.copyObjectResult() != null)
             0
         else -1
+    }
+
+    private fun byteArrayBuilder(
+        contents: ByteArray,
+        key: String,
+        bucket: String,
+        contentType: String?
+    ): PutObjectRequest.Builder {
+        val requestBuilder = PutObjectRequest.builder()
+            .contentLength(contents.size.toLong())
+            .key(key)
+            .bucket(bucket)
+        contentType?.let {
+            requestBuilder.contentType(it)
+        }
+        return requestBuilder
     }
 }
