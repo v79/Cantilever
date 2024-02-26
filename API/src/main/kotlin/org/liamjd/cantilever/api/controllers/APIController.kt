@@ -47,7 +47,7 @@ abstract class APIController(val sourceBucket: String, val generationBucket: Str
     fun saveContentTree(domain: String) {
         val metadataKey =
             "$domain/metadata.json"
-        info("Saving content tree $metadataKey to bucket $sourceBucket")
+        info("Saving content tree $metadataKey to bucket $generationBucket")
         val json = Json { prettyPrint = true }
         val metadata = json.encodeToString(ContentTree.serializer(), contentTree)
         s3Service.putObjectAsString(metadataKey, generationBucket, metadata, MimeType.json.toString())

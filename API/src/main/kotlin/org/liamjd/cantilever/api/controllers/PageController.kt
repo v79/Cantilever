@@ -113,12 +113,6 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
      * Save a [MarkdownPageDTO] to the sources bucket
      */
     fun saveMarkdownPageSource(request: Request<ContentNode.PageNode>): ResponseEntity<APIResult<String>> {
-        if (request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(
-                body = APIResult.Error("Missing required header 'cantilever-project-domain'")
-            )
-        }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         info("saveMarkdownPageSource")
         val pageToSave = request.body

@@ -330,7 +330,7 @@
 			expandedNodes = [rootFolderKey];
 			for (const folder of value.folders) {
 				let childNodes = [] as TreeViewNode[];
-				console.log('Iterating through folder ' + folder.srcKey);
+				// console.log('Iterating through folder ' + folder.srcKey);
 				if (folder.children.length > 0) {
 					for (const child of folder.children) {
 						// child is just the srcKey of the page
