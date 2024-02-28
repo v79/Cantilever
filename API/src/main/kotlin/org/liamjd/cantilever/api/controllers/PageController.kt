@@ -78,7 +78,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
      */
     fun createFolder(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        val folderName = URLDecoder.decode(
+        var folderName = URLDecoder.decode(
             request.pathParameters["folderName"], Charset.defaultCharset()
         )
         return if (folderName != null) {
@@ -92,6 +92,9 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
                 val result = s3Service.createFolder(slugged, sourceBucket)
                 if (result != 0) {
                     ResponseEntity.serverError(body = APIResult.Error("Folder '$slugged' was not created"))
+                }
+                if (!folderName.endsWith('/')) {
+                    folderName += '/'
                 }
                 contentTree.insertFolder(ContentNode.FolderNode(folderName))
                 saveContentTree(projectKeyHeader)

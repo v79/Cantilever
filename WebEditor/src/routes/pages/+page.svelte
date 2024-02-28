@@ -309,6 +309,8 @@
 	}
 
 	function showFolderDelete(srcKey: string) {
+		console.log('showFolderDelete: ' + srcKey);
+		console.log($folders.folders.find((f) => f.srcKey === srcKey)?.children.length);
 		if (folders && $folders.folders.find((f) => f.srcKey === srcKey)?.children.length != 0) {
 			toastStore.trigger({
 				message: 'Folder is not empty. Delete the pages in the folder first.',
@@ -366,7 +368,7 @@
 					contentProps: {
 						title: displayTitle,
 						count: folder.children.length,
-						srcKey: displaySrcKey,
+						srcKey: folder.srcKey,
 						onDelete: showFolderDelete
 					}
 				});
