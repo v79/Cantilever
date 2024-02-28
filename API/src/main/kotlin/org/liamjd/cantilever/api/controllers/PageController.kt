@@ -18,7 +18,8 @@ import java.nio.charset.Charset
 /**
  * Load, save and delete Pages from the S3 bucket
  */
-class PageController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
+class PageController(sourceBucket: String, generationBucket: String) : KoinComponent,
+    APIController(sourceBucket, generationBucket) {
 
     /**
      * Return a list of all the pages in the content tree
@@ -76,14 +77,10 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
      * This should be the full path.
      */
     fun createFolder(request: Request<Unit>): ResponseEntity<APIResult<String>> {
-        if (request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(
-                body = APIResult.Error("Missing required header 'cantilever-project-domain'")
-            )
-        }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        val folderName = request.pathParameters["folderName"]
+        val folderName = URLDecoder.decode(
+            request.pathParameters["folderName"], Charset.defaultCharset()
+        )
         return if (folderName != null) {
             loadContentTree(
                 projectKeyHeader
@@ -188,10 +185,13 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
         val folders = mutableListOf<ContentNode.FolderNode>()
         val rootFolder = ContentNode.FolderNode("$projectFolder/${S3_KEY.pagesPrefix}")
         // The root folder isn't in the content tree, so we need to add it manually, and find all the pages that have it as their parent
-        rootFolder.children.addAll( contentTree.items.filterIsInstance<ContentNode.PageNode>().filter { it.parent == rootFolder.srcKey }.map { it.srcKey })
+        rootFolder.children.addAll(
+            contentTree.items.filterIsInstance<ContentNode.PageNode>().filter { it.parent == rootFolder.srcKey }
+                .map { it.srcKey })
         folders.add(rootFolder)
         // Then we can add all the other folders
-        folders += contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith("$projectFolder/${S3_KEY.pagesPrefix}") }
+        folders += contentTree.items.filterIsInstance<ContentNode.FolderNode>()
+            .filter { it.srcKey.startsWith("$projectFolder/${S3_KEY.pagesPrefix}") }
         val dto = FolderListDTO(folders.size, folders.toList())
         return ResponseEntity.ok(body = APIResult.Success(dto))
     }

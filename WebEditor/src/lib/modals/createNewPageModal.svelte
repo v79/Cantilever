@@ -39,6 +39,7 @@
 				templatesReady = false;
 				templatesLoading = false;
 			} else {
+				console.log('Loaded ' + result + ' templates');
 				// templates loaded into store
 				templatesReady = true;
 				templatesLoading = false;

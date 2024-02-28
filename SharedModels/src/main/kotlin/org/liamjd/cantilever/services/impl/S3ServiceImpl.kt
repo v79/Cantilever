@@ -60,7 +60,7 @@ class S3ServiceImpl(region: Region) : S3Service {
             s3Client
                 .headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build())
         } catch (e: NoSuchKeyException) {
-            println("S3Service.objectExists: NoSuchKeyException: $key")
+//            println("S3Service.objectExists: NoSuchKeyException: $key")
             exists = false
         } catch (se: S3Exception) {
             println("S3Service.objectExists: Exception: ${se.message}")
