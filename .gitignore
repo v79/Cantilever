@@ -50,3 +50,4 @@ ImageProcessor/.gradle/buildOutputCleanup/outputFiles.bin
 ImageProcessor/.gradle/vcs-1/gc.properties
 Web/build/*
 Web/node_modules/*
+/DevDiary/*
