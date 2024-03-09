@@ -48,3 +48,5 @@ ImageProcessor/.gradle/buildOutputCleanup/buildOutputCleanup.lock
 ImageProcessor/.gradle/buildOutputCleanup/cache.properties
 ImageProcessor/.gradle/buildOutputCleanup/outputFiles.bin
 ImageProcessor/.gradle/vcs-1/gc.properties
+Web/build/*
+Web/node_modules/*
