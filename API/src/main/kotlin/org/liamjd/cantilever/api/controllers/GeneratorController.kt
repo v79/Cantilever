@@ -148,13 +148,15 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
             )
         }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        info("ENCODED: GeneratorController received request to regenerate pages based on template '$requestKey'")
         // TODO: https://github.com/v79/Cantilever/issues/26 this only works for HTML handlebars templates, i.e. those whose file names end in ".index.html" in the "templates" folder.
         // Also, annoying that I have to double-decode this.
+        // And I need to strip off the domain from the requestKey
         val templateKey =
-            URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset())
+            URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset()).substringAfter(
+                "$projectKeyHeader/"
+            )
         info(
-            "DOUBLE DECODED: GeneratorController received request to regenerate pages based on template '$templateKey'"
+            "Received request to regenerate pages based on template '$templateKey'"
         )
         var count = 0
 
