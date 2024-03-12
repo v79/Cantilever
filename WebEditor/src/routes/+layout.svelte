@@ -16,13 +16,13 @@
 		type ToastSettings
 	} from '@skeletonlabs/skeleton';
 	import '../app.postcss';
-	// Highlight JS
-	import 'highlight.js/styles/github-dark.css';
+// Highlight JS
 	import { page } from '$app/stores';
 	import LoginAvatar from '$lib/components/LoginAvatar.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import { arrow, autoUpdate, computePosition, flip, offset, shift } from '@floating-ui/dom';
 	import { storePopup } from '@skeletonlabs/skeleton';
+	import 'highlight.js/styles/github-dark.css';
 	import {
 		Article,
 		Dataset_linked,
@@ -40,6 +40,7 @@
 	import ConfirmDeleteModal from '$lib/modals/confirmDeleteModal.svelte';
 	import CreateNewFolderModal from '$lib/modals/createNewFolderModal.svelte';
 	import CreateNewPageModal from '$lib/modals/createNewPageModal.svelte';
+	import CreateNewPostModal from '$lib/modals/createNewPostModal.svelte';
 	import SaveNewPageModal from '$lib/modals/saveNewPageModal.svelte';
 	import SaveNewPostModal from '$lib/modals/saveNewPostModal.svelte';
 	import SaveNewProjectModal from '$lib/modals/saveNewProjectModal.svelte';
@@ -55,7 +56,6 @@
 	import SpinnerStore, { spinner } from '$lib/stores/spinnerStore.svelte';
 	import { onMount } from 'svelte';
 	import ExpandMore from 'svelte-google-materialdesign-icons/Expand_more.svelte';
-	import CreateNewPostModal from '$lib/modals/createNewPostModal.svelte';
 
 	const modalRegistry: Record<string, ModalComponent> = {
 		confirmDeleteModal: { ref: ConfirmDeleteModal },
@@ -66,7 +66,7 @@
 		switchIndexPageModal: { ref: SwitchIndexPageModal },
 		saveNewPageModal: { ref: SaveNewPageModal },
 		createNewProjectModal: { ref: SaveNewProjectModal },
-		createNewPostModal: { ref: CreateNewPostModal }
+		createNewPostModal: { ref: CreateNewPostModal },
 	};
 	initializeStores();
 

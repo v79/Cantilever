@@ -2,31 +2,38 @@
 	import {
 		getModalStore,
 		getToastStore,
-		type ModalSettings,
 		type ToastSettings,
 		type TreeViewNode
 	} from '@skeletonlabs/skeleton';
 
+	import PostList from '$lib/components/BasicFileList.svelte';
+	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
+	import TextInput from '$lib/forms/textInput.svelte';
+	import { TemplateNode, TemplateUsageDTO } from '$lib/models/templates.svelte';
+	import { handlebars } from '$lib/stores/contentStore.svelte';
+	import { project } from '$lib/stores/projectStore.svelte';
+	import { spinner } from '$lib/stores/spinnerStore.svelte';
+	import {
+		deleteTemplate,
+		fetchTemplate,
+		fetchTemplates,
+		fetchTemplateUsage,
+		regenerate,
+		saveTemplate,
+		templates
+	} from '$lib/stores/templateStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import { onMount, tick } from 'svelte';
 	import {
-		fetchTemplate,
-		fetchTemplates,
-		templates,
-		saveTemplate,
-		fetchTemplateUsage,
-		deleteTemplate,
-		regenerate
-	} from '$lib/stores/templateStore.svelte';
-	import { Refresh, Icon, Save, Delete, Sync, Add } from 'svelte-google-materialdesign-icons';
+		Add,
+		Check,
+		Delete,
+		Icon,
+		Refresh,
+		Save,
+		Sync
+	} from 'svelte-google-materialdesign-icons';
 	import TemplateListItem from './TemplateListItem.svelte';
-	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
-	import PostList from '$lib/components/BasicFileList.svelte';
-	import { handlebars } from '$lib/stores/contentStore.svelte';
-	import TextInput from '$lib/forms/textInput.svelte';
-	import { TemplateNode, TemplateUsageDTO } from '$lib/models/templates.svelte';
-	import { spinner } from '$lib/stores/spinnerStore.svelte';
-	import { project } from '$lib/stores/projectStore.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -36,6 +43,8 @@
 	let templateListNodes = [] as TreeViewNode[]; // for the treeview component
 	let pgTitle = 'Template Editor';
 	let isNewTemplate = false;
+	let newSection = '';
+	$: selectedSection = '';
 	$: templateIsValid = $handlebars.title != null && $handlebars.body != null;
 	$: usageCount = 0;
 
@@ -96,6 +105,52 @@
 			onFormSubmit: () => {
 				initiateDeletePost();
 			}
+		}
+	};
+
+	/**
+	 * @type: {ModalSettings}
+	 */
+	$: confirmDelete2222SectionModal = {
+		type: 'component',
+		component: 'confirmSectionDeleteModal',
+		meta: {
+			modalTitle: 'Confirm section deletion',
+			sectionKey: selectedSection,
+			furtherInfo: `You must also remove the {{{ ${selectedSection}}} from the template source code`,
+			onFormSubmit: () => {
+				$handlebars.sections.splice($handlebars.sections.indexOf(selectedSection), 1);
+				handlebars = handlebars;
+			}
+		}
+	};
+
+	$: confirmDeleteSectionModal = {
+		type: 'confirm',
+		title: 'Delete section',
+		body:
+			'Are you sure you want to delete section ' +
+			selectedSection +
+			'? You must also remove the section from the template source code.',
+		buttonTextConfirm: 'Delete',
+		buttonTextCancel: 'Cancel',
+		response: (r: boolean) => {
+			if (r) {
+				$handlebars.sections.splice($handlebars.sections.indexOf(selectedSection), 1);
+				$handlebars.sections = $handlebars.sections;
+			}
+			modalStore.close();
+		}
+	};
+
+	/**
+	 * @type {iconConfigType}
+	 */
+	let confirmNewSectionIcon = {
+		icon: Check,
+		variation: 'filled',
+		onClick: (e: Event) => {
+			// see function confirmNewSection
 		}
 	};
 
@@ -256,6 +311,11 @@
 		}
 	}
 
+	function confirmNewSection(e: CustomEvent) {
+		console.log('Adding new section: ' + newSection);
+		$handlebars.sections = [...$handlebars.sections, newSection];
+	}
+
 	const templatesUnsubscribe = templates.subscribe((value) => {
 		if (value && value.count != -1) {
 			// build TreeViewNodes from TemplateNodes
@@ -360,10 +420,43 @@
 							readonly />
 					{/if}
 				</div>
+				<div class="col-span-4">
+					<p>
+						<strong>Sections:</strong> <em>(there must be at least a 'body' section)</em>
+					</p>
+					{#if $handlebars.sections.length > 0}
+					{#each $handlebars.sections as section}
+						{#if section === 'body'}
+							<button class="chip variant-filled-tertiary mr-4" on:click={() => {}}
+								>{section}</button>
+						{:else}
+							<button
+								class="chip variant-filled-tertiary mr-4"
+								on:click={() => {
+									selectedSection = section;
+									modalStore.trigger(confirmDeleteSectionModal);
+								}}>{section} X</button>
+						{/if}
+					{/each}
+					{:else}
+					<button class="chip variant-filled-tertiary mr-4" on:click={() => {}}
+						>body</button>
+					{/if}
+				</div>
+				<div class="col-span-2">
+					<TextInput
+						label=""
+						name="NewSection"
+						bind:value={newSection}
+						placeholder="New section name"
+						iconRight={confirmNewSectionIcon}
+						on:message={confirmNewSection} />
+				</div>
 				<div class="col-span-6">
 					<textarea bind:value={$handlebars.body} class="textarea" rows="20"></textarea>
 				</div>
 			</div>
+
 			<div class="flex flex-row justify-end mt-2">
 				<div class="btn-group variant-filled" role="group">
 					<button
