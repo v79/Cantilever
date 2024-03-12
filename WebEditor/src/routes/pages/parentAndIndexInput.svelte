@@ -12,6 +12,7 @@
 	} from '@skeletonlabs/skeleton';
 	import { Home } from 'svelte-google-materialdesign-icons';
 	import { folders, pages, switchIndexPage } from '../../lib/stores/pageStore.svelte';
+	import { project } from '$lib/stores/projectStore.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -83,7 +84,8 @@
 				currentIndexPage.srcKey,
 				$markdownStore.metadata?.srcKey,
 				$markdownStore.metadata?.parent,
-				$userStore.token
+				$userStore.token,
+				$project.domain
 			);
 			response.then((result) => {
 				if (result instanceof Error) {

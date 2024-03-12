@@ -237,12 +237,6 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
      * @param request [ReassignIndexRequestDTO] containing the source and destination pages and the folder
      */
     fun reassignIndex(request: Request<ReassignIndexRequestDTO>): ResponseEntity<APIResult<String>> {
-        if (request.headers["cantilever-project-domain"] === null) {
-            error("Missing required header 'cantilever-project-domain'")
-            return ResponseEntity.badRequest(
-                body = APIResult.Error("Missing required header 'cantilever-project-domain'")
-            )
-        }
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val requestBody = request.body
         loadContentTree(projectKeyHeader)
@@ -250,6 +244,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
         val to = requestBody.to
         val folder = requestBody.folder
         // check to see that each of these exist
+        info("Reassigning index from $from to $to in folder $folder")
         try {
             if (s3Service.objectExists(from, sourceBucket) && s3Service.objectExists(to, sourceBucket)) {
                 // confirm that from is the index of the folder
