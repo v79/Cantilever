@@ -14,7 +14,7 @@
 	);
 
 	function createProjectStore() {
-		const { subscribe, set, update } = writable<CantileverProject>();
+		const { subscribe, set, update } = writable<CantileverProject>(CLEAR_PROJECT);
 
 		return {
 			subscribe,

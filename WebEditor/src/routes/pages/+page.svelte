@@ -323,7 +323,10 @@
 	}
 
 	const foldersUnsubscribe = folders.subscribe((value) => {
-		const rootFolderKey = $project.domain + '/sources/pages/';
+		var rootFolderKey = '';
+		if($project.domain) {
+			rootFolderKey = $project.domain + '/sources/pages/';
+		}
 		// console.dir(rootFolderKey);
 
 		if (value && value.count != -1) {
@@ -339,7 +342,7 @@
 						// find it in the pages list
 						let page = $pages?.pages.find((p) => p.srcKey === child);
 						if (page) {
-							let displaySrcKey = page.srcKey.slice($project.domain.length + 1);
+							let displaySrcKey = page.srcKey.slice($project.domain ? $project.domain.length + 1 : 0);
 							if (page.isRoot) {
 								childNodes.push({
 									id: child,
@@ -358,8 +361,7 @@
 						}
 					}
 				}
-				let displayTitle = folder.url?.slice($project.domain.length + 1) ?? 'unknown';
-				let displaySrcKey = folder.srcKey.slice($project.domain.length + 1);
+				let displayTitle = folder.url?.slice($project.domain ? $project.domain.length + 1 : 0) ?? 'unknown';
 				pgFolderNodes.push({
 					id: folder.srcKey,
 					lead: FolderIconComponent,
