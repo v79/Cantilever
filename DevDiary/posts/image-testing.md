@@ -24,6 +24,8 @@ If this works, then a picture of a bridge will appear below!
 
 One open question: who is responsible for copying files to the destination bucket? The analysis has to happen in the `MarkdownProcessor` lambda, but until now, it has not had write-access to the destination bucket. Perhaps I need a new SQS message type - and other queue?
 
-I quite like keeping the MarkdownProcessor pure - so I'll try to pass the image copying responsibility to the `ImageProcessor` lambda (it will, of course, need access to both source and destination buckets).
+I quite like keeping the MarkdownProcessor pure - so I'll try to pass the image copying responsibility to the `ImageProcessor` lambda (it will, of course, need access to both source and destination buckets). And that seems to be working now.
 
 Further image tests will be on the [dedicated image testing page](/image-testing/). Well, they would be, but I've found a bunch of bugs unrelated to images and I think it's time to close the image upload branch, work on some bug fixes, and return to images at another time.
+
+

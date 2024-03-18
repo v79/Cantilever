@@ -17,7 +17,8 @@ internal class ProjectSerializationTest {
             author = "Me",
             dateFormat = "dd/MM/yyyy",
             dateTimeFormat = "dd/MM/yyyy HH:mm",
-            imageResolutions = mapOf("Normal" to ImgRes(640, 480))
+            imageResolutions = mapOf("Normal" to ImgRes(640, 480)),
+            domain =  "https://example.com"
         )
 
         val yaml = Yaml.default.encodeToString(CantileverProject.serializer(), proj)
@@ -29,6 +30,7 @@ internal class ProjectSerializationTest {
             dateTimeFormat: "dd/MM/yyyy HH:mm"
             imageResolutions:
               "Normal": "640x480"
+            domain: "https://example.com"
         """.trimIndent()
 
         assertEquals(expected.trim(), yaml.trim())
@@ -43,6 +45,7 @@ internal class ProjectSerializationTest {
             dateTimeFormat: "dd/MM/yyyy HH:mm"
             imageResolutions:
               "Normal": "640x480"
+            domain: "https://example.com"
         """.trimIndent()
 
         val project = Yaml.default.decodeFromString<CantileverProject>(yaml)
@@ -60,7 +63,8 @@ internal class ProjectSerializationTest {
             dateFormat = "dd/MM/yyyy",
             dateTimeFormat = "dd/MM/yyyy HH:mm",
             imageResolutions = mapOf("Normal" to ImgRes(640, 480)),
-            attributes = mapOf("Wibble" to "Greep")
+            attributes = mapOf("Wibble" to "Greep"),
+            domain =  "https://example.com"
         )
 
         val yaml = Yaml.default.encodeToString(CantileverProject.serializer(), proj)
@@ -72,6 +76,7 @@ internal class ProjectSerializationTest {
             dateTimeFormat: "dd/MM/yyyy HH:mm"
             imageResolutions:
               "Normal": "640x480"
+            domain: "https://example.com"
             attributes:
               "Wibble": "Greep"
         """.trimIndent()
@@ -90,6 +95,7 @@ internal class ProjectSerializationTest {
               "Normal": "640x480"
             attributes:
               "Wibble": "Greep"
+            domain: "https://example.com"
         """.trimIndent()
 
         val project = Yaml.default.decodeFromString<CantileverProject>(yaml)
@@ -99,5 +105,6 @@ internal class ProjectSerializationTest {
         assertEquals(ImgRes(640, 480), project.imageResolutions["Normal"])
         assertNotNull(project.attributes?.get("Wibble"))
         assertEquals("Greep", project.attributes!!["Wibble"])
+        assertNotNull(project.domain)
     }
 }

@@ -8,15 +8,18 @@
 		return {
 			subscribe,
 			set,
-			update
+			update,
+			clear: () => set(CLEAR_IMAGES),
+			isEmpty: () => get(images).count === 0
 		};
 	}
 
 	// This store manages media, such as images
 	export const images = createImageStore();
+	const CLEAR_IMAGES = { count: 0, lastUpdated: new Date(), images: [] };
 
 	// fetch the list of images from the server and store in the images store
-	export async function fetchImages(token: string): Promise<number | Error> {
+	export async function fetchImages(token: string, projectDomain: string): Promise<number | Error> {
 		images.set({ count: 0, lastUpdated: new Date(), images: [] });
 		console.log('mediaStore: Fetching images');
 		try {
@@ -24,7 +27,8 @@
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -60,7 +64,8 @@
 	export async function fetchImageBytes(
 		srcKey: string,
 		resolution: string,
-		token: string
+		token: string,
+		projectDomain: string
 	): Promise<ImageDTO | Error> {
 		try {
 			let encodedKey = encodeURIComponent(srcKey);
@@ -70,7 +75,8 @@
 					method: 'GET',
 					headers: {
 						Accept: 'application/json',
-						Authorization: `Bearer ${token}`
+						Authorization: `Bearer ${token}`,
+						'cantilever-project-domain': projectDomain
 					},
 					mode: 'cors'
 				}
@@ -81,7 +87,8 @@
 				const tempImage = new ImageDTO(
 					decodeURIComponent(data.data.srcKey),
 					data.data.contentType,
-					data.data.bytes				);
+					data.data.bytes
+				);
 				return tempImage;
 			} else {
 				throw new Error('Failed to fetch image bytes');
@@ -93,7 +100,11 @@
 	}
 
 	// upload an image to the server
-	export async function uploadImage(file: File, token: string): Promise<Error | ImageDTO> {
+	export async function uploadImage(
+		file: File,
+		token: string,
+		projectDomain: string
+	): Promise<Error | ImageDTO> {
 		try {
 			const reader = new FileReader();
 			reader.readAsDataURL(file);
@@ -109,7 +120,8 @@
 						headers: {
 							Accept: 'application/json',
 							Authorization: 'Bearer ' + token,
-							'Content-Type': 'application/json'
+							'Content-Type': 'application/json',
+							'cantilever-project-domain': projectDomain
 						},
 						body: dtoString
 					});
@@ -136,14 +148,19 @@
 	}
 
 	// delete an image from the server
-	export async function deleteImage(srcKey: string, token: string): Promise<Error | string> {
+	export async function deleteImage(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		try {
 			let encodedKey = encodeURIComponent(srcKey);
 			const response = await fetch(`https://api.cantilevers.org/media/images/${encodedKey}`, {
 				method: 'DELETE',
 				headers: {
 					Accept: 'text/plain',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});

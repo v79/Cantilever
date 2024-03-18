@@ -27,9 +27,9 @@ class CloudFrontSubstack(private val versionString: String) {
             )*/
 
     private fun createLambdaEdge(stack: Stack): EdgeFunction {
-        println("Create cloudfront lambda@edge function")
+        println("Create cloudfront Lambda@edge function")
         return EdgeFunction.Builder.create(stack, "cantilever-cloudfront-edgelambda-rewrite")
-            .description("Cantilever cCloudfront rewrite URI from host")
+            .description("Cantilever cloudfront rewrite URI from host")
             .runtime(Runtime.NODEJS_LATEST)
             .memorySize(128)
             .timeout(Duration.seconds(5))
@@ -50,7 +50,6 @@ class CloudFrontSubstack(private val versionString: String) {
     ): CloudFrontWebDistribution {
 
         Tags.of(stack).add("Cantilever", versionString)
-
 
         val lambdaEdgeFunction = createLambdaEdge(stack)
         val webOai = OriginAccessIdentity.Builder.create(stack, "WebOai").build()
@@ -104,19 +103,19 @@ class CloudFrontSubstack(private val versionString: String) {
                     CfnDistribution.CustomErrorResponseProperty.builder()
                         .errorCode(403)
                         .responseCode(200)
-                        .responsePagePath("/index.html")
+                        .responsePagePath("/index.html") // TODO: this should be a 403 page
                         .build(),
                     CfnDistribution.CustomErrorResponseProperty.builder()
                         .errorCode(404)
                         .responseCode(200)
-                        .responsePagePath("/index.html")
+                        .responsePagePath("/index.html") // TODO: this should be a 404 page
                         .build()
                 )
             )
             .build()
     }
-    /**
 
+    /**
      *
      * DnsValidatedCertificate websiteCertificate = DnsValidatedCertificate.Builder.create(this, "WebsiteCertificate")
      *                                                                             .hostedZone(hostedZone)

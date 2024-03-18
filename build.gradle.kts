@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "org.liamjd"
-version = "0.0.12"
+version = "0.0.13"
 
 repositories {
     mavenCentral()

@@ -63,11 +63,14 @@ sealed class ContentNode {
         // I might actually want to generate both index.html and the slug version of the file but for now let's just do index.html or slug
         override val url: String
             get() {
-                val parentFolder = parent.removePrefix(S3_KEY.pagesPrefix)
+                // intended url would be www.cantilevers.org/parentFolder/slug
+                // but parent looks like wwww.cantilevers.org/sources/pages/parentFolder
+                println("parent is $parent")
+                val parentFolder = parent.replaceFirst("/sources/pages","")
                 return if (isRoot) {
-                    "${parentFolder}index.html"
+                    "${parentFolder}/index.html"
                 } else {
-                    "$parentFolder$slug"
+                    "$parentFolder/$slug"
                 }
             }
     }

@@ -31,6 +31,7 @@ internal class TemplateControllerTest : KoinTest {
 
     private val mockS3: S3Service by inject()
     private val sourceBucket = "sourceBucket"
+    private val generationBucket = "generationBucket"
 
     @JvmField
     @RegisterExtension
@@ -68,7 +69,7 @@ internal class TemplateControllerTest : KoinTest {
         every { mockResponse.lastModified() } returns Instant.now()
 
 
-        val controller = TemplateController(sourceBucket)
+        val controller = TemplateController(sourceBucket,generationBucket)
         val request = buildRequest(path = "/templates/$srcKey", pathPattern = "/templates/{srcKey}")
         val response = controller.loadHandlebarsSource(request)
 
@@ -83,7 +84,7 @@ internal class TemplateControllerTest : KoinTest {
             every { mockS3.objectExists("my-template.hbs", sourceBucket) } returns false
         }
 
-        val controller = TemplateController(sourceBucket)
+        val controller = TemplateController(sourceBucket,generationBucket)
         val request = buildRequest(path = "/templates/$srcKey", pathPattern = "/templates/{srcKey}")
         val response = controller.loadHandlebarsSource(request)
 
@@ -99,7 +100,7 @@ internal class TemplateControllerTest : KoinTest {
         val body = """
             {{{ name }}}
         """.trimIndent()
-        every { mockTemplate.srcKey } returns "my-template"
+        every { mockTemplate.srcKey } returns "test/my-template"
         every { mockTemplate.metadata } returns mockTemplateMeta
         every { mockTemplateMeta.name } returns "My Template"
         every { mockHandlebarsContent.body } returns body
@@ -114,18 +115,18 @@ internal class TemplateControllerTest : KoinTest {
             every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/plain") } returns 1234
             every {
                 mockS3.putObjectAsString(
-                    "generated/metadata.json", sourceBucket, any(), "application/json"
+                    "test/metadata.json", generationBucket, any(), "application/json"
                 )
             } returns 2345
         }
 
-        val apiProxyEvent = APIGatewayProxyRequestEvent()
+        val apiProxyEvent = APIGatewayProxyRequestEvent().withHeaders(mapOf("cantilever-project-domain" to "test"))
 
-        val controller = TemplateController(sourceBucket)
+        val controller = TemplateController(sourceBucket,generationBucket)
         val request = Request(
             apiRequest = apiProxyEvent,
             body = mockHandlebarsContent,
-            pathPattern = "/templates/"
+            pathPattern = "/templates/",
         )
         val response = controller.saveTemplate(request)
 
@@ -141,7 +142,7 @@ internal class TemplateControllerTest : KoinTest {
         val body = """
             {{{ name }}}
         """.trimIndent()
-        every { mockTemplate.srcKey } returns "my-template"
+        every { mockTemplate.srcKey } returns "test/my-template"
         every { mockTemplate.metadata } returns mockTemplateMeta
         every { mockTemplateMeta.name } returns "My Template"
         every { mockHandlebarsContent.body } returns body
@@ -156,14 +157,14 @@ internal class TemplateControllerTest : KoinTest {
             every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/plain") } returns 1234
             every {
                 mockS3.putObjectAsString(
-                    "generated/metadata.json", sourceBucket, any(), "application/json"
+                    "test/metadata.json", generationBucket, any(), "application/json"
                 )
             } returns 2345
         }
 
-        val apiProxyEvent = APIGatewayProxyRequestEvent()
+        val apiProxyEvent = APIGatewayProxyRequestEvent().withHeaders(mapOf("cantilever-project-domain" to "test"))
 
-        val controller = TemplateController(sourceBucket)
+        val controller = TemplateController(sourceBucket,generationBucket)
         val request = Request<ContentNode.TemplateNode>(
             apiRequest = apiProxyEvent,
             body = mockHandlebarsContent,
@@ -180,8 +181,9 @@ internal class TemplateControllerTest : KoinTest {
      */
     private fun buildRequest(path: String, pathPattern: String, body: String = ""): Request<Unit> {
         val apiGatewayProxyRequestEvent = APIGatewayProxyRequestEvent()
-        apiGatewayProxyRequestEvent.body = body
+        apiGatewayProxyRequestEvent.body = ""
         apiGatewayProxyRequestEvent.path = path
+        apiGatewayProxyRequestEvent.headers = mapOf("cantilever-project-domain" to "test")
         return Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
     }
 }

@@ -25,30 +25,8 @@ I am worried that Cognito does not give me the control I need. I had assumed tha
 
 How will I give Cantilever write access to other buckets that are created outside of the CDK deployment process? Indeed, where will I record that a particular cantilever project is associated with a particular bucket? That information will probably need to go into `cantilever.yaml`. What else goes there? I certainly don't want to store actual secrets and keys in this yaml file.
 
-I'm getting myself quite twisted into knots trying to design the api for authenticating and role checks.
 
-I want something like:
-
-```kotlin
-auth(cognitoJWTAuthorizer,setOf("admin","creator")) {
-  put("/posts/new", posts::new)
-}
-```
-
-Which would allow the API to check that the user is authorized (has the valid JWT token), and can perform the action (has been granted one of the roles listed ("admin" or "creator"). But I want to do this in such a way that I don't need to polute my general `Authorizer`interface with stuff which may not be relevant. I wonder how Spring and Ktor do it?
-
-Adding more into this routing API is getting challenging - because it's making the routes unreadable, especially with the OpenAPI specifications. For example:
-
-```kotlin
- auth(cognitoJWTAuthorizer, setOf("admin")) {
-   post(
-     "/save",
-     pageController::saveMarkdownPageSource,
-   ).supplies(setOf(MimeType.plainText)).spec(
-     Spec.PathItem("Save page", "Save markdown page source")
-   )
-}
-```
-
-There is a lot going on here and the key elements **GET** and **/save** are getting lost in the noise.
+1. Use lambda@edge function to allow me to host multiple websites in a single bucket - **done**
+2. Add a 'domain' property to the project defintion file, and use this to set the template output folder - **done**
+3. Write temporary and and intermediate files to the project folder in the sources bucket
 

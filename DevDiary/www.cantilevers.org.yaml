@@ -1,0 +1,9 @@
+projectName: "Cantilever Devlog"
+author: "Liam Davison"
+dateFormat: "dd/MM/yyyy"
+dateTimeFormat: "HH:mm dd/MM/yyyy"
+imageResolutions:
+  "big-square": "640x640"
+  "wider": "1024x512"
+domain: "www.cantilevers.org"
+attributes: {}

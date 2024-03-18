@@ -18,17 +18,19 @@ import java.nio.charset.Charset
 /**
  * Load, save and delete Pages from the S3 bucket
  */
-class PageController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
+class PageController(sourceBucket: String, generationBucket: String) : KoinComponent,
+    APIController(sourceBucket, generationBucket) {
 
     /**
      * Return a list of all the pages in the content tree
      * @return [PageListDTO] object containing the list of Pages, a count and the last updated date/time
      */
     fun getPages(request: Request<Unit>): ResponseEntity<APIResult<PageListDTO>> {
-        return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
-            loadContentTree()
-            info("Fetching all pages from metadata.json")
-            val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
+        val projectMetadataKey = request.headers["cantilever-project-domain"] + "/" + S3_KEY.metadataKey
+        return if (s3Service.objectExists(projectMetadataKey, sourceBucket)) {
+            loadContentTree(request.headers["cantilever-project-domain"]!!)
+            info("Fetching all pages from $projectMetadataKey")
+            val lastUpdated = s3Service.getUpdatedTime(projectMetadataKey, sourceBucket)
             val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
 //            val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
             val sorted = pages.sortedByDescending { it.srcKey }
@@ -40,9 +42,9 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             )
             ResponseEntity.ok(body = APIResult.Success(value = pageList))
         } else {
-            error("Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+            error("Cannot find file '${projectMetadataKey}' in bucket $sourceBucket")
             ResponseEntity.notFound(
-                body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+                body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
             )
         }
     }
@@ -51,6 +53,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * Load a markdown file with the specified `srcKey` and return it as [MarkdownPageDTO] response
      */
     fun loadMarkdownSource(request: Request<Unit>): ResponseEntity<APIResult<MarkdownPageDTO>> {
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val markdownSource = request.pathParameters["srcKey"]
         return if (markdownSource != null) {
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
@@ -74,9 +77,14 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * This should be the full path.
      */
     fun createFolder(request: Request<Unit>): ResponseEntity<APIResult<String>> {
-        val folderName = request.pathParameters["folderName"]
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        var folderName = URLDecoder.decode(
+            request.pathParameters["folderName"], Charset.defaultCharset()
+        )
         return if (folderName != null) {
-            loadContentTree() // TODO: can we move this to the abstract class? Calling it for every function seems wasteful
+            loadContentTree(
+                projectKeyHeader
+            ) // TODO: can we move this to the abstract class? Calling it for every function seems wasteful
             // folder name must be web safe
             val slugged = URLDecoder.decode(folderName, Charset.defaultCharset()).toS3Key()
             info("Creating folder '$slugged'")
@@ -85,8 +93,11 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
                 if (result != 0) {
                     ResponseEntity.serverError(body = APIResult.Error("Folder '$slugged' was not created"))
                 }
+                if (!folderName.endsWith('/')) {
+                    folderName += '/'
+                }
                 contentTree.insertFolder(ContentNode.FolderNode(folderName))
-                saveContentTree()
+                saveContentTree(projectKeyHeader)
 
                 ResponseEntity.ok(body = APIResult.OK("Folder '$slugged' created"))
             } else {
@@ -102,6 +113,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * Save a [MarkdownPageDTO] to the sources bucket
      */
     fun saveMarkdownPageSource(request: Request<ContentNode.PageNode>): ResponseEntity<APIResult<String>> {
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         info("saveMarkdownPageSource")
         val pageToSave = request.body
         pageToSave.also {
@@ -115,14 +127,14 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
             val length =
                 s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
             contentTree.updatePage(pageToSave)
-            saveContentTree()
+            saveContentTree(projectKeyHeader)
             ResponseEntity.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
             val length =
                 s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
             contentTree.insertPage(pageToSave)
-            saveContentTree()
+            saveContentTree(projectKeyHeader)
             ResponseEntity.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
     }
@@ -132,8 +144,15 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      */
     fun deleteMarkdownPageSource(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val markdownSource = request.pathParameters["srcKey"]
+        if (request.headers["cantilever-project-domain"] === null) {
+            error("Missing required header 'cantilever-project-domain'")
+            return ResponseEntity.badRequest(
+                body = APIResult.Error("Missing required header 'cantilever-project-domain'")
+            )
+        }
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (markdownSource != null) {
-            loadContentTree()
+            loadContentTree(projectKeyHeader)
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
             return if (s3Service.objectExists(decoded, sourceBucket)) {
                 val pageNode = contentTree.getNode(decoded)
@@ -141,7 +160,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
                     info("Deleting markdown file $decoded")
                     s3Service.deleteObject(decoded, sourceBucket)
                     contentTree.deletePage(pageNode)
-                    saveContentTree()
+                    saveContentTree(projectKeyHeader)
                     ResponseEntity.ok(body = APIResult.OK("Source $decoded deleted"))
                 } else {
                     error("Could not delete $decoded; object not found or was not a PageNode")
@@ -163,11 +182,20 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * Return a list of all the folders which contain pages (i.e. under /sources/pages/)
      */
     fun getFolders(request: Request<Unit>): ResponseEntity<APIResult<FolderListDTO>> {
-        val folders = listOf(
-            ContentNode.FolderNode(S3_KEY.pagesPrefix)
-        ) + contentTree.items.filterIsInstance<ContentNode.FolderNode>()
-            .filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
-        val dto = FolderListDTO(folders.size, folders)
+        info("Loading page folders")
+        val projectFolder = request.headers["cantilever-project-domain"]!!
+        loadContentTree(projectFolder)
+        val folders = mutableListOf<ContentNode.FolderNode>()
+        val rootFolder = ContentNode.FolderNode("$projectFolder/${S3_KEY.pagesPrefix}")
+        // The root folder isn't in the content tree, so we need to add it manually, and find all the pages that have it as their parent
+        rootFolder.children.addAll(
+            contentTree.items.filterIsInstance<ContentNode.PageNode>().filter { it.parent == rootFolder.srcKey }
+                .map { it.srcKey })
+        folders.add(rootFolder)
+        // Then we can add all the other folders
+        folders += contentTree.items.filterIsInstance<ContentNode.FolderNode>()
+            .filter { it.srcKey.startsWith("$projectFolder/${S3_KEY.pagesPrefix}") }
+        val dto = FolderListDTO(folders.size, folders.toList())
         return ResponseEntity.ok(body = APIResult.Success(dto))
     }
 
@@ -176,6 +204,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * The folder must be empty and contain no pages.
      */
     fun deleteFolder(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val folderKey = request.pathParameters["srcKey"]
         return if (folderKey != null) {
             val decoded = URLDecoder.decode(folderKey, Charset.defaultCharset())
@@ -186,7 +215,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
                         info("Deleting folder $decoded")
                         s3Service.deleteObject(decoded, sourceBucket)
                         contentTree.deleteFolder(folderNode)
-                        saveContentTree()
+                        saveContentTree(projectKeyHeader)
                         ResponseEntity.ok(body = APIResult.OK("Folder $decoded deleted"))
                     } else {
                         warn("Folder $decoded is not empty so it was not deleted")
@@ -208,12 +237,14 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
      * @param request [ReassignIndexRequestDTO] containing the source and destination pages and the folder
      */
     fun reassignIndex(request: Request<ReassignIndexRequestDTO>): ResponseEntity<APIResult<String>> {
-        val request = request.body
-        loadContentTree()
-        val from = request.from
-        val to = request.to
-        val folder = request.folder
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        val requestBody = request.body
+        loadContentTree(projectKeyHeader)
+        val from = requestBody.from
+        val to = requestBody.to
+        val folder = requestBody.folder
         // check to see that each of these exist
+        info("Reassigning index from $from to $to in folder $folder")
         try {
             if (s3Service.objectExists(from, sourceBucket) && s3Service.objectExists(to, sourceBucket)) {
                 // confirm that from is the index of the folder
@@ -233,18 +264,20 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
                             ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(fromString, from)
                         val updatedFrom = fromMeta.copy(isRoot = false)
 
-                         val toMeta =
+                        val toMeta =
                             ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(toString, to)
                         val updatedTo = toMeta.copy(isRoot = true)
 
                         println("Writing updated pages '$from' and '$to' to S3 bucket $sourceBucket")
-                        s3Service.putObjectAsString(from, sourceBucket, convertNodeToMarkdown(updatedFrom), "text/markdown")
+                        s3Service.putObjectAsString(
+                            from, sourceBucket, convertNodeToMarkdown(updatedFrom), "text/markdown"
+                        )
                         s3Service.putObjectAsString(to, sourceBucket, convertNodeToMarkdown(updatedTo), "text/markdown")
                         println("Updating content tree")
                         contentTree.updatePage(updatedFrom)
                         contentTree.updatePage(updatedTo)
                         contentTree.updateFolder(folderNode.copy(indexPage = to))
-                        saveContentTree()
+                        saveContentTree(projectKeyHeader)
                         return ResponseEntity.ok(
                             body = APIResult.OK("Reassigned index from $from to $to in folder $folder")
                         )
@@ -266,6 +299,7 @@ class PageController(sourceBucket: String) : KoinComponent, APIController(source
     /**
      * Build a [MarkdownPageDTO] object from the source specified
      */
+    @Deprecated("Use ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString instead")
     private fun buildMarkdownPage(srcKey: String): MarkdownPageDTO {
         val markdown = s3Service.getObjectAsString(srcKey, sourceBucket)
         val pageMeta = ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(markdown, srcKey)

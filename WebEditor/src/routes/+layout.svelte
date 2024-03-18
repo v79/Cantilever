@@ -4,30 +4,25 @@
 		AppRail,
 		AppRailAnchor,
 		AppShell,
-		Modal,
-		initializeStores,
-		type ModalComponent,
-		Toast,
-		type PopupSettings,
-		popup,
 		ListBox,
 		ListBoxItem,
+		Modal,
+		Toast,
 		getToastStore,
+		initializeStores,
+		popup,
+		type ModalComponent,
+		type PopupSettings,
 		type ToastSettings
 	} from '@skeletonlabs/skeleton';
 	import '../app.postcss';
-	// Highlight JS
-	import { storeHighlightJs } from '@skeletonlabs/skeleton';
-	import hljs from 'highlight.js/lib/core';
-	import xml from 'highlight.js/lib/languages/xml';
-	import 'highlight.js/styles/github-dark.css';
-	// for HTML
-	import css from 'highlight.js/lib/languages/css';
-	import javascript from 'highlight.js/lib/languages/javascript';
-	import typescript from 'highlight.js/lib/languages/typescript';
-	// Floating UI for Popups
+// Highlight JS
+	import { page } from '$app/stores';
+	import LoginAvatar from '$lib/components/LoginAvatar.svelte';
+	import { userStore } from '$lib/stores/userStore.svelte';
 	import { arrow, autoUpdate, computePosition, flip, offset, shift } from '@floating-ui/dom';
 	import { storePopup } from '@skeletonlabs/skeleton';
+	import 'highlight.js/styles/github-dark.css';
 	import {
 		Article,
 		Dataset_linked,
@@ -39,28 +34,28 @@
 		Settings_applications,
 		Sync
 	} from 'svelte-google-materialdesign-icons';
-	import { page } from '$app/stores';
-	import LoginAvatar from '$lib/components/LoginAvatar.svelte';
-	import { userStore } from '$lib/stores/userStore.svelte';
 	storePopup.set({ computePosition, autoUpdate, flip, shift, offset, arrow });
 
-	import ConfirmDeleteModal from '$lib/modals/confirmDeleteModal.svelte';
-	import SaveNewPostModal from '$lib/modals/saveNewPostModal.svelte';
-	import SaveNewTemplateModal from '$lib/modals/saveNewTemplateModal.svelte';
-	import { onMount } from 'svelte';
-	import SwitchIndexPageModal from '$lib/modals/switchIndexPageModal.svelte';
-	import CreateNewPageModal from '$lib/modals/createNewPageModal.svelte';
 	import { beforeNavigate } from '$app/navigation';
-	import { handlebars, markdownStore } from '$lib/stores/contentStore.svelte';
+	import ConfirmDeleteModal from '$lib/modals/confirmDeleteModal.svelte';
 	import CreateNewFolderModal from '$lib/modals/createNewFolderModal.svelte';
+	import CreateNewPageModal from '$lib/modals/createNewPageModal.svelte';
+	import CreateNewPostModal from '$lib/modals/createNewPostModal.svelte';
 	import SaveNewPageModal from '$lib/modals/saveNewPageModal.svelte';
-	import ExpandMore from 'svelte-google-materialdesign-icons/Expand_more.svelte';
+	import SaveNewPostModal from '$lib/modals/saveNewPostModal.svelte';
+	import SaveNewProjectModal from '$lib/modals/saveNewProjectModal.svelte';
+	import SaveNewTemplateModal from '$lib/modals/saveNewTemplateModal.svelte';
+	import SwitchIndexPageModal from '$lib/modals/switchIndexPageModal.svelte';
+	import { handlebars, markdownStore } from '$lib/stores/contentStore.svelte';
+	import { project } from '$lib/stores/projectStore.svelte';
 	import {
 		rebuildAllMetadata,
 		rebuildAllPages,
 		rebuildAllPosts
 	} from '$lib/stores/regenStore.svelte';
 	import SpinnerStore, { spinner } from '$lib/stores/spinnerStore.svelte';
+	import { onMount } from 'svelte';
+	import ExpandMore from 'svelte-google-materialdesign-icons/Expand_more.svelte';
 
 	const modalRegistry: Record<string, ModalComponent> = {
 		confirmDeleteModal: { ref: ConfirmDeleteModal },
@@ -69,7 +64,9 @@
 		createNewPageModal: { ref: CreateNewPageModal },
 		createNewFolderModal: { ref: CreateNewFolderModal },
 		switchIndexPageModal: { ref: SwitchIndexPageModal },
-		saveNewPageModal: { ref: SaveNewPageModal }
+		saveNewPageModal: { ref: SaveNewPageModal },
+		createNewProjectModal: { ref: SaveNewProjectModal },
+		createNewPostModal: { ref: CreateNewPostModal },
 	};
 	initializeStores();
 
@@ -120,35 +117,42 @@
 	});
 
 	async function initiateMetadataRebuild() {
-		spinner.show('Rebuilding metadata...');
-		let response = rebuildAllMetadata($userStore.token!!);
-		response.then((data) => {
-			toast.message = data;
-			toastStore.trigger(toast);
-			spinner.hide();
-			regenComboValue = 'Regenerate...';
-		});
+		if ($project && $project.domain) {
+			spinner.show('Rebuilding metadata...');
+			let response = rebuildAllMetadata($userStore.token!!, $project.domain);
+			response.then((data) => {
+				toast.message = data;
+				toastStore.trigger(toast);
+				spinner.hide();
+				regenComboValue = 'Regenerate...';
+			});
+		}
 	}
 	async function initiatePostsRebuild() {
-		spinner.show('Rebuilding posts...');
-		let response = rebuildAllPosts($userStore.token!!);
-		response.then((data) => {
-			toast.message = data;
-			toastStore.trigger(toast);
-			spinner.hide();
-			regenComboValue = 'Regenerate...';
-		});
+		if ($project && $project.domain) {
+			spinner.show('Rebuilding posts...');
+			let response = rebuildAllPosts($userStore.token!!, $project.domain);
+			response.then((data) => {
+				toast.message = data;
+				toastStore.trigger(toast);
+				spinner.hide();
+				regenComboValue = 'Regenerate...';
+			});
+		}
 	}
 	async function initiatePagesRebuild() {
-		spinner.show('Rebuilding pages...');
-		let response = rebuildAllPages($userStore.token!!);
-		response.then((data) => {
-			toast.message = data;
-			toastStore.trigger(toast);
-			spinner.hide();
-			regenComboValue = 'Regenerate...';
-		});
+		if ($project && $project.domain) {
+			spinner.show('Rebuilding pages...');
+			let response = rebuildAllPages($userStore.token!!, $project.domain);
+			response.then((data) => {
+				toast.message = data;
+				toastStore.trigger(toast);
+				spinner.hide();
+				regenComboValue = 'Regenerate...';
+			});
+		}
 	}
+
 	async function initiateImageResRebuild() {
 		console.log('Rebuilding image resolutions - not yet implemented');
 	}
@@ -168,7 +172,7 @@
 			<svelte:fragment slot="lead">
 				<strong class="text-xl">Cantilever v0.0.11</strong>
 
-				{#if loggedIn}
+				{#if loggedIn && $project && $project.domain}
 					<button
 						class="btn btn-sm variant-ghost-primary w-48 justify-between"
 						use:popup={regenPopup}>
@@ -178,6 +182,13 @@
 					</button>
 				{/if}
 			</svelte:fragment>
+			<div class="">
+				{#if $project}
+					<h2 class="h2">{$project.projectName}</h2>
+				{:else}
+					<h3 class="h3"><em>No project</em></h3>
+				{/if}
+			</div>
 			<svelte:fragment slot="headline">
 				<SpinnerStore />
 			</svelte:fragment>
@@ -199,51 +210,53 @@
 							><Icon icon={Home} size={32} variation="outlined" /></svelte:fragment>
 						<span>Home</span>
 					</AppRailAnchor>
-					<AppRailAnchor
-						href="/project"
-						selected={$page.url.pathname === '/project'}
-						title="Project">
-						<svelte:fragment slot="lead"
-							><Icon
-								icon={Settings_applications}
-								size={32}
-								variation="outlined" /></svelte:fragment>
-						<span>Project</span>
-					</AppRailAnchor>
+					{#if $project && $project.projectName !== ''}
+						<AppRailAnchor
+							href="/project"
+							selected={$page.url.pathname === '/project'}
+							title="Project">
+							<svelte:fragment slot="lead"
+								><Icon
+									icon={Settings_applications}
+									size={32}
+									variation="outlined" /></svelte:fragment>
+							<span>Project</span>
+						</AppRailAnchor>
 
-					<AppRailAnchor href="/posts" selected={$page.url.pathname === '/posts'} title="Posts">
-						<svelte:fragment slot="lead">
-							<Icon icon={Feed} size={32} variation="outlined" />
-						</svelte:fragment>
+						<AppRailAnchor href="/posts" selected={$page.url.pathname === '/posts'} title="Posts">
+							<svelte:fragment slot="lead">
+								<Icon icon={Feed} size={32} variation="outlined" />
+							</svelte:fragment>
 
-						<span>Posts</span>
-					</AppRailAnchor>
+							<span>Posts</span>
+						</AppRailAnchor>
 
-					<AppRailAnchor href="/pages" selected={$page.url.pathname === '/pages'} title="Pages">
-						<svelte:fragment slot="lead"
-							><Icon icon={Article} size={32} variation="outlined" /></svelte:fragment>
-						<span>Pages</span>
-					</AppRailAnchor>
+						<AppRailAnchor href="/pages" selected={$page.url.pathname === '/pages'} title="Pages">
+							<svelte:fragment slot="lead"
+								><Icon icon={Article} size={32} variation="outlined" /></svelte:fragment>
+							<span>Pages</span>
+						</AppRailAnchor>
 
-					<AppRailAnchor href="/media" selected={$page.url.pathname === '/media'} title="Media">
-						<svelte:fragment slot="lead"
-							><Icon icon={Perm_media} size={32} variation="outlined" /></svelte:fragment>
-						<span>Media</span>
-					</AppRailAnchor>
+						<AppRailAnchor href="/media" selected={$page.url.pathname === '/media'} title="Media">
+							<svelte:fragment slot="lead"
+								><Icon icon={Perm_media} size={32} variation="outlined" /></svelte:fragment>
+							<span>Media</span>
+						</AppRailAnchor>
 
-					<AppRailAnchor
-						href="/templates"
-						title="Templates"
-						selected={$page.url.pathname === '/templates'}>
-						<svelte:fragment slot="lead">
-							<!-- TODO: this badge might be a nice way of indicating that there are ungenerated changes? -->
-							<div class="relative inline-block">
-								<span class="badge-icon variant-filled-error absolute -bottom-0 -right-0 z-10"
-									>2</span>
-								<Icon icon={Document_scanner} size={32} variation="outlined" />
-							</div></svelte:fragment>
-						<span>Templates</span>
-					</AppRailAnchor>
+						<AppRailAnchor
+							href="/templates"
+							title="Templates"
+							selected={$page.url.pathname === '/templates'}>
+							<svelte:fragment slot="lead">
+								<!-- TODO: this badge might be a nice way of indicating that there are ungenerated changes? -->
+								<div class="relative inline-block">
+									<span class="badge-icon variant-filled-error absolute -bottom-0 -right-0 z-10"
+										>2</span>
+									<Icon icon={Document_scanner} size={32} variation="outlined" />
+								</div></svelte:fragment>
+							<span>Templates</span>
+						</AppRailAnchor>
+					{/if}
 				</div>
 			</AppRail>
 		{/if}
