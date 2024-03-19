@@ -44,9 +44,6 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
         logger.info("Received ${event.records.size} events received for image processing")
 
         try {
-            val projectYaml= s3Service.getObjectAsString(S3_KEY.projectKey, sourceBucket)
-            val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
-
             event.records.forEach { eventRecord ->
                 logger.info("Event record: ${eventRecord.body}")
 
@@ -57,7 +54,7 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
 
                     is ImageSQSMessage.CopyImagesMsg -> {
                         logger.info("Received request to copy images from source to destination bucket")
-                        response = processImageCopy(sqsMsg, project, sourceBucket, destinationBucket)
+                        response = processImageCopy(sqsMsg, sourceBucket, destinationBucket)
                     }
                 }
             }
@@ -80,7 +77,8 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
         var responseString = "200 OK"
 
         try {
-            val projectString = s3Service.getObjectAsString(S3_KEY.projectKey, sourceBucket)
+            val domain = imageMessage.projectDomain
+            val projectString = s3Service.getObjectAsString("$domain.yaml", sourceBucket)
             val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectString)
             logger.info("Project: $project")
 
@@ -133,7 +131,6 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
                 return "202 Accepted"
             }
 
-
         } catch (e: Exception) {
             logger.error("Failed to process image file; ${e.message}")
             responseString = "500 Internal Server Error"
@@ -143,10 +140,14 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
     }
 
     // TODO: Need stronger error handling here; there's a good chance that the source image won't exist
-    private fun processImageCopy(imageMessage: ImageSQSMessage.CopyImagesMsg, project: CantileverProject, sourceBucket: String, destinationBucket: String): String {
+    private fun processImageCopy(imageMessage: ImageSQSMessage.CopyImagesMsg,sourceBucket: String, destinationBucket: String): String {
         var responseString = "200 OK"
 
         try {
+            // load the project
+            val domain = imageMessage.projectDomain
+            val projectString = s3Service.getObjectAsString("$domain/metadata.json", sourceBucket)
+            val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectString)
             imageMessage.imageList.forEach { imageKey ->
                 // imageKey will be as requested by the markdown file, e.g. /images/my-image.jpg
                 // sourceKey will be the full path in the source bucket, e.g. generated/images/my-image.jpg
@@ -172,17 +173,26 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
     /**
      * Calculate the filename for the resized image
      * Based on the original file name, and the resolution name
+     * Will be in the format domain/generated/images/my-image.100x100.jpg
+     * @param imageMessage the SQS message containing details of the image to resize
+     * @param resName the name of the resolution to append to the filename
      */
     private fun calculateFilename(
         imageMessage: ImageSQSMessage.ResizeImageMsg, resName: String?
     ): String {
+        // original image key is in the format domain/sources/images/my-image.jpg
+        // destination image key should be in format domain/generated/images/my-image/100x100.jpg
+        // currently destination key seems to be:
+        // www.cantilevers.org/generated/www.cantilevers.org/sources/images/glencoe_highlands_of_scotland_winter-wallpaper-3440x1440/big-square.jpg
+        val domain = imageMessage.projectDomain
+
+        val sourceLeafName = imageMessage.metadata.srcKey.substringAfterLast("/")
         val origSuffix = imageMessage.metadata.srcKey.substringAfterLast(".")
-        val newPrefix = S3_KEY.generated + "/"
-        val leafName = imageMessage.metadata.srcKey.removePrefix(S3_KEY.sourcesPrefix).substringBeforeLast(".")
+        val newPrefix = "$domain/generated/images/"
         val finalResName = if (resName != null) {
             "/$resName."
         } else "."
-        return "$newPrefix$leafName${finalResName}${origSuffix}"
+        return "$newPrefix$sourceLeafName${finalResName}${origSuffix}"
     }
 
     /**

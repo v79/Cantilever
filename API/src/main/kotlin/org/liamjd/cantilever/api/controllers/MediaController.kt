@@ -88,7 +88,7 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
         loadContentTree(projectKeyHeader)
 
         val imageBody = request.body
-        val srcKey = "sources/images/${imageBody.srcKey}"
+        val srcKey = "$projectKeyHeader/sources/images/${imageBody.srcKey}"
         val contentType = imageBody.contentType
         var dto: ImageDTO? = null
         try {
@@ -148,6 +148,7 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
 
     /**
      * Get the content type from the file extension
+     * Defaults to image/jpeg if the extension is not recognised
      */
     private fun getContentTypeFromExtension(extension: String): String {
         return when (extension) {
