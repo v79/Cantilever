@@ -142,7 +142,7 @@
 	}
 
 	function initiateNewPost() {
-		let newPost = new MarkdownContent(
+			let newPost = new MarkdownContent(
 			new PostItem('', '', 'sources/templates/post.html.hbs', '', new Date(), new Date(), true),
 			''
 		);

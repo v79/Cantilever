@@ -30,7 +30,7 @@
 				errorToast.message = 'Could not fetch templates. Create a "post" template first';
 				toastStore.trigger(errorToast);
 				templatesReady = false;
-                templatesLoading = false;
+				templatesLoading = false;
 			} else {
 				// templates loaded into store
 				templatesReady = true;
@@ -38,6 +38,8 @@
 			}
 		} else {
 			// templates already loaded
+			templatesReady = true;
+			templatesLoading = false;
 		}
 	});
 
@@ -64,7 +66,10 @@
 		<footer class="modal-footer {parent.regionFooter}">
 			<button class="btn {parent.buttonNeutral}" on:click={parent.onClose}
 				>{parent.buttonTextCancel}</button>
-			<button disabled={!templatesReady} class="btn variant-filled-primary" on:click={closeAndSubmit}>Create</button>
+			<button
+				disabled={!templatesReady}
+				class="btn variant-filled-primary"
+				on:click={closeAndSubmit}>Create</button>
 		</footer>
 	</div>
 {/if}

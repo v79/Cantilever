@@ -37,6 +37,6 @@
 			clear: () => set(CLEAR_HANDLEBARS)
 		};
 	}
-	/** This store manages the handlebars content for the editor, i.e the content of the current Template */
+	// This store manages the handlebars content for the editor, i.e the content of the current Template
 	export const handlebars = createHandlebarsStore();
 </script>
