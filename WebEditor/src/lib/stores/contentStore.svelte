@@ -4,7 +4,7 @@
 	import { TemplateNode } from '$lib/models/templates.svelte';
 
 	//@ts-ignore
-	export const CLEAR_MARKDOWN = new MarkdownContent(null, '');
+	export const CLEAR_MARKDOWN = new MarkdownContent(undefined, '');
 	export const CLEAR_HANDLEBARS = new TemplateNode('', new Date(), '', [], '');
 
 	function createMarkdownStore() {

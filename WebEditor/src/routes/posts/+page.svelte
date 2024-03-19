@@ -270,7 +270,7 @@
 		<h3 class="h3 text-center mb-2">
 			{#if pgTitle}{pgTitle}{/if}
 		</h3>
-		{#if $markdownStore.metadata}
+		{#if $markdownStore.metadata instanceof PostItem}
 			<div class="flex flex-row justify-end">
 				<div class="btn-group variant-filled" role="group">
 					<button
