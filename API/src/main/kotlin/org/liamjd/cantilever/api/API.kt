@@ -241,7 +241,7 @@ class LambdaRouter : RequestHandlerWrapper() {
 
                     get(
                         "/images",
-                        mediaController::getImages,
+                        mediaController::getImageList,
                     ).spec(Spec.PathItem("Get images", "Returns a list of all images"))
 
                     get("/images/$SRCKEY/{resolution}", mediaController::getImage).spec(
