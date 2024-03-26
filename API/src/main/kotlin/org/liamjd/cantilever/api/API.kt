@@ -300,6 +300,25 @@ class LambdaRouter : RequestHandlerWrapper() {
                                 "Regenerate all the pages or posts that use this template"
                             )
                         )
+
+                    delete(
+                        "/fragments",
+                        generatorController::clearGeneratedFragments
+                    ).supplies(setOf(MimeType.plainText))
+                        .spec(
+                            Spec.PathItem(
+                                "Clear html fragments",
+                                "Delete all html fragments from the project generation folder to save space"
+                            )
+                        )
+
+                    delete("/images", generatorController::clearGeneratedImages).supplies(setOf(MimeType.plainText))
+                        .spec(
+                            Spec.PathItem(
+                                "Clear generated images",
+                                "Delete all generated images from the project generation folder to save space. Only deletes images which are not in the source bucket."
+                            )
+                        )
                 }
             }
         }

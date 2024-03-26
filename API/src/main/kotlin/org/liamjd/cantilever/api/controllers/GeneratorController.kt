@@ -20,7 +20,8 @@ import java.nio.charset.Charset
 /**
  * Handle routes relating to document generation. Mostly this will be done by sending messages to the appropriate queues.
  */
-class GeneratorController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
+class GeneratorController(sourceBucket: String, generationBucket: String) : KoinComponent,
+    APIController(sourceBucket, generationBucket) {
 
     companion object {
         const val error_NO_RESPONSE = "No response received for message"
@@ -152,9 +153,10 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
         // Also, annoying that I have to double-decode this.
         // And I need to strip off the domain from the requestKey
         val templateKey =
-            URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset()).substringAfter(
-                "$projectKeyHeader/"
-            )
+            URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset())
+                .substringAfter(
+                    "$projectKeyHeader/"
+                )
         info(
             "Received request to regenerate pages based on template '$templateKey'"
         )
@@ -210,6 +212,85 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                 APIResult.Success(value = "Queued $count files with the '$templateKey' template for regeneration.")
             )
         }
+    }
+
+    /**
+     * The generation bucket will accumulate a lot of files over time. This method will clear out all the generated fragments.
+     */
+    fun clearGeneratedFragments(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+
+        info("Received request to clear generated fragments from folder $projectKeyHeader/htmlFragments/")
+        val listResponse = s3Service.listObjectsDelim(projectKeyHeader, "htmlFragments", generationBucket)
+        var count = 0
+        if (listResponse.hasContents()) {
+            listResponse.contents().forEach { obj ->
+                info("Deleting object ${obj.key()}")
+                val delResponse = s3Service.deleteObject(obj.key(), generationBucket)
+                if (delResponse != null) {
+                    count++
+                }
+            }
+        } else {
+            return ResponseEntity.ok(body = APIResult.Success("No generated fragments to clear"))
+        }
+        return ResponseEntity.ok(
+            body = APIResult.Success("Deleted $count generated fragments from folder $projectKeyHeader/htmlFragments/")
+        )
+    }
+
+    /**
+     * The generation bucket will accumulate a lot of files over time. This method will clear out generated image resolutions which are no longer referenced in metadata.json
+     */
+    fun clearGeneratedImages(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+
+        info("Received request to clear generated images from folder $projectKeyHeader/images/")
+        loadContentTree(projectKeyHeader)
+        val listResponse = s3Service.listObjects("$projectKeyHeader/generated/images/", generationBucket)
+        var count = 0
+        val deleteList = mutableListOf<String>()
+        if (listResponse.hasContents()) {
+            // this will not respond with any particular order. I'll need to iterate twice?
+            deleteList.addAll(listResponse.contents().map { it.key().removePrefix("$projectKeyHeader/sources/") })
+            listResponse.contents().forEach { obj ->
+                // check if the image is still referenced in metadata.json
+                // the problem is we are iterating over the objects in the bucket, not the metadata.json file
+                // and this iteration will include both the original image, and the thumbnails
+                if (contentTree.images.any {
+                        it.srcKey.removePrefix("$projectKeyHeader/sources/") == obj.key()
+                            .removePrefix("$projectKeyHeader/generated/")
+                    }) {
+                    info("Image ${obj.key()} is still referenced in metadata.json")
+                    // so we've found the image in the metadata, so we don't want to delete it
+                    // BUT we don't want to delete any of its image resolutions either
+                    // so put the image resolution keys into a 'do not delete' list?
+                    deleteList.remove(obj.key())
+                    s3Service.listObjects(obj.key(), generationBucket).contents()
+                        .forEach { imageResolution ->
+                            println("Removing ${imageResolution.key()} from delete list")
+                            deleteList.remove(imageResolution.key())
+                        }
+                }
+            }
+            deleteList.forEach { key ->
+                info("Deleting object $key")
+                count++
+                val delResponse = s3Service.deleteObject(key, generationBucket)
+                if (delResponse != null) {
+                    count++
+                }
+            }
+
+        } else {
+            return ResponseEntity.ok(body = APIResult.Success("No generated images to clear"))
+        }
+        if (count == 0) {
+            return ResponseEntity.noContent(body = APIResult.Success("No generated images to clear"))
+        }
+        return ResponseEntity.ok(
+            body = APIResult.Success("Deleted $count generated images from folder $projectKeyHeader/images/")
+        )
     }
 
     // TODO: WE'VE DONE THIS TWICE NOW
