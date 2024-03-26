@@ -24,7 +24,7 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
     fun rebuildFromSources(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         info("Rebuilding $projectKeyHeader metadata from sources")
-        val projectMetadataKey = projectKeyHeader + "/" + S3_KEY.metadataKey
+        val projectMetadataKey = "$projectKeyHeader/metadata.json"
         val sourcesFolder = projectKeyHeader + "/" + S3_KEY.sources
         val postsFolder = projectKeyHeader + "/" + S3_KEY.postsPrefix
         val pagesFolder = projectKeyHeader + "/" + S3_KEY.pagesPrefix
