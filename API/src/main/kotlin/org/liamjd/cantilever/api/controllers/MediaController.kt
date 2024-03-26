@@ -21,7 +21,7 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
      * Return a list of all the images in the content tree
      * @return [ImageListDTO] object containing the list of images, a count and the last updated date/time
      */
-    fun getImages(request: Request<Unit>): ResponseEntity<APIResult<ImageListDTO>> {
+    fun getImageList(request: Request<Unit>): ResponseEntity<APIResult<ImageListDTO>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (s3Service.objectExists(projectKeyHeader + "/" + S3_KEY.metadataKey, sourceBucket)) {
             loadContentTree(projectKeyHeader)
@@ -44,7 +44,7 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
     }
 
     /**
-     * Load an image file with the specified `srcKey` and specified `resolution` and return it as [ImageDTO] response
+     * Load an image file with the specified `srcKey` and specified `resolution` and return it as a byte array [ImageDTO] response
      * If resolution is not specified, return the original image
      */
     @OptIn(ExperimentalEncodingApi::class)
@@ -58,25 +58,28 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
         // srcKey will be /sources/images/<image-name>.<ext> so we need to strip off the /sources/images/ prefix and add the /generated/images/ prefix
         // I also need to move the <ext> to the end of the generated key
         val ext = decodedKey.substringAfterLast(".")
-        val generatedKey = decodedKey.removeSuffix(".${ext}")
-            .replace(S3_KEY.imagesPrefix, S3_KEY.generatedImagesPrefix) + if (resolution != null) {
+        val generatedKey = decodedKey
+            .replace("sources/images/", "generated/images/") + if (resolution != null) {
             "/${resolution}.$ext"
         } else {
             ".${ext}"
         }
-        val image = s3Service.getObjectAsBytes(generatedKey, sourceBucket)
-
-        // need to base64 encode the image
-        val encoded = Base64.encode(image)
-        return ResponseEntity.ok(
-            APIResult.Success(
-                value = ImageDTO(
-                    srcKey = srcKey,
-                    getContentTypeFromExtension(ext),
-                    bytes = encoded
+        if(s3Service.objectExists(generatedKey, generationBucket)) {
+            val image = s3Service.getObjectAsBytes(generatedKey, generationBucket)
+            val encoded = Base64.encode(image)
+            return ResponseEntity.ok(
+                APIResult.Success(
+                    value = ImageDTO(
+                        srcKey = srcKey,
+                        getContentTypeFromExtension(ext),
+                        bytes = encoded
+                    )
                 )
             )
-        )
+        } else {
+            error("Image '$generatedKey' not found")
+            return ResponseEntity.notFound(APIResult.Error("Image '$generatedKey' not found"))
+        }
     }
 
     /**
