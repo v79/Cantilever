@@ -332,7 +332,7 @@ class GeneratorControllerTest : KoinTest {
         val mockS3Obj = mockk<S3Object>()
         val mockDeleteResponse = mockk<DeleteObjectResponse>()
         declareMock<S3Service> {
-            every { mockS3.listObjectsDelim("test", "htmlFragments", generationBucket) } returns mockS3ListResponse
+            every { mockS3.listObjects("test/htmlFragments/", generationBucket) } returns mockS3ListResponse
             every {
                 mockS3.deleteObject(
                     "test/htmlFragments/fragment1.html",

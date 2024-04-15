@@ -220,8 +220,8 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
     fun clearGeneratedFragments(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
 
-        info("Received request to clear generated fragments from folder $projectKeyHeader/htmlFragments/")
-        val listResponse = s3Service.listObjectsDelim(projectKeyHeader, "htmlFragments", generationBucket)
+        info("Received request to clear generated fragments from folder $projectKeyHeader/generated/htmlFragments/")
+        val listResponse = s3Service.listObjects("$projectKeyHeader/generated/htmlFragments/", generationBucket)
         var count = 0
         if (listResponse.hasContents()) {
             listResponse.contents().forEach { obj ->
@@ -234,8 +234,9 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
         } else {
             return ResponseEntity.ok(body = APIResult.Success("No generated fragments to clear"))
         }
+        info("Deleted $count generated fragments from folder $projectKeyHeader/generated/htmlFragments/")
         return ResponseEntity.ok(
-            body = APIResult.Success("Deleted $count generated fragments from folder $projectKeyHeader/htmlFragments/")
+            body = APIResult.Success("Deleted $count generated fragments from folder $projectKeyHeader/generated/htmlFragments/")
         )
     }
 
