@@ -53,4 +53,25 @@
 		const data = await response.text();
 		return data;
 	}
+
+	// clear specified cache
+	export async function clearCache(
+		cache: string,
+		token: string,
+		projectDomain: string
+	): Promise<string> {
+		console.log('regenStore: clearCache for ' + cache);
+		const response = await fetch('https://api.cantilevers.org/generate/' + cache, {
+			method: 'DELETE',
+			headers: {
+				Accept: 'text/plain',
+				Authorization: 'Bearer ' + token,
+				'Content-Type': 'application/json',
+				'cantilever-project-domain': projectDomain
+			},
+			mode: 'cors'
+		});
+		const data = await response.text();
+		return data;
+	}
 </script>

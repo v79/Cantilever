@@ -16,7 +16,7 @@
 		type ToastSettings
 	} from '@skeletonlabs/skeleton';
 	import '../app.postcss';
-// Highlight JS
+	// Highlight JS
 	import { page } from '$app/stores';
 	import LoginAvatar from '$lib/components/LoginAvatar.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
@@ -25,6 +25,7 @@
 	import 'highlight.js/styles/github-dark.css';
 	import {
 		Article,
+		Clear,
 		Dataset_linked,
 		Document_scanner,
 		Feed,
@@ -49,6 +50,7 @@
 	import { handlebars, markdownStore } from '$lib/stores/contentStore.svelte';
 	import { project } from '$lib/stores/projectStore.svelte';
 	import {
+		clearCache,
 		rebuildAllMetadata,
 		rebuildAllPages,
 		rebuildAllPosts
@@ -66,7 +68,7 @@
 		switchIndexPageModal: { ref: SwitchIndexPageModal },
 		saveNewPageModal: { ref: SaveNewPageModal },
 		createNewProjectModal: { ref: SaveNewProjectModal },
-		createNewPostModal: { ref: CreateNewPostModal },
+		createNewPostModal: { ref: CreateNewPostModal }
 	};
 	initializeStores();
 
@@ -155,6 +157,30 @@
 
 	async function initiateImageResRebuild() {
 		console.log('Rebuilding image resolutions - not yet implemented');
+	}
+
+	async function clearFragmentCache() {
+		if ($project && $project.domain) {
+			spinner.show('Clearing fragment cache...');
+			let response = clearCache('fragments', $userStore.token!!, $project.domain);
+			response
+				.then((data) => {
+					toast.message = data;
+					toastStore.trigger(toast);
+					spinner.hide();
+					regenComboValue = 'Regenerate...';
+				})
+				.catch((error) => {
+					errorToast.message = error;
+					toastStore.trigger(errorToast);
+					spinner.hide();
+					regenComboValue = 'Regenerate...';
+				});
+		}
+	}
+
+	async function clearImageCache() {
+		console.log('Clearing image cache - not yet implemented');
 	}
 </script>
 
@@ -304,6 +330,25 @@
 			<svelte:fragment slot="lead"
 				><Icon icon={Perm_media} color="text-secondary-200" /></svelte:fragment
 			><span class="text-secondary-200"><em>Images</em></span></ListBoxItem>
+	</ListBox>
+	<hr class="border-t-2 border-surface-100-800-token" />
+	<ListBox rounded="rounded-none">
+		<ListBoxItem
+			bind:group={regenComboValue}
+			name="clearFragments"
+			value="clearFragments"
+			on:click={(e) => {
+				clearFragmentCache();
+			}}
+			><svelte:fragment slot="lead"><Icon icon={Clear} /></svelte:fragment>Clear fragments</ListBoxItem>
+		<ListBoxItem
+			bind:group={regenComboValue}
+			name="clearImages"
+			value="clearImages"
+			on:click={(e) => {
+				clearImageCache();
+			}}
+			><svelte:fragment slot="lead"><Icon icon={Clear} /></svelte:fragment>Clear images</ListBoxItem>
 	</ListBox>
 	<div class="arrow bg-surface-100-800-token" />
 </div>

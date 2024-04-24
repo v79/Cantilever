@@ -1,11 +1,8 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
-import io.mockk.every
+import io.mockk.*
 import io.mockk.junit5.MockKExtension
-import io.mockk.mockk
-import io.mockk.mockkClass
-import io.mockk.verify
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -25,6 +22,7 @@ import org.liamjd.cantilever.services.SQSService
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import org.liamjd.cantilever.services.impl.SQSServiceImpl
 import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.s3.model.DeleteObjectResponse
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response
 import software.amazon.awssdk.services.s3.model.S3Object
 import software.amazon.awssdk.services.sqs.model.SendMessageResponse
@@ -77,7 +75,7 @@ class GeneratorControllerTest : KoinTest {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "1234"
-        val controller = GeneratorController(sourceBucket,generationBucket)
+        val controller = GeneratorController(sourceBucket, generationBucket)
         val encoded = URLEncoder.encode("test/sources/pages/about.md", "UTF-8")
         val request = buildRequest(path = "/generate/page/$encoded", pathPattern = "/generate/page/{srcKey}")
 
@@ -106,7 +104,7 @@ class GeneratorControllerTest : KoinTest {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "1234"
-        val controller = GeneratorController(sourceBucket,generationBucket)
+        val controller = GeneratorController(sourceBucket, generationBucket)
         val request = buildRequest(path = "/generate/test/my-holiday-post.md", pathPattern = "/generate/page/{srcKey}")
 
         val response = controller.generatePost(request)
@@ -284,7 +282,7 @@ class GeneratorControllerTest : KoinTest {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "2345"
-        val controller = GeneratorController(sourceBucket,generationBucket)
+        val controller = GeneratorController(sourceBucket, generationBucket)
         val request = buildRequest(
             path = "/generate/template/sources%252Ftemplates%252Fabout.html.hbs",
             pathPattern = "/generate/template/{templateKey}"
@@ -317,7 +315,7 @@ class GeneratorControllerTest : KoinTest {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
         every { mockSqsResponse.messageId() } returns "3456"
-        val controller = GeneratorController(sourceBucket,generationBucket)
+        val controller = GeneratorController(sourceBucket, generationBucket)
         val request = buildRequest(path = "/generate/page/*", pathPattern = "/generate/page/{srcKey}")
 
         val response = controller.generatePage(request)
@@ -326,6 +324,98 @@ class GeneratorControllerTest : KoinTest {
         assertEquals(200, response.statusCode)
         val result = response.body as APIResult.Success
         assertEquals("Queued 1 pages for regeneration", result.value)
+    }
+
+    @Test
+    fun `request delete htmlFragments succeeds`() {
+        val mockS3ListResponse = mockk<ListObjectsV2Response>()
+        val mockS3Obj = mockk<S3Object>()
+        val mockDeleteResponse = mockk<DeleteObjectResponse>()
+        declareMock<S3Service> {
+            every { mockS3.listObjects("test/generated/htmlFragments/", generationBucket) } returns mockS3ListResponse
+            every {
+                mockS3.deleteObject(
+                    "test/htmlFragments/fragment1.html",
+                    generationBucket
+                )
+            } returns mockDeleteResponse
+        }
+        every { mockS3ListResponse.hasContents() } returns true
+        every { mockS3ListResponse.contents() } returns listOf(mockS3Obj)
+        every { mockS3Obj.key() } returns "test/htmlFragments/fragment1.html"
+
+        val controller = GeneratorController(sourceBucket, generationBucket)
+        val request = buildRequest(path = "/delete/fragments", pathPattern = "/delete/fragments")
+
+        val response = controller.clearGeneratedFragments(request)
+
+        assertNotNull(response)
+        assertEquals(200, response.statusCode)
+        val result = response.body as APIResult.Success
+        assertEquals("Deleted 1 generated fragments from folder test/generated/htmlFragments/", result.value)
+    }
+
+    @Test
+    fun `request to delete images fails when all images are still in project metadata`() {
+        val imageListResponse = mockk<ListObjectsV2Response>()
+        val imageOriginal = S3Object.builder().key("test/generated/images/milkyway.jpg").build()
+        val imageThumbnail = S3Object.builder().key("test/generated/images/milkyway/__thumb.jpg").build()
+        val imageList = listOf(imageOriginal, imageThumbnail)
+        declareMock<S3Service> {
+            every { mockS3.objectExists("test/metadata.json", generationBucket) } returns true
+            every { mockS3.getObjectAsString("test/metadata.json", generationBucket) } returns mockMetaJson
+            every { mockS3.listObjects("test/generated/images/", generationBucket) } returns imageListResponse
+            every {
+                mockS3.listObjects(
+                    "test/generated/images/milkyway.jpg",
+                    generationBucket
+                )
+            } returns imageListResponse
+        }
+        every { imageListResponse.hasContents() } returns true
+        every { imageListResponse.contents() } returns imageList
+
+        val controller = GeneratorController(sourceBucket, generationBucket)
+        val request = buildRequest(path = "/delete/images", pathPattern = "/delete/images")
+        val response = controller.clearGeneratedImages(request)
+
+        assertNotNull(response)
+        assertEquals(204, response.statusCode)
+        verify {
+            mockS3.deleteObject("test/generated/images/milkyway.jpg", generationBucket)?.wasNot(Called)
+        }
+    }
+
+    @Test
+    fun `request to delete images succeeds when images are not referenced in metadata json`() {
+        val imageListResponse = mockk<ListObjectsV2Response>()
+        val imageOriginal = S3Object.builder().key("test/generated/images/andromeda.jpg").build()
+        val imageThumbnail = S3Object.builder().key("test/generated/images/andromeda/__thumb.jpg").build()
+        val imageList = listOf(imageOriginal, imageThumbnail)
+        declareMock<S3Service> {
+            every { mockS3.objectExists("test/metadata.json", generationBucket) } returns true
+            every { mockS3.getObjectAsString("test/metadata.json", generationBucket) } returns mockMetaJson
+            every { mockS3.listObjects("test/generated/images/", generationBucket) } returns imageListResponse
+            every {
+                mockS3.listObjects(
+                    "test/generated/images/andromeda.jpg",
+                    generationBucket
+                )
+            } returns imageListResponse
+            every { mockS3.deleteObject(any(), generationBucket) } returns mockk()
+        }
+        every { imageListResponse.hasContents() } returns true
+        every { imageListResponse.contents() } returns imageList
+
+        val controller = GeneratorController(sourceBucket, generationBucket)
+        val request = buildRequest(path = "/delete/images", pathPattern = "/delete/images")
+        val response = controller.clearGeneratedImages(request)
+
+        assertNotNull(response)
+        assertEquals(200, response.statusCode)
+        verify(exactly = 2) {
+            mockS3.deleteObject(any(), generationBucket)
+        }
     }
 
     /**
@@ -448,7 +538,13 @@ class GeneratorControllerTest : KoinTest {
       },
       "parent": "sources/pages"
     }
-]
+],
+"images": [
+        {
+            "srcKey": "test/sources/images/milkyway.jpg",
+            "lastUpdated": "2024-03-26T21:19:11.031397878Z"
+        }
+    ]
 }
             """.trimIndent()
 }
