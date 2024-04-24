@@ -332,7 +332,7 @@ class GeneratorControllerTest : KoinTest {
         val mockS3Obj = mockk<S3Object>()
         val mockDeleteResponse = mockk<DeleteObjectResponse>()
         declareMock<S3Service> {
-            every { mockS3.listObjects("test/htmlFragments/", generationBucket) } returns mockS3ListResponse
+            every { mockS3.listObjects("test/generated/htmlFragments/", generationBucket) } returns mockS3ListResponse
             every {
                 mockS3.deleteObject(
                     "test/htmlFragments/fragment1.html",
@@ -352,7 +352,7 @@ class GeneratorControllerTest : KoinTest {
         assertNotNull(response)
         assertEquals(200, response.statusCode)
         val result = response.body as APIResult.Success
-        assertEquals("Deleted 1 generated fragments from folder test/htmlFragments/", result.value)
+        assertEquals("Deleted 1 generated fragments from folder test/generated/htmlFragments/", result.value)
     }
 
     @Test
