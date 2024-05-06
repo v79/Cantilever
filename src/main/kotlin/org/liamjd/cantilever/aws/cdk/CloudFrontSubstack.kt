@@ -52,7 +52,9 @@ class CloudFrontSubstack(private val versionString: String) {
         Tags.of(stack).add("Cantilever", versionString)
 
         val lambdaEdgeFunction = createLambdaEdge(stack)
-        val webOai = OriginAccessIdentity.Builder.create(stack, "WebOai").build()
+        // Origin Access Identity is considered legacy, to be replaced by Origin Access Control. But that's not
+        // supported in CDK yet. #21771
+        val webOai = OriginAccessIdentity.Builder.create(stack, "cantilever-originAccessIdentity").build()
         destinationBucket.grantRead(webOai)
 
         return CloudFrontWebDistribution.Builder.create(stack, "cantilever-CloudFrontWebDistribution")
@@ -61,6 +63,12 @@ class CloudFrontSubstack(private val versionString: String) {
             .originConfigs(
                 listOf(
                     SourceConfiguration.builder()
+                        .s3OriginSource(
+                            S3OriginConfig.builder()
+                                .s3BucketSource(destinationBucket)
+                                .originAccessIdentity(webOai)
+                                .build()
+                        )
                         .behaviors(
                             listOf(
                                 Behavior.builder().isDefaultBehavior(true).lambdaFunctionAssociations(
@@ -74,12 +82,6 @@ class CloudFrontSubstack(private val versionString: String) {
                                     )
                                 ).build()
                             )
-                        )
-                        .s3OriginSource(
-                            S3OriginConfig.builder()
-                                .originAccessIdentity(webOai)
-                                .s3BucketSource(destinationBucket)
-                                .build()
                         )
                         .build()
                 )
@@ -112,6 +114,19 @@ class CloudFrontSubstack(private val versionString: String) {
                         .build()
                 )
             )
+           /* .viewerCertificate(
+                ViewerCertificate.fromAcmCertificate(
+                    Certificate.fromCertificateArn(
+                        stack,
+                        "9b8f27c6-87be-4c14-a368-e6ad3ac4fb68",
+                        "arn:aws:acm:us-east-1:086949310404:certificate/9b8f27c6-87be-4c14-a368-e6ad3ac4fb68"
+                    ),
+                    ViewerCertificateOptions.builder()
+                        .aliases(listOf("www.cantilevers.org"))
+                        .securityPolicy(SecurityPolicyProtocol.TLS_V1_2_2021)
+                        .build()
+                )
+            )*/
             .build()
     }
 
@@ -127,25 +142,16 @@ class CloudFrontSubstack(private val versionString: String) {
      * SET UP www REDIRECT
      *
      * HttpsRedirect webHttpsRedirect = HttpsRedirect.Builder.create(this, "WebHttpsRedirect")
-     *
      *                                                       .certificate(websiteCertificate)
-     *
      *                                                       .recordNames(List.of(String.format("www.%s", stackConfig.getDomainName())))
-     *
      *                                                       .targetDomain(stackConfig.getDomainName())
-     *
      *                                                       .zone(hostedZone)
-     *
      *                                                       .build();
      *
      * ARecord apexARecord = ARecord.Builder.create(this, "ApexARecord")
-     *
      *                                      .recordName(stackConfig.getDomainName())
-     *
      *                                      .zone(hostedZone)
-     *
      *                                      .target(RecordTarget.fromAlias(new CloudFrontTarget(cloudFrontWebDistribution)))
-     *
      *                                      .build();
      */
 }
