@@ -36,4 +36,3 @@
 		<span class="text-secondary-200 text-right text-sm {disabledColor}">{count}</span>
 	{/if}
 </div>
-<span class="text-sm {disabledColor}">{srcKey}</span>

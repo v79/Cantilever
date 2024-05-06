@@ -1,17 +1,9 @@
 package org.liamjd.cantilever.lambda
 
-import com.amazonaws.services.lambda.runtime.LambdaLogger
-import kotlinx.serialization.json.Json
-import org.liamjd.cantilever.common.S3_KEY
-import org.liamjd.cantilever.models.*
-import org.liamjd.cantilever.services.S3Service
+import org.liamjd.cantilever.models.ContentNode
+import org.liamjd.cantilever.models.ContentTree
 
-
-context(LambdaLogger)
-class NavigationBuilder(s3Service: S3Service, sourceBucket: String) {
-
-    private val contentTreeJson = s3Service.getObjectAsString(S3_KEY.metadataKey, sourceBucket)
-    private val contentTree = Json.decodeFromString<ContentTree>(contentTreeJson)
+class NavigationBuilder(private val contentTree: ContentTree) {
 
     /**
      * Return a useful map of [ContentNode.PostNode] objects

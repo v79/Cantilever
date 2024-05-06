@@ -15,17 +15,18 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 /**
  * Load, save and delete Images from the S3 bucket
  */
-class MediaController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
+class MediaController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
 
     /**
      * Return a list of all the images in the content tree
      * @return [ImageListDTO] object containing the list of images, a count and the last updated date/time
      */
-    fun getImages(request: Request<Unit>): ResponseEntity<APIResult<ImageListDTO>> {
-        return if (s3Service.objectExists(S3_KEY.metadataKey, sourceBucket)) {
-            loadContentTree()
+    fun getImageList(request: Request<Unit>): ResponseEntity<APIResult<ImageListDTO>> {
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        return if (s3Service.objectExists(projectKeyHeader + "/" + S3_KEY.metadataKey, sourceBucket)) {
+            loadContentTree(projectKeyHeader)
             info("Fetching all images from metadata.json")
-            val lastUpdated = s3Service.getUpdatedTime(S3_KEY.metadataKey, sourceBucket)
+            val lastUpdated = s3Service.getUpdatedTime(projectKeyHeader + "/" + S3_KEY.metadataKey, sourceBucket)
             val images = contentTree.images.toList()
             info("Loaded ${images.size} images")
             val sorted = images.sortedByDescending { it.srcKey }
@@ -38,12 +39,12 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
             ResponseEntity.ok(body = APIResult.Success(value = imageList))
         } else {
             error("Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
-            ResponseEntity.notFound(body = APIResult.Error(message = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
+            ResponseEntity.notFound(body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
         }
     }
 
     /**
-     * Load an image file with the specified `srcKey` and specified `resolution` and return it as [ImageDTO] response
+     * Load an image file with the specified `srcKey` and specified `resolution` and return it as a byte array [ImageDTO] response
      * If resolution is not specified, return the original image
      */
     @OptIn(ExperimentalEncodingApi::class)
@@ -52,29 +53,33 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
             request.pathParameters["srcKey"] ?: return ResponseEntity.badRequest(APIResult.Error("No srcKey provided"))
         val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
         val resolution = request.pathParameters["resolution"]
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         info("Fetching image $decodedKey at resolution $resolution")
         // srcKey will be /sources/images/<image-name>.<ext> so we need to strip off the /sources/images/ prefix and add the /generated/images/ prefix
         // I also need to move the <ext> to the end of the generated key
         val ext = decodedKey.substringAfterLast(".")
-        val generatedKey = decodedKey.removeSuffix(".${ext}")
-            .replace(S3_KEY.imagesPrefix, S3_KEY.generatedImagesPrefix) + if (resolution != null) {
+        val generatedKey = decodedKey
+            .replace("sources/images/", "generated/images/") + if (resolution != null) {
             "/${resolution}.$ext"
         } else {
             ".${ext}"
         }
-        val image = s3Service.getObjectAsBytes(generatedKey, sourceBucket)
-
-        // need to base64 encode the image
-        val encoded = Base64.encode(image)
-        return ResponseEntity.ok(
-            APIResult.Success(
-                value = ImageDTO(
-                    srcKey = srcKey,
-                    getContentTypeFromExtension(ext),
-                    bytes = encoded
+        if(s3Service.objectExists(generatedKey, generationBucket)) {
+            val image = s3Service.getObjectAsBytes(generatedKey, generationBucket)
+            val encoded = Base64.encode(image)
+            return ResponseEntity.ok(
+                APIResult.Success(
+                    value = ImageDTO(
+                        srcKey = srcKey,
+                        getContentTypeFromExtension(ext),
+                        bytes = encoded
+                    )
                 )
             )
-        )
+        } else {
+            error("Image '$generatedKey' not found")
+            return ResponseEntity.notFound(APIResult.Error("Image '$generatedKey' not found"))
+        }
     }
 
     /**
@@ -82,10 +87,11 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
      */
     @OptIn(ExperimentalEncodingApi::class)
     fun uploadImage(request: Request<ImageDTO>): ResponseEntity<APIResult<ImageDTO>> {
-        loadContentTree()
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        loadContentTree(projectKeyHeader)
 
         val imageBody = request.body
-        val srcKey = "sources/images/${imageBody.srcKey}"
+        val srcKey = "$projectKeyHeader/sources/images/${imageBody.srcKey}"
         val contentType = imageBody.contentType
         var dto: ImageDTO? = null
         try {
@@ -98,7 +104,7 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
             val metadata = ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", srcKey)
             dto = ImageDTO(srcKey, contentType, "") // we don't really need to return the bytes, the browser already has them
             contentTree.insertImage(metadata)
-            saveContentTree()
+            saveContentTree(projectKeyHeader)
         } catch (e: Exception) {
             error("Error uploading image $srcKey: ${e.message}")
             return ResponseEntity.badRequest(APIResult.Error("Error uploading image $srcKey: ${e.message}"))
@@ -113,9 +119,10 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
     fun deleteImage(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val srcKey =
             request.pathParameters["srcKey"] ?: return ResponseEntity.badRequest(APIResult.Error("No srcKey provided"))
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
-        loadContentTree()
-        loadProjectDefinition()
+        loadContentTree(projectKeyHeader)
+        loadProjectDefinition(projectKeyHeader)
 
         info("Deleting image $decodedKey and all its generated versions")
         s3Service.deleteObject(decodedKey, sourceBucket)
@@ -136,7 +143,7 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
 
         contentTree.deleteImage(ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", decodedKey))
         println("Content tree now has ${contentTree.images.size} images")
-        saveContentTree()
+        saveContentTree(projectKeyHeader)
 
         return ResponseEntity.ok(APIResult.Success(value = "Image'${srcKey}' deleted successfully"))
     }
@@ -144,6 +151,7 @@ class MediaController(sourceBucket: String) : KoinComponent, APIController(sourc
 
     /**
      * Get the content type from the file extension
+     * Defaults to image/jpeg if the extension is not recognised
      */
     private fun getContentTypeFromExtension(extension: String): String {
         return when (extension) {

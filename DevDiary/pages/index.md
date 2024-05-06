@@ -12,7 +12,7 @@ I guess it's really determined by the domain name.
 - [About Cantilevers](/about)
 - [Project roadmap - TODO](/todo) - *not well maintained*
 - [Understand the project model](/page-model)
-- [Rethinking the project architecture](/redesign-thinking)
+- [Rethinking the project architecture](/obsolete/redesign-thinking)
 
 #### Libraries used
 
@@ -22,6 +22,7 @@ I guess it's really determined by the domain name.
 - Markdown processing [Flexmark](https://github.com/vsch/flexmark-java)
 - Dependency injection [Koin](https://insert-koin.io/)
 - Auth [Auth0 Java](https://github.com/auth0/java-jwt)
+- SvelteKit & Flowbite Svelte
 - Markdown editing [Vditor](https://github.com/Vanessa219/vditor)
 
 There's a web interface to the project at [Cantilevers.org](https://www.cantilevers.org). You need to be registered to use it.

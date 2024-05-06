@@ -5,6 +5,10 @@ import software.amazon.awscdk.RemovalPolicy
 import software.amazon.awscdk.Stack
 import software.amazon.awscdk.Tags
 import software.amazon.awscdk.services.cloudfront.*
+import software.amazon.awscdk.services.cloudfront.experimental.EdgeFunction
+import software.amazon.awscdk.services.lambda.Code
+import software.amazon.awscdk.services.lambda.Runtime
+import software.amazon.awscdk.services.logs.RetentionDays
 import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.BucketAccessControl
 import software.amazon.awscdk.services.s3.IBucket
@@ -22,6 +26,19 @@ class CloudFrontSubstack(private val versionString: String) {
                     .build()
             )*/
 
+    private fun createLambdaEdge(stack: Stack): EdgeFunction {
+        println("Create cloudfront Lambda@edge function")
+        return EdgeFunction.Builder.create(stack, "cantilever-cloudfront-edgelambda-rewrite")
+            .description("Cantilever cloudfront rewrite URI from host")
+            .runtime(Runtime.NODEJS_LATEST)
+            .memorySize(128)
+            .timeout(Duration.seconds(5))
+            .code(Code.fromAsset("./CloudfrontRewriteURI"))
+            .handler("index.handler")
+            .logRetention(RetentionDays.ONE_MONTH)
+            .build()
+    }
+
     /**
      * This isn't complete, there are extra steps I need to do at the AWS console:
      * - Attach the SSL certificate
@@ -29,12 +46,12 @@ class CloudFrontSubstack(private val versionString: String) {
      */
     fun createCloudfrontDistribution(
         stack: Stack,
-        sourceBucket: IBucket,
         destinationBucket: IBucket
     ): CloudFrontWebDistribution {
 
         Tags.of(stack).add("Cantilever", versionString)
 
+        val lambdaEdgeFunction = createLambdaEdge(stack)
         val webOai = OriginAccessIdentity.Builder.create(stack, "WebOai").build()
         destinationBucket.grantRead(webOai)
 
@@ -46,11 +63,16 @@ class CloudFrontSubstack(private val versionString: String) {
                     SourceConfiguration.builder()
                         .behaviors(
                             listOf(
-                                Behavior.builder()
-                                    .isDefaultBehavior(true)
-                                    .defaultTtl(Duration.minutes(5))
-                                    .maxTtl(Duration.minutes(5))
-                                    .build()
+                                Behavior.builder().isDefaultBehavior(true).lambdaFunctionAssociations(
+                                    listOf(
+                                        LambdaFunctionAssociation.builder()
+                                            .eventType(LambdaEdgeEventType.VIEWER_REQUEST)
+                                            .lambdaFunction(
+                                                lambdaEdgeFunction.currentVersion
+                                            )
+                                            .build()
+                                    )
+                                ).build()
                             )
                         )
                         .s3OriginSource(
@@ -81,19 +103,19 @@ class CloudFrontSubstack(private val versionString: String) {
                     CfnDistribution.CustomErrorResponseProperty.builder()
                         .errorCode(403)
                         .responseCode(200)
-                        .responsePagePath("/index.html")
+                        .responsePagePath("/index.html") // TODO: this should be a 403 page
                         .build(),
                     CfnDistribution.CustomErrorResponseProperty.builder()
                         .errorCode(404)
                         .responseCode(200)
-                        .responsePagePath("/index.html")
+                        .responsePagePath("/index.html") // TODO: this should be a 404 page
                         .build()
                 )
             )
             .build()
     }
-    /**
 
+    /**
      *
      * DnsValidatedCertificate websiteCertificate = DnsValidatedCertificate.Builder.create(this, "WebsiteCertificate")
      *                                                                             .hostedZone(hostedZone)

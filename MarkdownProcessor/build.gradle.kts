@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "org.liamjd.cantilever.lambda"
-version = "0.0.11"
+version = "0.0.13"
 
 repositories {
     mavenCentral()
@@ -23,7 +23,7 @@ dependencies {
 
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
-
+    implementation("com.charleskorn.kaml:kaml:0.55.0")
 
     // sdk v2
     implementation(platform("software.amazon.awssdk:bom:2.20.68"))

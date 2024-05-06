@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PostListItem from '$lib/components/FileListItem.svelte';
 	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
 	import NestedFileList from '$lib/components/NestedFileList.svelte';
 	import TextInput from '$lib/forms/textInput.svelte';
@@ -6,6 +7,7 @@
 	import { FolderNode } from '$lib/models/pages.svelte';
 	import { TemplateNode } from '$lib/models/templates.svelte';
 	import { CLEAR_MARKDOWN, markdownStore } from '$lib/stores/contentStore.svelte';
+	import { project } from '$lib/stores/projectStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import {
 		getModalStore,
@@ -14,14 +16,8 @@
 		type TreeViewNode
 	} from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
-	import { Add, Delete, Home, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
+	import { Add, Delete, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
 	import CreateNewFolder from 'svelte-google-materialdesign-icons/Create_new_folder.svelte';
-	import PostListItem from '$lib/components/FileListItem.svelte';
-	import FolderIconComponent from './FolderIconComponent.svelte';
-	import FolderListItem from './FolderListItem.svelte';
-	import IndexPageIconComponent from './IndexPageIconComponent.svelte';
-	import PageIconComponent from './PageIconComponent.svelte';
-	import SectionTabs from './SectionTabs.svelte';
 	import {
 		createFolder,
 		deleteFolder,
@@ -32,7 +28,12 @@
 		folders,
 		pages,
 		savePage
-	} from './pageStore.svelte';
+	} from '$lib/stores/pageStore.svelte';
+	import FolderIconComponent from './FolderIconComponent.svelte';
+	import FolderListItem from './FolderListItem.svelte';
+	import IndexPageIconComponent from './IndexPageIconComponent.svelte';
+	import PageIconComponent from './PageIconComponent.svelte';
+	import SectionTabs from './SectionTabs.svelte';
 	import ParentAndIndexInput from './parentAndIndexInput.svelte';
 
 	const modalStore = getModalStore();
@@ -156,7 +157,7 @@
 	};
 
 	onMount(async () => {
-		if (!$pages) {
+		if (pages.isEmpty()) {
 			await loadPagesAndFolders();
 		}
 	});
@@ -167,8 +168,8 @@
 			return;
 		} else {
 			console.log('fetching pages...');
-			const pgCount = await fetchPages($userStore.token);
-			const folderCount = await fetchFolders($userStore.token);
+			const pgCount = await fetchPages($userStore.token, $project.domain);
+			const folderCount = await fetchFolders($userStore.token, $project.domain);
 			if (pgCount instanceof Error) {
 				errorToast.message = 'Failed to load pages. Message was: ' + pgCount.message;
 				toastStore.trigger(errorToast);
@@ -194,7 +195,7 @@
 		if (folder) {
 			return;
 		}
-		let loadResponse = fetchPage(srcKey, $userStore.token!!);
+		let loadResponse = fetchPage(srcKey, $userStore.token!!, $project.domain);
 		loadResponse.then((r) => {
 			if (r instanceof Error) {
 				errorToast.message = 'Failed to load page';
@@ -210,7 +211,11 @@
 	async function initiateSavePage() {
 		console.log('saving page');
 		if ($markdownStore.metadata) {
-			let saveResult = savePage($markdownStore.metadata.srcKey, $userStore.token!!);
+			let saveResult = savePage(
+				$markdownStore.metadata.srcKey,
+				$userStore.token!!,
+				$project.domain
+			);
 			saveResult.then((r) => {
 				if (r instanceof Error) {
 					errorToast.message = 'Failed to save page';
@@ -218,7 +223,6 @@
 				} else {
 					toast.message = 'Saved page ' + r;
 					toastStore.trigger(toast);
-					markdownStore.set(CLEAR_MARKDOWN);
 					loadPagesAndFolders();
 					isNewPage = false;
 				}
@@ -229,7 +233,11 @@
 	async function initiateDeletePage() {
 		console.log('Deleting page');
 		if ($markdownStore.metadata) {
-			let deleteResult = deletePage($markdownStore.metadata.srcKey, $userStore.token!!);
+			let deleteResult = deletePage(
+				$markdownStore.metadata.srcKey,
+				$userStore.token!!,
+				$project.domain
+			);
 			deleteResult.then((r) => {
 				if (r instanceof Error) {
 					errorToast.message = 'Failed to delete page';
@@ -246,7 +254,7 @@
 
 	async function initiateDeleteFolder(srcKey: string) {
 		console.log('Deleting folder: ' + srcKey);
-		let deleteResult = deleteFolder(srcKey, $userStore.token!!);
+		let deleteResult = deleteFolder(srcKey, $userStore.token!!, $project.domain);
 		deleteResult.then((r) => {
 			if (r instanceof Error) {
 				errorToast.message = 'Failed to delete folder';
@@ -283,7 +291,11 @@
 	}
 
 	function initiateNewFolder(parentFolder: FolderNode, srcKey: string) {
-		let createResult = createFolder(parentFolder.srcKey + srcKey, $userStore.token!!);
+		let createResult = createFolder(
+			parentFolder.srcKey + srcKey,
+			$userStore.token!!,
+			$project.domain
+		);
 		createResult.then((r) => {
 			if (r instanceof Error) {
 				errorToast.message = 'Failed to create folder';
@@ -297,6 +309,8 @@
 	}
 
 	function showFolderDelete(srcKey: string) {
+		console.log('showFolderDelete: ' + srcKey);
+		console.log($folders.folders.find((f) => f.srcKey === srcKey)?.children.length);
 		if (folders && $folders.folders.find((f) => f.srcKey === srcKey)?.children.length != 0) {
 			toastStore.trigger({
 				message: 'Folder is not empty. Delete the pages in the folder first.',
@@ -309,56 +323,52 @@
 	}
 
 	const foldersUnsubscribe = folders.subscribe((value) => {
-		const rootFolderKey = 'sources/pages/';
+		var rootFolderKey = '';
+		if($project.domain) {
+			rootFolderKey = $project.domain + '/sources/pages/';
+		}
+		// console.dir(rootFolderKey);
 
 		if (value && value.count != -1) {
 			// build TreeViewNodes from FolderNodes
 			pgFolderNodes = [];
 			expandedNodes = [rootFolderKey];
-			value.folders[0].children = [];
-			// TODO: the root folder '/sources/pages/' doesn't have a FolderNode, and so has no children. Put the root pages into this folder
-			let rootPages = $pages?.pages.filter((p) => p.parent === rootFolderKey);
-			if (rootPages) {
-				for (const p of rootPages) {
-					value.folders[0].children.push(p.srcKey);
-				}
-			}
-
 			for (const folder of value.folders) {
 				let childNodes = [] as TreeViewNode[];
-				// start with the root folder
-				// then the remainder of the folders
+				// console.log('Iterating through folder ' + folder.srcKey);
 				if (folder.children.length > 0) {
 					for (const child of folder.children) {
 						// child is just the srcKey of the page
 						// find it in the pages list
 						let page = $pages?.pages.find((p) => p.srcKey === child);
 						if (page) {
+							let displaySrcKey = page.srcKey.slice($project.domain ? $project.domain.length + 1 : 0);
 							if (page.isRoot) {
 								childNodes.push({
 									id: child,
 									lead: IndexPageIconComponent,
 									content: PostListItem,
-									contentProps: { title: page.title, date: '', srcKey: page.srcKey }
+									contentProps: { title: page.title, date: '', srcKey: displaySrcKey }
 								});
 							} else {
 								childNodes.push({
 									id: child,
 									lead: PageIconComponent,
 									content: PostListItem,
-									contentProps: { title: page.title, date: '', srcKey: page.srcKey }
+									contentProps: { title: page.title, date: '', srcKey: displaySrcKey }
 								});
 							}
 						}
 					}
 				}
+				let displayTitle = folder.url?.slice($project.domain ? $project.domain.length + 1 : 0) ?? 'unknown';
 				pgFolderNodes.push({
 					id: folder.srcKey,
 					lead: FolderIconComponent,
 					content: FolderListItem,
 					children: childNodes,
 					contentProps: {
-						title: folder.url,
+						title: displayTitle,
 						count: folder.children.length,
 						srcKey: folder.srcKey,
 						onDelete: showFolderDelete
@@ -421,7 +431,7 @@
 		<h3 class="h3 text-center mb-2">
 			{#if pgTitle}{pgTitle}{/if}
 		</h3>
-		{#if $markdownStore.metadata}
+		{#if $markdownStore.metadata instanceof PageItem}
 			<div class="flex flex-row justify-end">
 				<div class="btn-group variant-filled" role="group">
 					<button

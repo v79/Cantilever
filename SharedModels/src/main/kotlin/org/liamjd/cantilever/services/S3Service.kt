@@ -76,6 +76,15 @@ interface S3Service {
     fun listObjects(prefix: String, bucket: String): ListObjectsV2Response
 
     /**
+     * List all the objects with the given key prefix, using a delimiter
+     * @param prefix the common prefix to search for
+     * @param delimiter the delimiter to use
+     * @param bucket the s3 bucket name
+     * @return a [ListObjectsV2Response] object which can be iterated over to get individual items
+     */
+    fun listObjectsDelim(prefix: String, delimiter: String, bucket: String): ListObjectsV2Response
+
+    /**
      * Delete the given object from S3
      * @param key the object to delete
      * @param bucket the s3 bucket name

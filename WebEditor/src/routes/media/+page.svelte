@@ -7,6 +7,7 @@
 		images,
 		uploadImage
 	} from '$lib/stores/mediaStore.svelte';
+	import { project } from '$lib/stores/projectStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import {
 		FileDropzone,
@@ -63,7 +64,7 @@
 			return;
 		} else {
 			console.log('fetching images');
-			const imageCount = await fetchImages($userStore.token);
+			const imageCount = await fetchImages($userStore.token, $project.domain);
 			if (imageCount instanceof Error) {
 				errorToast.message = 'Failed to load images. Message was: ' + imageCount.message;
 				toastStore.trigger(errorToast);
@@ -77,7 +78,7 @@
 
 	// load the bytes of an image as an ImageDTO
 	async function loadImageBytes(image: ImageNode): Promise<ImageDTO | Error> {
-		const imageBytes = await fetchImageBytes(image.srcKey, '__thumb', $userStore.token!!);
+		const imageBytes = await fetchImageBytes(image.srcKey, '__thumb', $userStore.token!!, $project.domain);
 		if (imageBytes instanceof Error) {
 			errorToast.message = 'Failed to load thumbnail bytes. Message was: ' + imageBytes.message;
 			toastStore.trigger(errorToast);
@@ -140,7 +141,7 @@
 			console.log('no token');
 			return;
 		}
-		const response = uploadImage(files[0], $userStore.token);
+		const response = uploadImage(files[0], $userStore.token, $project.domain);
 		response.then(async (result) => {
 			if (result instanceof Error) {
 				errorToast.message = 'Failed to upload image. Message was: ' + result.message;
@@ -172,7 +173,7 @@
 	// trigger delete of image from server
 	async function initiateImageDelete(srcKey: string) {
 		console.log('deleting image ' + srcKey);
-		const deleteResponse = await deleteImage(srcKey, $userStore.token!!);
+		const deleteResponse = await deleteImage(srcKey, $userStore.token!!, $project.domain);
 		if (deleteResponse instanceof Error) {
 			errorToast.message = 'Failed to delete image. Message was: ' + deleteResponse.message;
 			toastStore.trigger(errorToast);

@@ -2,30 +2,38 @@
 	import {
 		getModalStore,
 		getToastStore,
-		type ModalSettings,
 		type ToastSettings,
 		type TreeViewNode
 	} from '@skeletonlabs/skeleton';
 
+	import PostList from '$lib/components/BasicFileList.svelte';
+	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
+	import TextInput from '$lib/forms/textInput.svelte';
+	import { TemplateNode, TemplateUsageDTO } from '$lib/models/templates.svelte';
+	import { handlebars } from '$lib/stores/contentStore.svelte';
+	import { project } from '$lib/stores/projectStore.svelte';
+	import { spinner } from '$lib/stores/spinnerStore.svelte';
+	import {
+		deleteTemplate,
+		fetchTemplate,
+		fetchTemplates,
+		fetchTemplateUsage,
+		regenerate,
+		saveTemplate,
+		templates
+	} from '$lib/stores/templateStore.svelte';
 	import { userStore } from '$lib/stores/userStore.svelte';
 	import { onMount, tick } from 'svelte';
 	import {
-		fetchTemplate,
-		fetchTemplates,
-		templates,
-		saveTemplate,
-		fetchTemplateUsage,
-		deleteTemplate,
-		regenerate
-	} from '$lib/stores/templateStore.svelte';
-	import { Refresh, Icon, Save, Delete, Sync, Add } from 'svelte-google-materialdesign-icons';
+		Add,
+		Check,
+		Delete,
+		Icon,
+		Refresh,
+		Save,
+		Sync
+	} from 'svelte-google-materialdesign-icons';
 	import TemplateListItem from './TemplateListItem.svelte';
-	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
-	import PostList from '$lib/components/BasicFileList.svelte';
-	import { handlebars } from '$lib/stores/contentStore.svelte';
-	import TextInput from '$lib/forms/textInput.svelte';
-	import { TemplateNode, TemplateUsageDTO } from '$lib/models/templates.svelte';
-	import { spinner } from '$lib/stores/spinnerStore.svelte';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -35,8 +43,10 @@
 	let templateListNodes = [] as TreeViewNode[]; // for the treeview component
 	let pgTitle = 'Template Editor';
 	let isNewTemplate = false;
+	let newSection = '';
+	$: selectedSection = '';
 	$: templateIsValid = $handlebars.title != null && $handlebars.body != null;
-	let usageCount = 0;
+	$: usageCount = 0;
 
 	const errorToast: ToastSettings = {
 		message: 'Failed to fetch templates',
@@ -98,8 +108,54 @@
 		}
 	};
 
+	/**
+	 * @type: {ModalSettings}
+	 */
+	$: confirmDelete2222SectionModal = {
+		type: 'component',
+		component: 'confirmSectionDeleteModal',
+		meta: {
+			modalTitle: 'Confirm section deletion',
+			sectionKey: selectedSection,
+			furtherInfo: `You must also remove the {{{ ${selectedSection}}} from the template source code`,
+			onFormSubmit: () => {
+				$handlebars.sections.splice($handlebars.sections.indexOf(selectedSection), 1);
+				handlebars = handlebars;
+			}
+		}
+	};
+
+	$: confirmDeleteSectionModal = {
+		type: 'confirm',
+		title: 'Delete section',
+		body:
+			'Are you sure you want to delete section ' +
+			selectedSection +
+			'? You must also remove the section from the template source code.',
+		buttonTextConfirm: 'Delete',
+		buttonTextCancel: 'Cancel',
+		response: (r: boolean) => {
+			if (r) {
+				$handlebars.sections.splice($handlebars.sections.indexOf(selectedSection), 1);
+				$handlebars.sections = $handlebars.sections;
+			}
+			modalStore.close();
+		}
+	};
+
+	/**
+	 * @type {iconConfigType}
+	 */
+	let confirmNewSectionIcon = {
+		icon: Check,
+		variation: 'filled',
+		onClick: (e: Event) => {
+			// see function confirmNewSection
+		}
+	};
+
 	onMount(async () => {
-		if (!$templates) {
+		if (templates.isEmpty()) {
 			await loadTemplateList();
 		}
 	});
@@ -118,7 +174,7 @@
 		}
 		const token = $userStore.token;
 		if (token) {
-			const result = await fetchTemplates(token);
+			const result = await fetchTemplates(token, $project.domain);
 			if (result instanceof Error) {
 				errorToast.message = 'Failed to fetch templates. Message was: ' + result.message;
 				toastStore.trigger(errorToast);
@@ -131,7 +187,7 @@
 	}
 
 	async function initiateLoadTemplate(srcKey: string) {
-		let loadResponse = fetchTemplate(srcKey, $userStore.token!!);
+		let loadResponse = fetchTemplate(srcKey, $userStore.token!!, $project.domain);
 		loadResponse.then((r) => {
 			if (r instanceof Error) {
 				errorToast.message = 'Failed to load template';
@@ -140,6 +196,15 @@
 				toast.message = r;
 				toastStore.trigger(toast);
 				isNewTemplate = false;
+				let usageResponse = getTemplateUsage(srcKey);
+				usageResponse.then((r) => {
+					if (r instanceof Error) {
+						errorToast.message = 'Failed to fetch template usage';
+						toastStore.trigger(errorToast);
+					} else {
+						usageCount = r.count;
+					}
+				});
 			}
 		});
 	}
@@ -147,10 +212,11 @@
 	async function initiateSaveTemplate() {
 		if ($handlebars) {
 			console.log('initiateSaveTemplate: ', $handlebars.srcKey);
+			console.dir($handlebars);
 			if (isNewTemplate) {
 				$handlebars.srcKey = 'sources/templates/' + $handlebars.srcKey + '.html.hbs';
 			}
-			const result = await saveTemplate($userStore.token!!);
+			const result = await saveTemplate($userStore.token!!, $project.domain);
 			if (result instanceof Error) {
 				errorToast.message = 'Failed to save template. Message was: ' + result.message;
 				toastStore.trigger(errorToast);
@@ -164,7 +230,7 @@
 	}
 
 	async function initiateDeletePost() {
-		const result = await deleteTemplate($handlebars.srcKey, $userStore.token!!);
+		const result = await deleteTemplate($handlebars.srcKey, $userStore.token!!, $project.domain);
 		if (result instanceof Error) {
 			errorToast.message = 'Failed to delete template. Message was: ' + result.message;
 			toastStore.trigger(errorToast);
@@ -172,6 +238,7 @@
 		} else {
 			toast.message = result;
 			toastStore.trigger(toast);
+			$templates.count--;
 			$handlebars = new TemplateNode('', new Date(), '', new Array<string>(), '');
 		}
 	}
@@ -205,7 +272,7 @@
 	}
 
 	async function getTemplateUsage(srcKey: string): Promise<TemplateUsageDTO | Error> {
-		const usageResponse = await fetchTemplateUsage(srcKey, $userStore.token!!);
+		const usageResponse = await fetchTemplateUsage(srcKey, $userStore.token!!, $project.domain);
 		if (usageResponse instanceof Error) {
 			errorToast.message = 'Failed to fetch template usage';
 			toastStore.trigger(errorToast);
@@ -231,7 +298,7 @@
 		if ($handlebars) {
 			spinner.show('Regenerating from template ' + $handlebars.srcKey);
 			$spinner = { value: true, label: 'Regenerating from template ' + $handlebars.srcKey };
-			const result = await regenerate($handlebars.srcKey, $userStore.token!!);
+			const result = await regenerate($handlebars.srcKey, $userStore.token!!, $project.domain);
 			if (result instanceof Error) {
 				errorToast.message = 'Failed to generate content. Message was: ' + result.message;
 				toastStore.trigger(errorToast);
@@ -242,6 +309,11 @@
 			}
 			spinner.hide();
 		}
+	}
+
+	function confirmNewSection(e: CustomEvent) {
+		console.log('Adding new section: ' + newSection);
+		$handlebars.sections = [...$handlebars.sections, newSection];
 	}
 
 	const templatesUnsubscribe = templates.subscribe((value) => {
@@ -259,7 +331,7 @@
 		templateListNodes = [...templateListNodes];
 	});
 
-	const hanldebarsUnsubscribe = handlebars.subscribe((value) => {
+	const handlebarsUnsubscribe = handlebars.subscribe((value) => {
 		if (value) {
 			if (value.title != null) {
 				pgTitle = value.title;
@@ -340,14 +412,51 @@
 					<TextInput label="Title" name="TemplateTitle" bind:value={$handlebars.title} required />
 				</div>
 				<div class="col-span-1 sm:col-span-1 lg:col-span-1">
-					{#await getTemplateUsage($handlebars.srcKey) then value}
-						<TextInput label="Used by" name="TemplateUsage" value={value.count} readonly />
-					{:catch error}??{/await}
+					{#if !isNewTemplate}
+						<TextInput
+							label="Used by"
+							name="TemplateUsage"
+							value={usageCount.toString()}
+							readonly />
+					{/if}
+				</div>
+				<div class="col-span-4">
+					<p>
+						<strong>Sections:</strong> <em>(there must be at least a 'body' section)</em>
+					</p>
+					{#if $handlebars.sections.length > 0}
+					{#each $handlebars.sections as section}
+						{#if section === 'body'}
+							<button class="chip variant-filled-tertiary mr-4" on:click={() => {}}
+								>{section}</button>
+						{:else}
+							<button
+								class="chip variant-filled-tertiary mr-4"
+								on:click={() => {
+									selectedSection = section;
+									modalStore.trigger(confirmDeleteSectionModal);
+								}}>{section} X</button>
+						{/if}
+					{/each}
+					{:else}
+					<button class="chip variant-filled-tertiary mr-4" on:click={() => {}}
+						>body</button>
+					{/if}
+				</div>
+				<div class="col-span-2">
+					<TextInput
+						label=""
+						name="NewSection"
+						bind:value={newSection}
+						placeholder="New section name"
+						iconRight={confirmNewSectionIcon}
+						on:message={confirmNewSection} />
 				</div>
 				<div class="col-span-6">
 					<textarea bind:value={$handlebars.body} class="textarea" rows="20"></textarea>
 				</div>
 			</div>
+
 			<div class="flex flex-row justify-end mt-2">
 				<div class="btn-group variant-filled" role="group">
 					<button

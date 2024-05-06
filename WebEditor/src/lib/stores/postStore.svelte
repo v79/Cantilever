@@ -1,21 +1,34 @@
 <script context="module" lang="ts">
-	import { writable, get } from 'svelte/store';
+	import { MarkdownContent, PostItem } from '$lib/models/markdown';
 	import type { PostList } from '$lib/models/posts.svelte';
-	import { PostItem, MarkdownContent } from '$lib/models/markdown';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
+	import { get, writable } from 'svelte/store';
 
 	// complete set of post metadata
-	export const posts = writable<PostList>();
+	export const posts = createPostStore();
+
+	function createPostStore() {
+		const { subscribe, set, update } = writable<PostList>();
+
+		return {
+			subscribe,
+			set,
+			update,
+			clear: () => set({ count: 0, posts: [] }),
+			isEmpty: () => get(posts).count === 0
+		};
+	}
 
 	// fetch list of posts from server
-	export async function fetchPosts(token: string): Promise<number | Error> {
-		console.log('postStore: Fetching posts');
+	export async function fetchPosts(token: string, projectDomain: string): Promise<number | Error> {
+		console.log('postStore: Fetching posts for project ' + projectDomain);
 		try {
 			const response = await fetch('https://api.cantilevers.org/posts', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -25,7 +38,7 @@
 				posts.set(data.data);
 				return data.data.count as number;
 			} else {
-				throw new Error('Failed to fetch posts');
+				throw new Error("Failed to fetch posts");
 			}
 		} catch (error) {
 			console.error(error);
@@ -34,7 +47,11 @@
 	}
 
 	// load a post from the server
-	export async function fetchPost(srcKey: string, token: string): Promise<Error | string> {
+	export async function fetchPost(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		console.log('postStore: Fetching post', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -42,7 +59,8 @@
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});
@@ -66,7 +84,9 @@
 				markdownStore.set(tmpPost);
 				return 'Loaded post ' + srcKey;
 			} else {
-				throw new Error('Failed to fetch post');
+				let msg = await response.json();
+				console.dir(msg);
+				throw new Error('Failed to fetch post: ' + msg.message);
 			}
 		} catch (error) {
 			console.error(error);
@@ -75,7 +95,11 @@
 	}
 
 	// save a post to the server
-	export async function savePost(srcKey: string, token: string): Promise<Error | string> {
+	export async function savePost(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		console.log('postStore: Saving post', srcKey);
 		let content: MarkdownContent = get(markdownStore);
 		if (content.metadata && content.metadata instanceof PostItem) {
@@ -97,7 +121,8 @@
 					headers: {
 						Accept: 'text/plain',
 						Authorization: `Bearer ${token}`,
-						'Content-Type': 'application/json'
+						'Content-Type': 'application/json',
+						'cantilever-project-domain': projectDomain
 					},
 					mode: 'cors',
 					body: postJson
@@ -121,7 +146,11 @@
 	}
 
 	// delete a post from the server
-	export async function deletePost(srcKey: string, token: string): Promise<Error | string> {
+	export async function deletePost(
+		srcKey: string,
+		token: string,
+		projectDomain: string
+	): Promise<Error | string> {
 		console.log('pageStore: Deleting post ' + srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
@@ -129,7 +158,8 @@
 				method: 'DELETE',
 				headers: {
 					Accept: 'text/plain',
-					Authorization: `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
+					'cantilever-project-domain': projectDomain
 				},
 				mode: 'cors'
 			});

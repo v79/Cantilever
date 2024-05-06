@@ -1,9 +1,7 @@
-projectName: "Cantilever Devlog"
-author: "Liam Davison"
+projectName: "The Right Notes2"
+author: "Dad"
 dateFormat: "dd/MM/yyyy"
-dateTimeFormat: "HH:mm dd/MM/yyyy"
-imageResolutions:
-  "bigSquare": "640x640"
-  "Wider": "512x1024"
-attributes:
-  "Greep2": "Wibble3"
+dateTimeFormat: "dd/MM/yyyy HH:mm:ss"
+imageResolutions: {}
+domain: "www.therightnotes.org"
+attributes: {}

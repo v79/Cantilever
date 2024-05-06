@@ -1,15 +1,16 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
-import io.mockk.*
+import io.mockk.every
 import io.mockk.junit5.MockKExtension
+import io.mockk.mockkClass
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.RegisterExtension
-import org.koin.test.KoinTest
 import org.koin.core.context.stopKoin
 import org.koin.dsl.module
+import org.koin.test.KoinTest
 import org.koin.test.inject
 import org.koin.test.junit5.KoinTestExtension
 import org.koin.test.junit5.mock.MockProviderExtension
@@ -20,7 +21,6 @@ import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
-
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -29,7 +29,8 @@ internal class ProjectControllerTest : KoinTest {
 
     private val mockS3: S3Service by inject()
     private val sourceBucket = "sourceBucket"
-    private val srcKey = "sources/cantilever.yaml"
+    private val generationBucket = "generationBucket"
+    private val srcKey = "www.cantilevers.org"
     private val postsKey = "generated/posts.json"
 
     @JvmField
@@ -54,18 +55,19 @@ internal class ProjectControllerTest : KoinTest {
     @Test
     fun `returns a project definition object`() {
         val mockYaml = """
-            projectName: "Project name"
+            projectName: "Cantilevers"
             author: "Author name"
             dateFormat: "dd/MM/yyyy"
             dateTimeFormat: "HH:mm dd/MM/yyyy"
+            domain: "www.cantilevers.org"
         """.trimIndent()
         declareMock<S3Service> {
             every { mockS3.objectExists(srcKey, sourceBucket) } returns true
             every { mockS3.getObjectAsString(srcKey, sourceBucket) } returns mockYaml
         }
 
-        val controller = ProjectController(sourceBucket)
-        val request = buildRequest(path = "/project/", pathPattern = "")
+        val controller = ProjectController(sourceBucket,generationBucket)
+        val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{projectKey}")
         val response = controller.getProject(request)
 
         assertNotNull(response)
@@ -78,8 +80,8 @@ internal class ProjectControllerTest : KoinTest {
             every { mockS3.objectExists(srcKey, sourceBucket) } returns false
         }
 
-        val controller = ProjectController(sourceBucket)
-        val request = buildRequest(path = "/project/", pathPattern = "")
+        val controller = ProjectController(sourceBucket,generationBucket)
+        val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{projectKey}")
         val response = controller.getProject(request)
 
         assertNotNull(response)
@@ -99,8 +101,8 @@ internal class ProjectControllerTest : KoinTest {
             every { mockS3.getObjectAsString(srcKey, sourceBucket) } returns mockYaml
         }
 
-        val controller = ProjectController(sourceBucket)
-        val request = buildRequest(path = "/project/", pathPattern = "")
+        val controller = ProjectController(sourceBucket,generationBucket)
+        val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{projectKey}")
         val response = controller.getProject(request)
 
         assertNotNull(response)
@@ -114,20 +116,22 @@ internal class ProjectControllerTest : KoinTest {
             author: "Author name"
             dateFormat: "dd/MM/yyyy"
             dateTimeFormat: "HH:mm dd/MM/yyyy"
+            domain: "example.com"
         """.trimIndent()
         val mockProject = CantileverProject(
-            projectName = "Project name",
+            projectName = "Project name 2",
             author = "Author name",
             dateFormat = "dd/MM/yyyy",
             dateTimeFormat = "HH:mm dd/MM/yyyy",
             imageResolutions = emptyMap(),
-            attributes = null
+            attributes = null,
+            domain = "example.com"
         )
         declareMock<S3Service> {
-            every { mockS3.getObjectAsString(srcKey, sourceBucket) } returns mockYaml
+            every { mockS3.getObjectAsString("example.com.yaml", sourceBucket) } returns mockYaml
             every {
                 mockS3.putObjectAsString(
-                    srcKey,
+                    "example.com.yaml",
                     sourceBucket,
                     any(),
                     "application/yaml"
@@ -137,11 +141,11 @@ internal class ProjectControllerTest : KoinTest {
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
-        val controller = ProjectController(sourceBucket)
+        val controller = ProjectController(sourceBucket,generationBucket)
         val request = Request(
             apiRequest = apiProxyEvent,
             body = mockProject,
-            pathPattern = "/project/"
+            pathPattern = "/project/{projectKey}"
         )
         val response = controller.updateProjectDefinition(request)
 
@@ -157,13 +161,14 @@ internal class ProjectControllerTest : KoinTest {
             dateFormat = "dd/MM/yyyy",
             dateTimeFormat = "HH:mm dd/MM/yyyy",
             imageResolutions = emptyMap(),
-            attributes = null
+            attributes = null,
+            domain = "https://example.com"
         )
 
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
-        val controller = ProjectController(sourceBucket)
+        val controller = ProjectController(sourceBucket,generationBucket)
         val request = Request(
             apiRequest = apiProxyEvent,
             body = mockProject,
@@ -195,7 +200,7 @@ internal class ProjectControllerTest : KoinTest {
             every { mockS3.objectExists(postsKey, sourceBucket) } returns true
             every { mockS3.getObjectAsString(postsKey, sourceBucket) } returns mockPostsJson
         }
-        val controller = ProjectController(sourceBucket)
+        val controller = ProjectController(sourceBucket,generationBucket)
         val request = buildRequest(path = "/project/posts", pathPattern = "/project/posts")
         val response = controller.getPosts(request)
 
@@ -213,7 +218,7 @@ internal class ProjectControllerTest : KoinTest {
             every { mockS3.objectExists(postsKey, sourceBucket) } returns false
         }
 
-        val controller = ProjectController(sourceBucket)
+        val controller = ProjectController(sourceBucket,generationBucket)
         val request = buildRequest(path = "/project/posts", pathPattern = "/project/posts")
         val response = controller.getPosts(request)
 
@@ -226,8 +231,9 @@ internal class ProjectControllerTest : KoinTest {
      */
     private fun buildRequest(path: String, pathPattern: String, body: String = ""): Request<Unit> {
         val apiGatewayProxyRequestEvent = APIGatewayProxyRequestEvent()
-        apiGatewayProxyRequestEvent.body = body
+        apiGatewayProxyRequestEvent.body = ""
         apiGatewayProxyRequestEvent.path = path
+        apiGatewayProxyRequestEvent.headers = mapOf("cantilever-project-domain" to "test")
         return Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
     }
 }

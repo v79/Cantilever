@@ -214,7 +214,7 @@ class RouterTest {
     }
 
     @Test
-    fun `secure route fails with 401 when but no credentials supplied`() {
+    fun `secure route fails with 401 when no credentials supplied`() {
         val testR = TestRouter()
         val event =
             APIGatewayProxyRequestEvent().withPath("/auth/hello").withHttpMethod("GET").withHeaders(acceptJson)
@@ -379,23 +379,54 @@ class RouterTest {
     }
 
     @Test
+    fun `a controller can add additional headers to a response`() {
+        val testR = TestRouter()
+        val event =
+            APIGatewayProxyRequestEvent().withPath("/controller-headers").withHttpMethod("GET").withHeaders(acceptJson)
+        val response = testR.handleRequest(event)
+        assertEquals(200, response.statusCode)
+        assertEquals("MyCookie=Bimble", response.headers["Set-Cookie"])
+    }
+
+    @Test
     fun `can deserialize an object containing a base64 encoded string`() {
         val testR = TestRouter()
         val event = APIGatewayProxyRequestEvent().withPath("/base64").withHttpMethod("POST")
-            .withBody("""
+            .withBody(
+                """
                 {
                     "srcKey": "tiny.png",
                     "contentType": "image/png",
                     "bytes": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAFiUAABYlAUlSJPAAAABKSURBVChTY/hPJIArvLZi/f9jrf1QHiaAKwQp6mAQhfIwAVarsZmOVSE20wl6BmY6QYUw0wkqhAGwQmTH4womsEJkxyOzEeD/fwBMTXMyLCsQMwAAAABJRU5ErkJggg=="
                 }
-            """.trimIndent())
+            """.trimIndent()
+            )
             .withHeaders(contentJson + acceptText)
         val response = testR.handleRequest(event)
 
         println(event.body)
         assertNotNull(response)
         assertEquals(200, response.statusCode)
+    }
 
+    @Test
+    fun `will pass route through if requirement is matched`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/secrets/new").withHttpMethod("GET")
+            .withHeaders(contentJson + acceptJson + xContentZero)
+        val response = testR.handleRequest(event)
+
+        assertEquals(200, response.statusCode)
+    }
+
+    @Test
+    fun `will fail to process route if requirement is not matched`() {
+        val testR = TestRouter()
+        val event = APIGatewayProxyRequestEvent().withPath("/secrets/new").withHttpMethod("GET")
+            .withHeaders(contentJson + acceptJson)
+        val response = testR.handleRequest(event)
+
+        assertEquals(400, response.statusCode)
     }
 }
 
@@ -489,12 +520,14 @@ class TestRouter : RequestHandlerWrapper() {
         get("/multiple") { _: Request<Unit> -> ResponseEntity.ok(body = "GET /multiple") }
         post("/multiple") { _: Request<Unit> -> ResponseEntity.ok(body = "POST /multiple") }.expects(emptySet())
 
-        // overriding heaeders for a route
+        // overriding headers for a route
         get("/overrideHeaders") { _: Request<Unit> -> ResponseEntity.ok(body = "GET /overrideHeaders") }.addHeaders(
             mapOf(
                 "Access-Control-Allow-Origin" to "*"
             )
         )
+
+        get("/controller-headers", testController::addHeader)
 
         // contains OpenAPI specifications
         group("/specGroup") {
@@ -514,6 +547,12 @@ class TestRouter : RequestHandlerWrapper() {
                 MimeType.json
             )
         ).supplies(setOf(MimeType.plainText))
+
+        // request requirements
+        require({ request -> request.headers?.get("X-Content-Length") == "0" }) {
+            get("/secrets/new") { _: Request<Unit> -> ResponseEntity.ok("Loaded") }
+        }
+
     }
 }
 
@@ -532,6 +571,14 @@ class TestController {
     fun hasSpecification(request: Request<Unit>): ResponseEntity<SimpleClass> {
         println("TestController hasSpecification()")
         return ResponseEntity.ok(body = SimpleClass(message = "TestController has a specification"))
+    }
+
+    fun addHeader(request: Request<Unit>): ResponseEntity<SimpleClass> {
+        println("TestController addHeader()")
+        return ResponseEntity.ok(
+            body = SimpleClass(message = "TestController has added a header"),
+            headers = mapOf("Set-Cookie" to "MyCookie=Bimble")
+        )
     }
 }
 

@@ -59,7 +59,7 @@ These elements are specific to `Pages`.
 | pages        | **NOT IMPLEMENTED** A tree structure which will allow you to access other pages and their metadata (but notbodycontent)             |
 | posts        | **NOT IMPLEMENTED** A list of all the Posts in the project, so that you can access their titles and metadata (but not body content) |
 
-Helper Functions
+#### Helper Functions
 
 There are a handful of functions that let you control or modify how content is rendered. These are implemented as Handlebars functions.
 

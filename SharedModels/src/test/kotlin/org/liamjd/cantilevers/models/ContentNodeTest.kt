@@ -25,65 +25,65 @@ class ContentNodeTest {
     @Test
     fun `generate URL for page`() {
         val page = ContentNode.PageNode(
-            srcKey = "sources/pages/bio.md",
+            srcKey = "www.test.com/sources/pages/bio.md",
             title = "Biography",
             templateKey = "page",
             slug = "biography",
             isRoot = false,
             attributes = mapOf("author" to "Liam", "tags" to "test"),
             sections = mapOf("bio" to "This is my biography"),
-            parent = "sources/pages/"
+            parent = "www.test.com/sources/pages"
         )
         val url = page.url
-        assertEquals("biography", url)
+        assertEquals("www.test.com/biography", url)
     }
 
     @Test
-    fun `generate indexhtml for root page`() {
+    fun `generate index html for root page`() {
         val page = ContentNode.PageNode(
-            srcKey = "sources/pages/bio.md",
+            srcKey = "www.test.com/sources/pages/bio.md",
             title = "Biography",
             templateKey = "page",
             slug = "biography",
             isRoot = true,
             attributes = mapOf("author" to "Liam", "tags" to "test"),
             sections = mapOf("bio" to "This is my biography"),
-            parent = "sources/pages/"
+            parent = "www.test.com/sources/pages"
         )
         val url = page.url
-        assertEquals("index.html", url)
+        assertEquals("www.test.com/index.html", url)
     }
 
     @Test
     fun `generate url for nested page`() {
         val page = ContentNode.PageNode(
-            srcKey = "sources/pages/books/favourite-books.md",
+            srcKey = "www.test.com/sources/pages/books/favourite-books.md",
             title = "Books",
             templateKey = "page",
             slug = "favourite-books",
             isRoot = false,
             attributes = mapOf("author" to "Liam", "tags" to "test"),
             sections = mapOf("bio" to "This is my biography"),
-            parent = "sources/pages/books/"
+            parent = "www.test.com/sources/pages/books"
         )
         val url = page.url
-        assertEquals("books/favourite-books", url)
+        assertEquals("www.test.com/books/favourite-books", url)
     }
 
     @Test
     fun `generate url for root nested page`() {
         val page = ContentNode.PageNode(
-            srcKey = "sources/pages/bio/about-me.md",
+            srcKey = "www.test.com/sources/pages/bio/about-me.md",
             title = "About me",
             templateKey = "sources/templates/about.html.hbs",
             slug = "bio/about-me",
             isRoot = true,
             attributes = mapOf("author" to "Liam", "tags" to "test"),
             sections = mapOf("bio" to "This is my biography"),
-            parent = "sources/pages/bio/"
+            parent = "www.test.com/sources/pages/bio"
         )
         val url = page.url
-        assertEquals("bio/index.html", url)
+        assertEquals("www.test.com/bio/index.html", url)
     }
 
     @Test
@@ -99,7 +99,7 @@ class ContentNodeTest {
 
         val indexNode =
             ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(source, "sources/pages/index.md")
-        indexNode.parent = "sources/pages/"
-        assertEquals("index.html", indexNode.url)
+        indexNode.parent = "www.test.com/sources/pages"
+        assertEquals("www.test.com/index.html", indexNode.url)
     }
 }

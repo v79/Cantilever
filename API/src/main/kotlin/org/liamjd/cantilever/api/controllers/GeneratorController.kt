@@ -20,7 +20,8 @@ import java.nio.charset.Charset
 /**
  * Handle routes relating to document generation. Mostly this will be done by sending messages to the appropriate queues.
  */
-class GeneratorController(sourceBucket: String) : KoinComponent, APIController(sourceBucket) {
+class GeneratorController(sourceBucket: String, generationBucket: String) : KoinComponent,
+    APIController(sourceBucket, generationBucket) {
 
     companion object {
         const val error_NO_RESPONSE = "No response received for message"
@@ -40,8 +41,9 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
         val requestKey = request.pathParameters["srcKey"]
             ?: return ResponseEntity.badRequest(body = APIResult.Error("No srcKey provided"))
         var srcKey = ""
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         try {
-            loadContentTree()
+            loadContentTree(projectKeyHeader)
             if (requestKey == "*") {
                 info("GeneratorController: Received request to regenerate all pages")
                 val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
@@ -49,7 +51,7 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
                 if (pages.isNotEmpty()) {
                     pages.forEach { page ->
                         val sourceString = s3Service.getObjectAsString(page.srcKey, sourceBucket)
-                        val msgResponse = queuePageRegeneration(page.srcKey, sourceString)
+                        val msgResponse = queuePageRegeneration(projectKeyHeader, page.srcKey, sourceString)
                         if (msgResponse != null) {
                             count++
                         } else {
@@ -65,12 +67,12 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
                 srcKey = URLDecoder.decode(requestKey, Charset.defaultCharset())
                 info("GeneratorController: Received request to regenerate page '$srcKey'")
                 val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
-                queuePageRegeneration(srcKey, sourceString)
+                queuePageRegeneration(projectKeyHeader, srcKey, sourceString)
                 return ResponseEntity.ok(body = APIResult.Success(value = "Regenerated page '$requestKey'"))
             }
         } catch (nske: NoSuchKeyException) {
             error("${nske.message} for key $srcKey")
-            return ResponseEntity.notFound(body = APIResult.Error(message = "Could not find page with key '$srcKey'"))
+            return ResponseEntity.notFound(body = APIResult.Error(statusText = "Could not find page with key '$srcKey'"))
         } catch (e: Exception) {
             error("Error generating page: ${e.message}")
             return ResponseEntity.serverError(body = APIResult.Error("Error generating page: ${e.message}"))
@@ -86,8 +88,9 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
     fun generatePost(request: Request<Unit>): ResponseEntity<APIResult<String>> {
         val requestKey = request.pathParameters["srcKey"]
         var srcKey = ""
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         try {
-            loadContentTree()
+            loadContentTree(projectKeyHeader)
             if (requestKey == "*") {
                 info("GeneratorController: Received request to regenerate all posts")
                 val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
@@ -96,7 +99,11 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
                     posts.forEach { post ->
                         val sourceString = s3Service.getObjectAsString(post.srcKey, sourceBucket)
                         val postSrcKey = post.srcKey.removePrefix(postsPrefix)
-                        val msgResponse = queuePostRegeneration(postSrcKey, sourceString)
+                        val msgResponse = queuePostRegeneration(
+                            postSrcKey = postSrcKey,
+                            sourceString = sourceString,
+                            projectDomain = projectKeyHeader
+                        )
                         if (msgResponse != null) {
                             count++
                         } else {
@@ -113,13 +120,18 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
                 info("GeneratorController: Received request to regenerate post '$srcKey'")
                 val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
                 val postSrcKey = srcKey.removePrefix(postsPrefix)
-                queuePostRegeneration(postSrcKey, sourceString)
+                queuePostRegeneration(
+                    postSrcKey = postSrcKey,
+                    sourceString = sourceString,
+                    projectDomain = projectKeyHeader
+                )
                 return ResponseEntity.ok(body = APIResult.Success(value = "Regenerated post '$requestKey'"))
             }
         } catch (nske: NoSuchKeyException) {
             error("${nske.message} for key $srcKey")
-            return ResponseEntity.notFound(body = APIResult.Error(message = "Could not find post with key '$srcKey'"))
+            return ResponseEntity.notFound(body = APIResult.Error(statusText = "Could not find post with key '$srcKey'"))
         } catch (e: Exception) {
+            error("Error generating post: ${e.javaClass}: ${e.message}")
             return ResponseEntity.serverError(body = APIResult.Error("Error generating post: ${e.message}"))
         }
     }
@@ -136,23 +148,31 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
                 body = APIResult.Error("Regeneration of all templates is not supported.")
             )
         }
-        info("ENCODED: GeneratorController received request to regenerate pages based on template '$requestKey'")
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         // TODO: https://github.com/v79/Cantilever/issues/26 this only works for HTML handlebars templates, i.e. those whose file names end in ".index.html" in the "templates" folder.
         // Also, annoying that I have to double-decode this.
+        // And I need to strip off the domain from the requestKey
         val templateKey =
             URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset())
+                .substringAfter(
+                    "$projectKeyHeader/"
+                )
         info(
-            "DOUBLE DECODED: GeneratorController received request to regenerate pages based on template '$templateKey'"
+            "Received request to regenerate pages based on template '$templateKey'"
         )
         var count = 0
 
         // We don't know if the template is for a Page or a Post. This is less than ideal as I have to check both. But I could short-circuit the second check if the first one succeeds?
         try {
-            loadContentTree()
+            loadContentTree(projectKeyHeader)
             contentTree.getPagesForTemplate(templateKey).forEach { page ->
                 info("Regenerating page ${page.srcKey} because it has template ${page.templateKey}")
                 val pageSource = s3Service.getObjectAsString(page.srcKey, sourceBucket)
-                val response = queuePageRegeneration(page.srcKey, pageSource)
+                val response = queuePageRegeneration(
+                    pageSrcKey = page.srcKey,
+                    sourceString = pageSource,
+                    projectDomain = projectKeyHeader
+                )
                 if (response != null) {
                     count++
                 } else {
@@ -163,7 +183,11 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
             contentTree.getPostsForTemplate(templateKey).forEach { post ->
                 info("Regenerating post ${post.srcKey} because it has template ${post.templateKey}")
                 val postSource = s3Service.getObjectAsString(post.srcKey, sourceBucket)
-                val msgResponse = queuePostRegeneration(post.srcKey, postSource)
+                val msgResponse = queuePostRegeneration(
+                    postSrcKey = post.srcKey,
+                    sourceString = postSource,
+                    projectDomain = projectKeyHeader
+                )
                 if (msgResponse != null) {
                     count++
                 } else {
@@ -190,14 +214,102 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
         }
     }
 
+    /**
+     * The generation bucket will accumulate a lot of files over time. This method will clear out all the generated fragments.
+     */
+    fun clearGeneratedFragments(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+
+        info("Received request to clear generated fragments from folder $projectKeyHeader/generated/htmlFragments/")
+        val listResponse = s3Service.listObjects("$projectKeyHeader/generated/htmlFragments/", generationBucket)
+        var count = 0
+        if (listResponse.hasContents()) {
+            listResponse.contents().forEach { obj ->
+                info("Deleting object ${obj.key()}")
+                val delResponse = s3Service.deleteObject(obj.key(), generationBucket)
+                if (delResponse != null) {
+                    count++
+                }
+            }
+        } else {
+            return ResponseEntity.ok(body = APIResult.Success("No generated fragments to clear"))
+        }
+        info("Deleted $count generated fragments from folder $projectKeyHeader/generated/htmlFragments/")
+        return ResponseEntity.ok(
+            body = APIResult.Success("Deleted $count generated fragments from folder $projectKeyHeader/generated/htmlFragments/")
+        )
+    }
+
+    /**
+     * The generation bucket will accumulate a lot of files over time. This method will clear out generated image resolutions which are no longer referenced in metadata.json
+     */
+    fun clearGeneratedImages(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+
+        info("Received request to clear generated images from folder $projectKeyHeader/images/")
+        loadContentTree(projectKeyHeader)
+        val listResponse = s3Service.listObjects("$projectKeyHeader/generated/images/", generationBucket)
+        var count = 0
+        val deleteList = mutableListOf<String>()
+        if (listResponse.hasContents()) {
+            // this will not respond with any particular order. I'll need to iterate twice?
+            deleteList.addAll(listResponse.contents().map { it.key().removePrefix("$projectKeyHeader/sources/") })
+            listResponse.contents().forEach { obj ->
+                // check if the image is still referenced in metadata.json
+                // the problem is we are iterating over the objects in the bucket, not the metadata.json file
+                // and this iteration will include both the original image, and the thumbnails
+                if (contentTree.images.any {
+                        it.srcKey.removePrefix("$projectKeyHeader/sources/") == obj.key()
+                            .removePrefix("$projectKeyHeader/generated/")
+                    }) {
+                    info("Image ${obj.key()} is still referenced in metadata.json")
+                    // so we've found the image in the metadata, so we don't want to delete it
+                    // BUT we don't want to delete any of its image resolutions either
+                    // so put the image resolution keys into a 'do not delete' list?
+                    deleteList.remove(obj.key())
+                    s3Service.listObjects(obj.key(), generationBucket).contents()
+                        .forEach { imageResolution ->
+                            println("Removing ${imageResolution.key()} from delete list")
+                            deleteList.remove(imageResolution.key())
+                        }
+                }
+            }
+            deleteList.forEach { key ->
+                info("Deleting object $key")
+                count++
+                val delResponse = s3Service.deleteObject(key, generationBucket)
+                if (delResponse != null) {
+                    count++
+                }
+            }
+
+        } else {
+            return ResponseEntity.ok(body = APIResult.Success("No generated images to clear"))
+        }
+        if (count == 0) {
+            return ResponseEntity.noContent(body = APIResult.Success("No generated images to clear"))
+        }
+        return ResponseEntity.ok(
+            body = APIResult.Success("Deleted $count generated images from folder $projectKeyHeader/images/")
+        )
+    }
+
     // TODO: WE'VE DONE THIS TWICE NOW
     /**
      * Send a message to the markdown queue for a Page
      */
-    private fun queuePageRegeneration(pageSrcKey: String, sourceString: String): SendMessageResponse? {
+    private fun queuePageRegeneration(
+        pageSrcKey: String,
+        sourceString: String,
+        projectDomain: String
+    ): SendMessageResponse? {
         // extract page model
         val pageMode = ContentMetaDataBuilder.PageBuilder.buildFromSourceString(sourceString, pageSrcKey)
-        val msgBody = MarkdownSQSMessage.PageUploadMsg(pageMode, sourceString)
+        val msgBody = MarkdownSQSMessage.PageUploadMsg(
+            projectDomain = projectDomain,
+            metadata = pageMode,
+            markdownText = sourceString
+        )
         return sqsService.sendMarkdownMessage(
             toQueue = markdownQueue, body = msgBody,
             messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.Pages.folder)
@@ -207,14 +319,22 @@ class GeneratorController(sourceBucket: String) : KoinComponent, APIController(s
     /**
      * Send a message to the markdown queue for a Post
      */
-    private fun queuePostRegeneration(postSrcKey: String, sourceString: String): SendMessageResponse? {
+    private fun queuePostRegeneration(
+        postSrcKey: String,
+        sourceString: String,
+        projectDomain: String
+    ): SendMessageResponse? {
         // extract post model
         val metadata =
             ContentMetaDataBuilder.PostBuilder.buildFromSourceString(sourceString.getFrontMatter(), postSrcKey)
         // extract body
         val markdownBody = sourceString.stripFrontMatter()
 
-        val msgBody = MarkdownSQSMessage.PostUploadMsg(metadata, markdownBody)
+        val msgBody = MarkdownSQSMessage.PostUploadMsg(
+            projectDomain = projectDomain,
+            metadata = metadata,
+            markdownText = markdownBody
+        )
         return sqsService.sendMarkdownMessage(
             toQueue = markdownQueue, body = msgBody,
             messageAttributes = createStringAttribute("sourceType", SOURCE_TYPE.Posts.folder)

@@ -3,6 +3,7 @@ package org.liamjd.cantilever.common
 /**
  * Represents the standard folders and key files within S3 sources bucket
  */
+@Deprecated("This has becoming less helpful as the project has grown")
 object S3_KEY {
     const val sources = "sources"
     const val generated = "generated"
