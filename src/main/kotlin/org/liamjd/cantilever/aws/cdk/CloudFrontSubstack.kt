@@ -4,6 +4,7 @@ import software.amazon.awscdk.Duration
 import software.amazon.awscdk.RemovalPolicy
 import software.amazon.awscdk.Stack
 import software.amazon.awscdk.Tags
+import software.amazon.awscdk.services.certificatemanager.Certificate
 import software.amazon.awscdk.services.cloudfront.*
 import software.amazon.awscdk.services.cloudfront.experimental.EdgeFunction
 import software.amazon.awscdk.services.lambda.Code
@@ -114,7 +115,7 @@ class CloudFrontSubstack(private val versionString: String) {
                         .build()
                 )
             )
-           /* .viewerCertificate(
+           .viewerCertificate(
                 ViewerCertificate.fromAcmCertificate(
                     Certificate.fromCertificateArn(
                         stack,
@@ -126,7 +127,7 @@ class CloudFrontSubstack(private val versionString: String) {
                         .securityPolicy(SecurityPolicyProtocol.TLS_V1_2_2021)
                         .build()
                 )
-            )*/
+            )
             .build()
     }
 
