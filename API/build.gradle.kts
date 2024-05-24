@@ -25,6 +25,9 @@ dependencies {
     implementation(project(":SharedModels"))
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
 
+    // routing
+    implementation("org.liamjd.apiviaduct:router:0.2-SNAPSHOT")
+
     // openAPI dependency scanning
     implementation(project(":OpenAPISchemaAnnotations"))
     implementation(project(":OpenAPISchemaGenerator"))
