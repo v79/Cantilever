@@ -3,6 +3,8 @@ package org.liamjd.cantilever.api.controllers
 import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
+import org.liamjd.apiviaduct.routing.Request
+import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.getFrontMatter
@@ -10,8 +12,6 @@ import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.ContentTree
 import org.liamjd.cantilever.models.TemplateMetadata
-import org.liamjd.cantilever.routing.Request
-import org.liamjd.cantilever.routing.ResponseEntity
 
 /**
  * Generate metadata across posts, pages, templates etc
@@ -21,7 +21,7 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
     /**
      * Perform a complete scan of the sources/ bucket and rebuild the metadata.json file in the generated/ folder
      */
-    fun rebuildFromSources(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+    fun rebuildFromSources(request: Request<Unit>): Response<APIResult<String>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         info("Rebuilding $projectKeyHeader metadata from sources")
         val projectMetadataKey = "$projectKeyHeader/metadata.json"
@@ -107,14 +107,14 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
             s3Service.putObjectAsString(projectMetadataKey, generationBucket, treeJson, "application/json")
         } else {
             error("No source files found in 'sources/ which match the requirements to build a project metadata' file.")
-            return ResponseEntity.serverError(
+            return Response.serverError(
                 body = APIResult.Error(
                     statusText = "No source files found in $sourceBucket which match the requirements to build a ${S3_KEY.postsKey} file."
                 )
             )
         }
 
-        return ResponseEntity.ok(
+        return Response.ok(
             body = APIResult.Success(
                 "Rebuilt metadata.json file for $projectKeyHeader with $filesProcessed ($postsCount posts, $pagesCount pages, $imagesCount images, $templatesCount templates, $staticsCount statics)"
             )
