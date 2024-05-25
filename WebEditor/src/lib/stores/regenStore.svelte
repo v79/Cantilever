@@ -9,9 +9,10 @@
 			headers: {
 				Accept: 'application/json',
 				Authorization: 'Bearer ' + token,
-				'X-Content-Length': '0',
+				'Content-Length': '0',
 				'cantilever-project-domain': projectDomain
 			},
+			body: JSON.stringify({}),
 			mode: 'cors'
 		});
 		const data = await response.text();
@@ -27,9 +28,10 @@
 				Accept: 'text/plain',
 				Authorization: 'Bearer ' + token,
 				'Content-Type': 'application/json',
-				'X-Content-Length': '0',
+				'Content-Length': '0',
 				'cantilever-project-domain': projectDomain
 			},
+			body: JSON.stringify({}),
 			mode: 'cors'
 		});
 		const data = await response.text();
@@ -45,9 +47,10 @@
 				Accept: 'text/plain',
 				Authorization: 'Bearer ' + token,
 				'Content-Type': 'application/json',
-				'X-Content-Length': '0',
+				'Content-Length': '0',
 				'cantilever-project-domain': projectDomain
 			},
+			body: JSON.stringify({}),
 			mode: 'cors'
 		});
 		const data = await response.text();

@@ -196,9 +196,10 @@
 					Accept: 'text/plain',
 					Authorization: `Bearer ${token}`,
 					'cantilever-project-domain': projectDomain,
-					'X-Content-Length': '0'
+					'Content-Length': '0'
 				},
-				mode: 'cors'
+				mode: 'cors',
+				body: JSON.stringify({})
 			});
 			if (response.ok) {
 				const msg = await response.text();
