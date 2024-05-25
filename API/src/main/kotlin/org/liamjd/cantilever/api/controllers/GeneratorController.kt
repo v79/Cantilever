@@ -3,14 +3,14 @@ package org.liamjd.cantilever.api.controllers
 import kotlinx.serialization.SerializationException
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import org.liamjd.apiviaduct.routing.Request
+import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.common.S3_KEY.postsPrefix
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
-import org.liamjd.cantilever.routing.Request
-import org.liamjd.cantilever.routing.ResponseEntity
 import org.liamjd.cantilever.services.SQSService
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.sqs.model.SendMessageResponse
@@ -37,9 +37,9 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
      * This method will send a message to the markdown processing queue in SQS.
      * If <srcKey> is '*' it will trigger regeneration of all source markdown pages
      */
-    fun generatePage(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+    fun generatePage(request: Request<Unit>): Response<APIResult<String>> {
         val requestKey = request.pathParameters["srcKey"]
-            ?: return ResponseEntity.badRequest(body = APIResult.Error("No srcKey provided"))
+            ?: return Response.badRequest(body = APIResult.Error("No srcKey provided"))
         var srcKey = ""
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         try {
@@ -59,23 +59,23 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                         }
                     }
                     info("Queued $count pages for regeneration")
-                    return ResponseEntity.ok(body = APIResult.Success(value = "Queued $count pages for regeneration"))
+                    return Response.ok(body = APIResult.Success(value = "Queued $count pages for regeneration"))
                 } else {
-                    return ResponseEntity.notFound(body = APIResult.Error("No pages found to regenerate"))
+                    return Response.notFound(body = APIResult.Error("No pages found to regenerate"))
                 }
             } else {
                 srcKey = URLDecoder.decode(requestKey, Charset.defaultCharset())
                 info("GeneratorController: Received request to regenerate page '$srcKey'")
                 val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
                 queuePageRegeneration(projectKeyHeader, srcKey, sourceString)
-                return ResponseEntity.ok(body = APIResult.Success(value = "Regenerated page '$requestKey'"))
+                return Response.ok(body = APIResult.Success(value = "Regenerated page '$requestKey'"))
             }
         } catch (nske: NoSuchKeyException) {
             error("${nske.message} for key $srcKey")
-            return ResponseEntity.notFound(body = APIResult.Error(statusText = "Could not find page with key '$srcKey'"))
+            return Response.notFound(body = APIResult.Error(statusText = "Could not find page with key '$srcKey'"))
         } catch (e: Exception) {
             error("Error generating page: ${e.message}")
-            return ResponseEntity.serverError(body = APIResult.Error("Error generating page: ${e.message}"))
+            return Response.serverError(body = APIResult.Error("Error generating page: ${e.message}"))
         }
     }
 
@@ -85,7 +85,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
      * The actual path searched for will be `/sources/posts/<srcKey>`.
      * This method will send a message to the markdown processing queue in SQS.
      */
-    fun generatePost(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+    fun generatePost(request: Request<Unit>): Response<APIResult<String>> {
         val requestKey = request.pathParameters["srcKey"]
         var srcKey = ""
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
@@ -111,9 +111,9 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                         }
                     }
                     info("Queued $count posts for regeneration")
-                    return ResponseEntity.ok(body = APIResult.Success(value = "Queued $count posts for regeneration"))
+                    return Response.ok(body = APIResult.Success(value = "Queued $count posts for regeneration"))
                 } else {
-                    return ResponseEntity.notFound(body = APIResult.Error("No posts found to regenerate"))
+                    return Response.notFound(body = APIResult.Error("No posts found to regenerate"))
                 }
             } else {
                 srcKey = postsPrefix + requestKey
@@ -125,14 +125,14 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                     sourceString = sourceString,
                     projectDomain = projectKeyHeader
                 )
-                return ResponseEntity.ok(body = APIResult.Success(value = "Regenerated post '$requestKey'"))
+                return Response.ok(body = APIResult.Success(value = "Regenerated post '$requestKey'"))
             }
         } catch (nske: NoSuchKeyException) {
             error("${nske.message} for key $srcKey")
-            return ResponseEntity.notFound(body = APIResult.Error(statusText = "Could not find post with key '$srcKey'"))
+            return Response.notFound(body = APIResult.Error(statusText = "Could not find post with key '$srcKey'"))
         } catch (e: Exception) {
             error("Error generating post: ${e.javaClass}: ${e.message}")
-            return ResponseEntity.serverError(body = APIResult.Error("Error generating post: ${e.message}"))
+            return Response.serverError(body = APIResult.Error("Error generating post: ${e.message}"))
         }
     }
 
@@ -141,10 +141,10 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
      * Generate the HTML fragments for all the pages or posts which match the given template.
      * Does not currently handle the '*' wildcard.
      */
-    fun generateTemplate(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+    fun generateTemplate(request: Request<Unit>): Response<APIResult<String>> {
         val requestKey = request.pathParameters["templateKey"]
         if (requestKey == "*") {
-            return ResponseEntity.notImplemented(
+            return Response.notImplemented(
                 body = APIResult.Error("Regeneration of all templates is not supported.")
             )
         }
@@ -196,19 +196,19 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
             }
         } catch (se: SerializationException) {
             error("Error processing pages.json; error is ${se.message}")
-            return ResponseEntity.serverError(
+            return Response.serverError(
                 body = APIResult.Error("Error processing pages.json; error is ${se.message}")
             )
         }
 
         return if (count == 0) {
-            ResponseEntity.ok(
+            Response.ok(
                 APIResult.Success(
                     value = "No pages or posts with the template '$templateKey' were suitable for regeneration."
                 )
             )
         } else {
-            ResponseEntity.accepted(
+            Response.accepted(
                 APIResult.Success(value = "Queued $count files with the '$templateKey' template for regeneration.")
             )
         }
@@ -217,7 +217,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
     /**
      * The generation bucket will accumulate a lot of files over time. This method will clear out all the generated fragments.
      */
-    fun clearGeneratedFragments(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+    fun clearGeneratedFragments(request: Request<Unit>): Response<APIResult<String>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
 
         info("Received request to clear generated fragments from folder $projectKeyHeader/generated/htmlFragments/")
@@ -232,10 +232,10 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                 }
             }
         } else {
-            return ResponseEntity.ok(body = APIResult.Success("No generated fragments to clear"))
+            return Response.ok(body = APIResult.Success("No generated fragments to clear"))
         }
         info("Deleted $count generated fragments from folder $projectKeyHeader/generated/htmlFragments/")
-        return ResponseEntity.ok(
+        return Response.ok(
             body = APIResult.Success("Deleted $count generated fragments from folder $projectKeyHeader/generated/htmlFragments/")
         )
     }
@@ -243,7 +243,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
     /**
      * The generation bucket will accumulate a lot of files over time. This method will clear out generated image resolutions which are no longer referenced in metadata.json
      */
-    fun clearGeneratedImages(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+    fun clearGeneratedImages(request: Request<Unit>): Response<APIResult<String>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
 
         info("Received request to clear generated images from folder $projectKeyHeader/images/")
@@ -284,12 +284,12 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
             }
 
         } else {
-            return ResponseEntity.ok(body = APIResult.Success("No generated images to clear"))
+            return Response.ok(body = APIResult.Success("No generated images to clear"))
         }
         if (count == 0) {
-            return ResponseEntity.noContent(body = APIResult.Success("No generated images to clear"))
+            return Response.noContent(body = APIResult.Success("No generated images to clear"))
         }
-        return ResponseEntity.ok(
+        return Response.ok(
             body = APIResult.Success("Deleted $count generated images from folder $projectKeyHeader/images/")
         )
     }

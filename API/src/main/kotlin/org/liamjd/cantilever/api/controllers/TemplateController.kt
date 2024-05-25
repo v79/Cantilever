@@ -3,6 +3,8 @@ package org.liamjd.cantilever.api.controllers
 import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.SerializationException
 import org.koin.core.component.KoinComponent
+import org.liamjd.apiviaduct.routing.Request
+import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.getFrontMatter
@@ -11,8 +13,6 @@ import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.TemplateMetadata
 import org.liamjd.cantilever.models.rest.TemplateListDTO
 import org.liamjd.cantilever.models.rest.TemplateUseDTO
-import org.liamjd.cantilever.routing.Request
-import org.liamjd.cantilever.routing.ResponseEntity
 import java.net.URLDecoder
 import java.nio.charset.Charset
 
@@ -21,7 +21,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
     /**
      * Load a handlebars template file with the specified 'srcKey' and return it as a [ContentNode.TemplateNode] response
      */
-    fun loadHandlebarsSource(request: Request<Unit>): ResponseEntity<APIResult<ContentNode.TemplateNode>> {
+    fun loadHandlebarsSource(request: Request<Unit>): Response<APIResult<ContentNode.TemplateNode>> {
         val handlebarSource = request.pathParameters["srcKey"]
 
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
@@ -41,29 +41,29 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                         title = metadata.name,
                         sections = metadata.sections?.toMutableList() ?: mutableListOf()
                     ).also { it.body = body.stripFrontMatter() }
-                    ResponseEntity.ok(body = APIResult.Success(templateNode))
+                    Response.ok(body = APIResult.Success(templateNode))
                 } else {
                     error("Handlebars file $decoded not found in bucket $sourceBucket")
-                    ResponseEntity.notFound(
+                    Response.notFound(
                         body = APIResult.Error("Handlebars file $decoded not found in bucket $sourceBucket")
                     )
                 }
             } else {
                 error("Handlebars file $decoded not found in bucket $sourceBucket")
-                ResponseEntity.notFound(
+                Response.notFound(
                     body = APIResult.Error("Handlebars file $decoded not found in bucket $sourceBucket")
                 )
             }
         } else {
             error("Invalid request for null source file")
-            ResponseEntity.badRequest(body = APIResult.Error("Invalid request for null source file"))
+            Response.badRequest(body = APIResult.Error("Invalid request for null source file"))
         }
     }
 
     /**
      * Save a handlebars template file, which contains a key, sections, name and body
      */
-    fun saveTemplate(request: Request<ContentNode.TemplateNode>): ResponseEntity<APIResult<String>> {
+    fun saveTemplate(request: Request<ContentNode.TemplateNode>): Response<APIResult<String>> {
         val templateNode = request.body
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val srcKey = URLDecoder.decode(templateNode.srcKey, Charset.defaultCharset())
@@ -82,7 +82,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                 templateNode
             )
             saveContentTree(projectKeyHeader)
-            ResponseEntity.ok(
+            Response.ok(
                 body =
                 APIResult.OK("Updated file ${templateNode.srcKey}, $length bytes")
             )
@@ -102,7 +102,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                 newNode
             )
             saveContentTree(projectKeyHeader)
-            ResponseEntity.ok(
+            Response.ok(
                 body =
                 APIResult.OK("Updated file ${newNode.srcKey}, $length bytes")
             )
@@ -113,7 +113,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
      * Load the handlebars template file and extract its metadata
      * TODO: return a [TemplateNode] instead of a [TemplateMetadata]
      */
-    fun getTemplateMetadata(request: Request<Unit>): ResponseEntity<APIResult<TemplateMetadata>> {
+    fun getTemplateMetadata(request: Request<Unit>): Response<APIResult<TemplateMetadata>> {
         val handlebarKey = request.pathParameters["templateKey"]
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (handlebarKey != null) {
@@ -124,24 +124,24 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                     val template = s3Service.getObjectAsString(srcKey, sourceBucket)
                     val frontmatter = template.getFrontMatter()
                     val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
-                    ResponseEntity.ok(body = APIResult.Success(metadata))
+                    Response.ok(body = APIResult.Success(metadata))
                 } catch (se: SerializationException) {
-                    ResponseEntity.serverError(
+                    Response.serverError(
                         body = APIResult.Error("Could not deserialize template $srcKey. Error was ${se.message}")
                     )
                 }
             } else {
-                ResponseEntity.badRequest(body = APIResult.Error("Could not find template $srcKey"))
+                Response.badRequest(body = APIResult.Error("Could not find template $srcKey"))
             }
         } else {
-            ResponseEntity.badRequest(body = APIResult.Error("Invalid template key"))
+            Response.badRequest(body = APIResult.Error("Invalid template key"))
         }
     }
 
     /**
      * Return the list of templates
      */
-    fun getTemplates(request: Request<Unit>): ResponseEntity<APIResult<TemplateListDTO>> {
+    fun getTemplates(request: Request<Unit>): Response<APIResult<TemplateListDTO>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (loadContentTree(projectKeyHeader)) {
             info("Fetching all posts from metadata.json")
@@ -152,10 +152,10 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                 lastUpdated = lastUpdated,
                 templates = templates
             )
-            ResponseEntity.ok(body = APIResult.Success(value = templateList))
+            Response.ok(body = APIResult.Success(value = templateList))
         } else {
             error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
-            ResponseEntity.notFound(
+            Response.notFound(
                 body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
             )
         }
@@ -164,7 +164,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
     /**
      * Get a list of all the nodes which use a given template, and their keys
      */
-    fun getTemplateUsage(request: Request<Unit>): ResponseEntity<APIResult<TemplateUseDTO>> {
+    fun getTemplateUsage(request: Request<Unit>): Response<APIResult<TemplateUseDTO>> {
         val templateKey = request.pathParameters["srcKey"]
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         if (templateKey != null) {
@@ -178,23 +178,23 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                 val count = pages.size + posts.size
                 val dto = TemplateUseDTO(count = count, pageKeys = pages, postKeys = posts)
                 info("Found ${dto.count} uses, across ${dto.pageKeys.size} pages and ${dto.postKeys.size} posts")
-                ResponseEntity.ok(APIResult.Success(dto))
+                Response.ok(APIResult.Success(dto))
             } else {
                 error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
-                ResponseEntity.notFound(
+                Response.notFound(
                     body = APIResult.Error(
                         statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"
                     )
                 )
             }
         }
-        return ResponseEntity.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
+        return Response.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
     }
 
     /**
      * Delete a handlebars template file if there are no pages or posts using it
      */
-    fun deleteTemplate(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+    fun deleteTemplate(request: Request<Unit>): Response<APIResult<String>> {
         val templateKey = request.pathParameters["srcKey"]
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         if (templateKey != null) {
@@ -208,16 +208,16 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                     val templateNode = contentTree.getTemplate(decoded)
                     return if (templateNode == null) {
                         error("Could not find template $decoded in content tree")
-                        ResponseEntity.badRequest(APIResult.Error("Could not find template $decoded in content tree"))
+                        Response.badRequest(APIResult.Error("Could not find template $decoded in content tree"))
                     } else {
                         val deleted = s3Service.deleteObject(decoded, sourceBucket)
                         contentTree.deleteTemplate(templateNode)
                         saveContentTree(projectKeyHeader)
-                        ResponseEntity.ok(APIResult.OK("Deleted template $decoded"))
+                        Response.ok(APIResult.OK("Deleted template $decoded"))
                     }
                 } else {
                     error("Cannot delete template $decoded, it is used by ${pages.size} pages and ${posts.size} posts")
-                    ResponseEntity.badRequest(
+                    Response.badRequest(
                         APIResult.Error(
                             "Cannot delete template $decoded, it is used by ${pages.size} pages and ${posts.size} posts"
                         )
@@ -225,14 +225,14 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                 }
             } else {
                 error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
-                ResponseEntity.notFound(
+                Response.notFound(
                     body = APIResult.Error(
                         statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"
                     )
                 )
             }
         }
-        return ResponseEntity.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
+        return Response.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
     }
 
     /**

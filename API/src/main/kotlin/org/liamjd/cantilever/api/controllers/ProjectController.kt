@@ -6,6 +6,8 @@ import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
+import org.liamjd.apiviaduct.routing.Request
+import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.common.S3_KEY.pagesKey
@@ -15,8 +17,6 @@ import org.liamjd.cantilever.common.S3_KEY.templatesKey
 import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.*
-import org.liamjd.cantilever.routing.Request
-import org.liamjd.cantilever.routing.ResponseEntity
 
 private const val APP_JSON = "application/json"
 
@@ -29,11 +29,11 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
     /**
      * Return the 'cantilever.yaml' project definition file, in yaml format.
      */
-    fun getProject(request: Request<Unit>): ResponseEntity<APIResult<CantileverProject>> {
+    fun getProject(request: Request<Unit>): Response<APIResult<CantileverProject>> {
         val projectKey = request.pathParameters["projectKey"]
         if (projectKey.isNullOrEmpty()) {
             error("Unable to retrieve project definition where 'project key' is blank")
-            return ResponseEntity.badRequest(
+            return Response.badRequest(
                 APIResult.Error(statusText = "Unable to retrieve project definition where 'project key' is blank")
             )
         }
@@ -42,10 +42,10 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
             val projectYaml = s3Service.getObjectAsString(projectKey, sourceBucket)
             try {
                 val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
-                ResponseEntity.ok(body = APIResult.Success(value = project))
+                Response.ok(body = APIResult.Success(value = project))
             } catch (se: SerializationException) {
                 error(se.message ?: "Error deserializing '$projectKey'. Project is broken.")
-                ResponseEntity.serverError(
+                Response.serverError(
                     body = APIResult.Error(
                         statusText = se.message ?: "Error deserializing '$projectKey'. Project is broken."
                     )
@@ -53,7 +53,7 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
             }
         } else {
             error("Cannot find file '$projectKey' in bucket '$sourceBucket'. Project is broken.")
-            ResponseEntity.notFound(
+            Response.notFound(
                 body = APIResult.Error(
                     statusText = "Cannot find file '$projectKey' in bucket '$sourceBucket'."
                 )
@@ -64,7 +64,7 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
     /**
      * Return a list of all the projects
      */
-    fun getProjectList(request: Request<Unit>): ResponseEntity<APIResult<List<Pair<String, String>>>> {
+    fun getProjectList(request: Request<Unit>): Response<APIResult<List<Pair<String, String>>>> {
         info("Retrieving list of projects")
         val projects = s3Service.listObjectsDelim("", "/", sourceBucket)
         val projectList = mutableListOf<Pair<String, String>>()
@@ -79,17 +79,17 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
                 }
             }
         }
-        return ResponseEntity.ok(body = APIResult.Success(value = projectList))
+        return Response.ok(body = APIResult.Success(value = projectList))
     }
 
     /**
      * Update the 'cantilever.yaml' project definition file. This will come to us as yaml document, not json, but it will return as json.
      */
-    fun updateProjectDefinition(request: Request<CantileverProject>): ResponseEntity<APIResult<CantileverProject>> {
+    fun updateProjectDefinition(request: Request<CantileverProject>): Response<APIResult<CantileverProject>> {
         info("Updating '<project>.yaml' file")
         val updatedDefinition = request.body
         if (updatedDefinition.projectName.isBlank() || updatedDefinition.domain.isBlank()) {
-            return ResponseEntity.badRequest(
+            return Response.badRequest(
                 APIResult.Error(statusText = "Unable to update project definition where 'project name' or 'domain' is blank")
             )
         }
@@ -103,7 +103,7 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
             yamlToSave,
             MimeType.yaml.toString()
         )
-        return ResponseEntity.ok(body = APIResult.Success(value = updatedDefinition))
+        return Response.ok(body = APIResult.Success(value = updatedDefinition))
     }
 
     /**
@@ -111,16 +111,16 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
      * This will come to us as yaml document, not json
      * The yaml file will be based on the domain name, e.g. www.example.com.yaml
      */
-    fun createProject(request: Request<CantileverProject>): ResponseEntity<APIResult<String>> {
+    fun createProject(request: Request<CantileverProject>): Response<APIResult<String>> {
         info("Creating new project")
         val newProject = request.body
         if (newProject.projectName.isBlank()) {
-            return ResponseEntity.badRequest(
+            return Response.badRequest(
                 APIResult.Error(statusText = "Unable to create project where 'project name' is blank")
             )
         }
         if (newProject.domain.isBlank()) {
-            return ResponseEntity.badRequest(
+            return Response.badRequest(
                 APIResult.Error(statusText = "Unable to create project where 'domain' is blank")
             )
         }
@@ -129,7 +129,7 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
         // TODO: check if the project already exists
         if (s3Service.objectExists(projectKey, sourceBucket)) {
             error("Project ${newProject.domain} already exists")
-            return ResponseEntity.conflict(
+            return Response.conflict(
                 APIResult.Error(statusText = "Project ${newProject.domain} already exists")
             )
         }
@@ -140,7 +140,7 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
             yamlToSave,
             MimeType.yaml.toString()
         )
-        return ResponseEntity.ok(
+        return Response.ok(
             body = APIResult.Success(value = "Successfully created project ${newProject.projectName}")
         )
     }
@@ -149,13 +149,13 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
      * Return a list of all the [PostMeta]s
      */
     @Deprecated("Replaced with [PostController.getPosts]")
-    fun getPosts(request: Request<Unit>): ResponseEntity<APIResult<PostList>> {
+    fun getPosts(request: Request<Unit>): Response<APIResult<PostList>> {
         info("ProjectController: Retrieving all posts")
         return if (s3Service.objectExists(postsKey, sourceBucket)) {
             val postListJson = s3Service.getObjectAsString(postsKey, sourceBucket)
             val postList = Json.decodeFromString(PostList.serializer(), postListJson)
             val sorted = postList.posts.sortedBy { it.date }
-            ResponseEntity.ok(
+            Response.ok(
                 body = APIResult.Success(
                     value = PostList(
                         count = sorted.size,
@@ -165,7 +165,7 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
                 )
             )
         } else {
-            ResponseEntity.notFound(
+            Response.notFound(
                 body = APIResult.Error(
                     statusText = "Cannot find file '$postsKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/posts/rebuild"
                 )
@@ -177,17 +177,17 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
      * Return a list of all the [PageMeta]s
      */
     @Deprecated("Replaced with [PageController.getPages]")
-    fun getPages(request: Request<Unit>): ResponseEntity<APIResult<PageTree>> {
+    fun getPages(request: Request<Unit>): Response<APIResult<PageTree>> {
         info("Retrieving all pages")
         return if (s3Service.objectExists(pagesKey, sourceBucket)) {
             val pageListJson = s3Service.getObjectAsString(pagesKey, sourceBucket)
             val pageTree = Json.decodeFromString(PageTree.serializer(), pageListJson)
-            ResponseEntity.ok(body = APIResult.Success(value = pageTree))
+            Response.ok(body = APIResult.Success(value = pageTree))
         } else {
             error(
                 "Cannot find file '$pagesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/pages/rebuild"
             )
-            ResponseEntity.notFound(
+            Response.notFound(
                 body = APIResult.Error(
                     statusText = "Cannot find file '$pagesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/pages/rebuild"
                 )
@@ -199,17 +199,17 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
      * Return a list of all the [Template]s
      */
     @Deprecated("Replaced with [TemplateController.getTemplates]")
-    fun getTemplates(request: Request<Unit>): ResponseEntity<APIResult<TemplateList>> {
+    fun getTemplates(request: Request<Unit>): Response<APIResult<TemplateList>> {
         info("Retrieving templates pages")
         return if (s3Service.objectExists(templatesKey, sourceBucket)) {
             val templateListJson = s3Service.getObjectAsString(templatesKey, sourceBucket)
             val templateList = Json.decodeFromString(TemplateList.serializer(), templateListJson)
-            ResponseEntity.ok(body = APIResult.Success(value = templateList))
+            Response.ok(body = APIResult.Success(value = templateList))
         } else {
             error(
                 "Cannot find file '$templatesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/templates/rebuild"
             )
-            ResponseEntity.notFound(
+            Response.notFound(
                 body = APIResult.Error(
                     statusText = "Cannot find file '$templatesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/templates/rebuild"
                 )
@@ -222,7 +222,7 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
      * Rebuild the generated/templates.json file which contains the metadata for all the Templates in the project.
      */
     @Deprecated("This will be replaced with [MetadataController.rebuildFromSources]")
-    fun rebuildTemplateList(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+    fun rebuildTemplateList(request: Request<Unit>): Response<APIResult<String>> {
         val templates = s3Service.listObjects(templatesPrefix, sourceBucket)
         info("Rebuilding all templates from sources in '$pagesPrefix'. ${templates.keyCount()} templates found.")
         var filesProcessed = 0
@@ -254,13 +254,13 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
             s3Service.putObjectAsString(templatesKey, sourceBucket, listJson, APP_JSON)
         } else {
             error("No source files found in $sourceBucket which match the requirements to build a $templatesKey file.")
-            return ResponseEntity.serverError(
+            return Response.serverError(
                 body = APIResult.Error(
                     statusText = "No source files found in $sourceBucket which match the requirements to build a $templatesKey file."
                 )
             )
         }
-        return ResponseEntity.ok(
+        return Response.ok(
             body = APIResult.Success("Written new '$templatesKey' with $filesProcessed markdown files processed")
         )
     }
