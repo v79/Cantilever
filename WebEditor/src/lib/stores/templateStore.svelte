@@ -4,7 +4,7 @@
 	import { handlebars } from '$lib/stores/contentStore.svelte';
 
 	// complete set of template metadata
-	export const templates = createTemplatesStore()
+	export const templates = createTemplatesStore();
 	const CLEAR_TEMPLATES = { count: 0, templates: [] };
 
 	function createTemplatesStore() {
@@ -203,9 +203,10 @@
 				headers: {
 					Accept: 'text/plain',
 					Authorization: `Bearer ${token}`,
-					'X-Content-Length': '0',
+					'Content-Length': '0',
 					'cantilever-project-domain': projectDomain
 				},
+				body: JSON.stringify({}),
 				mode: 'cors'
 			});
 			if (response.ok) {
