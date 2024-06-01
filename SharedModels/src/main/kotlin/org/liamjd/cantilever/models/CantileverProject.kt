@@ -5,6 +5,7 @@ import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import org.liamjd.apiviaduct.schema.OpenAPISchema
 import org.liamjd.cantilever.openapi.APISchema
 
 /**
@@ -19,6 +20,7 @@ import org.liamjd.cantilever.openapi.APISchema
  * @property domain the domain name of the site. Required.
  */
 @APISchema
+@OpenAPISchema
 @Serializable
 data class CantileverProject @OptIn(ExperimentalSerializationApi::class) constructor(
     val projectName: String,

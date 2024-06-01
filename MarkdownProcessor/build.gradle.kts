@@ -14,6 +14,7 @@ version = "0.0.13"
 repositories {
     mavenCentral()
     google()
+    mavenLocal()
 }
 
 dependencies {
