@@ -13,6 +13,7 @@ version = "0.0.11"
 repositories {
     mavenCentral()
     google()
+    mavenLocal()
 }
 
 dependencies {

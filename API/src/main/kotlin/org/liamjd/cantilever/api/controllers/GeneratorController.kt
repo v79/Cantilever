@@ -5,6 +5,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.apiviaduct.routing.Request
 import org.liamjd.apiviaduct.routing.Response
+import org.liamjd.apiviaduct.schema.OpenAPIRoute
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.common.S3_KEY.postsPrefix
@@ -37,6 +38,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
      * This method will send a message to the markdown processing queue in SQS.
      * If <srcKey> is '*' it will trigger regeneration of all source markdown pages
      */
+    @OpenAPIRoute
     fun generatePage(request: Request<Unit>): Response<APIResult<String>> {
         val requestKey = request.pathParameters["srcKey"]
             ?: return Response.badRequest(body = APIResult.Error("No srcKey provided"))
