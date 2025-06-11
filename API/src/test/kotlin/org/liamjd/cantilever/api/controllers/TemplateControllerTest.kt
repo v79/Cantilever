@@ -17,7 +17,6 @@ import org.koin.test.mock.declareMock
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.Template
 import org.liamjd.cantilever.models.TemplateMetadata
-import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
@@ -123,7 +122,7 @@ internal class TemplateControllerTest : KoinTest {
         val apiProxyEvent = APIGatewayProxyRequestEvent().withHeaders(mapOf("cantilever-project-domain" to "test"))
 
         val controller = TemplateController(sourceBucket,generationBucket)
-        val request = Request(
+        val request = org.liamjd.apiviaduct.routing.Request(
             apiRequest = apiProxyEvent,
             body = mockHandlebarsContent,
             pathPattern = "/templates/",
@@ -165,7 +164,7 @@ internal class TemplateControllerTest : KoinTest {
         val apiProxyEvent = APIGatewayProxyRequestEvent().withHeaders(mapOf("cantilever-project-domain" to "test"))
 
         val controller = TemplateController(sourceBucket,generationBucket)
-        val request = Request<ContentNode.TemplateNode>(
+        val request = org.liamjd.apiviaduct.routing.Request<ContentNode.TemplateNode>(
             apiRequest = apiProxyEvent,
             body = mockHandlebarsContent,
             pathPattern = "/templates/"
@@ -179,11 +178,11 @@ internal class TemplateControllerTest : KoinTest {
     /**
      * Utility function to build the fake request object
      */
-    private fun buildRequest(path: String, pathPattern: String, body: String = ""): Request<Unit> {
+    private fun buildRequest(path: String, pathPattern: String, body: String = ""): org.liamjd.apiviaduct.routing.Request<Unit> {
         val apiGatewayProxyRequestEvent = APIGatewayProxyRequestEvent()
         apiGatewayProxyRequestEvent.body = ""
         apiGatewayProxyRequestEvent.path = path
         apiGatewayProxyRequestEvent.headers = mapOf("cantilever-project-domain" to "test")
-        return Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
+        return org.liamjd.apiviaduct.routing.Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
     }
 }

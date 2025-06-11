@@ -65,3 +65,9 @@ tasks.withType<ShadowJar> {
     archiveClassifier.set("")
     archiveBaseName.set("TemplateProcessorHandler")
 }
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
+    }
+}

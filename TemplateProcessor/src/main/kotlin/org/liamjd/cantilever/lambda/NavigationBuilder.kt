@@ -38,7 +38,6 @@ class NavigationBuilder(private val contentTree: ContentTree) {
             }
         } else {
             error("Could not find post ${currentPost.slug} in list of posts!")
-            null
         }
     }
 
@@ -59,7 +58,6 @@ class NavigationBuilder(private val contentTree: ContentTree) {
             }
         } else {
             error("Could not find post ${currentPost.slug} in list of posts!")
-            null
         }
     }
 
