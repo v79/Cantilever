@@ -1,13 +1,13 @@
 package org.liamjd.cantilever.api.controllers
 
 import org.koin.core.component.KoinComponent
+import org.liamjd.apiviaduct.routing.Request
+import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ImageDTO
 import org.liamjd.cantilever.models.rest.ImageListDTO
-import org.liamjd.cantilever.routing.Request
-import org.liamjd.cantilever.routing.ResponseEntity
 import java.net.URLDecoder
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -21,7 +21,7 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
      * Return a list of all the images in the content tree
      * @return [ImageListDTO] object containing the list of images, a count and the last updated date/time
      */
-    fun getImageList(request: Request<Unit>): ResponseEntity<APIResult<ImageListDTO>> {
+    fun getImageList(request: Request<Unit>): Response<APIResult<ImageListDTO>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (s3Service.objectExists(projectKeyHeader + "/" + S3_KEY.metadataKey, sourceBucket)) {
             loadContentTree(projectKeyHeader)
@@ -36,10 +36,10 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
                 lastUpdated = lastUpdated,
                 images = sorted
             )
-            ResponseEntity.ok(body = APIResult.Success(value = imageList))
+            Response.ok(body = APIResult.Success(value = imageList))
         } else {
             error("Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
-            ResponseEntity.notFound(body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
+            Response.notFound(body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"))
         }
     }
 
@@ -48,9 +48,9 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
      * If resolution is not specified, return the original image
      */
     @OptIn(ExperimentalEncodingApi::class)
-    fun getImage(request: Request<Unit>): ResponseEntity<APIResult<ImageDTO>> {
+    fun getImage(request: Request<Unit>): Response<APIResult<ImageDTO>> {
         val srcKey =
-            request.pathParameters["srcKey"] ?: return ResponseEntity.badRequest(APIResult.Error("No srcKey provided"))
+            request.pathParameters["srcKey"] ?: return Response.badRequest(APIResult.Error("No srcKey provided"))
         val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
         val resolution = request.pathParameters["resolution"]
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
@@ -67,7 +67,7 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
         if(s3Service.objectExists(generatedKey, generationBucket)) {
             val image = s3Service.getObjectAsBytes(generatedKey, generationBucket)
             val encoded = Base64.encode(image)
-            return ResponseEntity.ok(
+            return Response.ok(
                 APIResult.Success(
                     value = ImageDTO(
                         srcKey = srcKey,
@@ -78,7 +78,7 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
             )
         } else {
             error("Image '$generatedKey' not found")
-            return ResponseEntity.notFound(APIResult.Error("Image '$generatedKey' not found"))
+            return Response.notFound(APIResult.Error("Image '$generatedKey' not found"))
         }
     }
 
@@ -86,7 +86,7 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
      * Upload an image to the S3 bucket
      */
     @OptIn(ExperimentalEncodingApi::class)
-    fun uploadImage(request: Request<ImageDTO>): ResponseEntity<APIResult<ImageDTO>> {
+    fun uploadImage(request: Request<ImageDTO>): Response<APIResult<ImageDTO>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         loadContentTree(projectKeyHeader)
 
@@ -107,18 +107,18 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
             saveContentTree(projectKeyHeader)
         } catch (e: Exception) {
             error("Error uploading image $srcKey: ${e.message}")
-            return ResponseEntity.badRequest(APIResult.Error("Error uploading image $srcKey: ${e.message}"))
+            return Response.badRequest(APIResult.Error("Error uploading image $srcKey: ${e.message}"))
         }
-        return ResponseEntity.ok(APIResult.Success(dto))
+        return Response.ok(APIResult.Success(dto))
     }
 
     /**
      * Delete an image from the sources bucket, and remove all the generated variants
      * This does NOT delete any images from the destination website bucket
      */
-    fun deleteImage(request: Request<Unit>): ResponseEntity<APIResult<String>> {
+    fun deleteImage(request: Request<Unit>): Response<APIResult<String>> {
         val srcKey =
-            request.pathParameters["srcKey"] ?: return ResponseEntity.badRequest(APIResult.Error("No srcKey provided"))
+            request.pathParameters["srcKey"] ?: return Response.badRequest(APIResult.Error("No srcKey provided"))
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
         loadContentTree(projectKeyHeader)
@@ -145,7 +145,7 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
         println("Content tree now has ${contentTree.images.size} images")
         saveContentTree(projectKeyHeader)
 
-        return ResponseEntity.ok(APIResult.Success(value = "Image'${srcKey}' deleted successfully"))
+        return Response.ok(APIResult.Success(value = "Image'${srcKey}' deleted successfully"))
     }
 
 

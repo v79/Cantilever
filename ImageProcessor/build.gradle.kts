@@ -13,6 +13,7 @@ version = "0.0.11"
 repositories {
     mavenCentral()
     google()
+    mavenLocal()
 }
 
 dependencies {
@@ -58,4 +59,10 @@ tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
     archiveBaseName.set("ImageProcessorHandler")
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
+    }
 }

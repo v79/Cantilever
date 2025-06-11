@@ -65,7 +65,6 @@ sealed class ContentNode {
             get() {
                 // intended url would be www.cantilevers.org/parentFolder/slug
                 // but parent looks like wwww.cantilevers.org/sources/pages/parentFolder
-                println("parent is $parent")
                 val parentFolder = parent.replaceFirst("/sources/pages","")
                 return if (isRoot) {
                     "${parentFolder}/index.html"

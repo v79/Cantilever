@@ -13,6 +13,7 @@ version = "0.0.13"
 
 repositories {
     mavenCentral()
+    mavenLocal()
 }
 
 dependencies {
@@ -63,4 +64,10 @@ tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
     archiveBaseName.set("TemplateProcessorHandler")
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
+    }
 }

@@ -1,4 +1,4 @@
-package org.liamjd.cantilever.api
+package org.liamjd.cantilever.api.old
 
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module

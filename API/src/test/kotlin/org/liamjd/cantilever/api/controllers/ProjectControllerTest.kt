@@ -17,7 +17,6 @@ import org.koin.test.junit5.mock.MockProviderExtension
 import org.koin.test.mock.declareMock
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.models.CantileverProject
-import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
@@ -142,7 +141,7 @@ internal class ProjectControllerTest : KoinTest {
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
         val controller = ProjectController(sourceBucket,generationBucket)
-        val request = Request(
+        val request = org.liamjd.apiviaduct.routing.Request(
             apiRequest = apiProxyEvent,
             body = mockProject,
             pathPattern = "/project/{projectKey}"
@@ -169,7 +168,7 @@ internal class ProjectControllerTest : KoinTest {
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
         val controller = ProjectController(sourceBucket,generationBucket)
-        val request = Request(
+        val request = org.liamjd.apiviaduct.routing.Request(
             apiRequest = apiProxyEvent,
             body = mockProject,
             pathPattern = "/project/"
@@ -229,11 +228,11 @@ internal class ProjectControllerTest : KoinTest {
     /**
      * Utility function to build the fake request object
      */
-    private fun buildRequest(path: String, pathPattern: String, body: String = ""): Request<Unit> {
+    private fun buildRequest(path: String, pathPattern: String, body: String = ""): org.liamjd.apiviaduct.routing.Request<Unit> {
         val apiGatewayProxyRequestEvent = APIGatewayProxyRequestEvent()
         apiGatewayProxyRequestEvent.body = ""
         apiGatewayProxyRequestEvent.path = path
         apiGatewayProxyRequestEvent.headers = mapOf("cantilever-project-domain" to "test")
-        return Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
+        return org.liamjd.apiviaduct.routing.Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
     }
 }

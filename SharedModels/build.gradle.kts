@@ -21,7 +21,8 @@ dependencies {
 
     // openAPI dependency scanning
     implementation(project(":OpenAPISchemaAnnotations"))
-    ksp(project(":OpenAPISchemaGenerator"))
+//    ksp(project(":OpenAPISchemaGenerator"))
+    ksp("org.liamjd.apiviaduct:openapi:0.4-SNAPSHOT")
 
     // multiplatform datetime library
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
@@ -35,6 +36,9 @@ dependencies {
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
+
+
+    implementation("org.liamjd.apiviaduct:openapi:0.4-SNAPSHOT")
 }
 
 tasks.getByName<Test>("test") {
@@ -43,4 +47,10 @@ tasks.getByName<Test>("test") {
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions.jvmTarget = "17"
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
+    }
 }

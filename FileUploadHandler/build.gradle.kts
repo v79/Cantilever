@@ -14,6 +14,7 @@ version = "0.0.13"
 repositories {
     mavenCentral()
     google()
+    mavenLocal()
 }
 
 dependencies {
@@ -60,4 +61,10 @@ tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
     archiveBaseName.set("FileUploadHandler")
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
+    }
 }

@@ -25,6 +25,10 @@ dependencies {
     implementation(project(":SharedModels"))
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
 
+    // routing
+    implementation("org.liamjd.apiviaduct:router:0.4-SNAPSHOT")
+    implementation("org.liamjd.apiviaduct:openapi:0.4-SNAPSHOT")
+
     // openAPI dependency scanning
     implementation(project(":OpenAPISchemaAnnotations"))
     implementation(project(":OpenAPISchemaGenerator"))
@@ -73,6 +77,12 @@ tasks.withType<KotlinCompile> {
     }
 }
 
+tasks.getByName<Jar>("jar") {
+    dependsOn(
+        parent?.project?.tasks?.named("copyAPISchema")
+    )
+}
+
 tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
@@ -80,4 +90,10 @@ tasks.withType<ShadowJar> {
     dependsOn(
         parent?.project?.tasks?.named("copyAPISchema")
     )
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
+    }
 }

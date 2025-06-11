@@ -421,12 +421,12 @@ class GeneratorControllerTest : KoinTest {
     /**
      * Utility function to build the fake request object
      */
-    private fun buildRequest(path: String, pathPattern: String): Request<Unit> {
+    private fun buildRequest(path: String, pathPattern: String): org.liamjd.apiviaduct.routing.Request<Unit> {
         val apiGatewayProxyRequestEvent = APIGatewayProxyRequestEvent()
         apiGatewayProxyRequestEvent.body = ""
         apiGatewayProxyRequestEvent.path = path
         apiGatewayProxyRequestEvent.headers = mapOf("cantilever-project-domain" to "test")
-        return Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
+        return org.liamjd.apiviaduct.routing.Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
     }
 
     @Language("JSON")
