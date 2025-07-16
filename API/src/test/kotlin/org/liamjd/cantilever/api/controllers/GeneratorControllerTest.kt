@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.koin.core.context.stopKoin
+import kotlinx.serialization.json.Json
 import org.koin.dsl.module
 import org.koin.test.KoinTest
 import org.koin.test.inject
@@ -16,6 +17,9 @@ import org.koin.test.junit5.KoinTestExtension
 import org.koin.test.junit5.mock.MockProviderExtension
 import org.koin.test.mock.declareMock
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.models.ContentNode
+import org.liamjd.cantilever.models.ContentTree
+import org.liamjd.cantilever.repositories.ContentRepository
 import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
@@ -38,6 +42,7 @@ class GeneratorControllerTest : KoinTest {
 
     private val mockS3: S3Service by inject()
     private val mockSQS: SQSService by inject()
+    private val mockContentRepository: ContentRepository by inject()
     private val sourceBucket = "sourceBucket"
     private val generationBucket = "generationBucket"
 
@@ -47,6 +52,7 @@ class GeneratorControllerTest : KoinTest {
         modules(module {
             single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
             single<SQSService> { SQSServiceImpl(Region.EU_WEST_2) }
+            single<ContentRepository> { mockk(relaxed = true) }
         })
     }
 
@@ -281,14 +287,22 @@ class GeneratorControllerTest : KoinTest {
         declareMock<SQSService> {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
+        declareMock<ContentRepository> {
+            every { mockContentRepository.getContentTree(any()) } returns ContentTree().apply {
+                // We don't need to populate it with real data since we're mocking S3 responses
+                // The important thing is that it returns a non-empty ContentTree
+                items.add(mockk(relaxed = true))
+            }
+        }
         every { mockSqsResponse.messageId() } returns "2345"
         val controller = GeneratorController(sourceBucket, generationBucket)
+        val spyController = setupMockContentTree(controller)
         val request = buildRequest(
             path = "/generate/template/sources%252Ftemplates%252Fabout.html.hbs",
             pathPattern = "/generate/template/{templateKey}"
         )
 
-        val response = controller.generateTemplate(request)
+        val response = spyController.generateTemplate(request)
 
         assertNotNull(response)
         println(response)
@@ -314,11 +328,17 @@ class GeneratorControllerTest : KoinTest {
         declareMock<SQSService> {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
+        declareMock<ContentRepository> {
+            every { mockContentRepository.getContentTree(any()) } returns mockk<ContentTree>(relaxed = true) {
+                every { items } returns mutableListOf(mockk<ContentNode>(relaxed = true))
+            }
+        }
         every { mockSqsResponse.messageId() } returns "3456"
         val controller = GeneratorController(sourceBucket, generationBucket)
+        val spyController = setupMockContentTree(controller)
         val request = buildRequest(path = "/generate/page/*", pathPattern = "/generate/page/{srcKey}")
 
-        val response = controller.generatePage(request)
+        val response = spyController.generatePage(request)
 
         assertNotNull(response)
         assertEquals(200, response.statusCode)
@@ -374,10 +394,11 @@ class GeneratorControllerTest : KoinTest {
         }
         every { imageListResponse.hasContents() } returns true
         every { imageListResponse.contents() } returns imageList
-
+        
         val controller = GeneratorController(sourceBucket, generationBucket)
+        val spyController = setupMockContentTree(controller)
         val request = buildRequest(path = "/delete/images", pathPattern = "/delete/images")
-        val response = controller.clearGeneratedImages(request)
+        val response = spyController.clearGeneratedImages(request)
 
         assertNotNull(response)
         assertEquals(204, response.statusCode)
@@ -427,6 +448,38 @@ class GeneratorControllerTest : KoinTest {
         apiGatewayProxyRequestEvent.path = path
         apiGatewayProxyRequestEvent.headers = mapOf("cantilever-project-domain" to "test")
         return org.liamjd.apiviaduct.routing.Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
+    }
+    
+    /**
+     * Helper method to set up a mock for the loadContentTree method
+     */
+    private fun setupMockContentTree(controller: GeneratorController): GeneratorController {
+        // Create a spy on the controller
+        val spyController = spyk(controller)
+        
+        // Mock the loadContentTree method to return true and populate the contentTree
+        every { spyController.loadContentTree(any()) } answers {
+            // Populate the contentTree with mock data
+            val mockPageNode = mockk<ContentNode.PageNode>(relaxed = true) {
+                every { templateKey } returns "sources/templates/about.html.hbs"
+                every { srcKey } returns "test/sources/pages/about.md"
+            }
+            val mockTemplateNode = mockk<ContentNode.TemplateNode>(relaxed = true)
+            val mockImageNode = mockk<ContentNode.ImageNode>(relaxed = true) {
+                every { srcKey } returns "test/generated/images/milkyway.jpg"
+            }
+            
+            spyController.contentTree.items.add(mockPageNode)
+            spyController.contentTree.templates.add(mockTemplateNode)
+            spyController.contentTree.images.add(mockImageNode)
+            
+            true // Return true to indicate success
+        }
+        
+        // Make sure the spy uses our mocked S3Service
+        every { spyController.s3Service } returns mockS3
+        
+        return spyController
     }
 
     @Language("JSON")

@@ -7,6 +7,7 @@ import software.amazon.awscdk.services.apigateway.EndpointType
 import software.amazon.awscdk.services.apigateway.LambdaRestApi
 import software.amazon.awscdk.services.certificatemanager.Certificate
 import software.amazon.awscdk.services.cognito.*
+import software.amazon.awscdk.services.dynamodb.*
 import software.amazon.awscdk.services.events.targets.SqsQueue
 import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.Function
@@ -32,7 +33,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         image_processing_queue,
         cors_domain,
         cognito_region,
-        cognito_user_pools_id
+        cognito_user_pools_id,
+        dynamodb_table
     }
     // TODO: I suppose I'm going to need to set up a dev and production environment for this sort of thing. Boo.
 
@@ -60,6 +62,9 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
 
         println("Creating editor bucket")
         val editorBucket = createEditorBucket()
+        
+        println("Creating DynamoDB table for content metadata")
+        val contentTable = createContentTable()
 
         // SQS for inter-lambda communication. The visibility timeout should be > the max processing time of the lambdas, so setting to 3
         println("Creating markdown processing queue")
@@ -86,7 +91,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
                 ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl,
-                ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl
+                ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl,
+                ENV.dynamodb_table.name to contentTable.tableName
             )
         )
 
@@ -102,7 +108,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.generation_bucket.name to generationBucket.bucketName,
                 ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl,
-                ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl
+                ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl,
+                ENV.dynamodb_table.name to contentTable.tableName
             )
         )
 
@@ -117,6 +124,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.generation_bucket.name to generationBucket.bucketName,
                 ENV.destination_bucket.name to destinationBucket.bucketName,
+                ENV.dynamodb_table.name to contentTable.tableName
             )
         )
 
@@ -138,7 +146,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
                 ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl,
                 ENV.cors_domain.name to deploymentDomain,
                 ENV.cognito_region.name to cr,
-                ENV.cognito_user_pools_id.name to cpool
+                ENV.cognito_user_pools_id.name to cpool,
+                ENV.dynamodb_table.name to contentTable.tableName
             )
         )
 
@@ -154,6 +163,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.generation_bucket.name to generationBucket.bucketName,
                 ENV.destination_bucket.name to destinationBucket.bucketName,
+                ENV.dynamodb_table.name to contentTable.tableName
             )
         )
 
@@ -165,26 +175,31 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         println("Granting lambda permissions to buckets and queues")
         fileUploadLambda.apply {
             sourceBucket.grantRead(this)
+            contentTable.grantReadWriteData(this)
         }
         markdownProcessorLambda.apply {
             sourceBucket.grantRead(this)
             generationBucket.grantWrite(this)
+            contentTable.grantReadWriteData(this)
         }
         templateProcessorLambda.apply {
             sourceBucket.grantRead(this)
             generationBucket.grantRead(this)
             destinationBucket.grantWrite(this)
+            contentTable.grantReadWriteData(this)
         }
         apiRoutingLambda.apply {
             sourceBucket.grantRead(this)
             sourceBucket.grantWrite(this)
             generationBucket.grantRead(this)
             generationBucket.grantWrite(this)
+            contentTable.grantReadWriteData(this)
         }
         imageProcessorLambda.apply {
             sourceBucket.grantRead(this)
             generationBucket.grantWrite(this)
             destinationBucket.grantWrite(this)
+            contentTable.grantReadWriteData(this)
         }
 
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
@@ -340,6 +355,75 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         .publicReadAccess(true)
         .websiteIndexDocument("index.html")
         .build()
+        
+    /**
+     * Create a DynamoDB table for storing content metadata
+     * The table has the following structure:
+     * - Partition key: domainId (String)
+     * - Sort key: entityType#entityId (String)
+     * - GSI1: TemplateIndex - domainId (PK), templateKey (SK)
+     * - GSI2: ParentChildIndex - parentKey (PK), entityType#entityId (SK)
+     * - GSI3: DateIndex - domainId (PK), date (SK)
+     */
+    private fun createContentTable(): Table {
+        val table = Table.Builder.create(this, "cantilever-content")
+            .tableName("cantilever-content")
+            .partitionKey(Attribute.builder()
+                .name("domainId")
+                .type(AttributeType.STRING)
+                .build())
+            .sortKey(Attribute.builder()
+                .name("entityType#entityId")
+                .type(AttributeType.STRING)
+                .build())
+            .billingMode(BillingMode.PAY_PER_REQUEST)
+            .removalPolicy(RemovalPolicy.RETAIN) // Important data, so retain on stack deletion
+            .build()
+            
+        // Add GSI for querying by template
+        table.addGlobalSecondaryIndex(GlobalSecondaryIndexProps.builder()
+            .indexName("TemplateIndex")
+            .partitionKey(Attribute.builder()
+                .name("domainId")
+                .type(AttributeType.STRING)
+                .build())
+            .sortKey(Attribute.builder()
+                .name("templateKey")
+                .type(AttributeType.STRING)
+                .build())
+            .projectionType(ProjectionType.ALL)
+            .build())
+            
+        // Add GSI for querying children of a folder
+        table.addGlobalSecondaryIndex(GlobalSecondaryIndexProps.builder()
+            .indexName("ParentChildIndex")
+            .partitionKey(Attribute.builder()
+                .name("parentKey")
+                .type(AttributeType.STRING)
+                .build())
+            .sortKey(Attribute.builder()
+                .name("entityType#entityId")
+                .type(AttributeType.STRING)
+                .build())
+            .projectionType(ProjectionType.ALL)
+            .build())
+            
+        // Add GSI for querying posts by date
+        table.addGlobalSecondaryIndex(GlobalSecondaryIndexProps.builder()
+            .indexName("DateIndex")
+            .partitionKey(Attribute.builder()
+                .name("domainId")
+                .type(AttributeType.STRING)
+                .build())
+            .sortKey(Attribute.builder()
+                .name("date")
+                .type(AttributeType.STRING)
+                .build())
+            .projectionType(ProjectionType.ALL)
+            .build())
+            
+        return table
+    }
 
     /**
      * Create a lambda function with several assumptions:

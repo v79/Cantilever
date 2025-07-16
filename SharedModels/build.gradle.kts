@@ -32,6 +32,7 @@ dependencies {
     implementation("software.amazon.awssdk:s3")
     implementation("software.amazon.awssdk:lambda")
     implementation("software.amazon.awssdk:sqs")
+    implementation("software.amazon.awssdk:dynamodb")
 
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")

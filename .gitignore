@@ -51,3 +51,5 @@ ImageProcessor/.gradle/vcs-1/gc.properties
 Web/build/*
 Web/node_modules/*
 /DevDiary/*
+/cdk.context.json
+/node_modules/*
