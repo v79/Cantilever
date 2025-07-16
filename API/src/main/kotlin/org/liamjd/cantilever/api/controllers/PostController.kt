@@ -103,13 +103,24 @@ class PostController(sourceBucket: String, generationBucket: String) : KoinCompo
         try {
             val domain = request.headers["cantilever-project-domain"]!!
             return if (loadContentTree(domain)) {
-                info("Fetching all posts ")
-                val lastUpdated = s3Service.getUpdatedTime("$domain/metadata.json", generationBucket)
-                val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
+                info("Fetching all posts from DynamoDB")
+                // Get posts directly from DynamoDB
+                println(contentRepository)
+                val posts = contentRepository.getPostsInOrder(domain, Int.MAX_VALUE)
+                println(posts)
                 val sorted = posts.sortedByDescending { it.date }
+                
+                // Use the most recent post's lastUpdated field as the lastUpdated time, or current time if no posts
+                val lastUpdated = if (sorted.isNotEmpty()) {
+                    sorted.first().lastUpdated
+                } else {
+                    kotlinx.datetime.Clock.System.now()
+                }
+                
                 val postList = PostListDTO(
                     count = sorted.size, lastUpdated = lastUpdated, posts = sorted
                 )
+                
                 if (postList.posts.isEmpty()) {
                     error("No posts found in content tree")
                     Response.serverError(body = APIResult.Error("No posts found in content tree for project $domain; create some?"))
@@ -117,8 +128,8 @@ class PostController(sourceBucket: String, generationBucket: String) : KoinCompo
                     Response.ok(body = APIResult.Success(value = postList))
                 }
             } else {
-                error("Cannot find metadata.json for project $domain")
-                Response.notFound(body = APIResult.Error(statusText = "Cannot find file '${domain}/metadata.json' in bucket $generationBucket. Please regenerate the metadata."))
+                error("Cannot find content tree for project $domain")
+                Response.notFound(body = APIResult.Error(statusText = "Cannot find content tree for project $domain in DynamoDB. Please regenerate the content."))
             }
         } catch (nsk: NoSuchElementException) {
             error("No project metadata found")

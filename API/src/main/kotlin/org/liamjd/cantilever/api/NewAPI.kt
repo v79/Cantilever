@@ -5,6 +5,8 @@ import org.koin.dsl.module
 import org.liamjd.apiviaduct.routing.*
 import org.liamjd.cantilever.api.controllers.*
 import org.liamjd.cantilever.auth.CognitoJWTAuthorizer
+import org.liamjd.cantilever.repositories.ContentRepository
+import org.liamjd.cantilever.repositories.ContentRepositoryFactory
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
@@ -17,6 +19,11 @@ import software.amazon.awssdk.regions.Region
 val cantileverModule = module {
     single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
     single<SQSService> { SQSServiceImpl(Region.EU_WEST_2) }
+    single<ContentRepository> { 
+        val region = Region.of(System.getenv("AWS_REGION") ?: "eu-west-2")
+        val tableName = System.getenv("dynamodb_table") ?: "cantilever-content"
+        ContentRepositoryFactory.createRepository(region, tableName)
+    }
 }
 
 class NewLambdaRouter : LambdaRouter() {

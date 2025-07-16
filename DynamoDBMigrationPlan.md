@@ -10,6 +10,7 @@ Currently, Cantilever uses:
 - S3 buckets for storing source files (markdown, templates), intermediate files, and the final website
 - A JSON cache file (`metadata.json`) stored in S3 that contains the ContentTree
 - The ContentTree tracks relationships between pages, posts, templates, and other content
+- The front-end API uses a library from the package org.liamjd.apiviaduct. The source code for this package is available in the folder C:\Users\liamj\Development\APIViaduct .
 
 ## DynamoDB Schema Design
 

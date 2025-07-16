@@ -18,12 +18,8 @@ abstract class APIController(val sourceBucket: String, val generationBucket: Str
     val contentTree: ContentTree = ContentTree()
     lateinit var project: CantileverProject
     
-    // Create a ContentRepository for DynamoDB access
-    val contentRepository: ContentRepository by lazy {
-        val region = Region.of(System.getenv("AWS_REGION") ?: "eu-west-2")
-        val tableName = System.getenv("dynamodb_table") ?: "cantilever-content"
-        ContentRepositoryFactory.createRepository(region, tableName)
-    }
+    // Get ContentRepository from Koin or create one if not available
+    val contentRepository: ContentRepository by inject()
 
     /**
      * Load the content tree from DynamoDB or fallback to S3 bucket
