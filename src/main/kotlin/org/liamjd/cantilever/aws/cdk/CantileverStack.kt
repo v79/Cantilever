@@ -408,7 +408,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             .projectionType(ProjectionType.ALL)
             .build())
             
-        // Add GSI for querying posts by date
+        // Add GSI for querying posts by date (original index)
         table.addGlobalSecondaryIndex(GlobalSecondaryIndexProps.builder()
             .indexName("DateIndex")
             .partitionKey(Attribute.builder()
@@ -417,6 +417,20 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
                 .build())
             .sortKey(Attribute.builder()
                 .name("date")
+                .type(AttributeType.STRING)
+                .build())
+            .projectionType(ProjectionType.ALL)
+            .build())
+            
+        // Add GSI for querying posts by lastUpdated
+        table.addGlobalSecondaryIndex(GlobalSecondaryIndexProps.builder()
+            .indexName("LastUpdatedIndex")
+            .partitionKey(Attribute.builder()
+                .name("domainId")
+                .type(AttributeType.STRING)
+                .build())
+            .sortKey(Attribute.builder()
+                .name("lastUpdated")
                 .type(AttributeType.STRING)
                 .build())
             .projectionType(ProjectionType.ALL)

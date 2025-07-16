@@ -30,6 +30,7 @@ class ContentRepositoryImpl(
         const val TEMPLATE_INDEX = "TemplateIndex"
         const val PARENT_CHILD_INDEX = "ParentChildIndex"
         const val DATE_INDEX = "DateIndex"
+        const val LAST_UPDATED_INDEX = "LastUpdatedIndex"
 
         // Attribute names
         const val ATTR_TEMPLATE_KEY = "templateKey"
@@ -335,14 +336,14 @@ class ContentRepositoryImpl(
             tableName = tableName,
             partitionKey = PARTITION_KEY,
             partitionValue = domainId,
-            sortKeyCondition = if (startDate != null) "$ATTR_DATE <= :startDate" else null,
-            indexName = DATE_INDEX
+            sortKeyCondition = if (startDate != null) "$ATTR_LAST_UPDATED <= :startDate" else null,
+            indexName = LAST_UPDATED_INDEX
         )
 
         return response.items()
             .filter { dynamoDBService.getString(it[SORT_KEY]!!).startsWith(ENTITY_TYPE_POST) }
             .map { mapToPostNode(it) }
-            .sortedByDescending { it.date }
+            .sortedByDescending { it.lastUpdated }
             .take(limit)
     }
 
