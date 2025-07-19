@@ -33,27 +33,31 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         cognito_region,
         cognito_user_pools_id
     }
+
     // TODO: I suppose I'm going to need to set up a dev and production environment for this sort of thing. Boo.
+    var stageName: String
 
     constructor(scope: Construct, id: String) : this(scope, id, null, "vUnknown")
 
     init {
         // Get the "deploymentDomain" value from cdk.json, or default to the dev URL if not found
         val envKey = scope.node.tryGetContext("env") as String?
+        stageName = props?.stackName ?: "no-stage"
+
         @Suppress("UNCHECKED_CAST")
         val env = scope.node.tryGetContext(envKey ?: "env") as LinkedHashMap<String, String>?
         val deploymentDomain = (env?.get("domainName")) ?: "http://localhost:5173"
-        println("ENVIRONMENT: $env; deploymentDomain: $deploymentDomain")
+        println("STAGE: ${stageName};  ENVIRONMENT: $env; deploymentDomain: $deploymentDomain")
 
-        Tags.of(this).add("Cantilever", versionString)
+        Tags.of(this).add("stageName", versionString)
 
         // Source bucket where Markdown, template files will be stored
         // I may wish to change the removal and deletion policies
         println("Creating source bucket")
-        val sourceBucket = createBucket("cantilever-sources")
+        val sourceBucket = createBucket("sources")
 
         println("Creating intermediate generated bucket")
-        val generationBucket = createBucket("cantilever-generated")
+        val generationBucket = createBucket("generated")
 
         println("Creating destination website bucket")
         val destinationBucket = createDestinationBucket()
@@ -77,7 +81,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         println("Creating FileUploadHandler Lambda function")
         val fileUploadLambda = createLambda(
             stack = this,
-            id = "cantilever-file-upload-lambda",
+            id = "${stageName.uppercase()}-file-upload",
             description = "Lambda function which responds to file upload events",
             codePath = "./FileUploadHandler/build/libs/FileUploadHandler.jar",
             handler = "org.liamjd.cantilever.lambda.FileUploadHandler",
@@ -93,7 +97,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         println("Creating MarkdownProcessorHandler Lambda function")
         val markdownProcessorLambda = createLambda(
             stack = this,
-            id = "cantilever-markdown-processor-lambda",
+            id = "${stageName.uppercase()}-markdown-processor",
             description = "Lambda function which converts a markdown file to an HTML file or fragment",
             codePath = "./MarkdownProcessor/build/libs/MarkdownProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.md.MarkdownProcessorHandler",
@@ -109,7 +113,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         println("Creating TemplateProcessorHandler Lambda function")
         val templateProcessorLambda = createLambda(
             stack = this,
-            id = "cantilever-handlebar-processor-lambda",
+            id = "${stageName.uppercase()}-cantilever-handlebar-processor",
             description = "Lambda function which renders a handlebars template with the given HTML fragment after markdown processing",
             codePath = "./TemplateProcessor/build/libs/TemplateProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.TemplateProcessorHandler",
@@ -122,10 +126,10 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
 
         println("Creating API routing Lambda function")
         val cr = env?.get("cognito_region") ?: ""
-        val cpool = env?.get("cognito_user_pools_id") ?: ""
+        val cpool = env?.get(ENV.cognito_user_pools_id.name) ?: ""
         val apiRoutingLambda = createLambda(
             stack = this,
-            id = "cantilever-api-router-lambda",
+            id = "${stageName.uppercase()}-api-router",
             description = "Lambda function which handles API routing, for API Gateway",
             codePath = "./API/build/libs/APIRouter.jar",
             handler = "org.liamjd.cantilever.api.NewLambdaRouter",
@@ -145,7 +149,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         println("Creating image processing Lambda function")
         val imageProcessorLambda = createLambda(
             stack = this,
-            id = "cantilever-image-processor-lambda",
+            id = "cantilever-image-processor-lambda-${stageName.uppercase()}",
             description = "Lambda function which processes images",
             codePath = "./ImageProcessor/build/libs/ImageProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.image.ImageProcessorHandler",
@@ -158,7 +162,11 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         )
 
         println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
-        val cloudfrontSubstack = CloudFrontSubstack(versionString)
+        val cloudfrontSubstack =
+            CloudFrontSubstack(
+                versionString,
+                if (props != null) props.stackName ?: "Cantilever-null-Stack" else "CantileverStack"
+            )
         cloudfrontSubstack.createCloudfrontDistribution(this, destinationBucket)
 
         // I suspect this isn't the most secure way to do this. Better a new IAM role?
@@ -233,18 +241,24 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         println("Creating API Gateway integrations")
         val certificate = Certificate.fromCertificateArn(
             this,
-            "cantilever-api-edge-certificate",
+            "cantilever-api-edge-certificate-${stageName.uppercase()}",
             "arn:aws:acm:us-east-1:086949310404:certificate/9b8f27c6-87be-4c14-a368-e6ad3ac4fb68"
         )
 
         // The API Gateway
         // I don't like how much I have to hardcode the allowed headers here. I would like this to be configurable by the router.
-        LambdaRestApi.Builder.create(this, "cantilever-rest-api")
+        val domainName = if (stageName == "cantilever-prod") {
+            "api.cantilevers.org"
+        } else {
+            "${stageName}-api.cantilevers.org"
+        }
+        println("Creating API Gateway with Lambda integration for $stageName to domain $domainName")
+        LambdaRestApi.Builder.create(this, "cantilever-rest-api-${stageName.uppercase()}")
             .restApiName("Cantilever REST API")
             .description("Gateway function to Cantilever services, handling routing")
             .disableExecuteApiEndpoint(true)
             .domainName(
-                DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName("api.cantilevers.org")
+                DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName(domainName)
                     .certificate(certificate).build()
             )
             .defaultCorsPreflightOptions(
@@ -269,7 +283,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             .build()
 
         println("Creating Cognito identity pool")
-        val pool = UserPool.Builder.create(this, "cantilever-user-pool").userPoolName("cantilever-user-pool")
+        val pool = UserPool.Builder.create(this, "cantilever-user-pool-$stageName")
+            .userPoolName("cantilever-user-pool")
             .signInCaseSensitive(true)
             .signInAliases(SignInAliases.builder().email(true).phone(false).username(false).build())
             .passwordPolicy(PasswordPolicy.builder().minLength(12).build())
@@ -280,7 +295,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             .build()
 
         pool.addDomain(
-            "cantilever-api",
+            "cantilever-api-domain-${stageName.uppercase()}",
             UserPoolDomainOptions.builder()
                 .cognitoDomain(CognitoDomainOptions.builder().domainPrefix("cantilever").build()).build()
         )
@@ -316,24 +331,26 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         ).build()
     ).build()
 
-    private fun createDestinationBucket(): Bucket = Bucket.Builder.create(this, "cantilever-website")
-        .versioned(false)
-        .removalPolicy(RemovalPolicy.DESTROY)
-        .autoDeleteObjects(true)
-        .blockPublicAccess(
-            BlockPublicAccess.BLOCK_ALL
-        )
-        .build()
+    private fun createDestinationBucket(): Bucket =
+        Bucket.Builder.create(this, "cantilever-website-${stageName.uppercase()}")
+            .versioned(false)
+            .removalPolicy(RemovalPolicy.DESTROY)
+            .autoDeleteObjects(true)
+            .blockPublicAccess(
+                BlockPublicAccess.BLOCK_ALL
+            )
+            .build()
 
-    private fun createBucket(name: String, public: Boolean = false): Bucket = Bucket.Builder.create(this, name)
-        .versioned(false)
-        .removalPolicy(RemovalPolicy.DESTROY)
-        .autoDeleteObjects(true)
-        .publicReadAccess(public)
-        .versioned(true)
-        .build()
+    private fun createBucket(name: String, public: Boolean = false): Bucket =
+        Bucket.Builder.create(this, "${stageName.uppercase()}-${name}")
+            .versioned(false)
+            .removalPolicy(RemovalPolicy.DESTROY)
+            .autoDeleteObjects(true)
+            .publicReadAccess(public)
+            .versioned(true)
+            .build()
 
-    private fun createEditorBucket(): Bucket = Bucket.Builder.create(this, "cantilever-editor")
+    private fun createEditorBucket(): Bucket = Bucket.Builder.create(this, "${stageName.uppercase()}-editor")
         .versioned(false)
         .removalPolicy(RemovalPolicy.DESTROY)
         .autoDeleteObjects(true)
