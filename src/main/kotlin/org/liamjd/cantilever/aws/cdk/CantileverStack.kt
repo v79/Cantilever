@@ -41,6 +41,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
     init {
         // Get the "deploymentDomain" value from cdk.json, or default to the dev URL if not found
         val envKey = scope.node.tryGetContext("env") as String?
+        @Suppress("UNCHECKED_CAST")
         val env = scope.node.tryGetContext(envKey ?: "env") as LinkedHashMap<String, String>?
         val deploymentDomain = (env?.get("domainName")) ?: "http://localhost:5173"
         println("ENVIRONMENT: $env; deploymentDomain: $deploymentDomain")

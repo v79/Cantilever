@@ -7,7 +7,7 @@ import software.amazon.awscdk.StackProps
 fun main() {
     println("Initiating CDK Application")
     val app = App()
-    val versionString = "v0.0.12"
+    val versionString = "v0.0.13"
 
     val euWest = makeEnv(System.getenv("CDK_DEFAULT_ACCOUNT"), "eu-west-2")
 

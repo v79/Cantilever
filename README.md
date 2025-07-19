@@ -38,3 +38,9 @@ Sub-modules in the project will provide the Lambda functions for HTML generation
 This could be considered a successor to my [bascule](https://github.com/v79/bascule-static) static site generator, a command-line driven application which 
 got weighed down by poor program design and my own lack of experience. I have been keen to rebuild _bascule_ as 
 web-first application for several years, frustrated by my inability to make website updates away from my PC.
+
+## Deployment instructions
+
+`cdk deploy --context env=<dev|prod> --all` to deploy the stack.cdk 
+
+Build WebEditor with `npm run build`
