@@ -13,7 +13,6 @@ import software.amazon.awscdk.services.lambda.Function
 import software.amazon.awscdk.services.lambda.Runtime
 import software.amazon.awscdk.services.lambda.eventsources.S3EventSource
 import software.amazon.awscdk.services.lambda.eventsources.SqsEventSource
-import software.amazon.awscdk.services.logs.RetentionDays
 import software.amazon.awscdk.services.s3.BlockPublicAccess
 import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.EventType
@@ -339,12 +338,13 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         .removalPolicy(RemovalPolicy.DESTROY)
         .autoDeleteObjects(true)
         .publicReadAccess(true)
+        .blockPublicAccess(BlockPublicAccess.BLOCK_ACLS_ONLY)
         .websiteIndexDocument("index.html")
         .build()
 
     /**
      * Create a lambda function with several assumptions:
-     * - Java 17 runtime
+     * - Java 21 runtime
      * - 320Mb RAM
      * - 2 minute timeout
      * - one month's logs
@@ -359,12 +359,11 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         environment: Map<String, String>?
     ): Function = Function.Builder.create(stack, id)
         .description(description ?: "")
-        .runtime(Runtime.JAVA_17)
+        .runtime(Runtime.JAVA_21)
         .memorySize(memory)
         .timeout(Duration.minutes(2))
         .code(Code.fromAsset(codePath))
         .handler(handler)
-        .logRetention(RetentionDays.ONE_MONTH)
         .environment(
             environment
                 ?: emptyMap()

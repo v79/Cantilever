@@ -1,14 +1,14 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
-    kotlin("jvm") version "1.9.20"
-    kotlin("plugin.serialization") version "1.9.0"
+    kotlin("jvm") version "2.2.0"
+    kotlin("plugin.serialization") version "2.1.21"
     id("com.github.johnrengelman.shadow") version "7.1.2"
-    id("org.jetbrains.kotlinx.kover") version "0.7.4"
+    id("org.jetbrains.kotlinx.kover") version "0.9.1"
 }
 
 group = "org.liamjd.cantilever.lambda"
-version = "0.0.11"
+version = "0.1.0"
 
 repositories {
     mavenCentral()
@@ -20,7 +20,6 @@ dependencies {
     // shared elements
     implementation(project(":SharedModels"))
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
-
     // serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
     implementation("com.charleskorn.kaml:kaml:0.55.0")
@@ -50,19 +49,15 @@ tasks.getByName<Test>("test") {
     useJUnitPlatform()
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.jvmTarget = "17"
-    kotlinOptions.freeCompilerArgs += "-Xcontext-receivers"
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
 }
+
 
 tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
     archiveBaseName.set("ImageProcessorHandler")
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
-    }
 }

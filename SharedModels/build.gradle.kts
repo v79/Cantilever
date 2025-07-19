@@ -1,12 +1,12 @@
 plugins {
-    kotlin("jvm") version "1.9.20"
+    kotlin("jvm") version "2.2.0"
     kotlin("plugin.serialization") version "1.9.0"
-    id("com.google.devtools.ksp") version "1.9.20-1.0.14"
-    id("org.jetbrains.kotlinx.kover") version "0.7.4"
+    id("com.google.devtools.ksp") version "2.2.0-2.0.2"
+    id("org.jetbrains.kotlinx.kover") version "0.9.1"
 }
 
 group = "org.liamjd.cantilever"
-version = "0.0.12"
+version = "0.1.0"
 
 repositories {
     mavenCentral()
@@ -22,7 +22,7 @@ dependencies {
     // openAPI dependency scanning
     implementation(project(":OpenAPISchemaAnnotations"))
 //    ksp(project(":OpenAPISchemaGenerator"))
-    ksp("org.liamjd.apiviaduct:openapi:0.4-SNAPSHOT")
+//    ksp("org.liamjd.apiviaduct:openapi:0.4-SNAPSHOT")
 
     // multiplatform datetime library
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
@@ -45,12 +45,8 @@ tasks.getByName<Test>("test") {
     useJUnitPlatform()
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.jvmTarget = "17"
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }

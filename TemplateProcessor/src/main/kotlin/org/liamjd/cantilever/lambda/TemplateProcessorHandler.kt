@@ -106,10 +106,8 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             }
 
             logger.info("Final page model keys: ${model.keys}")
-            val html = with(logger) {
-                val renderer = HandlebarsRenderer()
-                renderer.render(model = model, template = templateString)
-            }
+            val renderer = HandlebarsRenderer()
+            val html = renderer.render(model = model, template = templateString)
             logger.info("Calculated URL for page: ${pageMsg.metadata.url} from parentFolder: ${pageMsg.metadata.parent} and srcKey: ${pageMsg.metadata.srcKey}")
             s3Service.putObjectAsString(pageMsg.metadata.url, destinationBucket, html, "text/html")
             logger.info("Written final HTML file to '${pageMsg.metadata.url}'")
@@ -150,15 +148,13 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             // TODO: try-catch this
             val navigationBuilder = NavigationBuilder(getContentTree(postMsg.projectDomain, generationBucket))
 
-            val html = with(logger) {
-                val nav = navigationBuilder.getPostNavigationObjects(postMsg.metadata)
-                nav.entries.forEach {
-                    model[it.key] = it.value
-                }
-
-                val renderer = HandlebarsRenderer()
-                renderer.render(model = model, template = templateString)
+            val nav = navigationBuilder.getPostNavigationObjects(postMsg.metadata)
+            nav.entries.forEach {
+                model[it.key] = it.value
             }
+
+            val renderer = HandlebarsRenderer()
+            val html = renderer.render(model = model, template = templateString)
 
             // save to S3
             s3Service.putObjectAsString(project.domainKey + postMsg.metadata.url, destinationBucket, html, "text/html")

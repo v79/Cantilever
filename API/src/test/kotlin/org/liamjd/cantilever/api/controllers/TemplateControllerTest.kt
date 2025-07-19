@@ -1,8 +1,11 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
-import io.mockk.*
+import io.mockk.every
 import io.mockk.junit5.MockKExtension
+import io.mockk.mockk
+import io.mockk.mockkClass
+import kotlinx.datetime.Clock
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -15,8 +18,6 @@ import org.koin.test.junit5.KoinTestExtension
 import org.koin.test.junit5.mock.MockProviderExtension
 import org.koin.test.mock.declareMock
 import org.liamjd.cantilever.models.ContentNode
-import org.liamjd.cantilever.models.Template
-import org.liamjd.cantilever.models.TemplateMetadata
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
@@ -93,21 +94,7 @@ internal class TemplateControllerTest : KoinTest {
 
     @Test
     fun `saves a new template file when none exists`() {
-        val mockHandlebarsContent = mockk<ContentNode.TemplateNode>()
-        val mockTemplate = mockk<Template>()
-        val mockTemplateMeta = mockk<TemplateMetadata>()
-        val body = """
-            {{{ name }}}
-        """.trimIndent()
-        every { mockTemplate.srcKey } returns "test/my-template"
-        every { mockTemplate.metadata } returns mockTemplateMeta
-        every { mockTemplateMeta.name } returns "My Template"
-        every { mockHandlebarsContent.body } returns body
-        every { mockHandlebarsContent.srcKey } returns "my-template"
-        every { mockHandlebarsContent.title } returns "My Template"
-        every { mockHandlebarsContent.sections } returns listOf("body")
-        every { mockTemplateMeta.sections } returns listOf("body")
-        every { mockHandlebarsContent.body = any() } just runs
+        val mockHandlebarsContent = ContentNode.TemplateNode("my-template", Clock.System.now(),"My Template", listOf("body"))
 
         declareMock<S3Service> {
             every { mockS3.objectExists("my-template", sourceBucket) } returns true
@@ -135,21 +122,7 @@ internal class TemplateControllerTest : KoinTest {
 
     @Test
     fun `updates an existing template file`() {
-        val mockHandlebarsContent = mockk<ContentNode.TemplateNode>()
-        val mockTemplate = mockk<Template>()
-        val mockTemplateMeta = mockk<TemplateMetadata>()
-        val body = """
-            {{{ name }}}
-        """.trimIndent()
-        every { mockTemplate.srcKey } returns "test/my-template"
-        every { mockTemplate.metadata } returns mockTemplateMeta
-        every { mockTemplateMeta.name } returns "My Template"
-        every { mockHandlebarsContent.body } returns body
-        every { mockHandlebarsContent.srcKey } returns "my-template"
-        every { mockHandlebarsContent.title } returns "My Template"
-        every { mockHandlebarsContent.sections } returns listOf("body")
-        every { mockTemplateMeta.sections } returns listOf("body")
-        every { mockHandlebarsContent.body = any() } just runs
+        val mockHandlebarsContent = ContentNode.TemplateNode(srcKey = "my-template", lastUpdated = Clock.System.now(), title = "My Template", sections = listOf("body"))
 
         declareMock<S3Service> {
             every { mockS3.objectExists("my-template", sourceBucket) } returns true

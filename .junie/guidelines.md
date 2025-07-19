@@ -13,7 +13,7 @@ This application is built on a Windows machine.
 The project follows a modular architecture with the following main components:
 
 - **Root Project**: Contains AWS CDK code for infrastructure deployment
-- **API**: REST API implementation for the web editor
+- **API**: REST API implementation for the web editor. This uses a custom API routing library, written in Kotlin and running on AWS Lambda.
 - **FileUploadHandler**: Lambda function for handling file uploads
 - **MarkdownProcessor**: Lambda function for converting markdown to HTML
 - **TemplateProcessor**: Lambda function for applying Handlebars templates
@@ -38,8 +38,8 @@ module/
 
 The project uses Gradle with Kotlin DSL (build.gradle.kts) for build configuration. Key aspects:
 
-- JDK 17 is required for building and running the application
-- Kotlin 1.9.20 is used as the primary programming language
+- JDK 21 is required for building and running the application
+- Kotlin 2.2.0 is used as the primary programming language
 - Dependencies are managed through Gradle's dependency management system
 - Each module has its own build.gradle.kts file with module-specific dependencies
 

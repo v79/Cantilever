@@ -5,6 +5,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.*
 import org.liamjd.cantilever.common.S3_KEY
+import kotlin.time.ExperimentalTime
 
 /**
  * A SrcKey is a String representation of the S3 bucket object key
@@ -19,6 +20,7 @@ typealias SrcKey = String // an S3 bucket object key
 @OptIn(ExperimentalSerializationApi::class)
 sealed class ContentNode {
     abstract val srcKey: SrcKey
+    @OptIn(ExperimentalTime::class)
     abstract val lastUpdated: Instant
     abstract val url: String
 
@@ -27,7 +29,7 @@ sealed class ContentNode {
      */
     @Serializable
     @SerialName("folder")
-    data class FolderNode(
+    data class FolderNode @OptIn(ExperimentalTime::class) constructor(
         override val srcKey: SrcKey,
         override val lastUpdated: Instant = Clock.System.now(),
         val children: MutableList<SrcKey> = mutableListOf(),
