@@ -1,8 +1,8 @@
 plugins {
-    kotlin("jvm") version "2.2.0"
-    kotlin("plugin.serialization") version "1.9.0"
-    id("com.google.devtools.ksp") version "2.2.0-2.0.2"
-    id("org.jetbrains.kotlinx.kover") version "0.9.1"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 group = "org.liamjd.cantilever"
@@ -16,8 +16,8 @@ repositories {
 
 dependencies {
     // serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
-    implementation("com.charleskorn.kaml:kaml:0.55.0")
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kaml)
 
     // openAPI dependency scanning
     implementation(project(":OpenAPISchemaAnnotations"))
@@ -25,20 +25,20 @@ dependencies {
 //    ksp("org.liamjd.apiviaduct:openapi:0.4-SNAPSHOT")
 
     // multiplatform datetime library
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
+    implementation(libs.kotlinx.datetime)
 
     // sdk v2
-    implementation(platform("software.amazon.awssdk:bom:2.20.68"))
-    implementation("software.amazon.awssdk:s3")
-    implementation("software.amazon.awssdk:lambda")
-    implementation("software.amazon.awssdk:sqs")
+    implementation(platform(libs.aws.sdk.bom))
+    implementation(libs.aws.sdk.s3)
+    implementation(libs.aws.sdk.lambda)
+    implementation(libs.aws.sdk.sqs)
 
     // testing
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
+    testImplementation(libs.junit.api)
+    testRuntimeOnly(libs.junit.engine)
 
-
-    implementation("org.liamjd.apiviaduct:openapi:0.4-SNAPSHOT")
+    // routing
+    implementation(libs.viaduct.openapi)
 }
 
 tasks.getByName<Test>("test") {

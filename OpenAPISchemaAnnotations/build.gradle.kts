@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "2.2.0"
-    kotlin("plugin.serialization") version "1.9.0"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 group = "org.liamjd.cantilever.openapi"
@@ -12,7 +12,7 @@ repositories {
 
 dependencies {
     // serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+    implementation(libs.kotlinx.serialization.json)
 }
 
 tasks.test {

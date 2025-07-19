@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "2.2.0"
+    alias(libs.plugins.kotlin.jvm)
 }
 
 group = "org.liamjd.cantilever.openapi"
@@ -18,10 +18,10 @@ buildscript {
 dependencies {
     // shared elements
     implementation(project(":OpenAPISchemaAnnotations"))
-    implementation("com.google.devtools.ksp:symbol-processing-api:2.2.0-2.0.2")
+    implementation(libs.kotlin.ksp)
 
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
+    testImplementation(libs.junit.jupiter)
 }
 
 tasks.getByName<Test>("test") {

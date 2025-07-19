@@ -114,12 +114,12 @@ Common test patterns include:
 The project uses GitHub Actions for CI/CD with two main workflows:
 
 1. **Gradle Build**: Builds the project on pull requests
-   - Uses JDK 17 (Amazon Corretto)
+   - Uses JDK 21 (Amazon Corretto)
    - Runs on Ubuntu
 
 2. **AWS CDK Deployment**: Deploys to AWS on pushes to master
    - Configures AWS credentials
-   - Sets up JDK 17 and Node.js 18
+   - Sets up JDK 21 and Node.js 18
    - Installs AWS CDK globally
    - Runs `cdk deploy --context env=prod --all`
 

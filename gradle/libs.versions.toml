@@ -1,0 +1,103 @@
+
+[versions]
+# Kotlin and plugins
+kotlin = "2.2.0"
+kotlin-serialization = "2.1.21"
+ksp = "2.2.0-2.0.2"
+shadow = "7.1.2"
+kover = "0.9.1"
+
+# AWS
+aws-cdk = "2.206.0"
+aws-constructs = "10.3.0"
+aws-sdk = "2.20.68"
+aws-lambda-core = "1.2.3"
+aws-lambda-events = "3.11.3"
+aws-lambda-tests = "1.1.1"
+aws-lambda-log4j2 = "1.6.0"
+
+# Kotlinx libraries
+kotlinx-datetime = "0.4.1"
+kotlinx-serialization-json = "1.6.2"
+
+# Testing
+junit = "5.9.2"
+mockk = "1.13.4"
+koin-core = "3.4.0"
+koin-test = "3.3.3"
+
+# APIViaduct
+api-viaduct = "0.4-SNAPSHOT"
+
+# Other libraries
+kaml = "0.55.0"
+handlebars = "4.3.1"
+java-jwt = "4.3.0"
+jwks-rsa = "0.22.0"
+imgscalr = "4.2"
+
+[libraries]
+# Kotlin
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-ksp = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
+
+# AWS CDK
+aws-cdk-lib = { module = "software.amazon.awscdk:aws-cdk-lib", version.ref = "aws-cdk" }
+aws-constructs = { module = "software.constructs:constructs", version.ref = "aws-constructs" }
+
+# AWS SDK
+aws-sdk-bom = { module = "software.amazon.awssdk:bom", version.ref = "aws-sdk" }
+aws-sdk-s3 = { module = "software.amazon.awssdk:s3" }
+aws-sdk-lambda = { module = "software.amazon.awssdk:lambda" }
+aws-sdk-sqs = { module = "software.amazon.awssdk:sqs" }
+
+# AWS Lambda
+aws-lambda-core = { module = "com.amazonaws:aws-lambda-java-core", version.ref = "aws-lambda-core" }
+aws-lambda-events = { module = "com.amazonaws:aws-lambda-java-events", version.ref = "aws-lambda-events" }
+aws-lambda-tests = { module = "com.amazonaws:aws-lambda-java-tests", version.ref = "aws-lambda-tests" }
+aws-lambda-log4j2 = { module = "com.amazonaws:aws-lambda-java-log4j2", version.ref = "aws-lambda-log4j2" }
+
+# Kotlin libraries
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization-json" }
+
+# Testing
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin-core" }
+koin-test = { module = "io.insert-koin:koin-test", version.ref = "koin-test" }
+koin-test-junit5 = { module = "io.insert-koin:koin-test-junit5", version.ref = "koin-test" }
+
+# APIViaduct
+viaduct-router = { module = "org.liamjd.apiviaduct:router", version.ref = "api-viaduct" }
+viaduct-openapi = { module = "org.liamjd.apiviaduct:openapi", version.ref = "api-viaduct" }
+
+# Other libraries
+kaml = { module = "com.charleskorn.kaml:kaml", version.ref = "kaml" }
+handlebars = { module = "com.github.jknack:handlebars", version.ref = "handlebars" }
+java-jwt = { module = "com.auth0:java-jwt", version.ref = "java-jwt" }
+jwks-rsa = { module = "com.auth0:jwks-rsa", version.ref = "jwks-rsa" }
+imgscalr = { module = "org.imgscalr:imgscalr-lib", version.ref = "imgscalr" }
+
+[bundles]
+aws-lambda = [
+  "aws-lambda-core",
+  "aws-lambda-events",
+  "aws-lambda-tests",
+  "aws-lambda-log4j2"
+]
+koin-test = [
+  "koin-core",
+  "koin-test",
+  "koin-test-junit5"
+]
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin-serialization" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

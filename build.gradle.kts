@@ -1,9 +1,8 @@
 plugins {
-    kotlin("jvm") version "2.2.0"
+    alias(libs.plugins.kotlin.jvm)
     application
     `maven-publish`
-//    id("org.sonarqube") version "4.4.1.3373"
-    id("org.jetbrains.kotlinx.kover") version "0.9.1"
+    alias(libs.plugins.kover)
     id("org.barfuin.gradle.taskinfo") version "2.1.0"
 }
 
@@ -18,11 +17,11 @@ repositories {
 
 dependencies {
     // AWS CDK
-    implementation("software.amazon.awscdk:aws-cdk-lib:2.206.0")
-    implementation("software.constructs:constructs:10.3.0")
+    implementation(libs.aws.cdk.lib)
+    implementation(libs.aws.constructs)
 
     // multiplatform datetime library
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
+    implementation(libs.kotlinx.datetime)
 
     testImplementation(kotlin("test"))
 }
