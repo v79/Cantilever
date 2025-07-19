@@ -144,7 +144,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
     fun getTemplates(request: Request<Unit>): Response<APIResult<TemplateListDTO>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (loadContentTree(projectKeyHeader)) {
-            info("Fetching all posts from metadata.json")
+            info("Fetching all templates from metadata.json")
             val lastUpdated = s3Service.getUpdatedTime(projectKeyHeader + "/" + S3_KEY.metadataKey, sourceBucket)
             val templates = contentTree.templates.sortedBy { it.title }
             val templateList = TemplateListDTO(
@@ -154,7 +154,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
             )
             Response.ok(body = APIResult.Success(value = templateList))
         } else {
-            error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
+            error("Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
             Response.notFound(
                 body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
             )
