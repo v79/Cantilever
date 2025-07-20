@@ -13,6 +13,11 @@ import software.amazon.awscdk.services.lambda.Function
 import software.amazon.awscdk.services.lambda.Runtime
 import software.amazon.awscdk.services.lambda.eventsources.S3EventSource
 import software.amazon.awscdk.services.lambda.eventsources.SqsEventSource
+import software.amazon.awscdk.services.route53.ARecord
+import software.amazon.awscdk.services.route53.HostedZone
+import software.amazon.awscdk.services.route53.HostedZoneAttributes
+import software.amazon.awscdk.services.route53.RecordTarget
+import software.amazon.awscdk.services.route53.targets.ApiGateway
 import software.amazon.awscdk.services.s3.BlockPublicAccess
 import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.EventType
@@ -63,6 +68,18 @@ class CantileverStack(
         false
     )
 
+    // console colour codes
+    val red = "\u001b[31m"
+    val green = "\u001b[32m"
+    val yellow = "\u001b[33m"
+    val blue = "\u001b[34m"
+    val magenta = "\u001b[35m"
+    val cyan = "\u001b[36m"
+    val white = "\u001b[37m"
+
+    // Resets previous color codes
+    val reset = "\u001b[0m"
+
     init {
         // Get the "deploymentDomain" value from cdk.json, or default to the dev URL if not found
         val envKey = scope.node.tryGetContext("env") as String?
@@ -70,7 +87,8 @@ class CantileverStack(
 
         @Suppress("UNCHECKED_CAST")
         val env = scope.node.tryGetContext(envKey ?: "env") as LinkedHashMap<String, String>?
-        println("STAGE: ${stageName};  ENVIRONMENT: $env; deploymentDomain: $deploymentDomain; isPROD: $isProd")
+        println()
+        println(blue + "STAGE: ${stageName};  ENVIRONMENT: $env; deploymentDomain: $deploymentDomain; isPROD: $isProd" + reset)
 
         Tags.of(this).add("stageName", versionString)
 
@@ -163,11 +181,11 @@ class CantileverStack(
         cPool.addDomain(
             "${stageName}-api-domain}",
             UserPoolDomainOptions.builder()
-                .cognitoDomain(CognitoDomainOptions.builder().domainPrefix("cantilever").build()).build()
+                .cognitoDomain(CognitoDomainOptions.builder().domainPrefix(stageName).build()).build()
         )
 
-        val cr = env?.get("cognito_region") ?: ""
-        println("Creating API routing Lambda function for congito region $cr")
+        val cr = props?.env?.region ?: "eu-west-2" // Default to eu-west-2 if not set
+        println("Creating API routing Lambda function for Cognito region '$cr'")
         val apiRoutingLambda = createLambda(
             stack = this,
             id = "${stageName.uppercase()}-api-router",
@@ -202,13 +220,13 @@ class CantileverStack(
             )
         )
 
-        println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
+        /*println("Setting up website domain and cloudfront distribution for destination website bucket (not achieving its goal right now)")
         val cloudfrontSubstack =
             CloudFrontSubstack(
                 versionString,
                 if (props != null) props.stackName ?: "Cantilever-null-Stack" else "CantileverStack"
             )
-        cloudfrontSubstack.createCloudfrontDistribution(this, destinationBucket)
+        cloudfrontSubstack.createCloudfrontDistribution(this, destinationBucket)*/
 
         // I suspect this isn't the most secure way to do this. Better a new IAM role?
         println("Granting lambda permissions to buckets and queues")
@@ -289,8 +307,8 @@ class CantileverStack(
         // The API Gateway
         // I don't like how much I have to hardcode the allowed headers here. I would like this to be configurable by the router.
         println("Creating API Gateway with Lambda integration for $stageName to domain $apiDomain")
-        LambdaRestApi.Builder.create(this, "cantilever-rest-api-${stageName.uppercase()}")
-            .restApiName("Cantilever REST API")
+        val lambdaRestAPI = LambdaRestApi.Builder.create(this, "cantilever-rest-api-${stageName.uppercase()}")
+            .restApiName("Cantilever $stageName REST API")
             .description("Gateway function to Cantilever services, handling routing")
             .disableExecuteApiEndpoint(true)
             .domainName(
@@ -320,8 +338,20 @@ class CantileverStack(
 
 
 
+
+        println("Creating API Gateway DNS record for $apiDomain")
+        val apiDomainDNSRecord = ARecord.Builder.create(this, "cantilever-api-record-${stageName.uppercase()}").zone(
+            HostedZone.fromHostedZoneAttributes(
+                this, "cantiliever-api-zone-${stageName.uppercase()}",
+                HostedZoneAttributes.builder().hostedZoneId("Z01474271BEFJPTG86EOG").zoneName("cantilevers.org").build()
+            )
+        )
+            .recordName(apiDomain)
+            .target(RecordTarget.fromAlias(ApiGateway(lambdaRestAPI))).build()
+
+
         println("Registering app clients with Cognito identity pool")
-        val appUrls = listOf("https://app.cantilevers.org/", "http://localhost:5173/")
+        val appUrls = listOf(deploymentDomain)
         val corbelAppUrls =
             listOf(
                 "http://localhost:44817/callback",
@@ -329,21 +359,24 @@ class CantileverStack(
             ) // port randomly chosen here, needs to match that in the Corbel application
         cPool.addClient(
             "cantilever-app",
-            UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
-                OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(true).build())
-                    .callbackUrls(appUrls).logoutUrls(appUrls).build()
-            ).build()
+            UserPoolClientOptions.builder().userPoolClientName("$stageName-webapp-client-pool")
+                .authFlows(AuthFlow.builder().build()).oAuth(
+                    OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(true).build())
+                        .callbackUrls(appUrls).logoutUrls(appUrls).build()
+                ).build()
         )
         cPool.addClient(
             "corbel-app",
-            UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
-                OAuthSettings.builder().flows(
-                    OAuthFlows.builder().implicitCodeGrant(false).authorizationCodeGrant(true)
-                        .build()
-                ).scopes(listOf(OAuthScope.EMAIL, OAuthScope.OPENID, OAuthScope.COGNITO_ADMIN))
-                    .callbackUrls(corbelAppUrls).logoutUrls(corbelAppUrls).build()
-            ).build()
+            UserPoolClientOptions.builder().userPoolClientName("$stageName-corbel-app-client-pool")
+                .authFlows(AuthFlow.builder().build()).oAuth(
+                    OAuthSettings.builder().flows(
+                        OAuthFlows.builder().implicitCodeGrant(false).authorizationCodeGrant(true)
+                            .build()
+                    ).scopes(listOf(OAuthScope.EMAIL, OAuthScope.OPENID, OAuthScope.COGNITO_ADMIN))
+                        .callbackUrls(corbelAppUrls).logoutUrls(corbelAppUrls).build()
+                ).build()
         )
+
     }
 
     /**
