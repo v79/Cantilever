@@ -13,17 +13,23 @@ fun main() {
 
     println("Creating Cantilever stacks for $versionString in ${euWest.region} (${euWest.account})")
     val prodStack = CantileverStack(
-        app,
-        "CantileverStack",
-        buildStack("prod", euWest),
-        versionString
+        scope = app,
+        id = "CantileverStack",
+        props = buildStack("prod", euWest),
+        versionString = versionString,
+        deploymentDomain = "https://app.cantilevers.org",
+        apiDomain = "api.cantilevers.org",
+        isProd = true
     )
 
     val devStack = CantileverStack(
-        app,
-        "Cantilever-Dev-Stack",
-        buildStack("dev", euWest),
-        "${versionString}-SNAPSHOT"
+        scope = app,
+        id = "Cantilever-Dev-Stack",
+        props = buildStack("dev", euWest),
+        versionString = "${versionString}-SNAPSHOT",
+        deploymentDomain = "http://localhost:5173",
+        apiDomain = "dev-api.cantilevers.org",
+        isProd = false
     )
 
     app.synth()

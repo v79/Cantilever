@@ -19,7 +19,23 @@ import software.amazon.awscdk.services.s3.EventType
 import software.amazon.awscdk.services.sqs.Queue
 import software.constructs.Construct
 
-class CantileverStack(scope: Construct, id: String, props: StackProps?, versionString: String) :
+/**
+ * This class builds the Cantilever stack.
+ * @param scope The AWS application scope.
+ * @param id The ID of the stack
+ * @param props Stack properties, can be null but should be set when calling
+ * @param versionString The version of Cantilever being deployed
+ * @param isProd Whether this is a production deployment or not
+ */
+class CantileverStack(
+    scope: Construct,
+    id: String,
+    props: StackProps?,
+    versionString: String,
+    deploymentDomain: String,
+    apiDomain: String,
+    isProd: Boolean = false
+) :
     Stack(scope, id, props) {
 
     enum class ENV {
@@ -37,7 +53,15 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
     // TODO: I suppose I'm going to need to set up a dev and production environment for this sort of thing. Boo.
     var stageName: String
 
-    constructor(scope: Construct, id: String) : this(scope, id, null, "vUnknown")
+    constructor(scope: Construct, id: String) : this(
+        scope,
+        id,
+        null,
+        "vUnknown",
+        "http://localhost:5173",
+        "dev-api.cantilevers.org",
+        false
+    )
 
     init {
         // Get the "deploymentDomain" value from cdk.json, or default to the dev URL if not found
@@ -46,8 +70,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
 
         @Suppress("UNCHECKED_CAST")
         val env = scope.node.tryGetContext(envKey ?: "env") as LinkedHashMap<String, String>?
-        val deploymentDomain = (env?.get("domainName")) ?: "http://localhost:5173"
-        println("STAGE: ${stageName};  ENVIRONMENT: $env; deploymentDomain: $deploymentDomain")
+        println("STAGE: ${stageName};  ENVIRONMENT: $env; deploymentDomain: $deploymentDomain; isPROD: $isProd")
 
         Tags.of(this).add("stageName", versionString)
 
@@ -124,9 +147,27 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             )
         )
 
-        println("Creating API routing Lambda function")
+        println("Creating Cognito identity pool")
+        val cPool = UserPool.Builder.create(this, "cantilever-user-pool-$stageName")
+            .userPoolName("$stageName-user-pool")
+            .signInCaseSensitive(true)
+            .signInAliases(SignInAliases.builder().email(true).phone(false).username(false).build())
+            .passwordPolicy(PasswordPolicy.builder().minLength(12).build())
+            .mfa(Mfa.OFF) // TODO: change this later
+            .accountRecovery(AccountRecovery.EMAIL_ONLY)
+            .selfSignUpEnabled(false)
+            .email(UserPoolEmail.withCognito())
+            .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY)
+            .build()
+
+        cPool.addDomain(
+            "${stageName}-api-domain}",
+            UserPoolDomainOptions.builder()
+                .cognitoDomain(CognitoDomainOptions.builder().domainPrefix("cantilever").build()).build()
+        )
+
         val cr = env?.get("cognito_region") ?: ""
-        val cpool = env?.get(ENV.cognito_user_pools_id.name) ?: ""
+        println("Creating API routing Lambda function for congito region $cr")
         val apiRoutingLambda = createLambda(
             stack = this,
             id = "${stageName.uppercase()}-api-router",
@@ -142,7 +183,7 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
                 ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl,
                 ENV.cors_domain.name to deploymentDomain,
                 ENV.cognito_region.name to cr,
-                ENV.cognito_user_pools_id.name to cpool
+                ENV.cognito_user_pools_id.name to cPool.userPoolId
             )
         )
 
@@ -247,18 +288,13 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
 
         // The API Gateway
         // I don't like how much I have to hardcode the allowed headers here. I would like this to be configurable by the router.
-        val domainName = if (stageName == "cantilever-prod") {
-            "api.cantilevers.org"
-        } else {
-            "${stageName}-api.cantilevers.org"
-        }
-        println("Creating API Gateway with Lambda integration for $stageName to domain $domainName")
+        println("Creating API Gateway with Lambda integration for $stageName to domain $apiDomain")
         LambdaRestApi.Builder.create(this, "cantilever-rest-api-${stageName.uppercase()}")
             .restApiName("Cantilever REST API")
             .description("Gateway function to Cantilever services, handling routing")
             .disableExecuteApiEndpoint(true)
             .domainName(
-                DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName(domainName)
+                DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName(apiDomain)
                     .certificate(certificate).build()
             )
             .defaultCorsPreflightOptions(
@@ -282,23 +318,8 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             .proxy(true)
             .build()
 
-        println("Creating Cognito identity pool")
-        val pool = UserPool.Builder.create(this, "cantilever-user-pool-$stageName")
-            .userPoolName("cantilever-user-pool")
-            .signInCaseSensitive(true)
-            .signInAliases(SignInAliases.builder().email(true).phone(false).username(false).build())
-            .passwordPolicy(PasswordPolicy.builder().minLength(12).build())
-            .mfa(Mfa.OFF) // TODO: change this later
-            .accountRecovery(AccountRecovery.EMAIL_ONLY)
-            .selfSignUpEnabled(false)
-            .email(UserPoolEmail.withCognito())
-            .build()
 
-        pool.addDomain(
-            "cantilever-api-domain-${stageName.uppercase()}",
-            UserPoolDomainOptions.builder()
-                .cognitoDomain(CognitoDomainOptions.builder().domainPrefix("cantilever").build()).build()
-        )
+
         println("Registering app clients with Cognito identity pool")
         val appUrls = listOf("https://app.cantilevers.org/", "http://localhost:5173/")
         val corbelAppUrls =
@@ -306,14 +327,14 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
                 "http://localhost:44817/callback",
                 "corbelApp://auth"
             ) // port randomly chosen here, needs to match that in the Corbel application
-        pool.addClient(
+        cPool.addClient(
             "cantilever-app",
             UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
                 OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(true).build())
                     .callbackUrls(appUrls).logoutUrls(appUrls).build()
             ).build()
         )
-        pool.addClient(
+        cPool.addClient(
             "corbel-app",
             UserPoolClientOptions.builder().authFlows(AuthFlow.builder().build()).oAuth(
                 OAuthSettings.builder().flows(
@@ -325,12 +346,21 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
         )
     }
 
+    /**
+     * Build an SQS queue with a visibility timeout.
+     * @param queueId The ID of the queue
+     * @param timeout The visibility timeout in minutes
+     */
     private fun buildSQSQueue(queueId: String, timeout: Int): SqsQueue = SqsQueue.Builder.create(
         Queue.Builder.create(this, queueId).visibilityTimeout(
             Duration.minutes(timeout)
         ).build()
     ).build()
 
+    /**
+     * Create a destination bucket for the website content
+     * This bucket has a fixed name, and access is cntrolled by the CloudFront distribution.
+     */
     private fun createDestinationBucket(): Bucket =
         Bucket.Builder.create(this, "cantilever-website-${stageName.uppercase()}")
             .versioned(false)
@@ -341,6 +371,11 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             )
             .build()
 
+    /**
+     * Create a bucket with the given name.
+     * @param name The name of the bucket, must be globally unique
+     * @param public Whether the bucket should be publicly readable
+     */
     private fun createBucket(name: String, public: Boolean = false): Bucket =
         Bucket.Builder.create(this, "${stageName.uppercase()}-${name}")
             .versioned(false)
@@ -350,6 +385,9 @@ class CantileverStack(scope: Construct, id: String, props: StackProps?, versionS
             .versioned(true)
             .build()
 
+    /**
+     * Create a bucket for the editor to store its static files.
+     */
     private fun createEditorBucket(): Bucket = Bucket.Builder.create(this, "${stageName.uppercase()}-editor")
         .versioned(false)
         .removalPolicy(RemovalPolicy.DESTROY)

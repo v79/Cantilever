@@ -27,6 +27,7 @@ class CloudFrontSubstack(private val versionString: String, private val stageNam
                     .build()
             )*/
 
+    // 19/07/2025: See https://aws.amazon.com/blogs/devops/a-new-aws-cdk-l2-construct-for-amazon-cloudfront-origin-access-control-oac/ for a new way to do this?
 
     /**
      * This isn't complete, there are extra steps I need to do at the AWS console:
