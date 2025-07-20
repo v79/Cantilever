@@ -1,10 +1,12 @@
 <script lang="ts" context="module">
+	import { PUBLIC_CANTILEVER_API_URL } from '$env/static/public';
+
 	// this isn't really a store, but it is where I can call content regeneration routes
 
 	// rebuild complete project metadata
 	export async function rebuildAllMetadata(token: string, projectDomain: string): Promise<string> {
 		console.log('regenStore: rebuildAllMetadata');
-		const response = await fetch('https://api.cantilevers.org/metadata/rebuild', {
+		const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/metadata/rebuild', {
 			method: 'PUT',
 			headers: {
 				Accept: 'application/json',
@@ -22,7 +24,7 @@
 	// rebuild all the posts
 	export async function rebuildAllPosts(token: string, projectDomain: string): Promise<string> {
 		console.log('regenStore: rebuildAllPosts');
-		const response = await fetch('https://api.cantilevers.org/generate/post/*', {
+		const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/generate/post/*', {
 			method: 'PUT',
 			headers: {
 				Accept: 'text/plain',
@@ -41,7 +43,7 @@
 	// rebuild all the pages
 	export async function rebuildAllPages(token: string, projectDomain: string): Promise<string> {
 		console.log('regenStore: rebuildAllPages');
-		const response = await fetch('https://api.cantilevers.org/generate/page/*', {
+		const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/generate/page/*', {
 			method: 'PUT',
 			headers: {
 				Accept: 'text/plain',
@@ -64,7 +66,7 @@
 		projectDomain: string
 	): Promise<string> {
 		console.log('regenStore: clearCache for ' + cache);
-		const response = await fetch('https://api.cantilevers.org/generate/' + cache, {
+		const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/generate/' + cache, {
 			method: 'DELETE',
 			headers: {
 				Accept: 'text/plain',

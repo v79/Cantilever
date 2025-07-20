@@ -1,4 +1,5 @@
 <script lang="ts" context="module">
+	import { PUBLIC_CANTILEVER_API_URL } from '$env/static/public';
 	import { ImageNode, type ImageList, ImageDTO } from '$lib/models/media';
 	import { writable } from 'svelte/store';
 
@@ -23,7 +24,7 @@
 		images.set({ count: 0, lastUpdated: new Date(), images: [] });
 		console.log('mediaStore: Fetching images');
 		try {
-			const response = await fetch('https://api.cantilevers.org/media/images', {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/media/images', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -115,7 +116,7 @@
 					let dto = new ImageDTO(file.name, file.type, reader.result as string);
 					let dtoString = JSON.stringify(dto);
 
-					const response = fetch('https://api.cantilevers.org/media/images/', {
+					const response = fetch(PUBLIC_CANTILEVER_API_URL + '/media/images/', {
 						method: 'POST',
 						headers: {
 							Accept: 'application/json',

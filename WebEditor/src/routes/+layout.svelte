@@ -58,6 +58,7 @@
 	import SpinnerStore, { spinner } from '$lib/stores/spinnerStore.svelte';
 	import { onMount } from 'svelte';
 	import ExpandMore from 'svelte-google-materialdesign-icons/Expand_more.svelte';
+	import { PUBLIC_CANTILEVER_API_URL } from '$env/static/public';
 
 	const modalRegistry: Record<string, ModalComponent> = {
 		confirmDeleteModal: { ref: ConfirmDeleteModal },
@@ -99,7 +100,7 @@
 		async function warm() {
 			// attempt to warm the lambda by calling /warm (/ping is reserved by API Gateway)
 			console.log('Keeping lambda warm...');
-			fetch('https://api.cantilevers.org/warm', {
+			fetch(PUBLIC_CANTILEVER_API_URL + '/warm', {
 				mode: 'no-cors',
 				headers: {
 					Accept: 'text/plain'

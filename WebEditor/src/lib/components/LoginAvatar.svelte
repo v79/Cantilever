@@ -1,5 +1,9 @@
 <script lang="ts">
-	import { PUBLIC_COGNITO_CALLBACK_URL } from '$env/static/public';
+	import {
+		PUBLIC_COGNITO_CALLBACK_URL,
+		PUBLIC_COGNITO_CLIENT_ID,
+		PUBLIC_COGNITO_DOMAIN
+	} from '$env/static/public';
 	import { jwtDecode, type JwtPayload } from 'jwt-decode';
 	import { CLEAR_USER, userStore } from '$lib/stores/userStore.svelte';
 	import { Avatar } from '@skeletonlabs/skeleton';
@@ -10,8 +14,8 @@
 	let authToken: string | undefined;
 	let tokenPayload: JwtPayload;
 
-	const appClientId = '6ijb6bg3hk22selq6rj2bb5rmq';
-	const cognitoDomain = 'https://cantilever.auth.eu-west-2.amazoncognito.com';
+	const appClientId = PUBLIC_COGNITO_CLIENT_ID;
+	const cognitoDomain = PUBLIC_COGNITO_DOMAIN;
 	const loginUrl =
 		cognitoDomain +
 		'/oauth2/authorize?response_type=token&client_id=' +
@@ -67,7 +71,7 @@
 
 	function initLogout() {
 		userStore.set(CLEAR_USER);
-        // TODO: clear other stores
+		// TODO: clear other stores
 		window.location.assign(logoutUrl);
 	}
 
@@ -79,12 +83,18 @@
 </script>
 
 {#if $userStore.token}
-	<button type="button" class="btn btn-sm variant-ghost-secondary" on:click={initLogout} title="Logout">
-		<Icon icon={Logout} />Logout</button
-	>
+	<button
+		type="button"
+		class="btn btn-sm variant-ghost-secondary"
+		on:click={initLogout}
+		title="Logout">
+		<Icon icon={Logout} />Logout</button>
 	<Avatar width="w-8" initials="LD" alt={$userStore.name} />
 {:else}
-	<button type="button" class="btn btn-sm variant-ghost-secondary" title="Login" on:click={initLogin}>
-		<Icon icon={Login} />Login</button
-	>
+	<button
+		type="button"
+		class="btn btn-sm variant-ghost-secondary"
+		title="Login"
+		on:click={initLogin}>
+		<Icon icon={Login} />Login</button>
 {/if}

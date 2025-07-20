@@ -2,6 +2,7 @@
 	import { writable, get } from 'svelte/store';
 	import type { TemplateList, TemplateNode, TemplateUsageDTO } from '$lib/models/templates.svelte';
 	import { handlebars } from '$lib/stores/contentStore.svelte';
+	import { PUBLIC_CANTILEVER_API_URL } from '$env/static/public';
 
 	// complete set of template metadata
 	export const templates = createTemplatesStore();
@@ -25,7 +26,7 @@
 	): Promise<number | Error> {
 		console.log('templateStore: Fetching templates');
 		try {
-			const response = await fetch('https://api.cantilevers.org/templates', {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/templates', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -87,7 +88,7 @@
 		let template: TemplateNode = get(handlebars);
 		console.log('templateStore: Saving template', template.srcKey);
 		try {
-			const response = await fetch('https://api.cantilevers.org/templates/save', {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/templates/save', {
 				method: 'POST',
 				headers: {
 					Accept: 'text/plain',
