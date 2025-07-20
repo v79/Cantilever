@@ -9,6 +9,7 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.exceptions.JWTVerificationException
 import com.auth0.jwt.interfaces.JWTVerifier
 import com.auth0.jwt.interfaces.RSAKeyProvider
+import org.liamjd.apiviaduct.routing.AuthResult
 import org.liamjd.apiviaduct.routing.AuthType
 import org.liamjd.cantilever.routing.getHeader
 import java.net.MalformedURLException
@@ -32,13 +33,6 @@ interface Authorizer {
     fun logError(message: String) = println("ERROR: Authorizer: $message")
 }
 
-/**
- * The result of an authorization attempt
- * @property authorized true or false
- * @property message helpful message, explaining why authorization has failed
- */
-@Deprecated("Use org.liamjd.api.routing.AuthResult instead")
-data class AuthResult(val authorized: Boolean, val message: String)
 
 /**
  * Looks for the 'Authorizer' header, with the value 'Bearer <token>'
@@ -50,19 +44,24 @@ class CognitoJWTAuthorizer(private val configuration: Map<String, String>) : org
         get() = "CognitoJWT Bearer Token Authorizer"
     override val type: AuthType = AuthType.HTTP
 
-    override fun authorize(request: APIGatewayProxyRequestEvent): org.liamjd.apiviaduct.routing.AuthResult {
+    override fun authorize(request: APIGatewayProxyRequestEvent): AuthResult {
         val authHeader = request.getHeader("Authorization")
         if (authHeader == null) {
             logError("Missing Authorization Header")
-            return org.liamjd.apiviaduct.routing.AuthResult(false, "Missing Authorization Header")
+            return AuthResult(false, "Missing Authorization Header")
         }
         val token = extractToken(authHeader)
-        if (token == "") return org.liamjd.apiviaduct.routing.AuthResult(false, "Invalid or missing Bearer token")
+        if (token == "") return AuthResult(false, "Invalid or missing Bearer token")
 
         val awsCognitoRegion = configuration["cognito_region"]
         val awsUserPoolsId = configuration["cognito_user_pools_id"]
-
-        if (awsCognitoRegion != null && awsUserPoolsId != null) {
+        if (awsCognitoRegion.isNullOrEmpty() || awsUserPoolsId.isNullOrEmpty()) {
+            logError("Could not verify credentials; Cognito region and/or user pool ID not configured: $configuration")
+            return AuthResult(
+                false,
+                "Could not verify credentials; Cognito region and/or user pool ID not configured."
+            )
+        } else {
             val keyProvider: RSAKeyProvider = AWSCognitoRSAKeyProvider(awsCognitoRegion, awsUserPoolsId)
             val algorithm: Algorithm = Algorithm.RSA256(keyProvider)
             val jwtVerifier: JWTVerifier =
@@ -74,13 +73,12 @@ class CognitoJWTAuthorizer(private val configuration: Map<String, String>) : org
             } catch (veriException: JWTVerificationException) {
                 logError("Verification of token failed; exception type is: ${veriException::class}")
                 logError(veriException.message ?: "<No exception message found>")
-                return org.liamjd.apiviaduct.routing.AuthResult(false, veriException.message.toString())
+                return AuthResult(false, veriException.message.toString())
             }
             info("Authorized user ${verified.getClaim("name")}, token with claims: ${verified.claims}")
-            return org.liamjd.apiviaduct.routing.AuthResult(true, "")
+            return AuthResult(true, "")
         }
-        logError("Could not verify credentials; Cognito region and/or user pool ID not configured: $configuration")
-        return org.liamjd.apiviaduct.routing.AuthResult(false, "Could not verify credentials; Cognito region and/or user pool ID not configured.")
+
     }
 
     private fun extractToken(header: String): String {
