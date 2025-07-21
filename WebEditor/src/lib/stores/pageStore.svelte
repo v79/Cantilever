@@ -102,7 +102,7 @@
 		console.log('pageStore: Fetching page', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/pages/${encodedKey}`, {
+			const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/pages/${encodedKey}`, {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',

@@ -86,7 +86,7 @@
 
 	$: loggedIn = $userStore.isLoggedIn();
 
-	export const warmTimer = 60 * 1000;
+	export const warmTimer = 60 * 4000;
 
 	let regenComboValue = 'Regenerate...';
 	const regenPopup: PopupSettings = {

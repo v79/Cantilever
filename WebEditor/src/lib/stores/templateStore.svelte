@@ -57,7 +57,7 @@
 		console.log('templateStore: Fetching template', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/templates/${encodedKey}`, {
+			const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/templates/${encodedKey}`, {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -132,7 +132,7 @@
 		console.log('templateStore: Fetching template usage', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/templates/usage/${encodedKey}`, {
+			const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/templates/usage/${encodedKey}`, {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -162,7 +162,7 @@
 		console.log('templateStore: Deleting template', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/templates/${encodedKey}`, {
+			const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/templates/${encodedKey}`, {
 				method: 'DELETE',
 				headers: {
 					Accept: 'text/plain',
@@ -199,7 +199,7 @@
 		console.log('templateStore: Regenerating content for template ', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/generate/template/${encodedKey}`, {
+			const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/generate/template/${encodedKey}`, {
 				method: 'PUT',
 				headers: {
 					Accept: 'text/plain',

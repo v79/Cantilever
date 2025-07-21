@@ -56,7 +56,7 @@
 		console.log('postStore: Fetching post', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/posts/${encodedKey}`, {
+			const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/posts/${encodedKey}`, {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -117,7 +117,7 @@
 				};
 
 				let postJson = JSON.stringify(postToSave);
-				const response = await fetch(`https://api.cantilevers.org/posts/save`, {
+				const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/posts/save`, {
 					method: 'POST',
 					headers: {
 						Accept: 'text/plain',

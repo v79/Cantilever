@@ -71,7 +71,7 @@
 		try {
 			let encodedKey = encodeURIComponent(srcKey);
 			const response = await fetch(
-				`https://api.cantilevers.org/media/images/${encodedKey}/${resolution}`,
+				`${PUBLIC_CANTILEVER_API_URL}/media/images/${encodedKey}/${resolution}`,
 				{
 					method: 'GET',
 					headers: {
@@ -156,7 +156,7 @@
 	): Promise<Error | string> {
 		try {
 			let encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/media/images/${encodedKey}`, {
+			const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/media/images/${encodedKey}`, {
 				method: 'DELETE',
 				headers: {
 					Accept: 'text/plain',
