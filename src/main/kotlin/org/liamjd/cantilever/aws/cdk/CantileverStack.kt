@@ -6,6 +6,11 @@ import software.amazon.awscdk.services.apigateway.DomainNameOptions
 import software.amazon.awscdk.services.apigateway.EndpointType
 import software.amazon.awscdk.services.apigateway.LambdaRestApi
 import software.amazon.awscdk.services.certificatemanager.Certificate
+import software.amazon.awscdk.services.cloudfront.BehaviorOptions
+import software.amazon.awscdk.services.cloudfront.CachePolicy
+import software.amazon.awscdk.services.cloudfront.Distribution
+import software.amazon.awscdk.services.cloudfront.DistributionProps
+import software.amazon.awscdk.services.cloudfront.origins.S3BucketOrigin
 import software.amazon.awscdk.services.cognito.*
 import software.amazon.awscdk.services.events.targets.SqsQueue
 import software.amazon.awscdk.services.lambda.Code
@@ -21,6 +26,7 @@ import software.amazon.awscdk.services.route53.targets.ApiGateway
 import software.amazon.awscdk.services.s3.BlockPublicAccess
 import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.EventType
+import software.amazon.awscdk.services.s3.ObjectOwnership
 import software.amazon.awscdk.services.sqs.Queue
 import software.constructs.Construct
 
@@ -105,6 +111,27 @@ class CantileverStack(
 
         println("Creating editor bucket")
         val editorBucket = createEditorBucket()
+
+        var editorBucketDistribution: Distribution? = null
+        if (!isProd) {
+            println("Creating Cloudfront distribution for editor bucket in development mode")
+            // Unfortunately the distribution won't be invalidated automatically, so I need to do that manually
+            // Or disable caching
+            editorBucketDistribution = Distribution(
+                this, "CantileverEditorBucketDistribution-${stageName.uppercase()}",
+                DistributionProps.builder()
+                    .comment("EditorBucketDistribution-${stageName.uppercase()}")
+                    .defaultBehavior(
+                        BehaviorOptions.builder()
+                            .origin(S3BucketOrigin.withOriginAccessControl(editorBucket))
+                            .cachePolicy(CachePolicy.CACHING_DISABLED)
+                            .build()
+                    )
+                    .defaultRootObject("index.html")
+                    .enableLogging(true)
+                    .build()
+            )
+        }
 
         // SQS for inter-lambda communication. The visibility timeout should be > the max processing time of the lambdas, so setting to 3
         println("Creating markdown processing queue")
@@ -350,8 +377,13 @@ class CantileverStack(
             .target(RecordTarget.fromAlias(ApiGateway(lambdaRestAPI))).build()
 
 
-        println("Registering app clients with Cognito identity pool")
-        val appUrls = listOf(deploymentDomain)
+        println("Registering app clients with Cognito identity pool for domains $deploymentDomain")
+        // I want to put the domain name of the editor cloudfront distribution here, but it isn't available until after the stack is deployed
+        // Gemini suggested writing a custom resource and a lambda function to execute post-deployment
+        // The alternative may be have two separate stacks, one for the distribution and one for the rest of the resources
+        // or I just hardcode the URL for the editor bucket distribution
+        val appUrls =
+            listOf(deploymentDomain, "https://d1e4hj5huhntr6.cloudfront.net")
         val corbelAppUrls =
             listOf(
                 "http://localhost:44817/callback",
@@ -425,8 +457,8 @@ class CantileverStack(
         .versioned(false)
         .removalPolicy(RemovalPolicy.DESTROY)
         .autoDeleteObjects(true)
-        .publicReadAccess(true)
-        .blockPublicAccess(BlockPublicAccess.BLOCK_ACLS_ONLY)
+        .objectOwnership(ObjectOwnership.OBJECT_WRITER)
+        .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
         .websiteIndexDocument("index.html")
         .build()
 
