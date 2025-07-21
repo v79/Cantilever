@@ -21,7 +21,7 @@
 		'/oauth2/authorize?response_type=token&client_id=' +
 		appClientId +
 		'&redirect_uri=' +
-		PUBLIC_COGNITO_CALLBACK_URL +
+		encodeURIComponent(PUBLIC_COGNITO_CALLBACK_URL) +
 		'&scope=openid+profile';
 
 	const logoutUrl =
@@ -29,7 +29,7 @@
 		'/logout?client_id=' +
 		appClientId +
 		'&logout_uri=' +
-		PUBLIC_COGNITO_CALLBACK_URL;
+		encodeURIComponent(PUBLIC_COGNITO_CALLBACK_URL);
 
 	onMount(async () => {
 		authToken = extractIdToken();
