@@ -152,6 +152,10 @@
 			if (response.ok) {
 				const data = await response.json();
 				let array = Object.entries(data.data);
+				if(array.length === 0) {
+					console.log('No projects found');
+					return new Map<string, string>();
+				}
 				let projectList: Map<string, string> = new Map<string, string>();
 				for (const p of array) {
 					projectList.set(
