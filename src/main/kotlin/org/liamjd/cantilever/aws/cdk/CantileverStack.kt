@@ -216,7 +216,7 @@ class CantileverStack(
         val corsDomain = if (isProd) {
             deploymentDomain
         } else {
-            "https://d1e4hj5huhntr6.cloudfront.net/" // hard-coded for now
+            "https://d1e4hj5huhntr6.cloudfront.net" // hard-coded for now
         }
         val apiRoutingLambda = createLambda(
             stack = this,
@@ -382,7 +382,6 @@ class CantileverStack(
             .target(RecordTarget.fromAlias(ApiGateway(lambdaRestAPI))).build()
 
 
-        println("Registering app clients with Cognito identity pool for domains $deploymentDomain")
         // I want to put the domain name of the editor cloudfront distribution here, but it isn't available until after the stack is deployed
         // Gemini suggested writing a custom resource and a lambda function to execute post-deployment
         // The alternative may be have two separate stacks, one for the distribution and one for the rest of the resources
@@ -394,6 +393,7 @@ class CantileverStack(
                 "http://localhost:44817/callback",
                 "corbelApp://auth"
             ) // port randomly chosen here, needs to match that in the Corbel application
+        println("Registering app clients with Cognito identity pool for domains $appUrls")
         cPool.addClient(
             "cantilever-app",
             UserPoolClientOptions.builder().userPoolClientName("$stageName-webapp-client-pool")

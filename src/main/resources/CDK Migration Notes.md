@@ -20,4 +20,11 @@ website is fetching from the new dev instance.
 - [x] Web editor isn't always fetching everything
 - [-] 404 errors when a route returns has no data (e.g. there are no templates at all; should probably return a 204 No
 Content)
-- [-] API Gateway stages (not cdk stages!) Access-Control-Allow-Origin header for OPTIONS should be set to the cloudfront distribution domain? But also localhost? May need an API stage called "local"? CORS is a bugger.
+- [-] API Gateway stages (not cdk stages!) Access-Control-Allow-Origin header for OPTIONS should be set to the cloudfront distribution domain? But also localhost? May need an API stage called "local"? CORS is a bugger. Gemini has suggested a localhost URL rewriting proxy on vite dev that would require all my API calls to have a prefix (/api/project/list for instance). This seems to work but will need careful configuration.
+
+## 22/07/2025
+
+- [X] Logout error seems to have been a CORS issue
+- [-] There are some bugs in the API code, e.g. around the location of metadata.json
+- [-] Discovered that I used to have a 'name' claim available in Cognito, but not existing any more. Only used in logs though?
+- [-] Working on creating enough content in the system to verify the editor works
