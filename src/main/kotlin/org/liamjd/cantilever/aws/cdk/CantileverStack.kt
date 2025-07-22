@@ -213,6 +213,11 @@ class CantileverStack(
 
         val cr = props?.env?.region ?: "eu-west-2" // Default to eu-west-2 if not set
         println("Creating API routing Lambda function for Cognito region '$cr'")
+        val corsDomain = if (isProd) {
+            deploymentDomain
+        } else {
+            "https://d1e4hj5huhntr6.cloudfront.net/" // hard-coded for now
+        }
         val apiRoutingLambda = createLambda(
             stack = this,
             id = "${stageName.uppercase()}-api-router",
@@ -226,7 +231,7 @@ class CantileverStack(
                 ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
                 ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl,
                 ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl,
-                ENV.cors_domain.name to deploymentDomain,
+                ENV.cors_domain.name to corsDomain,
                 ENV.cognito_region.name to cr,
                 ENV.cognito_user_pools_id.name to cPool.userPoolId
             )

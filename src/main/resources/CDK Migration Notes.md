@@ -20,3 +20,4 @@ website is fetching from the new dev instance.
 - [x] Web editor isn't always fetching everything
 - [-] 404 errors when a route returns has no data (e.g. there are no templates at all; should probably return a 204 No
 Content)
+- [-] API Gateway stages (not cdk stages!) Access-Control-Allow-Origin header for OPTIONS should be set to the cloudfront distribution domain? But also localhost? May need an API stage called "local"? CORS is a bugger.
