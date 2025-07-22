@@ -155,7 +155,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
             Response.ok(body = APIResult.Success(value = templateList))
         } else {
             error("Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
-            Response.notFound(
+            Response.serverError(
                 body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
             )
         }
