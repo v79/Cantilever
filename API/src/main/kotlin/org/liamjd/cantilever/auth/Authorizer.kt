@@ -58,8 +58,7 @@ class CognitoJWTAuthorizer(private val configuration: Map<String, String>) : org
         if (awsCognitoRegion.isNullOrEmpty() || awsUserPoolsId.isNullOrEmpty()) {
             logError("Could not verify credentials; Cognito region and/or user pool ID not configured: $configuration")
             return AuthResult(
-                false,
-                "Could not verify credentials; Cognito region and/or user pool ID not configured."
+                false, "Could not verify credentials; Cognito region and/or user pool ID not configured."
             )
         } else {
             val keyProvider: RSAKeyProvider = AWSCognitoRSAKeyProvider(awsCognitoRegion, awsUserPoolsId)
@@ -75,10 +74,10 @@ class CognitoJWTAuthorizer(private val configuration: Map<String, String>) : org
                 logError(veriException.message ?: "<No exception message found>")
                 return AuthResult(false, veriException.message.toString())
             }
-            info("Authorized user ${verified.getClaim("name")}, token with claims: ${verified.claims}")
+            // no 'name' claim currently, but could be added in future
+            // info("Authorized user '${verified.getClaim("name")}', token with claims: ${verified.claims}")
             return AuthResult(true, "")
         }
-
     }
 
     private fun extractToken(header: String): String {
@@ -112,9 +111,7 @@ internal class AWSCognitoRSAKeyProvider(cognitoRegion: String, userPoolID: Strin
         } catch (jwke: JwkException) {
             throw RuntimeException(
                 String.format(
-                    "Failed to get JWT kid=%s from aws_kid_store_url=%s",
-                    kid,
-                    awsKidStoreUrl
+                    "Failed to get JWT kid=%s from aws_kid_store_url=%s", kid, awsKidStoreUrl
                 )
             )
         }
