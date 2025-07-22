@@ -1,4 +1,5 @@
 <script lang="ts" context="module">
+	import { PUBLIC_CANTILEVER_API_URL } from '$env/static/public';
 	import { MarkdownContent, PageItem } from '$lib/models/markdown';
 	import {
 		ReassignIndexRequestDTO,
@@ -39,7 +40,7 @@
 	export async function fetchPages(token: string, projectDomain: string): Promise<number | Error> {
 		console.log('pageStore: Fetching pages and folders');
 		try {
-			const response = await fetch('https://api.cantilevers.org/pages', {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/pages', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -69,7 +70,7 @@
 	): Promise<number | Error> {
 		console.log('pageStore: Fetching folders');
 		try {
-			const response = await fetch('https://api.cantilevers.org/folders', {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/folders', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -101,7 +102,7 @@
 		console.log('pageStore: Fetching page', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/pages/${encodedKey}`, {
+			const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/pages/${encodedKey}`, {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -153,7 +154,7 @@
 				//@ts-ignore
 				delete content.metadata.isNew; // or how about replacing content with a new object which does not contain isNew?
 				content.metadata.slug = content.metadata.srcKey;
-				const response = await fetch('https://api.cantilevers.org/pages/save', {
+				const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/pages/save', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
@@ -189,7 +190,7 @@
 		console.log('pageStore: Creating folder ' + srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch('https://api.cantilevers.org/pages/folder/new/' + encodedKey, {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/pages/folder/new/' + encodedKey, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json',
@@ -222,7 +223,7 @@
 		console.log('pageStore: Deleting page ' + srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch('https://api.cantilevers.org/pages/' + encodedKey, {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/pages/' + encodedKey, {
 				method: 'DELETE',
 				headers: {
 					Accept: 'text/plain',
@@ -252,7 +253,7 @@
 		console.log('pageStore: Deleting folder ' + srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch('https://api.cantilevers.org/pages/folder/' + encodedKey, {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/pages/folder/' + encodedKey, {
 				method: 'DELETE',
 				headers: {
 					Accept: 'text/plain',
@@ -286,7 +287,7 @@
 			'pageStore: Reassiging index page for folder ' + folder + ' from ' + from + ' to ' + to
 		);
 		try {
-			const response = await fetch('https://api.cantilevers.org/pages/reassignIndex', {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/pages/reassignIndex', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',

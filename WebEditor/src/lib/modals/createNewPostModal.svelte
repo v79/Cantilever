@@ -1,4 +1,53 @@
-<script lang="ts" ✂prettier:content✂="CglpbXBvcnQgeyBwcm9qZWN0IH0gZnJvbSAnJGxpYi9zdG9yZXMvcHJvamVjdFN0b3JlLnN2ZWx0ZSc7CglpbXBvcnQgeyBmZXRjaFRlbXBsYXRlcywgdGVtcGxhdGVzIH0gZnJvbSAnJGxpYi9zdG9yZXMvdGVtcGxhdGVTdG9yZS5zdmVsdGUnOwoJaW1wb3J0IHsgdXNlclN0b3JlIH0gZnJvbSAnJGxpYi9zdG9yZXMvdXNlclN0b3JlLnN2ZWx0ZSc7CglpbXBvcnQgeyBnZXRNb2RhbFN0b3JlLCBnZXRUb2FzdFN0b3JlLCB0eXBlIFRvYXN0U2V0dGluZ3MgfSBmcm9tICdAc2tlbGV0b25sYWJzL3NrZWxldG9uJzsKCWltcG9ydCB7IG9uTW91bnQsIHR5cGUgU3ZlbHRlQ29tcG9uZW50IH0gZnJvbSAnc3ZlbHRlJzsKCglleHBvcnQgbGV0IHBhcmVudDogU3ZlbHRlQ29tcG9uZW50OwoJY29uc3QgbW9kYWxTdG9yZSA9IGdldE1vZGFsU3RvcmUoKTsKCWNvbnN0IHRvYXN0U3RvcmUgPSBnZXRUb2FzdFN0b3JlKCk7CgoJY29uc3QgZXJyb3JUb2FzdDogVG9hc3RTZXR0aW5ncyA9IHsKCQltZXNzYWdlOiAnRmFpbGVkIHRvIHRlbXBsYXRlcycsCgkJYmFja2dyb3VuZDogJ3ZhcmlhbnQtZmlsbGVkLWVycm9yJwoJfTsKCgkkOiB0ZW1wbGF0ZXNMb2FkaW5nID0gdHJ1ZTsKCSQ6IHRlbXBsYXRlc1JlYWR5ID0gZmFsc2U7CgoJLy8gQmFzZSBDbGFzc2VzCgljb25zdCBjQmFzZSA9ICdjYXJkIHAtNCB3LW1vZGFsIHNoYWRvdy14bCBzcGFjZS15LTQnOwoJY29uc3QgY0hlYWRlciA9ICd0ZXh0LTJ4bCBmb250LWJvbGQnOwoJY29uc3QgY0Zvcm0gPSAncC00IHNwYWNlLXktNCByb3VuZGVkLWNvbnRhaW5lci10b2tlbic7CgoJb25Nb3VudChhc3luYyAoKSA9PiB7CgkJaWYgKHRlbXBsYXRlcy5pc0VtcHR5KCkgfHwgJHRlbXBsYXRlcy5jb3VudCA9PT0gMCkgewoJCQljb25zb2xlLmxvZygnTm8gdGVtcGxhdGVzIGtub3duOyBmZXRjaGluZyB0ZW1wbGF0ZXMnKTsKCQkJY29uc3QgcmVzdWx0ID0gYXdhaXQgZmV0Y2hUZW1wbGF0ZXMoJHVzZXJTdG9yZS50b2tlbiEhLCAkcHJvamVjdC5kb21haW4pOwoJCQlpZiAocmVzdWx0IGluc3RhbmNlb2YgRXJyb3IpIHsKCQkJCWVycm9yVG9hc3QubWVzc2FnZSA9ICdDb3VsZCBub3QgZmV0Y2ggdGVtcGxhdGVzLiBDcmVhdGUgYSAicG9zdCIgdGVtcGxhdGUgZmlyc3QnOwoJCQkJdG9hc3RTdG9yZS50cmlnZ2VyKGVycm9yVG9hc3QpOwoJCQkJdGVtcGxhdGVzUmVhZHkgPSBmYWxzZTsKCQkJCXRlbXBsYXRlc0xvYWRpbmcgPSBmYWxzZTsKCQkJfSBlbHNlIHsKCQkJCS8vIHRlbXBsYXRlcyBsb2FkZWQgaW50byBzdG9yZQoJCQkJdGVtcGxhdGVzUmVhZHkgPSB0cnVlOwoJCQkJdGVtcGxhdGVzTG9hZGluZyA9IGZhbHNlOwoJCQl9CgkJfSBlbHNlIHsKCQkJLy8gdGVtcGxhdGVzIGFscmVhZHkgbG9hZGVkCgkJCXRlbXBsYXRlc1JlYWR5ID0gdHJ1ZTsKCQkJdGVtcGxhdGVzTG9hZGluZyA9IGZhbHNlOwoJCX0KCQkvLyBzaG91bGQgd2UgY2hlY2sgZm9yIGEgdGVtcGxhdGUgY2FsbGVkICJwb3N0Ij8KCX0pOwoKCWZ1bmN0aW9uIGNsb3NlQW5kU3VibWl0KCkgewoJCWlmICghJHRlbXBsYXRlcyB8fCAkdGVtcGxhdGVzLmNvdW50ID09PSAwKSB7CgkJCWVycm9yVG9hc3QubWVzc2FnZSA9ICdObyB0ZW1wbGF0ZXMgYXZhaWxhYmxlLiBDcmVhdGUgYSB0ZW1wbGF0ZSBjYWxsZWQgInBvc3QiIGZpcnN0Lic7CgkJCXRvYXN0U3RvcmUudHJpZ2dlcihlcnJvclRvYXN0KTsKCQkJbW9kYWxTdG9yZS5jbG9zZSgpOwoJCQl0ZW1wbGF0ZXNSZWFkeSA9IGZhbHNlOwoJCQlyZXR1cm47CgkJfQoJCSRtb2RhbFN0b3JlWzBdLm1ldGEub25Gb3JtU3VibWl0KCk7CgkJbW9kYWxTdG9yZS5jbG9zZSgpOwoJfQo=">{}</script>
+<script lang="ts">
+	import { project } from '$lib/stores/projectStore.svelte';
+	import { fetchTemplates, templates } from '$lib/stores/templateStore.svelte';
+	import { userStore } from '$lib/stores/userStore.svelte';
+	import { getModalStore, getToastStore, type ToastSettings } from '@skeletonlabs/skeleton';
+	import { onMount, type SvelteComponent } from 'svelte';
+
+	export let parent: SvelteComponent;
+	const modalStore = getModalStore();
+	const toastStore = getToastStore();
+
+	const errorToast: ToastSettings = {
+		message: 'Failed to templates',
+		background: 'variant-filled-error'
+	};
+
+	$: templatesLoading = true;
+	$: templatesReady = false;
+
+	// Base Classes
+	const cBase = 'card p-4 w-modal shadow-xl space-y-4';
+	const cHeader = 'text-2xl font-bold';
+	const cForm = 'p-4 space-y-4 rounded-container-token';
+
+	onMount(async () => {
+		if (templates.isEmpty()) {
+			console.log('No templates found');
+			const result = await fetchTemplates($userStore.token!!, $project.domain);
+			if (result instanceof Error) {
+				errorToast.message = 'Could not fetch templates. Create a "post" template first';
+				toastStore.trigger(errorToast);
+				templatesReady = false;
+				templatesLoading = false;
+			} else {
+				// templates loaded into store
+				templatesReady = true;
+				templatesLoading = false;
+			}
+		} else {
+			// templates already loaded
+			templatesReady = true;
+			templatesLoading = false;
+		}
+	});
+
+	function closeAndSubmit() {
+		$modalStore[0].meta.onFormSubmit();
+		modalStore.close();
+	}
+</script>
 
 {#if $modalStore[0]}
 	<div class="modal-example-form {cBase}">

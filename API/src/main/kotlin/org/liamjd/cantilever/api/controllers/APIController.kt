@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.liamjd.cantilever.common.MimeType
+import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentTree
 import org.liamjd.cantilever.services.S3Service
@@ -36,7 +37,7 @@ abstract class APIController(val sourceBucket: String, val generationBucket: Str
                 return false
             }
         } catch (e: Exception) {
-            error("Error reading $metadataKey from bucket $generationBucket: ${e.message}")
+            error("Error reading '$metadataKey' from bucket $generationBucket: ${e.message}")
             return false
         }
     }
@@ -46,7 +47,7 @@ abstract class APIController(val sourceBucket: String, val generationBucket: Str
      */
     fun saveContentTree(domain: String) {
         val metadataKey =
-            "$domain/metadata.json"
+            "$domain/${S3_KEY.metadataKey}"
         info("Saving content tree $metadataKey to bucket $generationBucket")
         val json = Json { prettyPrint = true }
         val metadata = json.encodeToString(ContentTree.serializer(), contentTree)

@@ -2,6 +2,7 @@
 	import { writable } from 'svelte/store';
 	import { parseResString, CantileverProject, type ImgRes } from '$lib/models/project';
 	import { stringify } from 'yaml';
+	import { PUBLIC_CANTILEVER_API_URL } from '$env/static/public';
 
 	export const CLEAR_PROJECT = new CantileverProject(
 		'',
@@ -33,7 +34,7 @@
 	): Promise<CantileverProject | Error> {
 		console.log('projectStore: Fetching project ' + projectName);
 		try {
-			const response = await fetch('https://api.cantilevers.org/project/load/' + projectName, {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/project/load/' + projectName, {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -82,7 +83,7 @@
 		console.log('projectStore: Saving project');
 		let yaml = stringify(project);
 		try {
-			const response = await fetch('https://api.cantilevers.org/project/', {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/project/', {
 				method: 'PUT',
 				headers: {
 					Accept: 'application/json',
@@ -112,7 +113,7 @@
 		console.log('projectStore: Saving project');
 		let yaml = stringify(project);
 		try {
-			const response = await fetch('https://api.cantilevers.org/project/new', {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/project/new', {
 				method: 'POST',
 				headers: {
 					Accept: 'application/json',
@@ -140,7 +141,7 @@
 	export async function fetchProjectList(token: string): Promise<Map<string, string> | Error> {
 		console.log('projectStore: Fetching project list');
 		try {
-			const response = await fetch('https://api.cantilevers.org/project/list', {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/project/list', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -151,6 +152,10 @@
 			if (response.ok) {
 				const data = await response.json();
 				let array = Object.entries(data.data);
+				if(array.length === 0) {
+					console.log('No projects found');
+					return new Map<string, string>();
+				}
 				let projectList: Map<string, string> = new Map<string, string>();
 				for (const p of array) {
 					projectList.set(

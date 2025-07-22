@@ -2,6 +2,7 @@
 	import { writable, get } from 'svelte/store';
 	import type { TemplateList, TemplateNode, TemplateUsageDTO } from '$lib/models/templates.svelte';
 	import { handlebars } from '$lib/stores/contentStore.svelte';
+	import { PUBLIC_CANTILEVER_API_URL } from '$env/static/public';
 
 	// complete set of template metadata
 	export const templates = createTemplatesStore();
@@ -25,7 +26,7 @@
 	): Promise<number | Error> {
 		console.log('templateStore: Fetching templates');
 		try {
-			const response = await fetch('https://api.cantilevers.org/templates', {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/templates', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -56,7 +57,7 @@
 		console.log('templateStore: Fetching template', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/templates/${encodedKey}`, {
+			const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/templates/${encodedKey}`, {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -87,7 +88,7 @@
 		let template: TemplateNode = get(handlebars);
 		console.log('templateStore: Saving template', template.srcKey);
 		try {
-			const response = await fetch('https://api.cantilevers.org/templates/save', {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/templates/save', {
 				method: 'POST',
 				headers: {
 					Accept: 'text/plain',
@@ -131,7 +132,7 @@
 		console.log('templateStore: Fetching template usage', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/templates/usage/${encodedKey}`, {
+			const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/templates/usage/${encodedKey}`, {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -161,7 +162,7 @@
 		console.log('templateStore: Deleting template', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/templates/${encodedKey}`, {
+			const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/templates/${encodedKey}`, {
 				method: 'DELETE',
 				headers: {
 					Accept: 'text/plain',
@@ -198,7 +199,7 @@
 		console.log('templateStore: Regenerating content for template ', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/generate/template/${encodedKey}`, {
+			const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/generate/template/${encodedKey}`, {
 				method: 'PUT',
 				headers: {
 					Accept: 'text/plain',
