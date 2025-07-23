@@ -16,7 +16,8 @@ import org.liamjd.cantilever.models.TemplateMetadata
 /**
  * Generate metadata across posts, pages, templates etc
  **/
-class MetadataController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
+class MetadataController(sourceBucket: String, generationBucket: String) : KoinComponent,
+    APIController(sourceBucket, generationBucket) {
 
     /**
      * Perform a complete scan of the sources/ bucket and rebuild the metadata.json file in the generated/ folder
@@ -24,7 +25,7 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
     fun rebuildFromSources(request: Request<Unit>): Response<APIResult<String>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         info("Rebuilding $projectKeyHeader metadata from sources")
-        val projectMetadataKey = "$projectKeyHeader/metadata.json"
+        val projectMetadataKey = "$projectKeyHeader/${S3_KEY.metadataKey}"
         val sourcesFolder = projectKeyHeader + "/" + S3_KEY.sources
         val postsFolder = projectKeyHeader + "/" + S3_KEY.postsPrefix
         val pagesFolder = projectKeyHeader + "/" + S3_KEY.pagesPrefix

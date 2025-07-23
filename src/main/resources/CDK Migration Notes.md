@@ -28,3 +28,8 @@ Content)
 - [-] There are some bugs in the API code, e.g. around the location of metadata.json
 - [-] Discovered that I used to have a 'name' claim available in Cognito, but not existing any more. Only used in logs though?
 - [-] Working on creating enough content in the system to verify the editor works
+
+## 23/07/2025
+
+- [X] Fixes around the location of metadata.json - I was so inconsistent! But as this will be replaced by a database, I'm not going to get too worked up about it
+- [-] Can create and save templates and pages, but the New Post function doesn't work here either! Fix this then I will be done...

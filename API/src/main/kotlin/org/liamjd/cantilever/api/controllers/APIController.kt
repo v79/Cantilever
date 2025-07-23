@@ -20,7 +20,7 @@ abstract class APIController(val sourceBucket: String, val generationBucket: Str
      * Load the content tree from the S3 bucket
      */
     fun loadContentTree(domain: String): Boolean {
-        val metadataKey = "$domain/metadata.json"
+        val metadataKey = "$domain/${S3_KEY.metadataKey}"
         try {
             if (s3Service.objectExists(metadataKey, generationBucket)) {
                 info("Reading $metadataKey from bucket $generationBucket")

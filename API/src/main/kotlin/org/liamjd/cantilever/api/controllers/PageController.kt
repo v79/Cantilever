@@ -27,10 +27,10 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
      */
     fun getPages(request: Request<Unit>): Response<APIResult<PageListDTO>> {
         val projectMetadataKey = request.headers["cantilever-project-domain"] + "/" + S3_KEY.metadataKey
-        return if (s3Service.objectExists(projectMetadataKey, sourceBucket)) {
+        return if (s3Service.objectExists(projectMetadataKey, generationBucket)) {
             loadContentTree(request.headers["cantilever-project-domain"]!!)
             info("Fetching all pages from $projectMetadataKey")
-            val lastUpdated = s3Service.getUpdatedTime(projectMetadataKey, sourceBucket)
+            val lastUpdated = s3Service.getUpdatedTime(projectMetadataKey, generationBucket)
             val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
 //            val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
             val sorted = pages.sortedByDescending { it.srcKey }
@@ -42,9 +42,9 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
             )
             Response.ok(body = APIResult.Success(value = pageList))
         } else {
-            error("Cannot find file '${projectMetadataKey}' in bucket $sourceBucket")
+            error("Cannot find file '${projectMetadataKey}/${S3_KEY.metadataKey}' in bucket $generationBucket")
             Response.notFound(
-                body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+                body = APIResult.Error(statusText = "Cannot find file '${projectMetadataKey}/${S3_KEY.metadataKey}' in bucket $sourceBucket")
             )
         }
     }
