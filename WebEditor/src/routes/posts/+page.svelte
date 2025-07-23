@@ -24,6 +24,7 @@
 		posts,
 		savePost
 	} from '../../lib/stores/postStore.svelte';
+	import type { ModalSettings } from '@skeletonlabs/skeleton';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -89,12 +90,13 @@
 	/**
 	 * @type: {ModalSettings}
 	 */
-	$: createNewPostModal = {
+	const createNewPostModal = {
 		type: 'component',
 		component: 'createNewPostModal',
 		meta: {
 			modalTitle: 'Create new post',
 			onFormSubmit: () => {
+				// console.log('New post modal form submitted');
 				initiateNewPost();
 			}
 		}
@@ -111,6 +113,7 @@
 	};
 
 	onMount(async () => {
+		// TODO gracefully handle no posts scenario
 		if (posts.isEmpty()) {
 			await loadPostList();
 		}
@@ -148,10 +151,14 @@
 	}
 
 	function initiateNewPost() {
-		let newPost = new MarkdownContent(
-			new PostItem('', '', 'sources/templates/post.html.hbs', '', new Date(), new Date(), true),
+		// console.log('Creating new post by creating a new MarkdownContent');
+		let postItem = new PostItem('', '', 'sources/templates/post.html.hbs', '', new Date(), new Date(), true);
+		// console.log('Post item created', postItem);
+;		let newPost = new MarkdownContent(
+			postItem,
 			''
 		);
+		// console.log('New post created', newPost);
 		markdownStore.set(newPost);
 		isNewPost = true;
 	}
