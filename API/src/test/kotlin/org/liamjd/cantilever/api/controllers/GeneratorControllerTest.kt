@@ -16,7 +16,6 @@ import org.koin.test.junit5.KoinTestExtension
 import org.koin.test.junit5.mock.MockProviderExtension
 import org.koin.test.mock.declareMock
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.routing.Request
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
@@ -261,8 +260,8 @@ class GeneratorControllerTest : KoinTest {
 
         declareMock<S3Service> {
             every { mockS3.objectExists(any(), sourceBucket) } returns true
-            every { mockS3.objectExists("test/metadata.json", generationBucket) } returns true
-            every { mockS3.getObjectAsString("test/metadata.json", generationBucket) } returns mockMetaJson
+            every { mockS3.objectExists("test/generated/metadata.json", generationBucket) } returns true
+            every { mockS3.getObjectAsString("test/generated/metadata.json", generationBucket) } returns mockMetaJson
             every {
                 mockS3.getObjectAsString(
                     "test/sources/pages/dynamodb-design-thoughts.md", sourceBucket
@@ -307,8 +306,8 @@ class GeneratorControllerTest : KoinTest {
         declareMock<S3Service> {
             every { mockS3.listObjects("test/sources/pages/", sourceBucket) } returns mockPageListResponse
             every { mockS3.getObjectAsString("test/sources/pages/about.md", sourceBucket) } returns ""
-            every { mockS3.objectExists("test/metadata.json", generationBucket) } returns true
-            every { mockS3.getObjectAsString("test/metadata.json", generationBucket) } returns mockPageJsonShort
+            every { mockS3.objectExists("test/generated/metadata.json", generationBucket) } returns true
+            every { mockS3.getObjectAsString("test/generated/metadata.json", generationBucket) } returns mockPageJsonShort
             every { mockS3.getObjectAsString("test/sources/pages/bio/about-me.md", sourceBucket) } returns ""
         }
         declareMock<SQSService> {
@@ -362,8 +361,8 @@ class GeneratorControllerTest : KoinTest {
         val imageThumbnail = S3Object.builder().key("test/generated/images/milkyway/__thumb.jpg").build()
         val imageList = listOf(imageOriginal, imageThumbnail)
         declareMock<S3Service> {
-            every { mockS3.objectExists("test/metadata.json", generationBucket) } returns true
-            every { mockS3.getObjectAsString("test/metadata.json", generationBucket) } returns mockMetaJson
+            every { mockS3.objectExists("test/generated/metadata.json", generationBucket) } returns true
+            every { mockS3.getObjectAsString("test/generated/metadata.json", generationBucket) } returns mockMetaJson
             every { mockS3.listObjects("test/generated/images/", generationBucket) } returns imageListResponse
             every {
                 mockS3.listObjects(
