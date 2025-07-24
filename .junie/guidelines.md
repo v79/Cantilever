@@ -4,7 +4,9 @@
 
 Cantilever is an AWS Lambda-driven static site generator written in Kotlin. It converts markdown files to HTML using Flexmark-java and processes templates with handlebars.java. The application is deployed to AWS using CDK (Cloud Development Kit) and consists of multiple Lambda functions triggered by S3 events.
 
-The project is being refactored to store project and document metadata in a DynamoDB database. Source and output files will remain in S3.
+The project is being refactored to store project and document metadata in a DynamoDB database. Source and output files will remain in S3. There is a clear separation of front-end and back-end elements.
+
+A project is split across S3 buckets - a _source_ bucket, where files are uploaded, or placed by the web front end. A _generated_ bucket contains intermediate data, such as HTML fragments created by the Markdown processor. FInally, a destination bucket contains the complete HTML, CSS and images for the static output. A fourth bucket contains the web editor interface, a static SvelteKit 4 project.
 
 This application is built on a Windows machine.
 
@@ -12,14 +14,14 @@ This application is built on a Windows machine.
 
 The project follows a modular architecture with the following main components:
 
-- **Root Project**: Contains AWS CDK code for infrastructure deployment
-- **API**: REST API implementation for the web editor. This uses a custom API routing library, written in Kotlin and running on AWS Lambda.
-- **FileUploadHandler**: Lambda function for handling file uploads
+- **Root Project**: Contains AWS CDK code for infrastructure deployment. The code is written in Kotlin but using the Java CDK libraries.
+- **API**: REST API implementation for the web editor. This uses a custom API routing library, written in Kotlin and running on AWS Lambda. This custom library is available in maven local and on Github at https://github.com/v79/APIViaduct
+- **FileUploadHandler**: Lambda function for handling file uploads. This lambda analyses the uploaded files and determines how they should be processed. Events are placed on an SQS queue for further processing by other lambdas.
 - **MarkdownProcessor**: Lambda function for converting markdown to HTML
 - **TemplateProcessor**: Lambda function for applying Handlebars templates
 - **ImageProcessor**: Lambda function for processing images
 - **SharedModels**: Common data models shared across modules
-- **WebEditor**: SvelteKit-based web interface for content management
+- **WebEditor**: SvelteKit-based web interface for content management, deployed as a static SPA.
 
 Each module follows the standard Maven/Gradle project structure:
 ```
@@ -42,6 +44,7 @@ The project uses Gradle with Kotlin DSL (build.gradle.kts) for build configurati
 - Kotlin 2.2.0 is used as the primary programming language
 - Dependencies are managed through Gradle's dependency management system
 - Each module has its own build.gradle.kts file with module-specific dependencies
+- Runtime dependencies are injected using the Koin library (DI)
 
 To build the project:
 ```
@@ -50,7 +53,7 @@ To build the project:
 
 To deploy to AWS:
 ```
-cdk deploy --context env=<dev|prod> --all
+cdk deploy <CantileverStack|Cantilever-Dev-Stack>
 ```
 
 ## Testing Guidelines

@@ -33,3 +33,5 @@ Content)
 
 - [X] Fixes around the location of metadata.json - I was so inconsistent! But as this will be replaced by a database, I'm not going to get too worked up about it
 - [-] Can create and save templates and pages, but the New Post function doesn't work here either! Fix this then I will be done...
+- [X] I think I have fixed new post by splitting the function into several steps
+
