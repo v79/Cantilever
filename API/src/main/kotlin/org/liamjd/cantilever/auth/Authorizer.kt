@@ -11,7 +11,7 @@ import com.auth0.jwt.interfaces.JWTVerifier
 import com.auth0.jwt.interfaces.RSAKeyProvider
 import org.liamjd.apiviaduct.routing.AuthResult
 import org.liamjd.apiviaduct.routing.AuthType
-import org.liamjd.cantilever.routing.getHeader
+import org.liamjd.apiviaduct.routing.extensions.getHeader
 import java.net.MalformedURLException
 import java.net.URL
 import java.security.interfaces.RSAPrivateKey

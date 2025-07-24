@@ -101,7 +101,7 @@ internal class TemplateControllerTest : KoinTest {
             every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/plain") } returns 1234
             every {
                 mockS3.putObjectAsString(
-                    "test/metadata.json", generationBucket, any(), "application/json"
+                    "test/generated/metadata.json", generationBucket, any(), "application/json"
                 )
             } returns 2345
         }
@@ -129,7 +129,7 @@ internal class TemplateControllerTest : KoinTest {
             every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/plain") } returns 1234
             every {
                 mockS3.putObjectAsString(
-                    "test/metadata.json", generationBucket, any(), "application/json"
+                    "test/generated/metadata.json", generationBucket, any(), "application/json"
                 )
             } returns 2345
         }
@@ -137,7 +137,7 @@ internal class TemplateControllerTest : KoinTest {
         val apiProxyEvent = APIGatewayProxyRequestEvent().withHeaders(mapOf("cantilever-project-domain" to "test"))
 
         val controller = TemplateController(sourceBucket,generationBucket)
-        val request = org.liamjd.apiviaduct.routing.Request<ContentNode.TemplateNode>(
+        val request = org.liamjd.apiviaduct.routing.Request(
             apiRequest = apiProxyEvent,
             body = mockHandlebarsContent,
             pathPattern = "/templates/"
