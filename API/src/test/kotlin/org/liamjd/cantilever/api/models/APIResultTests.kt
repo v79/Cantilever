@@ -5,7 +5,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import org.liamjd.cantilever.routing.ResponseEntity
+import org.liamjd.apiviaduct.routing.Response
 
 class APIResultTests {
 
@@ -88,7 +88,7 @@ class APIResultTests {
     @Test
     fun `can serialize a response entity wrapping an APIResult`() {
         val ok = APIResult.OK(message = "OK message")
-        val entity = ResponseEntity.ok(body = ok)
+        val entity = Response.ok(body = ok)
 
         val result = Json.encodeToString(entity)
 
@@ -104,7 +104,7 @@ class APIResultTests {
     fun `can serialize a response entity wrapping an bigger APIResult`() {
         val bigObject = BigObject(count = 23, text = "This isn't so big")
         val success = APIResult.Success<BigObject>(value = bigObject)
-        val entity = ResponseEntity.ok(body = success)
+        val entity = Response.ok(body = success)
 
         val result = Json.encodeToString(entity)
 
