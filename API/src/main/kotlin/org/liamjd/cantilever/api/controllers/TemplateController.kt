@@ -16,7 +16,8 @@ import org.liamjd.cantilever.models.rest.TemplateUseDTO
 import java.net.URLDecoder
 import java.nio.charset.Charset
 
-class TemplateController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
+class TemplateController(sourceBucket: String, generationBucket: String) : KoinComponent,
+    APIController(sourceBucket, generationBucket) {
 
     /**
      * Load a handlebars template file with the specified 'srcKey' and return it as a [ContentNode.TemplateNode] response
@@ -84,7 +85,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
             saveContentTree(projectKeyHeader)
             Response.ok(
                 body =
-                APIResult.OK("Updated file ${templateNode.srcKey}, $length bytes")
+                    APIResult.OK("Updated file ${templateNode.srcKey}, $length bytes")
             )
         } else {
             info("Creating new file '$projectKeyHeader/$srcKey' by copying from '${templateNode.srcKey}'")
@@ -104,7 +105,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
             saveContentTree(projectKeyHeader)
             Response.ok(
                 body =
-                APIResult.OK("Updated file ${newNode.srcKey}, $length bytes")
+                    APIResult.OK("Updated file ${newNode.srcKey}, $length bytes")
             )
         }
     }
@@ -144,8 +145,8 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
     fun getTemplates(request: Request<Unit>): Response<APIResult<TemplateListDTO>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (loadContentTree(projectKeyHeader)) {
-            info("Fetching all templates from metadata.json")
-            val lastUpdated = s3Service.getUpdatedTime(projectKeyHeader + "/" + S3_KEY.metadataKey, sourceBucket)
+            info("Fetching all templates from $projectKeyHeader/${S3_KEY.metadataKey}")
+            val lastUpdated = s3Service.getUpdatedTime(projectKeyHeader + "/" + S3_KEY.metadataKey, generationBucket)
             val templates = contentTree.templates.sortedBy { it.title }
             val templateList = TemplateListDTO(
                 count = templates.size,
@@ -154,9 +155,9 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
             )
             Response.ok(body = APIResult.Success(value = templateList))
         } else {
-            error("Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+            error("Cannot find file '$projectKeyHeader/${S3_KEY.metadataKey}' in bucket $generationBucket")
             Response.serverError(
-                body = APIResult.Error(statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket")
+                body = APIResult.Error(statusText = "Cannot find file '$projectKeyHeader/${S3_KEY.metadataKey}' in bucket $generationBucket")
             )
         }
     }
@@ -242,7 +243,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
         val sBuilder: StringBuilder = StringBuilder()
         sBuilder.appendLine("---")
         sBuilder.appendLine("name: ${template.title}")
-        if(template.sections.isNotEmpty()) {
+        if (template.sections.isNotEmpty()) {
             sBuilder.appendLine("sections:")
             template.sections.forEach {
                 sBuilder.appendLine("  - $it")
