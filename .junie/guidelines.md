@@ -46,6 +46,7 @@ The project uses Gradle with Kotlin DSL (build.gradle.kts) for build configurati
 - Each module has its own build.gradle.kts file with module-specific dependencies
 - Runtime dependencies are injected using the Koin library (DI)
 - The front-end in the WebEditor folder is built using vite and npm.
+- Although the application code is written in Kotlin, I am using the Java SDK from AWS
 
 To build the project:
 ```

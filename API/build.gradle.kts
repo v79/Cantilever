@@ -38,6 +38,10 @@ dependencies {
 
     // DI
     implementation(libs.koin.core)
+    
+    // coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.7.3")
 
     // sdk v2
     implementation(platform(libs.aws.sdk.bom))

@@ -372,6 +372,10 @@ class CantileverStack(
             )
             .build()
 
+        println("Granting permissions to the API Gateway to access the DynamoDB table")
+        contentNodeTable.grantReadWriteData(apiRoutingLambda)
+        
+
         println("Creating API Gateway DNS record for $apiDomain")
         val apiDomainDNSRecord = ARecord.Builder.create(this, "cantilever-api-record-${stageName.uppercase()}").zone(
             HostedZone.fromHostedZoneAttributes(

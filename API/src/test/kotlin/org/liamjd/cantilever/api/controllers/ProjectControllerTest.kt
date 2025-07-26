@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockkClass
@@ -17,7 +18,10 @@ import org.koin.test.junit5.mock.MockProviderExtension
 import org.koin.test.mock.declareMock
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.models.CantileverProject
+import org.liamjd.cantilever.models.dynamodb.Project
+import org.liamjd.cantilever.services.DynamoDBService
 import org.liamjd.cantilever.services.S3Service
+import org.liamjd.cantilever.services.impl.DynamoDBServiceImpl
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import software.amazon.awssdk.regions.Region
 import kotlin.test.assertEquals
@@ -27,16 +31,20 @@ import kotlin.test.assertNotNull
 internal class ProjectControllerTest : KoinTest {
 
     private val mockS3: S3Service by inject()
+    private val mockDynamoDB: DynamoDBService by inject()
     private val sourceBucket = "sourceBucket"
     private val generationBucket = "generationBucket"
     private val srcKey = "www.cantilevers.org"
     private val postsKey = "generated/posts.json"
+    private val domain = "www.cantilevers.org"
+    private val projectName = "Cantilevers"
 
     @JvmField
     @RegisterExtension
     val koinTestExtension = KoinTestExtension.create {
         modules(module {
             single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
+            single<DynamoDBService> { DynamoDBServiceImpl(Region.EU_WEST_2) }
         })
     }
 
@@ -53,19 +61,19 @@ internal class ProjectControllerTest : KoinTest {
 
     @Test
     fun `returns a project definition object`() {
-        val mockYaml = """
-            projectName: "Cantilevers"
-            author: "Author name"
-            dateFormat: "dd/MM/yyyy"
-            dateTimeFormat: "HH:mm dd/MM/yyyy"
-            domain: "www.cantilevers.org"
-        """.trimIndent()
-        declareMock<S3Service> {
-            every { mockS3.objectExists(srcKey, sourceBucket) } returns true
-            every { mockS3.getObjectAsString(srcKey, sourceBucket) } returns mockYaml
+        val mockProject = Project(
+            domain = domain,
+            projectName = projectName,
+            author = "Author name",
+            dateFormat = "dd/MM/yyyy",
+            dateTimeFormat = "HH:mm dd/MM/yyyy"
+        )
+        
+        declareMock<DynamoDBService> {
+            coEvery { mockDynamoDB.getProject(domain) } returns mockProject
         }
 
-        val controller = ProjectController(sourceBucket,generationBucket)
+        val controller = ProjectController(sourceBucket, generationBucket)
         val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{projectKey}")
         val response = controller.getProject(request)
 
@@ -74,72 +82,45 @@ internal class ProjectControllerTest : KoinTest {
     }
 
     @Test
-    fun `returns 404 if project file is not found`() {
-        declareMock<S3Service> {
-            every { mockS3.objectExists(srcKey, sourceBucket) } returns false
+    fun `returns 404 if project is not found`() {
+        declareMock<DynamoDBService> {
+            coEvery { mockDynamoDB.getProject(domain) } returns null
         }
 
-        val controller = ProjectController(sourceBucket,generationBucket)
+        val controller = ProjectController(sourceBucket, generationBucket)
         val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{projectKey}")
         val response = controller.getProject(request)
 
         assertNotNull(response)
-        println(response)
         assertEquals(404, response.statusCode)
     }
 
     @Test
-    fun `returns a 500 if the yaml file is invalid`() {
-        val mockYaml = """
-            author: "Author name"
-            dateFormat: "dd/MM/yyyy"
-            dateTimeFormat: "HH:mm dd/MM/yyyy"
-        """.trimIndent()
-        declareMock<S3Service> {
-            every { mockS3.objectExists(srcKey, sourceBucket) } returns true
-            every { mockS3.getObjectAsString(srcKey, sourceBucket) } returns mockYaml
-        }
-
-        val controller = ProjectController(sourceBucket,generationBucket)
-        val request = buildRequest(path = "/project/www.cantilevers.org", pathPattern = "/project/{projectKey}")
-        val response = controller.getProject(request)
-
-        assertNotNull(response)
-        assertEquals(500, response.statusCode)
-    }
-
-    @Test
     fun `successfully updates existing project definition`() {
-        val mockYaml = """
-            projectName: "Project name"
-            author: "Author name"
-            dateFormat: "dd/MM/yyyy"
-            dateTimeFormat: "HH:mm dd/MM/yyyy"
-            domain: "example.com"
-        """.trimIndent()
-        val mockProject = CantileverProject(
+        val mockCantileverProject = CantileverProject(
             domain = "example.com",
             projectName = "Project name 2",
             author = "Author name"
         )
-        declareMock<S3Service> {
-            every { mockS3.getObjectAsString("example.com.yaml", sourceBucket) } returns mockYaml
-            every {
-                mockS3.putObjectAsString(
-                    "example.com.yaml",
-                    sourceBucket,
-                    any(),
-                    "application/yaml"
-                )
-            } returns 2345
+        
+        val mockProject = Project(
+            domain = "example.com",
+            projectName = "Project name 2",
+            author = "Author name",
+            dateFormat = "dd/MM/yyyy",
+            dateTimeFormat = "HH:mm dd/MM/yyyy"
+        )
+        
+        declareMock<DynamoDBService> {
+            coEvery { mockDynamoDB.saveProject(any()) } returns mockProject
         }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
-        val controller = ProjectController(sourceBucket,generationBucket)
+        val controller = ProjectController(sourceBucket, generationBucket)
         val request = org.liamjd.apiviaduct.routing.Request(
             apiRequest = apiProxyEvent,
-            body = mockProject,
+            body = mockCantileverProject,
             pathPattern = "/project/{projectKey}"
         )
         val response = controller.updateProjectDefinition(request)
@@ -156,10 +137,9 @@ internal class ProjectControllerTest : KoinTest {
             author = "Author name"
         )
 
-
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
-        val controller = ProjectController(sourceBucket,generationBucket)
+        val controller = ProjectController(sourceBucket, generationBucket)
         val request = org.liamjd.apiviaduct.routing.Request(
             apiRequest = apiProxyEvent,
             body = mockProject,
@@ -169,6 +149,75 @@ internal class ProjectControllerTest : KoinTest {
 
         assertNotNull(response)
         assertEquals(400, response.statusCode)
+    }
+    
+    @Test
+    fun `successfully creates a new project`() {
+        val mockCantileverProject = CantileverProject(
+            domain = "newdomain.com",
+            projectName = "New Project",
+            author = "Author name"
+        )
+        
+        val mockProject = Project(
+            domain = "newdomain.com",
+            projectName = "New Project",
+            author = "Author name",
+            dateFormat = "dd/MM/yyyy",
+            dateTimeFormat = "HH:mm dd/MM/yyyy"
+        )
+        
+        declareMock<DynamoDBService> {
+            coEvery { mockDynamoDB.getProject("newdomain.com") } returns null
+            coEvery { mockDynamoDB.saveProject(any()) } returns mockProject
+        }
+
+        val apiProxyEvent = APIGatewayProxyRequestEvent()
+
+        val controller = ProjectController(sourceBucket, generationBucket)
+        val request = org.liamjd.apiviaduct.routing.Request(
+            apiRequest = apiProxyEvent,
+            body = mockCantileverProject,
+            pathPattern = "/project/"
+        )
+        val response = controller.createProject(request)
+
+        assertNotNull(response)
+        assertEquals(200, response.statusCode)
+    }
+    
+    @Test
+    fun `returns conflict if project already exists`() {
+        val mockCantileverProject = CantileverProject(
+            domain = "existingdomain.com",
+            projectName = "Existing Project",
+            author = "Author name"
+        )
+        
+        val existingProject = Project(
+            domain = "existingdomain.com",
+            projectName = "Existing Project",
+            author = "Author name",
+            dateFormat = "dd/MM/yyyy",
+            dateTimeFormat = "HH:mm dd/MM/yyyy"
+        )
+        
+        declareMock<DynamoDBService> {
+            coEvery { mockDynamoDB.getProject("existingdomain.com") } returns existingProject
+        }
+
+        val apiProxyEvent = APIGatewayProxyRequestEvent()
+
+        val controller = ProjectController(sourceBucket, generationBucket)
+        val request = org.liamjd.apiviaduct.routing.Request(
+            apiRequest = apiProxyEvent,
+            body = mockCantileverProject,
+            pathPattern = "/project/"
+        )
+        val response = controller.createProject(request)
+
+        assertNotNull(response)
+        assertEquals(409, response.statusCode)
     }
 
     @Test

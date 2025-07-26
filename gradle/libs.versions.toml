@@ -51,6 +51,7 @@ aws-sdk-bom = { module = "software.amazon.awssdk:bom", version.ref = "aws-sdk" }
 aws-sdk-s3 = { module = "software.amazon.awssdk:s3" }
 aws-sdk-lambda = { module = "software.amazon.awssdk:lambda" }
 aws-sdk-sqs = { module = "software.amazon.awssdk:sqs" }
+aws-sdk-dynamodb = { module = "software.amazon.awssdk:dynamodb" }
 
 # AWS Lambda
 aws-lambda-core = { module = "com.amazonaws:aws-lambda-java-core", version.ref = "aws-lambda-core" }
