@@ -12,6 +12,7 @@ import software.amazon.awscdk.services.cloudfront.Distribution
 import software.amazon.awscdk.services.cloudfront.DistributionProps
 import software.amazon.awscdk.services.cloudfront.origins.S3BucketOrigin
 import software.amazon.awscdk.services.cognito.*
+import software.amazon.awscdk.services.dynamodb.*
 import software.amazon.awscdk.services.events.targets.SqsQueue
 import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.Function
@@ -46,32 +47,17 @@ class CantileverStack(
     deploymentDomain: String,
     apiDomain: String,
     isProd: Boolean = false
-) :
-    Stack(scope, id, props) {
+) : Stack(scope, id, props) {
 
     enum class ENV {
-        destination_bucket,
-        source_bucket,
-        generation_bucket,
-        markdown_processing_queue,
-        handlebar_template_queue,
-        image_processing_queue,
-        cors_domain,
-        cognito_region,
-        cognito_user_pools_id
+        destination_bucket, source_bucket, generation_bucket, markdown_processing_queue, handlebar_template_queue, image_processing_queue, cors_domain, cognito_region, cognito_user_pools_id
     }
 
     // TODO: I suppose I'm going to need to set up a dev and production environment for this sort of thing. Boo.
     var stageName: String
 
     constructor(scope: Construct, id: String) : this(
-        scope,
-        id,
-        null,
-        "vUnknown",
-        "http://localhost:5173",
-        "dev-api.cantilevers.org",
-        false
+        scope, id, null, "vUnknown", "http://localhost:5173", "dev-api.cantilevers.org", false
     )
 
     // console colour codes
@@ -91,8 +77,8 @@ class CantileverStack(
         val envKey = scope.node.tryGetContext("env") as String?
         stageName = props?.stackName ?: "no-stage"
 
-        @Suppress("UNCHECKED_CAST")
-        val env = scope.node.tryGetContext(envKey ?: "env") as LinkedHashMap<String, String>?
+        @Suppress("UNCHECKED_CAST") val env =
+            scope.node.tryGetContext(envKey ?: "env") as LinkedHashMap<String, String>?
         println()
         println(blue + "STAGE: ${stageName};  ENVIRONMENT: $env; deploymentDomain: $deploymentDomain; isPROD: $isProd" + reset)
 
@@ -118,33 +104,25 @@ class CantileverStack(
             // Unfortunately the distribution won't be invalidated automatically, so I need to do that manually
             // Or disable caching
             editorBucketDistribution = Distribution(
-                this, "CantileverEditorBucketDistribution-${stageName.uppercase()}",
-                DistributionProps.builder()
-                    .comment("EditorBucketDistribution-${stageName.uppercase()}")
+                this,
+                "CantileverEditorBucketDistribution-${stageName.uppercase()}",
+                DistributionProps.builder().comment("EditorBucketDistribution-${stageName.uppercase()}")
                     .defaultBehavior(
-                        BehaviorOptions.builder()
-                            .origin(S3BucketOrigin.withOriginAccessControl(editorBucket))
-                            .cachePolicy(CachePolicy.CACHING_DISABLED)
-                            .build()
-                    )
-                    .defaultRootObject("index.html")
-                    .enableLogging(true)
-                    .build()
+                        BehaviorOptions.builder().origin(S3BucketOrigin.withOriginAccessControl(editorBucket))
+                            .cachePolicy(CachePolicy.CACHING_DISABLED).build()
+                    ).defaultRootObject("index.html").enableLogging(true).build()
             )
         }
 
         // SQS for inter-lambda communication. The visibility timeout should be > the max processing time of the lambdas, so setting to 3
         println("Creating markdown processing queue")
-        val markdownProcessingQueue =
-            buildSQSQueue("cantilever-markdown-to-html-queue", 3)
+        val markdownProcessingQueue = buildSQSQueue("cantilever-markdown-to-html-queue", 3)
 
         println("Creating handlebar templating processing queue")
-        val handlebarProcessingQueue =
-            buildSQSQueue("cantilever-html-handlebar-queue", 3)
+        val handlebarProcessingQueue = buildSQSQueue("cantilever-html-handlebar-queue", 3)
 
         println("Creating image processing queue")
-        val imageProcessingQueue =
-            buildSQSQueue("cantilever-image-processing-queue", 3)
+        val imageProcessingQueue = buildSQSQueue("cantilever-image-processing-queue", 3)
 
         println("Creating FileUploadHandler Lambda function")
         val fileUploadLambda = createLambda(
@@ -193,17 +171,13 @@ class CantileverStack(
         )
 
         println("Creating Cognito identity pool")
-        val cPool = UserPool.Builder.create(this, "cantilever-user-pool-$stageName")
-            .userPoolName("$stageName-user-pool")
-            .signInCaseSensitive(true)
-            .signInAliases(SignInAliases.builder().email(true).phone(false).username(false).build())
-            .passwordPolicy(PasswordPolicy.builder().minLength(12).build())
-            .mfa(Mfa.OFF) // TODO: change this later
-            .accountRecovery(AccountRecovery.EMAIL_ONLY)
-            .selfSignUpEnabled(false)
-            .email(UserPoolEmail.withCognito())
-            .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY)
-            .build()
+        val cPool =
+            UserPool.Builder.create(this, "cantilever-user-pool-$stageName").userPoolName("$stageName-user-pool")
+                .signInCaseSensitive(true)
+                .signInAliases(SignInAliases.builder().email(true).phone(false).username(false).build())
+                .passwordPolicy(PasswordPolicy.builder().minLength(12).build()).mfa(Mfa.OFF) // TODO: change this later
+                .accountRecovery(AccountRecovery.EMAIL_ONLY).selfSignUpEnabled(false).email(UserPoolEmail.withCognito())
+                .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).build()
 
         cPool.addDomain(
             "${stageName}-api-domain}",
@@ -240,7 +214,7 @@ class CantileverStack(
         println("Creating image processing Lambda function")
         val imageProcessorLambda = createLambda(
             stack = this,
-            id = "cantilever-image-processor-lambda-${stageName.uppercase()}",
+            id = "${stageName.uppercase()}-image-processor-lambda",
             description = "Lambda function which processes images",
             codePath = "./ImageProcessor/build/libs/ImageProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.image.ImageProcessorHandler",
@@ -341,58 +315,82 @@ class CantileverStack(
         println("Creating API Gateway with Lambda integration for $stageName to domain $apiDomain")
         val lambdaRestAPI = LambdaRestApi.Builder.create(this, "cantilever-rest-api-${stageName.uppercase()}")
             .restApiName("Cantilever $stageName REST API")
-            .description("Gateway function to Cantilever services, handling routing")
-            .disableExecuteApiEndpoint(true)
+            .description("Gateway function to Cantilever services, handling routing").disableExecuteApiEndpoint(true)
             .domainName(
                 DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName(apiDomain)
                     .certificate(certificate).build()
-            )
-            .defaultCorsPreflightOptions(
-                CorsOptions.builder()
-                    .allowHeaders(
-                        listOf(
-                            "Content-Type",
-                            "Content-Length",
-                            "X-Amz-Date",
-                            "Authorization",
-                            "X-Api-Key",
-                            "X-Amz-Security-Token",
-                            "X-Content-Length",
-                            "Cantilever-Project-Domain",
-                        )
+            ).defaultCorsPreflightOptions(
+                CorsOptions.builder().allowHeaders(
+                    listOf(
+                        "Content-Type",
+                        "Content-Length",
+                        "X-Amz-Date",
+                        "Authorization",
+                        "X-Api-Key",
+                        "X-Amz-Security-Token",
+                        "X-Content-Length",
+                        "Cantilever-Project-Domain",
                     )
-                    .allowMethods(listOf("GET", "PUT", "POST", "OPTIONS", "DELETE"))
-                    .allowOrigins(listOf(deploymentDomain)).build()
+                ).allowMethods(listOf("GET", "PUT", "POST", "OPTIONS", "DELETE")).allowOrigins(listOf(deploymentDomain))
+                    .build()
+            ).handler(apiRoutingLambda).proxy(true).build()
+
+
+        println("Create DynamoDB database tables: project")
+        val projectTable = TableV2.Builder.create(this, "${stageName.uppercase()}-database-project-table")
+            .tableName("${stageName}-projects")
+            .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
+                Attribute.builder().name("domain").type(AttributeType.STRING).build()
+            ).sortKey(Attribute.builder().name("lastUpdated").type(AttributeType.NUMBER).build())
+            .globalSecondaryIndexes(
+                listOf(
+                    GlobalSecondaryIndexPropsV2.builder().indexName("ALL_PROJECTS")
+                        .partitionKey(Attribute.builder().name("domain").type(AttributeType.STRING).build()).sortKey(
+                        Attribute.builder().name("lastUpdated").type(
+                            AttributeType.NUMBER
+                        ).build()
+                    ).projectionType(ProjectionType.ALL).build()
+                )
             )
-            .handler(apiRoutingLambda)
-            .proxy(true)
             .build()
 
-
-
+        println("Creating DynamoDB database tables: content nodes")
+        // GSIs: Project-NodeType-LastUpdated - "get all pages for domain Y sorted by lastUpdated"
+        val contentNodeTable = TableV2.Builder.create(this, "${stageName.uppercase()}-database-content-node-table")
+            .tableName("${stageName}-content-nodes")
+            .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
+                Attribute.builder().name("domain").type(AttributeType.STRING).build()
+            ).sortKey(Attribute.builder().name("type#srcKey").type(AttributeType.STRING).build())
+            .globalSecondaryIndexes(
+                listOf(
+                    GlobalSecondaryIndexPropsV2.builder().indexName("Project-NodeType-LastUpdated")
+                        .partitionKey(Attribute.builder().name("domain").type(AttributeType.STRING).build()).sortKey(
+                        Attribute.builder().name("type#lastUpdated").type(
+                            AttributeType.STRING
+                        ).build()
+                    ).projectionType(ProjectionType.ALL).build()
+                )
+            )
+            .build()
 
         println("Creating API Gateway DNS record for $apiDomain")
         val apiDomainDNSRecord = ARecord.Builder.create(this, "cantilever-api-record-${stageName.uppercase()}").zone(
             HostedZone.fromHostedZoneAttributes(
-                this, "cantiliever-api-zone-${stageName.uppercase()}",
+                this,
+                "cantiliever-api-zone-${stageName.uppercase()}",
                 HostedZoneAttributes.builder().hostedZoneId("Z01474271BEFJPTG86EOG").zoneName("cantilevers.org").build()
             )
-        )
-            .recordName(apiDomain)
-            .target(RecordTarget.fromAlias(ApiGateway(lambdaRestAPI))).build()
+        ).recordName(apiDomain).target(RecordTarget.fromAlias(ApiGateway(lambdaRestAPI))).build()
 
 
         // I want to put the domain name of the editor cloudfront distribution here, but it isn't available until after the stack is deployed
         // Gemini suggested writing a custom resource and a lambda function to execute post-deployment
         // The alternative may be have two separate stacks, one for the distribution and one for the rest of the resources
         // or I just hardcode the URL for the editor bucket distribution
-        val appUrls =
-            listOf(deploymentDomain, "https://d1e4hj5huhntr6.cloudfront.net")
-        val corbelAppUrls =
-            listOf(
-                "http://localhost:44817/callback",
-                "corbelApp://auth"
-            ) // port randomly chosen here, needs to match that in the Corbel application
+        val appUrls = listOf(deploymentDomain, "https://d1e4hj5huhntr6.cloudfront.net")
+        val corbelAppUrls = listOf(
+            "http://localhost:44817/callback", "corbelApp://auth"
+        ) // port randomly chosen here, needs to match that in the Corbel application
         println("Registering app clients with Cognito identity pool for domains $appUrls")
         cPool.addClient(
             "cantilever-app",
@@ -407,8 +405,7 @@ class CantileverStack(
             UserPoolClientOptions.builder().userPoolClientName("$stageName-corbel-app-client-pool")
                 .authFlows(AuthFlow.builder().build()).oAuth(
                     OAuthSettings.builder().flows(
-                        OAuthFlows.builder().implicitCodeGrant(false).authorizationCodeGrant(true)
-                            .build()
+                        OAuthFlows.builder().implicitCodeGrant(false).authorizationCodeGrant(true).build()
                     ).scopes(listOf(OAuthScope.EMAIL, OAuthScope.OPENID, OAuthScope.COGNITO_ADMIN))
                         .callbackUrls(corbelAppUrls).logoutUrls(corbelAppUrls).build()
                 ).build()
@@ -432,14 +429,10 @@ class CantileverStack(
      * This bucket has a fixed name, and access is cntrolled by the CloudFront distribution.
      */
     private fun createDestinationBucket(): Bucket =
-        Bucket.Builder.create(this, "cantilever-website-${stageName.uppercase()}")
-            .versioned(false)
-            .removalPolicy(RemovalPolicy.DESTROY)
-            .autoDeleteObjects(true)
-            .blockPublicAccess(
+        Bucket.Builder.create(this, "cantilever-website-${stageName.uppercase()}").versioned(false)
+            .removalPolicy(RemovalPolicy.DESTROY).autoDeleteObjects(true).blockPublicAccess(
                 BlockPublicAccess.BLOCK_ALL
-            )
-            .build()
+            ).build()
 
     /**
      * Create a bucket with the given name.
@@ -447,25 +440,17 @@ class CantileverStack(
      * @param public Whether the bucket should be publicly readable
      */
     private fun createBucket(name: String, public: Boolean = false): Bucket =
-        Bucket.Builder.create(this, "${stageName.uppercase()}-${name}")
-            .versioned(false)
-            .removalPolicy(RemovalPolicy.DESTROY)
-            .autoDeleteObjects(true)
-            .publicReadAccess(public)
-            .versioned(true)
+        Bucket.Builder.create(this, "${stageName.uppercase()}-${name}").versioned(false)
+            .removalPolicy(RemovalPolicy.DESTROY).autoDeleteObjects(true).publicReadAccess(public).versioned(true)
             .build()
 
     /**
      * Create a bucket for the editor to store its static files.
      */
-    private fun createEditorBucket(): Bucket = Bucket.Builder.create(this, "${stageName.uppercase()}-editor")
-        .versioned(false)
-        .removalPolicy(RemovalPolicy.DESTROY)
-        .autoDeleteObjects(true)
-        .objectOwnership(ObjectOwnership.OBJECT_WRITER)
-        .blockPublicAccess(BlockPublicAccess.BLOCK_ALL)
-        .websiteIndexDocument("index.html")
-        .build()
+    private fun createEditorBucket(): Bucket =
+        Bucket.Builder.create(this, "${stageName.uppercase()}-editor").versioned(false)
+            .removalPolicy(RemovalPolicy.DESTROY).autoDeleteObjects(true).objectOwnership(ObjectOwnership.OBJECT_WRITER)
+            .blockPublicAccess(BlockPublicAccess.BLOCK_ALL).websiteIndexDocument("index.html").build()
 
     /**
      * Create a lambda function with several assumptions:
@@ -482,16 +467,10 @@ class CantileverStack(
         handler: String,
         memory: Int = 320,
         environment: Map<String, String>?
-    ): Function = Function.Builder.create(stack, id)
-        .description(description ?: "")
-        .runtime(Runtime.JAVA_21)
-        .memorySize(memory)
-        .timeout(Duration.minutes(2))
-        .code(Code.fromAsset(codePath))
-        .handler(handler)
-        .environment(
-            environment
-                ?: emptyMap()
-        )  // TODO: should this should be a CloudFormation parameter CfnParameter
-        .build()
+    ): Function =
+        Function.Builder.create(stack, id).description(description ?: "").runtime(Runtime.JAVA_21).memorySize(memory)
+            .timeout(Duration.minutes(2)).code(Code.fromAsset(codePath)).handler(handler).environment(
+                environment ?: emptyMap()
+            )  // TODO: should this should be a CloudFormation parameter CfnParameter
+            .build()
 }

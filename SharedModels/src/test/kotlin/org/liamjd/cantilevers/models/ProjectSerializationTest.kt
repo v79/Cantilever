@@ -13,24 +13,23 @@ internal class ProjectSerializationTest {
     @Test
     fun `can serialize basic model to yaml`() {
         val proj = CantileverProject(
+            domain =  "https://example.com",
             projectName = "Test",
             author = "Me",
-            dateFormat = "dd/MM/yyyy",
             dateTimeFormat = "dd/MM/yyyy HH:mm",
-            imageResolutions = mapOf("Normal" to ImgRes(640, 480)),
-            domain =  "https://example.com"
+            imageResolutions = mapOf("Normal" to ImgRes(640, 480))
         )
 
         val yaml = Yaml.default.encodeToString(CantileverProject.serializer(), proj)
 
         val expected = """
+            domain: "https://example.com"
             projectName: "Test"
             author: "Me"
             dateFormat: "dd/MM/yyyy"
             dateTimeFormat: "dd/MM/yyyy HH:mm"
             imageResolutions:
               "Normal": "640x480"
-            domain: "https://example.com"
         """.trimIndent()
 
         assertEquals(expected.trim(), yaml.trim())
@@ -58,25 +57,24 @@ internal class ProjectSerializationTest {
     @Test
     fun `can serialize basic model with custom attributes to yaml`() {
         val proj = CantileverProject(
+            domain =  "https://example.com",
             projectName = "Test",
             author = "Me",
-            dateFormat = "dd/MM/yyyy",
             dateTimeFormat = "dd/MM/yyyy HH:mm",
             imageResolutions = mapOf("Normal" to ImgRes(640, 480)),
-            attributes = mapOf("Wibble" to "Greep"),
-            domain =  "https://example.com"
+            attributes = mapOf("Wibble" to "Greep")
         )
 
         val yaml = Yaml.default.encodeToString(CantileverProject.serializer(), proj)
 
         val expected = """
+            domain: "https://example.com"
             projectName: "Test"
             author: "Me"
             dateFormat: "dd/MM/yyyy"
             dateTimeFormat: "dd/MM/yyyy HH:mm"
             imageResolutions:
               "Normal": "640x480"
-            domain: "https://example.com"
             attributes:
               "Wibble": "Greep"
         """.trimIndent()

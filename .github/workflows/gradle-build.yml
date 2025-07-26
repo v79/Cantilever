@@ -2,10 +2,10 @@ name: Kotlin Build with Gradle
 
 on:
   workflow_dispatch:
-#  push:
-#    branches: [ "master" ]
+  push:
+    branches: [ "master" ]
   pull_request:
-#    branches: [ "master" ]
+    branches: [ "master" ]
 
 permissions:
   contents: read

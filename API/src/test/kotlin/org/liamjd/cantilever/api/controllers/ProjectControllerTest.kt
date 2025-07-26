@@ -118,13 +118,9 @@ internal class ProjectControllerTest : KoinTest {
             domain: "example.com"
         """.trimIndent()
         val mockProject = CantileverProject(
+            domain = "example.com",
             projectName = "Project name 2",
-            author = "Author name",
-            dateFormat = "dd/MM/yyyy",
-            dateTimeFormat = "HH:mm dd/MM/yyyy",
-            imageResolutions = emptyMap(),
-            attributes = null,
-            domain = "example.com"
+            author = "Author name"
         )
         declareMock<S3Service> {
             every { mockS3.getObjectAsString("example.com.yaml", sourceBucket) } returns mockYaml
@@ -155,13 +151,9 @@ internal class ProjectControllerTest : KoinTest {
     @Test
     fun `return 400 if project name is blank`() {
         val mockProject = CantileverProject(
+            domain = "https://example.com",
             projectName = "",
-            author = "Author name",
-            dateFormat = "dd/MM/yyyy",
-            dateTimeFormat = "HH:mm dd/MM/yyyy",
-            imageResolutions = emptyMap(),
-            attributes = null,
-            domain = "https://example.com"
+            author = "Author name"
         )
 
 

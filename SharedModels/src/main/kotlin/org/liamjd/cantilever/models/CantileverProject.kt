@@ -1,5 +1,7 @@
 package org.liamjd.cantilever.models
 
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -7,6 +9,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import org.liamjd.apiviaduct.schema.OpenAPISchema
 import org.liamjd.cantilever.openapi.APISchema
+
 
 /**
  * Project definition file. *Will change a lot*. Should be stored in a file called 'cantilever.yaml'. Although Cantilever does not yet support multiple projects, this metadata object is useful for page rendering.
@@ -23,12 +26,13 @@ import org.liamjd.cantilever.openapi.APISchema
 @OpenAPISchema
 @Serializable
 data class CantileverProject @OptIn(ExperimentalSerializationApi::class) constructor(
+    val domain: String,
     val projectName: String,
     val author: String,
     val dateFormat: String = "dd/MM/yyyy",
     val dateTimeFormat: String = "HH:mm dd/MM/yyyy",
+//    val lastUpdated: Instant = Clock.System.now(),
     val imageResolutions: Map<String, ImgRes> = emptyMap(),
-    val domain: String,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     var attributes: Map<String,String>? = null
 ) {
