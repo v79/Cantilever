@@ -336,7 +336,7 @@ class CantileverStack(
             ).handler(apiRoutingLambda).proxy(true).build()
 
 
-        println("Create DynamoDB database tables: project")
+  /*      println("Create DynamoDB database tables: project")
         val projectTable = TableV2.Builder.create(this, "${stageName.uppercase()}-database-project-table")
             .tableName("${stageName}-projects")
             .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
@@ -353,14 +353,13 @@ class CantileverStack(
                 )
             )
             .build()
-
-        println("Creating DynamoDB database tables: content nodes")
-        // GSIs: Project-NodeType-LastUpdated - "get all pages for domain Y sorted by lastUpdated"
+*/
+        println("Creating DynamoDB database tables - PK domain#type, SK srcKey")
         val contentNodeTable = TableV2.Builder.create(this, "${stageName.uppercase()}-database-content-node-table")
             .tableName("${stageName}-content-nodes")
             .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
-                Attribute.builder().name("domain").type(AttributeType.STRING).build()
-            ).sortKey(Attribute.builder().name("type#srcKey").type(AttributeType.STRING).build())
+                Attribute.builder().name("domain#type").type(AttributeType.STRING).build()
+            ).sortKey(Attribute.builder().name("srcKey").type(AttributeType.STRING).build())
             .globalSecondaryIndexes(
                 listOf(
                     GlobalSecondaryIndexPropsV2.builder().indexName("Project-NodeType-LastUpdated")
