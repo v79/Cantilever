@@ -41,3 +41,10 @@ Lots of research on dynamodb partition keys. Many discussions with LLMs. Trying 
 If I go with "<domain>#<type>" & "<path>" then I get reasonable cardinality, partitioned by project and file type, and the sort key allows me pick the specific file still. It supports queries such as "get all posts for this domain".
 Create a GSI as "<domain>" & "<path>" allows for simpler queries?
 Only thing missing is sorting by "lastUpdated".
+
+## 26/07/2025
+
+- Started work on deprecating the ContentNode class and moving its functionality into the DynamoDB service
+- Starting with FileUploadHandler and Template files
+- The cognito logout error has returned though
+- Successfully saves a template file metadata to the db

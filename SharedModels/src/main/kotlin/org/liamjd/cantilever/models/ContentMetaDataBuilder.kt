@@ -103,6 +103,11 @@ sealed interface ContentMetaDataBuilder {
             )
         }
 
+        /**
+         * Extracts custom sections from the source string, which is expected to be a markdown file with custom sections
+         * Each section starts with "--- #" and ends with a newline
+         * If includeSectionBodies is false, the section bodies will not be included in the returned map
+         */
         fun extractSectionsFromSource(
             sourceString: String,
             includeSectionBodies: Boolean = true
@@ -127,10 +132,34 @@ sealed interface ContentMetaDataBuilder {
         }
     }
 
+    /**
+     * Builds a [ContentNode.ImageNode] from an image file.
+     */
     object ImageBuilder : ContentMetaDataBuilder {
         override fun buildFromSourceString(sourceString: String, srcKey: SrcKey): ContentNode.ImageNode {
             return ContentNode.ImageNode(
                 srcKey = srcKey
+            )
+        }
+    }
+
+    /**
+     * Builds a [ContentNode.TemplateNode] from a template file.
+     * The source string is expected to be the contents of the template file. The front matter is in the format:
+     * ---
+     * name: General Content
+     * sections:
+     *   - body
+     * ---
+     */
+    object TemplateBuilder : ContentMetaDataBuilder {
+        override fun buildFromSourceString(sourceString: String, srcKey: SrcKey): ContentNode.TemplateNode {
+            val frontmatter = sourceString.getFrontMatter()
+            val templateYaml = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
+            return ContentNode.TemplateNode(
+                srcKey = srcKey,
+                title = templateYaml.name,
+                sections = templateYaml.sections?.map { it.trim() } ?: emptyList(),
             )
         }
     }

@@ -6,6 +6,7 @@ kotlin-serialization = "2.1.21"
 ksp = "2.2.0-2.0.2"
 shadow = "7.1.2"
 kover = "0.9.1"
+coroutines = "1.10.2"
 
 # AWS
 aws-cdk = "2.206.0"
@@ -41,6 +42,8 @@ imgscalr = "4.2"
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-ksp = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
+kotlin-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlin-coroutines-jdk = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8", version.ref = "coroutines" }
 
 # AWS CDK
 aws-cdk-lib = { module = "software.amazon.awscdk:aws-cdk-lib", version.ref = "aws-cdk" }

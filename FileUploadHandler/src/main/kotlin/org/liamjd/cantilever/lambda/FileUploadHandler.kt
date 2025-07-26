@@ -4,6 +4,7 @@ import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.S3Event
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerializationException
 import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.common.SOURCE_TYPE.*
@@ -12,8 +13,10 @@ import org.liamjd.cantilever.models.SrcKey
 import org.liamjd.cantilever.models.sqs.ImageSQSMessage
 import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
 import org.liamjd.cantilever.models.sqs.TemplateSQSMessage
+import org.liamjd.cantilever.services.DynamoDBService
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
+import org.liamjd.cantilever.services.impl.DynamoDBServiceImpl
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import org.liamjd.cantilever.services.impl.SQSServiceImpl
 import software.amazon.awssdk.regions.Region
@@ -32,6 +35,8 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
     private val s3Service: S3Service = S3ServiceImpl(Region.EU_WEST_2)
     private val sqsService: SQSService = SQSServiceImpl(Region.EU_WEST_2)
+    private val dynamoDBService: DynamoDBService = DynamoDBServiceImpl(Region.EU_WEST_2)
+
     private lateinit var logger: LambdaLogger
 
     override fun handleRequest(event: S3Event, context: Context): String {
@@ -59,7 +64,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                 try {
                     val fileType = srcKey.substringAfterLast('.').lowercase()
                     val contentType = s3Service.getContentType(srcKey, srcBucket)
-                    logger.info("FileUpload handler: source type is '$folderName'; file type is '$fileType'; content type is '$contentType'")
+                    logger.info("FileUpload handler: source type is '$folderName'; file type is '$fileType'; content type is '$contentType'; uploaded to folder '$uploadFolder'")
 
                     if (size == 0L) {
                         logger.error("File $srcKey is empty, so not processing")
@@ -98,7 +103,15 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                             }
 
                             Templates -> {
-                                logger.warn("TODO: No action defined for TEMPLATE upload")
+                                if (fileType == FILE_TYPE.HBS) {
+                                    processTemplateUpload(
+                                        srcKey = srcKey,
+                                        srcBucket = srcBucket,
+                                        projectDomain = projectDomain
+                                    )
+                                } else {
+                                    logger.error("Templates must be written in Handlebars format with the '.html.hbs' file extension")
+                                }
                             }
 
                             Statics -> {
@@ -123,10 +136,6 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                                 )
                             }
 
-                            else -> {
-                                logger.info("No action defined for source type '$srcKey'")
-                                response = "400 Bad Request"
-                            }
                         }
                     }
 
@@ -273,6 +282,34 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
     }
 
     /**
+     * Process the uploaded template file. In the future, this will send a message to the template processor queue.
+     * Currently, it does nothing as the template processing is handled by the Markdown processor.
+     * @param srcKey the source key of the uploaded template file
+     * @param srcBucket the S3 bucket where the template file is stored
+     * @param projectDomain the domain of the project to which the template belongs
+     */
+    private fun processTemplateUpload(
+        srcKey: String,
+        srcBucket: String,
+        projectDomain: String
+    ) {
+        try {
+            val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
+            // extract metadata
+            val metadata = ContentMetaDataBuilder.TemplateBuilder.buildFromSourceString(sourceString, srcKey)
+            logger.info("Extracted metadata: $metadata")
+            val attributes: MutableMap<String, String> = mutableMapOf()
+            attributes.put("title", metadata.title)
+            // TODO: add the names of the sections as a set
+            runBlocking {
+                val dbResponse = dynamoDBService.upsertContentNode(srcKey, projectDomain, Templates, attributes)
+            }
+        } catch (e: Exception) {
+            logger.error("Failed to process template upload for $srcKey; ${e.message}")
+        }
+    }
+
+    /**
      * Send a message to the specified queue, for conversion to HTML
      * @param queueUrl the SQS queue
      * @param markdownMsg the message to send
@@ -292,6 +329,27 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         } else {
             logger.warn("No response received for message")
         }
+    }
+
+    /**
+     * Insert or update the content node in the DynamoDB table.
+     * @param srcKey the source key of the content node
+     * @param projectDomain the domain of the project
+     * @param contentType the type of content (e.g., POST, PAGE, IMAGE, etc.)
+     */
+    private suspend fun upsertContentNode(
+        srcKey: SrcKey,
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        attributes: Map<String, String> = emptyMap()
+    ) {
+        logger.info("Upserting content node for $srcKey in project $projectDomain")
+        dynamoDBService.upsertContentNode(
+            srcKey = srcKey,
+            projectDomain = projectDomain,
+            contentType = contentType,
+            attributes = attributes
+        )
     }
 }
 

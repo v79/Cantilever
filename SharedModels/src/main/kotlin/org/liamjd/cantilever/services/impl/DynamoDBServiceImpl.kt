@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.services.impl
 
 import kotlinx.coroutines.future.await
+import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.services.DynamoDBService
 import software.amazon.awssdk.regions.Region
@@ -135,6 +136,46 @@ class DynamoDBServiceImpl(
         val response = dynamoDbClient.scan(request).await()
 
         return response.items().map { item -> mapToProject(item) }
+    }
+
+    /**
+     * Upsert a content node in DynamoDB. This will either insert a new content node or update an existing one.
+     * The content node is identified by its source key, project domain and content type.
+     * @param srcKey The source key for the content node
+     * @param projectDomain The domain of the project
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @param attributes A map of attributes for the content node // TODO: Support more complex attributes
+     */
+    override suspend fun upsertContentNode(
+        srcKey: String,
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        attributes: Map<String, String>
+    ) {
+        val item = mutableMapOf<String, AttributeValue>(
+            "domain#type" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
+            "srcKey" to AttributeValue.builder().s(srcKey).build(),
+            "type#lastUpdated" to AttributeValue.builder().s("${contentType.dbType}#${System.currentTimeMillis()}")
+                .build()
+        )
+        println("Upserting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
+        println(item)
+
+        // Add attributes to the item
+        attributes.forEach { (key, value) ->
+            item[key] = AttributeValue.builder().s(value).build()
+        }
+
+        println("Added attributes: $attributes")
+
+        val request = PutItemRequest.builder()
+            .tableName(tableName)
+            .item(item)
+            .build()
+
+        val response = dynamoDbClient.putItem(request).await()
+        println("Response from DynamoDB: $response")
+        // TODO: Handle response if needed, currently just returns Unit
     }
 
     /**

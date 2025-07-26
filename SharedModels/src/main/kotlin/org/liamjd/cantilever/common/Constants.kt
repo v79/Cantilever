@@ -44,6 +44,7 @@ object FILES {
 object FILE_TYPE {
     const val MD = "md"
     const val HTML_HBS = "html.hbs"
+    const val HBS = "hbs"
     const val HTML = "html"
     const val YAML = "yaml"
     const val CSS = "css"
@@ -52,13 +53,14 @@ object FILE_TYPE {
 /**
  * The core types of object that Cantilever can process
  */
-enum class SOURCE_TYPE(val folder: String) {
-    Pages("pages"),
-    Posts("posts"),
-    Templates("templates"),
-    Statics("statics"),
-    Images("images"),
-    Root("");
+enum class SOURCE_TYPE(val folder: String, val dbType: String) {
+    Pages("pages", "page"),
+    Posts("posts", "post"),
+    Templates("templates", "template"),
+    Statics("statics", "static"),
+    Images("images", "image"),
+    // This is a special type that represents the root of the sources bucket
+    Root("", "root");
 
     object SourceHelper {
         /**

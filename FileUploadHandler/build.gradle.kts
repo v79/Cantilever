@@ -24,6 +24,10 @@ dependencies {
     // serialization
     implementation(libs.kotlinx.serialization.json)
 
+    // coroutines
+    implementation(libs.kotlin.coroutines.core)
+    implementation(libs.kotlin.coroutines.jdk)
+
     // sdk v2
     implementation(platform(libs.aws.sdk.bom))
     implementation(libs.aws.sdk.s3)

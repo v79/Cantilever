@@ -50,7 +50,7 @@ class CantileverStack(
 ) : Stack(scope, id, props) {
 
     enum class ENV {
-        destination_bucket, source_bucket, generation_bucket, markdown_processing_queue, handlebar_template_queue, image_processing_queue, cors_domain, cognito_region, cognito_user_pools_id
+        destination_bucket, source_bucket, generation_bucket, markdown_processing_queue, handlebar_template_queue, image_processing_queue, cors_domain, cognito_region, cognito_user_pools_id, dynamo_table_name
     }
 
     // TODO: I suppose I'm going to need to set up a dev and production environment for this sort of thing. Boo.
@@ -372,8 +372,9 @@ class CantileverStack(
             )
             .build()
 
-        println("Granting permissions to the API Gateway to access the DynamoDB table")
+        println("Granting permissions to the lambdas to access the DynamoDB table")
         contentNodeTable.grantReadWriteData(apiRoutingLambda)
+        contentNodeTable.grantWriteData(fileUploadLambda)
         
 
         println("Creating API Gateway DNS record for $apiDomain")

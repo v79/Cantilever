@@ -19,6 +19,7 @@ abstract class APIController(val sourceBucket: String, val generationBucket: Str
     /**
      * Load the content tree from the S3 bucket
      */
+    @Deprecated("Replace with DynamoDBService calls")
     fun loadContentTree(domain: String): Boolean {
         val metadataKey = "$domain/${S3_KEY.metadataKey}"
         try {
@@ -45,6 +46,7 @@ abstract class APIController(val sourceBucket: String, val generationBucket: Str
     /**
      * Save the content tree to the S3 bucket after a change
      */
+    @Deprecated("Replace with DynamoDBService calls")
     fun saveContentTree(domain: String) {
         val metadataKey =
             "$domain/${S3_KEY.metadataKey}"
@@ -57,6 +59,7 @@ abstract class APIController(val sourceBucket: String, val generationBucket: Str
     /**
      * Load the project definition  'cantilever.yaml' from the S3 bucket
      */
+    @Deprecated("Replace with DynamoDBService calls: DynamoDBServiceImpl::getProject")
     fun loadProjectDefinition(domain: String) {
         val projectKey = "$domain.yaml"
         if (s3Service.objectExists(projectKey, sourceBucket)) {
