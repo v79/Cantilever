@@ -1,7 +1,7 @@
 package org.liamjd.cantilever.services.impl
 
 import kotlinx.coroutines.future.await
-import org.liamjd.cantilever.models.dynamodb.Project
+import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.services.DynamoDBService
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
@@ -28,7 +28,7 @@ class DynamoDBServiceImpl(
      * @param domain The project domain
      * @return The project if found, null otherwise
      */
-    override suspend fun getProject(domain: String): Project? {
+    override suspend fun getProject(domain: String): CantileverProject? {
         val key = mapOf(
             "domain#type" to AttributeValue.builder().s("$domain#project").build(),
             "srcKey" to AttributeValue.builder().s("$domain.yaml").build()
@@ -53,10 +53,10 @@ class DynamoDBServiceImpl(
      * @param project The project to save
      * @return The saved project
      */
-    override suspend fun saveProject(project: Project): Project {
+    override suspend fun saveProject(project: CantileverProject): CantileverProject {
         val item = mapOf(
             "domain#type" to AttributeValue.builder().s("${project.domain}#project").build(),
-            "srcKey" to AttributeValue.builder().s(project.srcKey).build(),
+            "srcKey" to AttributeValue.builder().s(project.projectKey).build(),
             "domain" to AttributeValue.builder().s(project.domain).build(),
             "projectName" to AttributeValue.builder().s(project.projectName).build(),
             "author" to AttributeValue.builder().s(project.author).build(),
@@ -84,7 +84,7 @@ class DynamoDBServiceImpl(
     override suspend fun deleteProject(domain: String, projectName: String): Boolean {
         val key = mapOf(
             "domain#type" to AttributeValue.builder().s("$domain#project").build(),
-            "srcKey" to AttributeValue.builder().s("$domain/$domain.yaml").build()
+            "srcKey" to AttributeValue.builder().s("$domain.yaml").build()
         )
 
         val request = DeleteItemRequest.builder()
@@ -102,7 +102,7 @@ class DynamoDBServiceImpl(
      * @param domain The project domain
      * @return A list of projects for the domain
      */
-    override suspend fun listProjects(domain: String): List<Project> {
+    override suspend fun listProjects(domain: String): List<CantileverProject> {
         val request = QueryRequest.builder()
             .tableName(tableName)
             .keyConditionExpression("domain#type = :domainType")
@@ -120,7 +120,7 @@ class DynamoDBServiceImpl(
      * List all projects
      * @return A list of all projects
      */
-    override suspend fun listAllProjects(): List<Project> {
+    override suspend fun listAllProjects(): List<CantileverProject> {
         val request = ScanRequest.builder()
             .tableName(tableName)
             .filterExpression("contains(#domainType, :projectType)")
@@ -138,12 +138,12 @@ class DynamoDBServiceImpl(
     }
 
     /**
-     * Map a DynamoDB item to a Project
+     * Map a DynamoDB item to a CantileverProject
      * @param item The DynamoDB item
-     * @return The Project
+     * @return The CantileverProject
      */
-    private fun mapToProject(item: Map<String, AttributeValue>): Project {
-        return Project(
+    private fun mapToProject(item: Map<String, AttributeValue>): CantileverProject {
+        return CantileverProject(
             domain = item["domain"]?.s() ?: "",
             projectName = item["projectName"]?.s() ?: "",
             author = item["author"]?.s() ?: "",

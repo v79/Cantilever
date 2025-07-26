@@ -11,14 +11,14 @@ import org.koin.core.component.inject
 import org.liamjd.apiviaduct.routing.Request
 import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.common.S3_KEY.pagesKey
 import org.liamjd.cantilever.common.S3_KEY.pagesPrefix
-import org.liamjd.cantilever.common.S3_KEY.postsKey
 import org.liamjd.cantilever.common.S3_KEY.templatesKey
 import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
 import org.liamjd.cantilever.common.getFrontMatter
-import org.liamjd.cantilever.models.*
-import org.liamjd.cantilever.models.dynamodb.Project
+import org.liamjd.cantilever.models.CantileverProject
+import org.liamjd.cantilever.models.Template
+import org.liamjd.cantilever.models.TemplateList
+import org.liamjd.cantilever.models.TemplateMetadata
 import org.liamjd.cantilever.services.DynamoDBService
 
 private const val APP_JSON = "application/json"
@@ -27,8 +27,9 @@ private const val APP_JSON = "application/json"
  * Manages all the project-wide configuration and json models
  * TODO: there is a lot of duplication in this class
  */
-class ProjectController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
-    
+class ProjectController(sourceBucket: String, generationBucket: String) : KoinComponent,
+    APIController(sourceBucket, generationBucket) {
+
     private val dynamoDBService: DynamoDBService by inject()
 
 
@@ -54,15 +55,7 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
             val dbProject = dynamoDBService.getProject(domain)
 
             if (dbProject != null) {
-                // Convert Project to CantileverProject
-                val cantileverProject = CantileverProject(
-                    domain = dbProject.domain,
-                    projectName = dbProject.projectName,
-                    author = dbProject.author,
-                    dateFormat = dbProject.dateFormat,
-                    dateTimeFormat = dbProject.dateTimeFormat
-                )
-                Response.ok(body = APIResult.Success(value = cantileverProject))
+                Response.ok(body = APIResult.Success(value = dbProject))
             } else {
                 error("Cannot find project for domain '$domain'")
                 Response.notFound(
@@ -79,13 +72,13 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
      */
     fun getProjectList(request: Request<Unit>): Response<APIResult<List<Pair<String, String>>>> {
         info("Retrieving list of projects from DynamoDB")
-        
+
         return runBlocking {
             val projects = dynamoDBService.listAllProjects()
-            val projectList = projects.map { project -> 
+            val projectList = projects.map { project ->
                 Pair("${project.domain}.yaml", project.projectName)
             }
-            
+
             Response.ok(body = APIResult.Success(value = projectList))
         }
     }
@@ -103,18 +96,9 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
         }
         info("Updated project: $updatedDefinition")
 
-        // Convert CantileverProject to Project
-        val project = Project(
-            domain = updatedDefinition.domain,
-            projectName = updatedDefinition.projectName,
-            author = updatedDefinition.author,
-            dateFormat = updatedDefinition.dateFormat,
-            dateTimeFormat = updatedDefinition.dateTimeFormat
-        )
-        
         return runBlocking {
-            dynamoDBService.saveProject(project)
-            Response.ok(body = APIResult.Success(value = updatedDefinition))
+            val savedProject = dynamoDBService.saveProject(updatedDefinition)
+            Response.ok(body = APIResult.Success(value = savedProject))
         }
     }
 
@@ -135,7 +119,7 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
             )
         }
         info("New project: $newProject")
-        
+
         return runBlocking {
             // Check if the project already exists
             val existingProject = dynamoDBService.getProject(newProject.domain)
@@ -145,96 +129,14 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
                     APIResult.Error(statusText = "Project ${newProject.domain} already exists")
                 )
             }
-            
-            // Convert CantileverProject to Project
-            val project = Project(
-                domain = newProject.domain,
-                projectName = newProject.projectName,
-                author = newProject.author,
-                dateFormat = newProject.dateFormat,
-                dateTimeFormat = newProject.dateTimeFormat
-            )
-            
-            dynamoDBService.saveProject(project)
-            
+
+            dynamoDBService.saveProject(newProject)
+
             Response.ok(
                 body = APIResult.Success(value = "Successfully created project ${newProject.projectName}")
             )
         }
     }
-
-    /**
-     * Return a list of all the [PostMeta]s
-     */
-    @Deprecated("Replaced with [PostController.getPosts]")
-    fun getPosts(request: Request<Unit>): Response<APIResult<PostList>> {
-        info("ProjectController: Retrieving all posts")
-        return if (s3Service.objectExists(postsKey, sourceBucket)) {
-            val postListJson = s3Service.getObjectAsString(postsKey, sourceBucket)
-            val postList = Json.decodeFromString(PostList.serializer(), postListJson)
-            val sorted = postList.posts.sortedBy { it.date }
-            Response.ok(
-                body = APIResult.Success(
-                    value = PostList(
-                        count = sorted.size,
-                        posts = sorted,
-                        lastUpdated = postList.lastUpdated
-                    )
-                )
-            )
-        } else {
-            Response.notFound(
-                body = APIResult.Error(
-                    statusText = "Cannot find file '$postsKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/posts/rebuild"
-                )
-            )
-        }
-    }
-
-    /**
-     * Return a list of all the [PageMeta]s
-     */
-    @Deprecated("Replaced with [PageController.getPages]")
-    fun getPages(request: Request<Unit>): Response<APIResult<PageTree>> {
-        info("Retrieving all pages")
-        return if (s3Service.objectExists(pagesKey, sourceBucket)) {
-            val pageListJson = s3Service.getObjectAsString(pagesKey, sourceBucket)
-            val pageTree = Json.decodeFromString(PageTree.serializer(), pageListJson)
-            Response.ok(body = APIResult.Success(value = pageTree))
-        } else {
-            error(
-                "Cannot find file '$pagesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/pages/rebuild"
-            )
-            Response.notFound(
-                body = APIResult.Error(
-                    statusText = "Cannot find file '$pagesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/pages/rebuild"
-                )
-            )
-        }
-    }
-
-    /**
-     * Return a list of all the [Template]s
-     */
-    @Deprecated("Replaced with [TemplateController.getTemplates]")
-    fun getTemplates(request: Request<Unit>): Response<APIResult<TemplateList>> {
-        info("Retrieving templates pages")
-        return if (s3Service.objectExists(templatesKey, sourceBucket)) {
-            val templateListJson = s3Service.getObjectAsString(templatesKey, sourceBucket)
-            val templateList = Json.decodeFromString(TemplateList.serializer(), templateListJson)
-            Response.ok(body = APIResult.Success(value = templateList))
-        } else {
-            error(
-                "Cannot find file '$templatesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/templates/rebuild"
-            )
-            Response.notFound(
-                body = APIResult.Error(
-                    statusText = "Cannot find file '$templatesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/templates/rebuild"
-                )
-            )
-        }
-    }
-
 
     /**
      * Rebuild the generated/templates.json file which contains the metadata for all the Templates in the project.

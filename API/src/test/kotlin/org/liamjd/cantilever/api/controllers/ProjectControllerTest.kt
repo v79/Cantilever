@@ -2,7 +2,6 @@ package org.liamjd.cantilever.api.controllers
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import io.mockk.coEvery
-import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockkClass
 import org.junit.jupiter.api.AfterEach
@@ -16,9 +15,7 @@ import org.koin.test.inject
 import org.koin.test.junit5.KoinTestExtension
 import org.koin.test.junit5.mock.MockProviderExtension
 import org.koin.test.mock.declareMock
-import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.models.CantileverProject
-import org.liamjd.cantilever.models.dynamodb.Project
 import org.liamjd.cantilever.services.DynamoDBService
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.impl.DynamoDBServiceImpl
@@ -61,7 +58,7 @@ internal class ProjectControllerTest : KoinTest {
 
     @Test
     fun `returns a project definition object`() {
-        val mockProject = Project(
+        val mockProject = CantileverProject(
             domain = domain,
             projectName = projectName,
             author = "Author name",
@@ -103,7 +100,7 @@ internal class ProjectControllerTest : KoinTest {
             author = "Author name"
         )
         
-        val mockProject = Project(
+        val updatedProject = CantileverProject(
             domain = "example.com",
             projectName = "Project name 2",
             author = "Author name",
@@ -112,7 +109,7 @@ internal class ProjectControllerTest : KoinTest {
         )
         
         declareMock<DynamoDBService> {
-            coEvery { mockDynamoDB.saveProject(any()) } returns mockProject
+            coEvery { mockDynamoDB.saveProject(any()) } returns updatedProject
         }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
@@ -159,7 +156,7 @@ internal class ProjectControllerTest : KoinTest {
             author = "Author name"
         )
         
-        val mockProject = Project(
+        val savedProject = CantileverProject(
             domain = "newdomain.com",
             projectName = "New Project",
             author = "Author name",
@@ -169,7 +166,7 @@ internal class ProjectControllerTest : KoinTest {
         
         declareMock<DynamoDBService> {
             coEvery { mockDynamoDB.getProject("newdomain.com") } returns null
-            coEvery { mockDynamoDB.saveProject(any()) } returns mockProject
+            coEvery { mockDynamoDB.saveProject(any()) } returns savedProject
         }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
@@ -194,7 +191,7 @@ internal class ProjectControllerTest : KoinTest {
             author = "Author name"
         )
         
-        val existingProject = Project(
+        val existingProject = CantileverProject(
             domain = "existingdomain.com",
             projectName = "Existing Project",
             author = "Author name",
@@ -220,53 +217,7 @@ internal class ProjectControllerTest : KoinTest {
         assertEquals(409, response.statusCode)
     }
 
-    @Test
-    fun `returns a set of a single Post`() {
-        val mockPostsJson = """
-            {
-            "count": 1,
-            "lastUpdated": "2023-09-16T07:29:30.951027439Z",
-            "posts": [{
-            "title": "A Post",
-            "srcKey": "sources/posts/a-post.md",
-            "url": "a-post",
-            "date": "2023-09-10",
-            "lastUpdated": "2023-09-16T07:29:30.385391301Z",
-            "templateKey": "templates/post.html.hbs"
-            }]
-            }
-        """.trimIndent()
-        declareMock<S3Service> {
-            every { mockS3.objectExists(postsKey, sourceBucket) } returns true
-            every { mockS3.getObjectAsString(postsKey, sourceBucket) } returns mockPostsJson
-        }
-        val controller = ProjectController(sourceBucket,generationBucket)
-        val request = buildRequest(path = "/project/posts", pathPattern = "/project/posts")
-        val response = controller.getPosts(request)
-
-        assertNotNull(response)
-        assertEquals(200, response.statusCode)
-        assertNotNull(response.body) {
-            val success = it as APIResult.Success
-            assertEquals(1, success.value.count)
-        }
-    }
-
-    @Test
-    fun `return 404 when posts json is not found`() {
-        declareMock<S3Service> {
-            every { mockS3.objectExists(postsKey, sourceBucket) } returns false
-        }
-
-        val controller = ProjectController(sourceBucket,generationBucket)
-        val request = buildRequest(path = "/project/posts", pathPattern = "/project/posts")
-        val response = controller.getPosts(request)
-
-        assertNotNull(response)
-        assertEquals(404, response.statusCode)
-    }
-
-    /**
+      /**
      * Utility function to build the fake request object
      */
     private fun buildRequest(path: String, pathPattern: String, body: String = ""): org.liamjd.apiviaduct.routing.Request<Unit> {
