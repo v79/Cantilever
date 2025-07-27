@@ -43,6 +43,10 @@ dependencies {
     testRuntimeOnly(libs.junit.engine)
     testImplementation(libs.mockk)
 
+    testImplementation("org.testcontainers:testcontainers:1.21.3")
+    testImplementation("org.testcontainers:junit-jupiter:1.18.3")
+    testImplementation("org.testcontainers:localstack:1.20.0") // For AWS services
+
     // routing
     implementation(libs.viaduct.openapi)
 }

@@ -11,7 +11,11 @@ import org.liamjd.cantilever.services.SQSService
 import org.liamjd.cantilever.services.impl.DynamoDBServiceImpl
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import org.liamjd.cantilever.services.impl.SQSServiceImpl
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
+import java.net.URI
 
 /**
  * Set up koin dependency injection
@@ -19,7 +23,22 @@ import software.amazon.awssdk.regions.Region
 val cantileverModule = module {
     single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
     single<SQSService> { SQSServiceImpl(Region.EU_WEST_2) }
-    single<DynamoDBService> { DynamoDBServiceImpl(Region.EU_WEST_2) }
+    single<DynamoDBService> {
+        DynamoDBServiceImpl(
+            region = Region.EU_WEST_2, enableLogging = true, dynamoDbClient = DynamoDbAsyncClient.builder()
+                .endpointOverride(URI.create(System.getenv("DYNAMODB_ENDPOINT")))
+                .region(Region.EU_WEST_2)
+                .credentialsProvider(
+                    StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(
+                            System.getenv("AWS_ACCESS_KEY_ID"),
+                            System.getenv("AWS_SECRET_ACCESS_KEY")
+                        )
+                    )
+                )
+                .build()
+        )
+    }
 }
 
 class NewLambdaRouter : LambdaRouter() {

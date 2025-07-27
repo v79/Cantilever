@@ -22,16 +22,11 @@ import software.amazon.awssdk.services.dynamodb.model.*
  */
 class DynamoDBServiceImpl(
     private val region: Region,
-    private val tableName: String = "cantilever-dev-content-nodes", // TODO: This should be configurable
-    private val enableLogging: Boolean = true
+    val tableName: String = "cantilever-dev-content-nodes", // TODO: This should be configurable
+    private val enableLogging: Boolean = true,
+    private val dynamoDbClient: DynamoDbAsyncClient
 ) : DynamoDBService {
 
-    private val dynamoDbClient: DynamoDbAsyncClient by lazy {
-        DynamoDbAsyncClient.builder()
-            .region(region)
-            .build()
-    }
-    
     /**
      * Log a message with the specified level
      * @param level The log level (INFO, WARN, ERROR)
@@ -42,7 +37,7 @@ class DynamoDBServiceImpl(
             println("[$level] DynamoDBService: $message")
         }
     }
-    
+
     /**
      * Log an exception with the specified level
      * @param level The log level (INFO, WARN, ERROR)
@@ -64,7 +59,7 @@ class DynamoDBServiceImpl(
      */
     override suspend fun getProject(domain: String): CantileverProject? {
         log("INFO", "Getting project with domain: $domain")
-        
+
         try {
             val key = mapOf(
                 "domain#type" to AttributeValue.builder().s("$domain#project").build(),
@@ -108,7 +103,7 @@ class DynamoDBServiceImpl(
      */
     override suspend fun saveProject(project: CantileverProject): CantileverProject {
         log("INFO", "Saving project: ${project.projectName} for domain: ${project.domain}")
-        
+
         try {
             val item = mapOf(
                 "domain#type" to AttributeValue.builder().s("${project.domain}#project").build(),
@@ -128,7 +123,7 @@ class DynamoDBServiceImpl(
 
             log("INFO", "Executing PutItem request for project: ${project.projectName}")
             dynamoDbClient.putItem(request).await()
-            
+
             log("INFO", "Successfully saved project: ${project.projectName} for domain: ${project.domain}")
             return project
         } catch (e: DynamoDbException) {
@@ -154,7 +149,7 @@ class DynamoDBServiceImpl(
      */
     override suspend fun deleteProject(domain: String, projectName: String): Boolean {
         log("INFO", "Deleting project: $projectName for domain: $domain")
-        
+
         try {
             val key = mapOf(
                 "domain#type" to AttributeValue.builder().s("$domain#project").build(),
@@ -168,14 +163,19 @@ class DynamoDBServiceImpl(
 
             log("INFO", "Executing DeleteItem request for project: $projectName")
             val response = dynamoDbClient.deleteItem(request).await()
-            
+
             val isSuccessful = response.sdkHttpResponse().isSuccessful
             if (isSuccessful) {
                 log("INFO", "Successfully deleted project: $projectName for domain: $domain")
             } else {
-                log("WARN", "Failed to delete project: $projectName for domain: $domain. HTTP status: ${response.sdkHttpResponse().statusCode()}")
+                log(
+                    "WARN",
+                    "Failed to delete project: $projectName for domain: $domain. HTTP status: ${
+                        response.sdkHttpResponse().statusCode()
+                    }"
+                )
             }
-            
+
             return isSuccessful
         } catch (e: DynamoDbException) {
             log("ERROR", "Failed to delete project: $projectName for domain: $domain", e)
@@ -199,7 +199,7 @@ class DynamoDBServiceImpl(
      */
     override suspend fun listProjects(domain: String): List<CantileverProject> {
         log("INFO", "Listing projects for domain: $domain")
-        
+
         try {
             val request = QueryRequest.builder()
                 .tableName(tableName)
@@ -211,10 +211,10 @@ class DynamoDBServiceImpl(
 
             log("INFO", "Executing Query request for domain: $domain")
             val response = dynamoDbClient.query(request).await()
-            
+
             val projects = response.items().map { item -> mapToProject(item) }
             log("INFO", "Found ${projects.size} projects for domain: $domain")
-            
+
             return projects
         } catch (e: DynamoDbException) {
             log("ERROR", "Failed to list projects for domain: $domain", e)
@@ -237,7 +237,7 @@ class DynamoDBServiceImpl(
      */
     override suspend fun listAllProjects(): List<CantileverProject> {
         log("INFO", "Listing all projects")
-        
+
         try {
             val request = ScanRequest.builder()
                 .tableName(tableName)
@@ -252,10 +252,10 @@ class DynamoDBServiceImpl(
 
             log("INFO", "Executing Scan request for all projects")
             val response = dynamoDbClient.scan(request).await()
-            
+
             val projects = response.items().map { item -> mapToProject(item) }
             log("INFO", "Found ${projects.size} projects in total")
-            
+
             return projects
         } catch (e: DynamoDbException) {
             log("ERROR", "Failed to list all projects", e)
@@ -287,7 +287,7 @@ class DynamoDBServiceImpl(
         attributes: Map<String, String>
     ) {
         log("INFO", "Upserting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
-        
+
         try {
             val item = mutableMapOf<String, AttributeValue>(
                 "domain#type" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
@@ -310,11 +310,16 @@ class DynamoDBServiceImpl(
 
             log("INFO", "Executing PutItem request for content node: $srcKey")
             val response = dynamoDbClient.putItem(request).await()
-            
+
             if (response.sdkHttpResponse().isSuccessful) {
                 log("INFO", "Successfully upserted content node: $srcKey in domain: $projectDomain")
             } else {
-                log("WARN", "Received non-successful response when upserting content node: $srcKey. Status: ${response.sdkHttpResponse().statusCode()}")
+                log(
+                    "WARN",
+                    "Received non-successful response when upserting content node: $srcKey. Status: ${
+                        response.sdkHttpResponse().statusCode()
+                    }"
+                )
             }
         } catch (e: DynamoDbException) {
             log("ERROR", "Failed to upsert content node: $srcKey in domain: $projectDomain", e)
@@ -338,7 +343,7 @@ class DynamoDBServiceImpl(
      */
     override suspend fun listAllTemplates(domain: String): TemplateListDTO {
         log("INFO", "Listing all templates for domain: $domain")
-        
+
         try {
             val request = QueryRequest.builder()
                 .tableName(tableName)
@@ -350,7 +355,7 @@ class DynamoDBServiceImpl(
 
             log("INFO", "Executing Query request for templates in domain: $domain")
             val response = dynamoDbClient.query(request).await()
-            
+
             return if (response.count() > 0) {
                 log("INFO", "Found ${response.count()} templates for domain: $domain")
                 response.items().map { item -> mapToTemplateNode(item) }.let { templates ->
@@ -394,12 +399,12 @@ class DynamoDBServiceImpl(
             if (domain.isEmpty()) {
                 log("WARN", "Missing domain in project item: $item")
             }
-            
+
             val projectName = item["projectName"]?.s() ?: ""
             if (projectName.isEmpty()) {
                 log("WARN", "Missing projectName in project item for domain: $domain")
             }
-            
+
             return CantileverProject(
                 domain = domain,
                 projectName = projectName,
@@ -424,7 +429,7 @@ class DynamoDBServiceImpl(
             if (srcKey.isEmpty()) {
                 log("WARN", "Missing srcKey in template item: $item")
             }
-            
+
             val lastUpdatedStr = item["type#lastUpdated"]?.s()
             val lastUpdated = try {
                 if (lastUpdatedStr != null && lastUpdatedStr.contains("#")) {
@@ -438,7 +443,7 @@ class DynamoDBServiceImpl(
                 log("WARN", "Failed to parse lastUpdated timestamp: $lastUpdatedStr", e)
                 Clock.System.now()
             }
-            
+
             return ContentNode.TemplateNode(
                 srcKey = srcKey,
                 title = item["name"]?.s() ?: "",

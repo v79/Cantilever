@@ -33,6 +33,7 @@ dependencies {
     implementation(libs.aws.sdk.s3)
     implementation(libs.aws.sdk.lambda)
     implementation(libs.aws.sdk.sqs)
+    implementation(libs.aws.sdk.dynamodb)
 
     // lambda functions
     implementation(libs.aws.lambda.core)
