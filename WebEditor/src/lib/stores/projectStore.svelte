@@ -1,1 +1,178 @@
-<script context="module" lang="ts" ✂prettier:content✂="CglpbXBvcnQgeyB3cml0YWJsZSB9IGZyb20gJ3N2ZWx0ZS9zdG9yZSc7CglpbXBvcnQgeyBDYW50aWxldmVyUHJvamVjdCwgdHlwZSBJbWdSZXMsIHBhcnNlUmVzU3RyaW5nIH0gZnJvbSAnJGxpYi9tb2RlbHMvcHJvamVjdCc7CglpbXBvcnQgeyBzdHJpbmdpZnkgfSBmcm9tICd5YW1sJzsKCWltcG9ydCB7IFBVQkxJQ19DQU5USUxFVkVSX0FQSV9VUkwgfSBmcm9tICckZW52L3N0YXRpYy9wdWJsaWMnOwoKCWV4cG9ydCBjb25zdCBDTEVBUl9QUk9KRUNUID0gbmV3IENhbnRpbGV2ZXJQcm9qZWN0KAoJCScnLAoJCScnLAoJCSdkZC9NTS95eXl5JywKCQknZGQvTU0veXl5eSBISDptbTpzcycsCgkJbmV3IE1hcDxzdHJpbmcsIEltZ1Jlcz4oKSwKCQluZXcgTWFwPHN0cmluZywgc3RyaW5nPigpLAoJCScnCgkpOwoKCWZ1bmN0aW9uIGNyZWF0ZVByb2plY3RTdG9yZSgpIHsKCQljb25zdCB7IHN1YnNjcmliZSwgc2V0LCB1cGRhdGUgfSA9IHdyaXRhYmxlPENhbnRpbGV2ZXJQcm9qZWN0PihDTEVBUl9QUk9KRUNUKTsKCgkJcmV0dXJuIHsKCQkJc3Vic2NyaWJlLAoJCQlzZXQsCgkJCXVwZGF0ZSwKCQkJY2xlYXI6ICgpID0+IHNldChDTEVBUl9QUk9KRUNUKQoJCX07Cgl9CgoJLy8gVGhpcyBzdG9yZSBtYW5hZ2VzIHRoZSBvdmVyYWxsIHByb2plY3QKCWV4cG9ydCBjb25zdCBwcm9qZWN0ID0gY3JlYXRlUHJvamVjdFN0b3JlKCk7CgoJZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIGZldGNoUHJvamVjdCgKCQl0b2tlbjogc3RyaW5nLAoJCXByb2plY3ROYW1lOiBzdHJpbmcKCSk6IFByb21pc2U8Q2FudGlsZXZlclByb2plY3QgfCBFcnJvcj4gewoJCWNvbnNvbGUubG9nKCdwcm9qZWN0U3RvcmU6IEZldGNoaW5nIHByb2plY3QgJyArIHByb2plY3ROYW1lKTsKCQl0cnkgewoJCQljb25zdCByZXNwb25zZSA9IGF3YWl0IGZldGNoKFBVQkxJQ19DQU5USUxFVkVSX0FQSV9VUkwgKyAnL3Byb2plY3QvbG9hZC8nICsgcHJvamVjdE5hbWUsIHsKCQkJCW1ldGhvZDogJ0dFVCcsCgkJCQloZWFkZXJzOiB7CgkJCQkJQWNjZXB0OiAnYXBwbGljYXRpb24vanNvbicsCgkJCQkJQXV0aG9yaXphdGlvbjogYEJlYXJlciAke3Rva2VufWAKCQkJCX0sCgkJCQltb2RlOiAnY29ycycKCQkJfSk7CgkJCWlmIChyZXNwb25zZS5vaykgewoJCQkJY29uc3QgZGF0YSA9IGF3YWl0IHJlc3BvbnNlLmpzb24oKTsKCQkJCXZhciB0bXBSZXNvbHV0aW9ucyA9IE9iamVjdC5lbnRyaWVzKGRhdGEuZGF0YS5pbWFnZVJlc29sdXRpb25zKTsgLy8gQXJyYXlba2V5LCB2YWx1ZV0KCQkJCXZhciBpbWFnZVJlc3RNYXA6IE1hcDxzdHJpbmcsIEltZ1Jlcz4gPSBuZXcgTWFwPHN0cmluZywgSW1nUmVzPigpOwoJCQkJZm9yIChjb25zdCBpUiBvZiB0bXBSZXNvbHV0aW9ucykgewoJCQkJCWltYWdlUmVzdE1hcC5zZXQoaVJbMF0sIHBhcnNlUmVzU3RyaW5nKGlSWzFdIGFzIHN0cmluZykpOwoJCQkJfQoJCQkJdmFyIGF0dHJpYnV0ZU1hcDogTWFwPHN0cmluZywgc3RyaW5nPiA9IG5ldyBNYXA8c3RyaW5nLCBzdHJpbmc+KCk7CgkJCQlpZiAoZGF0YS5kYXRhLmF0dHJpYnV0ZXMgIT09IHVuZGVmaW5lZCkgewoJCQkJCXZhciB0bXBBdHRyaWJ1dGVzID0gT2JqZWN0LmVudHJpZXMoZGF0YS5kYXRhLmF0dHJpYnV0ZXMpOwoJCQkJCWlmICh0bXBBdHRyaWJ1dGVzKSB7CgkJCQkJCWZvciAoY29uc3QgYXR0ciBvZiB0bXBBdHRyaWJ1dGVzKSB7CgkJCQkJCQlhdHRyaWJ1dGVNYXAuc2V0KGF0dHJbMF0sIGF0dHJbMV0gYXMgc3RyaW5nKTsKCQkJCQkJfQoJCQkJCX0KCQkJCX0KCQkJCXZhciB0bXBQcm9qZWN0ID0gbmV3IENhbnRpbGV2ZXJQcm9qZWN0KAoJCQkJCWRhdGEuZGF0YS5wcm9qZWN0TmFtZSwKCQkJCQlkYXRhLmRhdGEuYXV0aG9yLAoJCQkJCWRhdGEuZGF0YS5kYXRlRm9ybWF0LAoJCQkJCWRhdGEuZGF0YS5kYXRlVGltZUZvcm1hdCwKCQkJCQlpbWFnZVJlc3RNYXAsCgkJCQkJYXR0cmlidXRlTWFwLAoJCQkJCWRhdGEuZGF0YS5kb21haW4KCQkJCSk7CgkJCQlwcm9qZWN0LnNldCh0bXBQcm9qZWN0KTsKCQkJCXJldHVybiBkYXRhLmRhdGE7CgkJCX0gZWxzZSB7CgkJCQl0aHJvdyBuZXcgRXJyb3IoJ0ZhaWxlZCB0byBmZXRjaCBwcm9qZWN0Jyk7CgkJCX0KCQl9IGNhdGNoIChlcnJvcikgewoJCQljb25zb2xlLmxvZyhlcnJvcik7CgkJCXJldHVybiBlcnJvciBhcyBFcnJvcjsKCQl9Cgl9CgoJLy8gc2F2ZSBjaGFuZ2VzIHRvIHRoZSBwcm9qZWN0CglleHBvcnQgYXN5bmMgZnVuY3Rpb24gc2F2ZVByb2plY3QoCgkJcHJvamVjdDogQ2FudGlsZXZlclByb2plY3QsCgkJdG9rZW46IHN0cmluZwoJKTogUHJvbWlzZTxDYW50aWxldmVyUHJvamVjdCB8IEVycm9yPiB7CgkJY29uc29sZS5sb2coJ3Byb2plY3RTdG9yZTogU2F2aW5nIHByb2plY3QnKTsKCQlsZXQgeWFtbCA9IHN0cmluZ2lmeShwcm9qZWN0KTsKCQl0cnkgewoJCQljb25zdCByZXNwb25zZSA9IGF3YWl0IGZldGNoKFBVQkxJQ19DQU5USUxFVkVSX0FQSV9VUkwgKyAnL3Byb2plY3QvJywgewoJCQkJbWV0aG9kOiAnUFVUJywKCQkJCWhlYWRlcnM6IHsKCQkJCQlBY2NlcHQ6ICdhcHBsaWNhdGlvbi9qc29uJywKCQkJCQlBdXRob3JpemF0aW9uOiBgQmVhcmVyICR7dG9rZW59YCwKCQkJCQknQ29udGVudC1UeXBlJzogJ2FwcGxpY2F0aW9uL3lhbWwnCgkJCQl9LAoJCQkJYm9keTogeWFtbCwKCQkJCW1vZGU6ICdjb3JzJwoJCQl9KTsKCQkJaWYgKHJlc3BvbnNlLm9rKSB7CgkJCQljb25zdCBkYXRhID0gYXdhaXQgcmVzcG9uc2UuanNvbigpOwoJCQkJcmV0dXJuIGRhdGEuZGF0YTsKCQkJfSBlbHNlIHsKCQkJCXRocm93IG5ldyBFcnJvcignRmFpbGVkIHRvIHNhdmUgcHJvamVjdCcpOwoJCQl9CgkJfSBjYXRjaCAoZXJyb3IpIHsKCQkJY29uc29sZS5sb2coZXJyb3IpOwoJCQlyZXR1cm4gZXJyb3IgYXMgRXJyb3I7CgkJfQoJfQoKCS8vIHllcywgdGhpcyBpcyBhbG1vc3QgaWRlbnRpY2FsIHRvIHNhdmVQcm9qZWN0LCBidXQgaXQncyBhIGRpZmZlcmVudCBlbmRwb2ludAoJZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIGNyZWF0ZVByb2plY3QoCgkJcHJvamVjdDogQ2FudGlsZXZlclByb2plY3QsCgkJdG9rZW46IHN0cmluZwoJKTogUHJvbWlzZTxDYW50aWxldmVyUHJvamVjdCB8IEVycm9yPiB7CgkJY29uc29sZS5sb2coJ3Byb2plY3RTdG9yZTogU2F2aW5nIHByb2plY3QnKTsKCQlsZXQgeWFtbCA9IHN0cmluZ2lmeShwcm9qZWN0KTsKCQl0cnkgewoJCQljb25zdCByZXNwb25zZSA9IGF3YWl0IGZldGNoKFBVQkxJQ19DQU5USUxFVkVSX0FQSV9VUkwgKyAnL3Byb2plY3QvbmV3JywgewoJCQkJbWV0aG9kOiAnUE9TVCcsCgkJCQloZWFkZXJzOiB7CgkJCQkJQWNjZXB0OiAnYXBwbGljYXRpb24vanNvbicsCgkJCQkJQXV0aG9yaXphdGlvbjogYEJlYXJlciAke3Rva2VufWAsCgkJCQkJJ0NvbnRlbnQtVHlwZSc6ICdhcHBsaWNhdGlvbi95YW1sJwoJCQkJfSwKCQkJCWJvZHk6IHlhbWwsCgkJCQltb2RlOiAnY29ycycKCQkJfSk7CgkJCWlmIChyZXNwb25zZS5zdGF0dXMgPT09IDQwOSkgewoJCQkJdGhyb3cgbmV3IEVycm9yKCdQcm9qZWN0IGFscmVhZHkgZXhpc3RzJyk7CgkJCX0gZWxzZSBpZiAocmVzcG9uc2Uub2spIHsKCQkJCWNvbnN0IGRhdGEgPSBhd2FpdCByZXNwb25zZS5qc29uKCk7CgkJCQlyZXR1cm4gZGF0YS5kYXRhOwoJCQl9IGVsc2UgewoJCQkJdGhyb3cgbmV3IEVycm9yKCdGYWlsZWQgdG8gc2F2ZSBwcm9qZWN0Jyk7CgkJCX0KCQl9IGNhdGNoIChlcnJvcikgewoJCQljb25zb2xlLmxvZygnSSBjYXVnaHQgYW4gZXJyb3IgYW5kIEkgYW0gZXhwZWN0aW5nIGl0IHRvIGJlIHRoZSA0MDkgdGhhdCB0aGUgc2VydmVyIHNlbnQnKTsKCQkJcmV0dXJuIGVycm9yIGFzIEVycm9yOwoJCX0KCX0KCgkvLyBnZXQgYSBsaXN0IG9mIHByb2plY3RzCglleHBvcnQgYXN5bmMgZnVuY3Rpb24gZmV0Y2hQcm9qZWN0TGlzdCh0b2tlbjogc3RyaW5nKTogUHJvbWlzZTxNYXA8c3RyaW5nLCBzdHJpbmc+IHwgRXJyb3I+IHsKCQljb25zb2xlLmxvZygncHJvamVjdFN0b3JlOiBGZXRjaGluZyBwcm9qZWN0IGxpc3QnKTsKCQl0cnkgewoJCQljb25zdCByZXNwb25zZSA9IGF3YWl0IGZldGNoKFBVQkxJQ19DQU5USUxFVkVSX0FQSV9VUkwgKyAnL3Byb2plY3QvbGlzdCcsIHsKCQkJCW1ldGhvZDogJ0dFVCcsCgkJCQloZWFkZXJzOiB7CgkJCQkJQWNjZXB0OiAnYXBwbGljYXRpb24vanNvbicsCgkJCQkJQXV0aG9yaXphdGlvbjogYEJlYXJlciAke3Rva2VufWAKCQkJCX0sCgkJCQltb2RlOiAnY29ycycKCQkJfSk7CgkJCWlmIChyZXNwb25zZS5vaykgewoJCQkJY29uc3QgZGF0YSA9IGF3YWl0IHJlc3BvbnNlLmpzb24oKTsKCQkJCWxldCBhcnJheSA9IE9iamVjdC5lbnRyaWVzKGRhdGEuZGF0YSk7CgkJCQlpZiAoYXJyYXkubGVuZ3RoID09PSAwKSB7CgkJCQkJY29uc29sZS5sb2coJ05vIHByb2plY3RzIGZvdW5kJyk7CgkJCQkJcmV0dXJuIG5ldyBNYXA8c3RyaW5nLCBzdHJpbmc+KCk7CgkJCQl9CgkJCQlsZXQgcHJvamVjdExpc3Q6IE1hcDxzdHJpbmcsIHN0cmluZz4gPSBuZXcgTWFwPHN0cmluZywgc3RyaW5nPigpOwoJCQkJZm9yIChjb25zdCBwIG9mIGFycmF5KSB7CgkJCQkJcHJvamVjdExpc3Quc2V0KAoJCQkJCQlTdHJpbmcoKHBbMV0gYXMgeyBzZWNvbmQ6IHN0cmluZyB9KS5zZWNvbmQpLAoJCQkJCQlTdHJpbmcoKHBbMV0gYXMgeyBmaXJzdDogc3RyaW5nIH0pLmZpcnN0KQoJCQkJCSk7CgkJCQl9CgkJCQlyZXR1cm4gcHJvamVjdExpc3Q7CgkJCX0gZWxzZSB7CgkJCQl0aHJvdyBuZXcgRXJyb3IoJ0ZhaWxlZCB0byBmZXRjaCBwcm9qZWN0IGxpc3QnKTsKCQkJfQoJCX0gY2F0Y2ggKGVycm9yKSB7CgkJCWNvbnNvbGUubG9nKGVycm9yKTsKCQkJcmV0dXJuIGVycm9yIGFzIEVycm9yOwoJCX0KCX0K">{}</script>
+<script context="module" lang="ts">
+    import {writable} from 'svelte/store';
+    import {CantileverProject, type ImgRes, parseResString} from '$lib/models/project';
+    import {stringify} from 'yaml';
+    import {PUBLIC_CANTILEVER_API_URL} from '$env/static/public';
+
+    export const CLEAR_PROJECT = new CantileverProject(
+		'',
+		'',
+		'dd/MM/yyyy',
+		'dd/MM/yyyy HH:mm:ss',
+		new Map<string, ImgRes>(),
+		new Map<string, string>(),
+		''
+	);
+
+	function createProjectStore() {
+		const { subscribe, set, update } = writable<CantileverProject>(CLEAR_PROJECT);
+
+		return {
+			subscribe,
+			set,
+			update,
+			clear: () => set(CLEAR_PROJECT)
+		};
+	}
+
+	// This store manages the overall project
+	export const project = createProjectStore();
+
+	export async function fetchProject(
+		token: string,
+		projectName: string
+	): Promise<CantileverProject | Error> {
+		console.log('projectStore: Fetching project ' + projectName);
+		try {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/project/load/' + projectName, {
+				method: 'GET',
+				headers: {
+					Accept: 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const data = await response.json();
+				var tmpResolutions = Object.entries(data.data.imageResolutions); // Array[key, value]
+				var imageRestMap: Map<string, ImgRes> = new Map<string, ImgRes>();
+				for (const iR of tmpResolutions) {
+					imageRestMap.set(iR[0], parseResString(iR[1] as string));
+				}
+				var attributeMap: Map<string, string> = new Map<string, string>();
+				if (data.data.attributes !== undefined) {
+					var tmpAttributes = Object.entries(data.data.attributes);
+					if (tmpAttributes) {
+						for (const attr of tmpAttributes) {
+							attributeMap.set(attr[0], attr[1] as string);
+						}
+					}
+				}
+				var tmpProject = new CantileverProject(
+					data.data.projectName,
+					data.data.author,
+					data.data.dateFormat,
+					data.data.dateTimeFormat,
+					imageRestMap,
+					attributeMap,
+					data.data.domain
+				);
+				project.set(tmpProject);
+				return data.data;
+			} else {
+				throw new Error('Failed to fetch project');
+			}
+		} catch (error) {
+			console.log(error);
+			return error as Error;
+		}
+	}
+
+	// save changes to the project
+	export async function saveProject(
+		project: CantileverProject,
+		token: string
+	): Promise<CantileverProject | Error> {
+		console.log('projectStore: Saving project');
+		let yaml = stringify(project);
+		try {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/project/', {
+				method: 'PUT',
+				headers: {
+					Accept: 'application/json',
+					Authorization: `Bearer ${token}`,
+					'Content-Type': 'application/yaml'
+				},
+				body: yaml,
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const data = await response.json();
+				return data.data;
+			} else {
+				throw new Error('Failed to save project');
+			}
+		} catch (error) {
+			console.log(error);
+			return error as Error;
+		}
+	}
+
+	// yes, this is almost identical to saveProject, but it's a different endpoint
+	export async function createProject(
+		project: CantileverProject,
+		token: string
+	): Promise<CantileverProject | Error> {
+		console.log('projectStore: Saving project');
+		let yaml = stringify(project);
+		try {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/project/new', {
+				method: 'POST',
+				headers: {
+					Accept: 'application/json',
+					Authorization: `Bearer ${token}`,
+					'Content-Type': 'application/yaml'
+				},
+				body: yaml,
+				mode: 'cors'
+			});
+			if (response.status === 409) {
+				throw new Error('Project already exists');
+			} else if (response.ok) {
+				const data = await response.json();
+				return data.data;
+			} else {
+				throw new Error('Failed to save project');
+			}
+		} catch (error) {
+			console.log('I caught an error and I am expecting it to be the 409 that the server sent');
+			return error as Error;
+		}
+	}
+
+	// get a list of projects
+	export async function fetchProjectList(token: string): Promise<Map<string, string> | Error> {
+		console.log('projectStore: Fetching project list');
+		try {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/project/list', {
+				method: 'GET',
+				headers: {
+					Accept: 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				mode: 'cors'
+			});
+			if (response.ok) {
+				const data = await response.json();
+				let array = Object.entries(data.data);
+				if (array.length === 0) {
+					console.log('No projects found');
+					return new Map<string, string>();
+				}
+				let projectList: Map<string, string> = new Map<string, string>();
+				for (const p of array) {
+					projectList.set(
+						String((p[1] as { second: string }).second),
+						String((p[1] as { first: string }).first)
+					);
+				}
+				return projectList;
+			} else {
+				throw new Error('Failed to fetch project list');
+			}
+		} catch (error) {
+			console.log(error);
+			return error as Error;
+		}
+	}
+</script>
