@@ -12,7 +12,14 @@ class DynamoDBServiceImplTest {
     @Test
     fun `verify service can be instantiated`() {
         // This test just verifies that the class can be instantiated without errors
-        val service = DynamoDBServiceImpl(Region.EU_WEST_2, "test-table")
+        val service = DynamoDBServiceImpl(Region.EU_WEST_2, "test-table", enableLogging = false)
+        assert(service is DynamoDBServiceImpl)
+    }
+    
+    @Test
+    fun `verify service can be instantiated with default parameters`() {
+        // This test verifies that the class can be instantiated with default parameters
+        val service = DynamoDBServiceImpl(Region.EU_WEST_2)
         assert(service is DynamoDBServiceImpl)
     }
 

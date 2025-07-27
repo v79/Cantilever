@@ -2,6 +2,7 @@ package org.liamjd.cantilever.services
 
 import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
+import org.liamjd.cantilever.models.rest.TemplateListDTO
 
 /**
  * Interface for DynamoDB operations related to Cantilever projects
@@ -57,4 +58,11 @@ interface DynamoDBService {
         contentType: SOURCE_TYPE,
         attributes: Map<String, String>
     )
+
+    /**
+     * List all templates for a specific domain
+     * @param domain The project domain
+     * @return A list of templates for the domain
+     */
+    suspend fun listAllTemplates(domain: String): TemplateListDTO
 }

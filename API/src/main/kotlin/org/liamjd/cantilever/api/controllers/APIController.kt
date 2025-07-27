@@ -8,11 +8,13 @@ import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentTree
+import org.liamjd.cantilever.services.DynamoDBService
 import org.liamjd.cantilever.services.S3Service
 
 abstract class APIController(val sourceBucket: String, val generationBucket: String) : KoinComponent {
 
     val s3Service: S3Service by inject()
+    val dynamoDBService: DynamoDBService by inject()
     val contentTree: ContentTree = ContentTree()
     lateinit var project: CantileverProject
 

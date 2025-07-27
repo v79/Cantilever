@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.charleskorn.kaml.Yaml
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerializationException
 import org.koin.core.component.KoinComponent
 import org.liamjd.apiviaduct.routing.Request
@@ -143,22 +144,15 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
      * Return the list of templates
      */
     fun getTemplates(request: Request<Unit>): Response<APIResult<TemplateListDTO>> {
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        return if (loadContentTree(projectKeyHeader)) {
-            info("Fetching all templates from $projectKeyHeader/${S3_KEY.metadataKey}")
-            val lastUpdated = s3Service.getUpdatedTime(projectKeyHeader + "/" + S3_KEY.metadataKey, generationBucket)
-            val templates = contentTree.templates.sortedBy { it.title }
-            val templateList = TemplateListDTO(
-                count = templates.size,
-                lastUpdated = lastUpdated,
-                templates = templates
-            )
-            Response.ok(body = APIResult.Success(value = templateList))
+        val projectKeyHeader = request.headers["cantilever-project-domain"]
+
+        return if (projectKeyHeader.isNullOrBlank()) {
+            Response.badRequest(body = APIResult.Error("Invalid project key"))
         } else {
-            error("Cannot find file '$projectKeyHeader/${S3_KEY.metadataKey}' in bucket $generationBucket")
-            Response.serverError(
-                body = APIResult.Error(statusText = "Cannot find file '$projectKeyHeader/${S3_KEY.metadataKey}' in bucket $generationBucket")
-            )
+            val templates = runBlocking {
+                dynamoDBService.listAllTemplates(projectKeyHeader)
+            }
+            Response.ok(body = APIResult.Success(value = templates))
         }
     }
 
