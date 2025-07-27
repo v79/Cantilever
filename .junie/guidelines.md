@@ -77,6 +77,7 @@ Tests follow these conventions:
 3. Tests extend `KoinTest` when dependency injection is needed
 4. `@Test` annotation is used to mark test methods
 5. Tests are organized in the same package structure as the implementation code
+6. Tests should be laid out as Setup / Execute / Verify steps
 
 ### Test Patterns
 

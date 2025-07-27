@@ -48,3 +48,10 @@ Only thing missing is sorting by "lastUpdated".
 - Starting with FileUploadHandler and Template files
 - The cognito logout error has returned though
 - Successfully saves a template file metadata to the db
+
+## 27/07/2025
+
+- Fetch a list of templates via DynamoDB instead of the metadata.json file.
+- I've added testcontainers to the project, which allows me to write unit tests for DynamoDB etc (via localstack) instead of always having to deploy to the cloud to test. This has required changes to how the DynamoDBService is created and injected.
+- I'm not saving ContentNode.Template quite right though - it's not including the `sections` array.
+- Still getting weird SLF4J errors in the Cloudwatch logs

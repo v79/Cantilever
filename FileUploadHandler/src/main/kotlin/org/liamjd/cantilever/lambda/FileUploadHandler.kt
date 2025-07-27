@@ -19,13 +19,10 @@ import org.liamjd.cantilever.services.SQSService
 import org.liamjd.cantilever.services.impl.DynamoDBServiceImpl
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import org.liamjd.cantilever.services.impl.SQSServiceImpl
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
-import java.net.URI
 
 /**
  * Responds to a file upload event (PUT or PUSH).
@@ -39,18 +36,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
     private val s3Service: S3Service = S3ServiceImpl(Region.EU_WEST_2)
     private val sqsService: SQSService = SQSServiceImpl(Region.EU_WEST_2)
-    private val dbClient = DynamoDbAsyncClient.builder()
-        .endpointOverride(URI.create(System.getenv("DYNAMODB_ENDPOINT")))
-        .region(Region.EU_WEST_2)
-        .credentialsProvider(
-            StaticCredentialsProvider.create(
-                AwsBasicCredentials.create(
-                    System.getenv("AWS_ACCESS_KEY_ID"),
-                    System.getenv("AWS_SECRET_ACCESS_KEY")
-                )
-            )
-        )
-        .build()
+    private val dbClient = DynamoDbAsyncClient.create()
     private val dynamoDBService: DynamoDBService = DynamoDBServiceImpl(
         region = Region.EU_WEST_2, enableLogging = true, dynamoDbClient =
             dbClient

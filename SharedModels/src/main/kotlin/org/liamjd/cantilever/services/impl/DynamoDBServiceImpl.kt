@@ -285,7 +285,7 @@ class DynamoDBServiceImpl(
         projectDomain: String,
         contentType: SOURCE_TYPE,
         attributes: Map<String, String>
-    ) {
+    ): Boolean {
         log("INFO", "Upserting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
 
         try {
@@ -295,13 +295,11 @@ class DynamoDBServiceImpl(
                 "type#lastUpdated" to AttributeValue.builder().s("${contentType.dbType}#${System.currentTimeMillis()}")
                     .build()
             )
-            log("INFO", "Created initial item with keys: domain#type, srcKey, type#lastUpdated")
 
             // Add attributes to the item
             attributes.forEach { (key, value) ->
-                item[key] = AttributeValue.builder().s(value).build()
+                item[key] = AttributeValue.builder().s(value).build() // might not always be a string
             }
-            log("INFO", "Added ${attributes.size} attributes to item")
 
             val request = PutItemRequest.builder()
                 .tableName(tableName)
@@ -313,6 +311,7 @@ class DynamoDBServiceImpl(
 
             if (response.sdkHttpResponse().isSuccessful) {
                 log("INFO", "Successfully upserted content node: $srcKey in domain: $projectDomain")
+                return true
             } else {
                 log(
                     "WARN",
@@ -320,6 +319,7 @@ class DynamoDBServiceImpl(
                         response.sdkHttpResponse().statusCode()
                     }"
                 )
+                return false
             }
         } catch (e: DynamoDbException) {
             log("ERROR", "Failed to upsert content node: $srcKey in domain: $projectDomain", e)
@@ -332,6 +332,60 @@ class DynamoDBServiceImpl(
             throw e
         } catch (e: Exception) {
             log("ERROR", "Unexpected error while upserting content node: $srcKey", e)
+            throw e
+        }
+        return false
+    }
+
+    /**
+     * Get a content node by its source key, project domain and content type
+     * @param srcKey The source key for the content node
+     * @param projectDomain The domain of the project
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @return The content node if found, null otherwise
+     */
+    override suspend fun getContentNode(
+        srcKey: String,
+        projectDomain: String,
+        contentType: SOURCE_TYPE
+    ): ContentNode? {
+        log("INFO", "Getting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
+
+        try {
+            val key = mapOf(
+                "domain#type" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
+                "srcKey" to AttributeValue.builder().s(srcKey).build()
+            )
+
+            val request = GetItemRequest.builder()
+                .tableName(tableName)
+                .key(key)
+                .build()
+
+            log("INFO", "Executing GetItem request for content node: $srcKey")
+            val response = dynamoDbClient.getItem(request).await()
+
+            return if (response.hasItem()) {
+                log("INFO", "Content node found: $srcKey")
+                when (contentType) {
+                    SOURCE_TYPE.Templates -> mapToTemplateNode(response.item())
+                    else -> throw IllegalArgumentException("Unsupported content type: ${contentType.dbType}")
+                }
+            } else {
+                log("INFO", "No content node found for srcKey: $srcKey")
+                null
+            }
+        } catch (e: DynamoDbException) {
+            log("ERROR", "Failed to get content node: $srcKey in domain: $projectDomain", e)
+            throw e
+        } catch (e: AwsServiceException) {
+            log("ERROR", "AWS service error while getting content node: $srcKey", e)
+            throw e
+        } catch (e: SdkClientException) {
+            log("ERROR", "SDK client error while getting content node: $srcKey", e)
+            throw e
+        } catch (e: Exception) {
+            log("ERROR", "Unexpected error while getting content node: $srcKey", e)
             throw e
         }
     }
@@ -347,7 +401,10 @@ class DynamoDBServiceImpl(
         try {
             val request = QueryRequest.builder()
                 .tableName(tableName)
-                .keyConditionExpression("domain#type = :domainType")
+                .keyConditionExpression("#pk = :domainType")
+                .expressionAttributeNames(
+                    mapOf("#pk" to "domain#type")
+                )
                 .expressionAttributeValues(
                     mapOf(":domainType" to AttributeValue.builder().s("$domain#template").build())
                 )
@@ -446,7 +503,7 @@ class DynamoDBServiceImpl(
 
             return ContentNode.TemplateNode(
                 srcKey = srcKey,
-                title = item["name"]?.s() ?: "",
+                title = item["title"]?.s() ?: "",
                 sections = item["sections"]?.s()?.split(",") ?: emptyList(),
                 lastUpdated = lastUpdated
             )

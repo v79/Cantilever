@@ -1,8 +1,12 @@
 package org.liamjd.cantilever.services.impl
 
 import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.*
+import kotlinx.datetime.Instant
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
+import org.liamjd.cantilever.models.ContentNode
 import org.testcontainers.containers.localstack.LocalStackContainer
 import org.testcontainers.utility.DockerImageName
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
@@ -10,6 +14,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import java.net.URI
+import kotlin.test.*
 
 /**
  * Basic tests for DynamoDBServiceImpl
@@ -40,7 +45,7 @@ class DynamoDBServiceImplTest {
     private lateinit var service: DynamoDBServiceImpl
     private val tableName = "cantilever-test-content-nodes"
 
-    @BeforeEach
+    @BeforeTest
     fun setup() {
         println("Setting up DynamoDBServiceImplTest")
         // Configure the service to use the localstack endpoint
@@ -66,7 +71,7 @@ class DynamoDBServiceImplTest {
         // You'll need to modify your service to accept a client or use reflection to inject it
     }
 
-    @AfterEach
+    @AfterTest
     fun tearDown() {
         println("Tearing down DynamoDBServiceImplTest")
         // Clean up the table after each test
@@ -90,13 +95,12 @@ class DynamoDBServiceImplTest {
     @Test
     fun `initial test to verify service setup`() {
         // This test is just to ensure the service is set up correctly
-        // You can add more tests to verify specific functionality
         assert(service.tableName == tableName)
     }
 
     @Test
     fun `saveProject should store project in DynamoDB`() {
-        // Arrange
+        // Setup
         val project = CantileverProject(
             domain = "test-domain",
             projectName = "Test Project",
@@ -106,20 +110,98 @@ class DynamoDBServiceImplTest {
         )
 
         runBlocking {
-            // Act
-            println("Saving project")
+            // Execute
             val savedProject = service.saveProject(project)
 
-            // Assert
-            println("Retrieving project")
+            // Verify
             val retrievedProject = service.getProject("test-domain")
-            Assertions.assertNotNull(retrievedProject)
-            Assertions.assertEquals(project.domain, retrievedProject?.domain)
-            Assertions.assertEquals(project.projectName, retrievedProject?.projectName)
+            assertNotNull(retrievedProject, "Null project retrieved") {
+                assertEquals(project.domain, retrievedProject?.domain)
+                assertEquals(project.projectName, retrievedProject?.projectName)
+            }
+        }
+    }
+
+    @Test
+    fun `can save a template and list all templates`() {
+        // Setup
+        val template = ContentNode.TemplateNode(
+            srcKey = "sources/templates/myTemplate.hbs",
+            lastUpdated = Instant.fromEpochSeconds(100000L),
+            title = "My Template",
+            sections = listOf("body", "header")
+        )
+
+        runBlocking {
+            // Execute
+            val saved = service.upsertContentNode(
+                srcKey = template.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Templates,
+                attributes = mapOf(
+                    "title" to template.title,
+                    "sections" to template.sections.joinToString(",") { it }
+                )
+            )
+
+            // Verify
+            assertTrue(saved)
+
+            val templates = service.listAllTemplates("test-domain")
+            println("Retrieved templates: $templates")
+            assertNotNull(templates)
+            assertTrue(templates.templates.isNotEmpty())
+            assertEquals(1, templates.templates.size)
+            assertEquals(template.srcKey, templates.templates[0].srcKey)
+            assertEquals(template.title, templates.templates[0].title)
+            assertEquals(2, templates.templates[0].sections.size)
+        }
+    }
+
+    @Test
+    fun `can save and load a template`() {
+        // Setup
+        val template = ContentNode.TemplateNode(
+            srcKey = "sources/templates/myTemplate.hbs",
+            lastUpdated = Instant.fromEpochSeconds(100000L),
+            title = "My Template",
+            sections = listOf("body", "header")
+        )
+
+        runBlocking {
+            // Execute
+            val saved = service.upsertContentNode(
+                srcKey = template.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Templates,
+                attributes = mapOf(
+                    "title" to template.title,
+                    "sections" to template.sections.joinToString(",") { it }
+                )
+            )
+
+            // Verify
+            assertTrue(saved, "Failed to save template. Check the logs.")
+
+            val retrievedTemplate = service.getContentNode(
+                srcKey = template.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Templates
+            )
+            assertNotNull(retrievedTemplate)
+            assertIs<ContentNode.TemplateNode>(retrievedTemplate)
+            assertEquals(template.srcKey, retrievedTemplate.srcKey)
+            assertEquals(template.title, retrievedTemplate.title)
+            assertEquals(template.sections, retrievedTemplate.sections)
         }
     }
 
 
+    /**
+     * Create the DynamoDB table for testing. This is a pretty hand-coded representation of the table structure
+     * that the service expects. The real table is created in the CDK scripts.
+     * Keeping these in sync could be a problem in the future.
+     */
     private fun createTable(client: DynamoDbAsyncClient) {
         println("Creating table $tableName in client ${client.serviceName()}")
         val createTableRequest = software.amazon.awssdk.services.dynamodb.model.CreateTableRequest.builder()

@@ -17,6 +17,10 @@ aws-lambda-events = "3.16.0"
 aws-lambda-tests = "1.1.1"
 aws-lambda-log4j2 = "1.6.0"
 
+# Logging
+slf4j = "2.0.12"
+log4j = "2.23.1"
+
 # Kotlinx libraries
 kotlinx-datetime = "0.4.1"
 kotlinx-serialization-json = "1.6.2"
@@ -26,6 +30,8 @@ junit = "5.9.2"
 mockk = "1.13.4"
 koin-core = "3.4.0"
 koin-test = "3.3.3"
+kotlin-test = "2.2.0"
+testcontainers = "1.21.3"
 
 # APIViaduct
 api-viaduct = "0.4-SNAPSHOT"
@@ -41,6 +47,7 @@ imgscalr = "4.2"
 # Kotlin
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin" }
 kotlin-ksp = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 kotlin-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlin-coroutines-jdk = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8", version.ref = "coroutines" }
@@ -62,6 +69,12 @@ aws-lambda-events = { module = "com.amazonaws:aws-lambda-java-events", version.r
 aws-lambda-tests = { module = "com.amazonaws:aws-lambda-java-tests", version.ref = "aws-lambda-tests" }
 aws-lambda-log4j2 = { module = "com.amazonaws:aws-lambda-java-log4j2", version.ref = "aws-lambda-log4j2" }
 
+# Logging
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+log4j-slf4j2-impl = { module = "org.apache.logging.log4j:log4j-slf4j2-impl", version.ref = "log4j" }
+log4j-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
+log4j-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
+
 # Kotlin libraries
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization-json" }
@@ -74,6 +87,9 @@ mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin-core" }
 koin-test = { module = "io.insert-koin:koin-test", version.ref = "koin-test" }
 koin-test-junit5 = { module = "io.insert-koin:koin-test-junit5", version.ref = "koin-test" }
+testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
+localstack = { module = "org.testcontainers:localstack", version.ref = "testcontainers" }
+localstack-junit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 
 # APIViaduct
 viaduct-router = { module = "org.liamjd.apiviaduct:router", version.ref = "api-viaduct" }
@@ -87,16 +103,34 @@ jwks-rsa = { module = "com.auth0:jwks-rsa", version.ref = "jwks-rsa" }
 imgscalr = { module = "org.imgscalr:imgscalr-lib", version.ref = "imgscalr" }
 
 [bundles]
+logging = [
+  "slf4j-api",
+  "log4j-slf4j2-impl",
+  "log4j-api",
+  "log4j-core"
+]
+
 aws-lambda = [
   "aws-lambda-core",
   "aws-lambda-events",
   "aws-lambda-tests",
   "aws-lambda-log4j2"
 ]
+aws-sdk = [
+  "aws-sdk-dynamodb",
+  "aws-sdk-s3",
+  "aws-sdk-lambda",
+  "aws-sdk-sqs"
+]
 koin-test = [
   "koin-core",
   "koin-test",
   "koin-test-junit5"
+]
+testcontainers = [
+  "testcontainers",
+  "localstack",
+  "localstack-junit"
 ]
 
 [plugins]

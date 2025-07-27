@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "org.liamjd.cantilever"
-version = "0.1.0"
+version = "0.1.1"
 
 repositories {
     mavenCentral()
@@ -40,15 +40,13 @@ dependencies {
     implementation(libs.koin.core)
     
     // coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.7.3")
+    implementation(libs.kotlin.coroutines.core)
+    implementation(libs.kotlin.coroutines.jdk)
 
     // sdk v2
     implementation(platform(libs.aws.sdk.bom))
-    implementation("software.amazon.awssdk:s3")
-    implementation("software.amazon.awssdk:lambda")
-    implementation("software.amazon.awssdk:sqs")
-    implementation("software.amazon.awssdk:dynamodb")
+    implementation(libs.bundles.aws.sdk)
+
 
     // lambda functions
     implementation(libs.bundles.aws.lambda)

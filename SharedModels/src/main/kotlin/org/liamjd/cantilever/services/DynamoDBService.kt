@@ -2,6 +2,7 @@ package org.liamjd.cantilever.services
 
 import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
+import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.rest.TemplateListDTO
 
 /**
@@ -51,13 +52,27 @@ interface DynamoDBService {
      * @param projectDomain The domain of the project
      * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
      * @param attributes A map of attributes for the content node
+     * @return true if the content node was successfully upserted, false otherwise
      */
     suspend fun upsertContentNode(
         srcKey: String,
         projectDomain: String,
         contentType: SOURCE_TYPE,
         attributes: Map<String, String>
-    )
+    ): Boolean
+
+    /**
+     * Get a content node by its source key, project domain and content type
+     * @param srcKey The source key for the content node
+     * @param projectDomain The domain of the project
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @return The content node if found, null otherwise
+     */
+    suspend fun getContentNode(
+        srcKey: String,
+        projectDomain: String,
+        contentType: SOURCE_TYPE
+    ): ContentNode?
 
     /**
      * List all templates for a specific domain

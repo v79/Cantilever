@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "org.liamjd.cantilever"
-version = "0.1.0"
+version = "0.1.1"
 
 repositories {
     mavenCentral()
@@ -33,19 +33,15 @@ dependencies {
 
     // sdk v2
     implementation(platform(libs.aws.sdk.bom))
-    implementation(libs.aws.sdk.s3)
-    implementation(libs.aws.sdk.lambda)
-    implementation(libs.aws.sdk.sqs)
-    implementation(libs.aws.sdk.dynamodb)
+    implementation(libs.bundles.aws.sdk)
 
     // testing
     testImplementation(libs.junit.api)
     testRuntimeOnly(libs.junit.engine)
+    testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.mockk)
 
-    testImplementation("org.testcontainers:testcontainers:1.21.3")
-    testImplementation("org.testcontainers:junit-jupiter:1.18.3")
-    testImplementation("org.testcontainers:localstack:1.20.0") // For AWS services
+    testImplementation(libs.bundles.testcontainers) // For AWS services
 
     // routing
     implementation(libs.viaduct.openapi)

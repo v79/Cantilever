@@ -2,7 +2,6 @@ package org.liamjd.cantilever.api.controllers
 
 import com.charleskorn.kaml.Yaml
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.SerializationException
 import org.koin.core.component.KoinComponent
 import org.liamjd.apiviaduct.routing.Request
 import org.liamjd.apiviaduct.routing.Response
@@ -108,35 +107,6 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                 body =
                     APIResult.OK("Updated file ${newNode.srcKey}, $length bytes")
             )
-        }
-    }
-
-    /**
-     * Load the handlebars template file and extract its metadata
-     * TODO: return a [TemplateNode] instead of a [TemplateMetadata]
-     */
-    fun getTemplateMetadata(request: Request<Unit>): Response<APIResult<TemplateMetadata>> {
-        val handlebarKey = request.pathParameters["templateKey"]
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        return if (handlebarKey != null) {
-            val srcKey = URLDecoder.decode(handlebarKey, Charset.defaultCharset())
-            return if (s3Service.objectExists(srcKey, sourceBucket)) {
-                try {
-                    info("Loading metadata for template $handlebarKey")
-                    val template = s3Service.getObjectAsString(srcKey, sourceBucket)
-                    val frontmatter = template.getFrontMatter()
-                    val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
-                    Response.ok(body = APIResult.Success(metadata))
-                } catch (se: SerializationException) {
-                    Response.serverError(
-                        body = APIResult.Error("Could not deserialize template $srcKey. Error was ${se.message}")
-                    )
-                }
-            } else {
-                Response.badRequest(body = APIResult.Error("Could not find template $srcKey"))
-            }
-        } else {
-            Response.badRequest(body = APIResult.Error("Invalid template key"))
         }
     }
 
