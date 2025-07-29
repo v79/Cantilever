@@ -23,22 +23,17 @@ import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
 import java.io.ByteArrayOutputStream
 
 /**
- * Respond to the SQSEvent which will contain the S3 key of the markdown file to parse
+ * Respond to the SQSEvent which will contain the S3 key of the Markdown file to parse
  * Read the content of the file and pass it to the `convertMDToHTML` function
  * Then write the resultant file to the destination bucket
  */
+@Suppress("unused")
 class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 
-    private val s3Service: S3Service
-    private val sqsService: SQSService
-    private val converter: MarkdownConverter
+    private val s3Service: S3Service = S3ServiceImpl(Region.EU_WEST_2)
+    private val sqsService: SQSService = SQSServiceImpl(Region.EU_WEST_2)
+    private val converter: MarkdownConverter = FlexmarkMarkdownConverter()
     private lateinit var logger: LambdaLogger
-
-    init {
-        s3Service = S3ServiceImpl(Region.EU_WEST_2)
-        sqsService = SQSServiceImpl(Region.EU_WEST_2)
-        converter = FlexmarkMarkdownConverter()
-    }
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
         val sourceBucket = System.getenv("source_bucket")
@@ -112,7 +107,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
                     )
                     sectionMap[section.key] = domain + "/" + fragmentPrefix + section.key
 
-                    // copy any images referenced in the markdown to the destination bucket
+                    // copy any images referenced in the Markdown to the destination bucket
                     copyImages("${sqsMsgBody.metadata.srcKey}§${section.key}", section.value, domain)
                 } catch (qdne: QueueDoesNotExistException) {
                     logger.error("queue '$handlebarQueueUrl' does not exist; ${qdne.message}")
@@ -126,9 +121,9 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 
                 }
 
-                // [ContentNode.PageNode] isn't quite suitable for sending to the handlebars queue, so we need to build a new message
+                // [ContentNode.PageNode] isn't quite suitable for sending to the Handlebars queue, so we need to build a new message
                 // But the only important difference is how we handle sections.
-                // [ContentNode.PageNode.sections] is a Map<String, String>, which is fine, but we need to store a Map<String,SrcKey> (which is a typealias for String anyway)
+                // [ContentNode.PageNode.sections] is a Map<String, String>, which is fine, but we need to store a Map<String, SrcKey> (which is a typealias for String anyway)
 
                 val updatedPageNode = sqsMsgBody.metadata.copy(sections = sectionMap.toMap())
                 logger.info("Updated page node: $updatedPageNode")
@@ -160,7 +155,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
     }
 
     /**
-     * Posts are the simpler type of markdown content, as they are not split into separate sections. There is only a body.
+     * Posts are the simpler type of Markdown content, as they are not split into separate sections. There is only a body.
      */
     private fun processPostUpload(
         sqsMsgBody: MarkdownSQSMessage.PostUploadMsg,
@@ -191,7 +186,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
             val msgResponse = sqsService.sendTemplateMessage(toQueue = handlebarQueueUrl, body = message)
             logger.info("Message '${Json.encodeToString(message)}' sent, message ID is ${msgResponse?.messageId()}")
 
-            // now attempt to copy the images referenced in the markdown sources
+            // now attempt to copy the images referenced in the Markdown sources
             copyImages(sqsMsgBody.metadata.srcKey, sqsMsgBody.markdownText, domain)
 
         } catch (qdne: QueueDoesNotExistException) {
@@ -211,7 +206,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
     }
 
     /**
-     * Copy any images referenced in the markdown to the destination bucket
+     * Copy any images referenced in the Markdown to the destination bucket
      * By sending a copy message to the image processor queue
      */
     private fun copyImages(descriptor: String, mdSource: String, domain: String) {

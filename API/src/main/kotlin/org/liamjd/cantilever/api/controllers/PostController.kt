@@ -19,7 +19,7 @@ class PostController(sourceBucket: String, generationBucket: String) : KoinCompo
     APIController(sourceBucket, generationBucket) {
 
     /**
-     * Load a markdown file with the specified `srcKey` from the project folder `cantilever-project-domain` and return it as [ContentNode.PostNode] response
+     * Load a Markdown file with the specified `srcKey` from the project folder `cantilever-project-domain` and return it as [ContentNode.PostNode] response
      */
     fun loadMarkdownSource(request: Request<Unit>): Response<APIResult<ContentNode.PostNode>> {
         val markdownSource = request.pathParameters["srcKey"]
@@ -64,7 +64,7 @@ class PostController(sourceBucket: String, generationBucket: String) : KoinCompo
     }
 
     /**
-     * Delete the markdown post... and it's corresponding html? Um....
+     * Delete the Markdown post... and it's corresponding HTML?
      */
     fun deleteMarkdownPost(request: Request<Unit>): Response<APIResult<String>> {
         val markdownSource = request.pathParameters["srcKey"]

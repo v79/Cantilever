@@ -32,6 +32,7 @@ import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
  *
  * "Posts" and "Pages" must be markdown files (.md). The source type is added to the SQS message queue so the receiver knows how to process it.
  */
+@Suppress("unused")
 class FileUploadHandler : RequestHandler<S3Event, String> {
 
     private val s3Service: S3Service = S3ServiceImpl(Region.EU_WEST_2)
@@ -157,7 +158,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
     }
 
     /**
-     * Process the uploaded POST markdown file and send a message to the Markdown processor queue
+     * Process the uploaded POST Markdown file and send a message to the Markdown processor queue
      */
     private fun processPostUpload(
         srcKey: String,
@@ -188,7 +189,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
     }
 
     /**
-     * Process the uploaded PAGE markdown file and send a message to the Markdown processor queue
+     * Process the uploaded PAGE Markdown file and send a message to the Markdown processor queue
      */
     private fun processPageUpload(
         srcKey: String,
@@ -199,7 +200,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         try {
             logger.info("Received page file $srcKey and sending it to Markdown processor queue")
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
-            // extract page model
+            // extract the page model
             val metadata =
                 ContentMetaDataBuilder.PageBuilder.buildFromSourceString(sourceString, srcKey)
             val markdownBody = sourceString.stripFrontMatter()
@@ -218,7 +219,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
     }
 
     /**
-     * Process the uploaded CSS file and send a message to the handlebars template processor queue
+     * Process the uploaded CSS file and send a message to the Handlebars template processor queue
      */
     private fun processCSSUpload(
         srcKey: String,
@@ -249,7 +250,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
     /**
      * Process the uploaded image file and send a message to the image processor queue.
-     * First check if it is supported file type.
+     * First, check if it is a supported file type.
      */
     private fun processImageUpload(srcKey: String, projectDomain: String, contentType: String?, queueUrl: String) {
         try {
@@ -307,7 +308,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             attributes.put("title", metadata.title)
             // TODO: add the names of the sections as a set
             runBlocking {
-                val dbResponse = dynamoDBService.upsertContentNode(srcKey, projectDomain, Templates, attributes)
+                dynamoDBService.upsertContentNode(srcKey, projectDomain, Templates, attributes)
             }
         } catch (e: Exception) {
             logger.error("Failed to process template upload for $srcKey; ${e.message}")
@@ -340,7 +341,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
      * Insert or update the content node in the DynamoDB table.
      * @param srcKey the source key of the content node
      * @param projectDomain the domain of the project
-     * @param contentType the type of content (e.g., POST, PAGE, IMAGE, etc.)
+     * @param contentType the type of content (e.g. POST, PAGE, IMAGE, etc.)
      */
     private suspend fun upsertContentNode(
         srcKey: SrcKey,
@@ -361,9 +362,9 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 /**
  * Wrappers for logging to make it slightly less annoying
  */
-fun LambdaLogger.info(function: String, message: String) = log("INFO: $function:  $message\n")
+fun LambdaLogger.info(function: String, message: String) = log("INFO: $function: $message\n")
 fun LambdaLogger.info(message: String) = info("FileUploadHandler", message)
-fun LambdaLogger.warn(function: String, message: String) = log("WARN: $function:  $message\n")
+fun LambdaLogger.warn(function: String, message: String) = log("WARN: $function: $message\n")
 fun LambdaLogger.warn(message: String) = warn("FileUploadHandler", message)
-fun LambdaLogger.error(function: String, message: String) = log("ERROR: $function:  $message\n")
+fun LambdaLogger.error(function: String, message: String) = log("ERROR: $function: $message\n")
 fun LambdaLogger.error(message: String) = error("FileUploadHandler", message)

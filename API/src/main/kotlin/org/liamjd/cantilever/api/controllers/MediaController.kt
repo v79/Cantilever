@@ -55,7 +55,7 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
         val resolution = request.pathParameters["resolution"]
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         info("Fetching image $decodedKey at resolution $resolution")
-        // srcKey will be /sources/images/<image-name>.<ext> so we need to strip off the /sources/images/ prefix and add the /generated/images/ prefix
+        // srcKey will be /sources/images/<image-name>.<ext>, so we need to strip off the /sources/images/ prefix and add the /generated/images/ prefix
         // I also need to move the <ext> to the end of the generated key
         val ext = decodedKey.substringAfterLast(".")
         val generatedKey = decodedKey
@@ -113,7 +113,7 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
     }
 
     /**
-     * Delete an image from the sources bucket, and remove all the generated variants
+     * Delete an image from the `sources` bucket, and remove all the generated variants
      * This does NOT delete any images from the destination website bucket
      */
     fun deleteImage(request: Request<Unit>): Response<APIResult<String>> {

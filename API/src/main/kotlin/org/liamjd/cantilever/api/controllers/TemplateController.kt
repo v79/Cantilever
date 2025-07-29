@@ -20,7 +20,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
     APIController(sourceBucket, generationBucket) {
 
     /**
-     * Load a handlebars template file with the specified 'srcKey' and return it as a [ContentNode.TemplateNode] response
+     * Load a Handlebars template file with the specified 'srcKey' and return it as a [ContentNode.TemplateNode] response
      */
     fun loadHandlebarsSource(request: Request<Unit>): Response<APIResult<ContentNode.TemplateNode>> {
         val handlebarSource = request.pathParameters["srcKey"]
@@ -34,9 +34,9 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                 val templateObj = s3Service.getObject(decoded, sourceBucket)
                 if (templateObj != null) {
                     val body = s3Service.getObjectAsString(decoded, sourceBucket)
-                    val frontmatter = body.getFrontMatter()
-                    // TODO: this throws exception if a value is missing from the frontmatter, even though it should encode the default
-                    val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
+                    val frontMatter = body.getFrontMatter()
+                    // TODO: this throws exception if a value is missing from the frontMatter, even though it should encode the default
+                    val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontMatter)
                     val templateNode: ContentNode.TemplateNode = ContentNode.TemplateNode(
                         srcKey = decoded,
                         title = metadata.name,
@@ -62,7 +62,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
     }
 
     /**
-     * Save a handlebars template file, which contains a key, sections, name and body
+     * Save a Handlebars template file, which contains a key, sections, name and body
      */
     fun saveTemplate(request: Request<ContentNode.TemplateNode>): Response<APIResult<String>> {
         val templateNode = request.body
@@ -89,7 +89,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
             )
         } else {
             info("Creating new file '$projectKeyHeader/$srcKey' by copying from '${templateNode.srcKey}'")
-            // we need to update the sourcekey to include the projectHeaderKey, and we need to remove the body before adding into the contentTree
+            // we need to update the sourceKey to include the projectHeaderKey, and we need to remove the body before adding into the contentTree
             val newNode = templateNode.copy(srcKey = "$projectKeyHeader/$srcKey")
             newNode.body = templateNode.body
             val length = s3Service.putObjectAsString(
@@ -157,7 +157,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
     }
 
     /**
-     * Delete a handlebars template file if there are no pages or posts using it
+     * Delete a Handlebars template file if there are no pages or posts using it
      */
     fun deleteTemplate(request: Request<Unit>): Response<APIResult<String>> {
         val templateKey = request.pathParameters["srcKey"]
@@ -175,7 +175,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                         error("Could not find template $decoded in content tree")
                         Response.badRequest(APIResult.Error("Could not find template $decoded in content tree"))
                     } else {
-                        val deleted = s3Service.deleteObject(decoded, sourceBucket)
+                        s3Service.deleteObject(decoded, sourceBucket)
                         contentTree.deleteTemplate(templateNode)
                         saveContentTree(projectKeyHeader)
                         Response.ok(APIResult.OK("Deleted template $decoded"))
@@ -201,7 +201,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
     }
 
     /**
-     * The front end gives us a JSON representation of a handlebars template, which we need to convert to a YAML frontmatter & body
+     * The front end gives us a JSON representation of a Handlebars template, which we need to convert to a YAML front matter and body
      */
     private fun convertTemplateToYamlString(template: ContentNode.TemplateNode): String {
         val sBuilder: StringBuilder = StringBuilder()

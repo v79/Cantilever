@@ -35,8 +35,8 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
      * PUT /generate/page/{srcKey}
      * Generate the HTML version of the page specified by the path parameter 'srcKey'.
      * The actual path searched for will be `/sources/pages/<srcKey>'.
-     * This method will send a message to the markdown processing queue in SQS.
-     * If <srcKey> is '*' it will trigger regeneration of all source markdown pages
+     * This method will send a message to the Markdown processing queue in SQS.
+     * If <srcKey> is '*', it will trigger regeneration of all source Markdown pages
      */
     @OpenAPIPath
     fun generatePage(request: Request<Unit>): Response<APIResult<String>> {
@@ -85,7 +85,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
      * PUT /generate/post/{srcKey}
      * Generate the HTML fragments of the post specified by the path parameter 'srcKey'.
      * The actual path searched for will be `/sources/posts/<srcKey>`.
-     * This method will send a message to the markdown processing queue in SQS.
+     * This method will send a message to the Markdown processing queue in SQS.
      */
     fun generatePost(request: Request<Unit>): Response<APIResult<String>> {
         val requestKey = request.pathParameters["srcKey"]
@@ -257,17 +257,17 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
             // this will not respond with any particular order. I'll need to iterate twice?
             deleteList.addAll(listResponse.contents().map { it.key().removePrefix("$projectKeyHeader/sources/") })
             listResponse.contents().forEach { obj ->
-                // check if the image is still referenced in metadata.json
-                // the problem is we are iterating over the objects in the bucket, not the metadata.json file
-                // and this iteration will include both the original image, and the thumbnails
+                //* check if the image is still referenced in metadata.json
+                // the problem is we are iterating over the objects in the bucket, not the metadata.json file.
+                // this iteration will include both the original image and the thumbnails */
                 if (contentTree.images.any {
                         it.srcKey.removePrefix("$projectKeyHeader/sources/") == obj.key()
                             .removePrefix("$projectKeyHeader/generated/")
                     }) {
                     info("Image ${obj.key()} is still referenced in metadata.json")
-                    // so we've found the image in the metadata, so we don't want to delete it
-                    // BUT we don't want to delete any of its image resolutions either
-                    // so put the image resolution keys into a 'do not delete' list?
+                    // We've found the image in the metadata, so we don't want to delete it.
+                    // BUT we don't want to delete any of its image resolutions either.
+                    // Put the image resolution keys into a 'do not delete' list?
                     deleteList.remove(obj.key())
                     s3Service.listObjects(obj.key(), generationBucket).contents()
                         .forEach { imageResolution ->
@@ -298,14 +298,14 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
 
     // TODO: WE'VE DONE THIS TWICE NOW
     /**
-     * Send a message to the markdown queue for a Page
+     * Send a message to the Markdown queue for a Page
      */
     private fun queuePageRegeneration(
         pageSrcKey: String,
         sourceString: String,
         projectDomain: String
     ): SendMessageResponse? {
-        // extract page model
+        // extract the page model
         val pageMode = ContentMetaDataBuilder.PageBuilder.buildFromSourceString(sourceString, pageSrcKey)
         val msgBody = MarkdownSQSMessage.PageUploadMsg(
             projectDomain = projectDomain,
@@ -319,14 +319,14 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
     }
 
     /**
-     * Send a message to the markdown queue for a Post
+     * Send a message to the Markdown queue for a Post
      */
     private fun queuePostRegeneration(
         postSrcKey: String,
         sourceString: String,
         projectDomain: String
     ): SendMessageResponse? {
-        // extract post model
+        // extract the post model
         val metadata =
             ContentMetaDataBuilder.PostBuilder.buildFromSourceString(sourceString.getFrontMatter(), postSrcKey)
         // extract body
