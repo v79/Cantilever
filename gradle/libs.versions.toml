@@ -34,7 +34,7 @@ kotlin-test = "2.2.0"
 testcontainers = "1.21.3"
 
 # APIViaduct
-api-viaduct = "0.4-SNAPSHOT"
+api-viaduct = "0.4.1-SNAPSHOT"
 
 # Other libraries
 kaml = "0.55.0"

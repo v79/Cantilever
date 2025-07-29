@@ -29,7 +29,6 @@ val cantileverModule = module {
 
 class NewLambdaRouter : LambdaRouter() {
     override val corsDomain: String = System.getenv("cors_domain") ?: "https://www.cantilevers.org/"
-
     private val sourceBucket: String = System.getenv("source_bucket")
     private val generationBucket: String = System.getenv("generation_bucket")
 
@@ -60,6 +59,7 @@ class NewLambdaRouter : LambdaRouter() {
     )
 
     override val router: Router = lambdaRouter {
+        /** ============== /warm ================== **/
         get("/warm") { _: Request<Unit> ->
             println("NEW API: Ping received; warming"); Response.ok(
             "Warmed"

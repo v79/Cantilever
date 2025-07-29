@@ -135,6 +135,7 @@ class CantileverStack(
             codePath = "./FileUploadHandler/build/libs/FileUploadHandler.jar",
             handler = "org.liamjd.cantilever.lambda.FileUploadHandler",
             memory = 256,
+            isProd = isProd,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
@@ -151,6 +152,7 @@ class CantileverStack(
             codePath = "./MarkdownProcessor/build/libs/MarkdownProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.md.MarkdownProcessorHandler",
             memory = 320,
+            isProd = isProd,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.generation_bucket.name to generationBucket.bucketName,
@@ -166,6 +168,7 @@ class CantileverStack(
             description = "Lambda function which renders a handlebars template with the given HTML fragment after markdown processing",
             codePath = "./TemplateProcessor/build/libs/TemplateProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.TemplateProcessorHandler",
+            isProd = isProd,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.generation_bucket.name to generationBucket.bucketName,
@@ -202,6 +205,7 @@ class CantileverStack(
             codePath = "./API/build/libs/APIRouter.jar",
             handler = "org.liamjd.cantilever.api.NewLambdaRouter",
             memory = 360,
+            isProd = isProd,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.generation_bucket.name to generationBucket.bucketName,
@@ -222,6 +226,7 @@ class CantileverStack(
             codePath = "./ImageProcessor/build/libs/ImageProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.image.ImageProcessorHandler",
             memory = 256,
+            isProd = isProd,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.generation_bucket.name to generationBucket.bucketName,
@@ -474,14 +479,21 @@ class CantileverStack(
         codePath: String,
         handler: String,
         memory: Int = 320,
-        environment: Map<String, String>?
+        environment: Map<String, String>?,
+        isProd: Boolean
     ): Function =
         Function.Builder.create(stack, id).description(description ?: "").runtime(Runtime.JAVA_21).memorySize(memory)
             .timeout(Duration.minutes(2)).code(Code.fromAsset(codePath)).handler(handler)
             .loggingFormat(LoggingFormat.JSON).logGroup(
-                LogGroup.Builder.create(this, "/aws/lambda/${stack.stackName}-$id")
-                    .logGroupName("/aws/lambda/${stack.stackName}-$id").removalPolicy(RemovalPolicy.DESTROY)
-                    .retention(RetentionDays.ONE_MONTH).build()
+                LogGroup.Builder.create(this, "/aws/lambda/${stack.stackName}")
+                    .logGroupName("/aws/lambda/${stack.stackName}").removalPolicy(RemovalPolicy.DESTROY)
+                    .retention(
+                        if (isProd) {
+                            RetentionDays.ONE_MONTH
+                        } else {
+                            RetentionDays.ONE_WEEK
+                        }
+                    ).build()
             )
             .environment(
                 environment ?: emptyMap()
