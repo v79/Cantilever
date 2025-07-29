@@ -22,7 +22,7 @@ dependencies {
     // openAPI dependency scanning
     implementation(project(":OpenAPISchemaAnnotations"))
 //    ksp(project(":OpenAPISchemaGenerator"))
-//    ksp("org.liamjd.apiviaduct:openapi:0.4-SNAPSHOT")
+//    ksp("org.liamjd.apiviaduct:openapi:0.4.1-SNAPSHOT")
 
     // multiplatform datetime library
     implementation(libs.kotlinx.datetime)

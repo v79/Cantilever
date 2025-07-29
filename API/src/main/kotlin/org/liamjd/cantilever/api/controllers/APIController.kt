@@ -59,7 +59,7 @@ abstract class APIController(val sourceBucket: String, val generationBucket: Str
     }
 
     /**
-     * Load the project definition  'cantilever.yaml' from the S3 bucket
+     * Load the project definition 'cantilever.yaml' from the S3 bucket
      */
     @Deprecated("Replace with DynamoDBService calls: DynamoDBServiceImpl::getProject")
     fun loadProjectDefinition(domain: String) {

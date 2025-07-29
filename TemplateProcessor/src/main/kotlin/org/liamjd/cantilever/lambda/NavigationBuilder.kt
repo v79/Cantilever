@@ -22,7 +22,7 @@ class NavigationBuilder(private val contentTree: ContentTree) {
     }
 
     /**
-     * Posts are sorted most recent first, so the previous should be further down the list
+     * Posts are sorted most-recent first, so the previous should be further down the list
      */
     private fun getPrevPost(
         currentPost: ContentNode.PostNode,
@@ -42,7 +42,7 @@ class NavigationBuilder(private val contentTree: ContentTree) {
     }
 
     /**
-     * Posts are sorted most recent first, so the previous should be further up the list
+     * Posts are sorted most-recent first, so the previous should be further up the list
      */
     private fun getNextPost(
         currentPost: ContentNode.PostNode,
@@ -76,14 +76,14 @@ class NavigationBuilder(private val contentTree: ContentTree) {
     }
 
     /**
-     * Posts are sorted most recent first, so the earliest post is the last in the list
+     * Posts are sorted most-recent first, so the earliest post is the last in the list
      */
     private fun getFirstPost(posts: List<ContentNode.PostNode>): ContentNode.PostNode? {
         return posts.lastOrNull()
     }
 
     /**
-     * Posts are sorted most recent first, so the latest post is the first in the list
+     * Posts are sorted most-recent first, so the latest post is the first in the list
      */
     private fun getLastPost(posts: List<ContentNode.PostNode>): ContentNode.PostNode? {
         return posts.firstOrNull()

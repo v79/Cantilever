@@ -22,6 +22,7 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 /**
  * Processes a message to transform the source and template into a complete HTML web page
  */
+@Suppress("unused")
 class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
 
     private val s3Service: S3Service = S3ServiceImpl(Region.EU_WEST_2)
@@ -63,13 +64,13 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             }
         }
 
-        return if (responses.size == 0) "200 OK" else "${responses.size} errors, final was ${responses.last()}"
+        return if (responses.isEmpty()) "200 OK" else "${responses.size} errors, final was ${responses.last()}"
     }
 
 
     /**
-     * Load the templates and html fragments for the specified page and combine them into the final HTML file
-     * @param pageMsg the handlebars model
+     * Load the templates and HTML fragments for the specified page and combine them into the final HTML file
+     * @param pageMsg the Handlebars model
      * @param sourceBucket the sources for the fragments and metadata json TODO: move this to an environment variable for the processor
      * @param generationBucket the intermediate bucket for the generated files
      * @param destinationBucket destination S3 bucket TODO: move this to an environment variable
@@ -117,8 +118,8 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
     }
 
     /**
-     * Load the templates and html fragments for the specified post and combine them into the final HTML file
-     * @param postMsg the handlebars model
+     * Load the templates and HTML fragments for the specified post and combine them into the final HTML file
+     * @param postMsg the Handlebars model
      * @param sourceBucket the sources for the fragments and metadata json TODO: move this to an environment variable for the processor
      * @param generationBucket the intermediate bucket for the generated files
      * @param destinationBucket destination S3 bucket TODO: move this to an environment variable
@@ -133,13 +134,13 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
             val body = s3Service.getObjectAsString(postMsg.fragmentSrcKey, generationBucket)
             logger.info("Loaded body fragment from '${postMsg.fragmentSrcKey}: ${body.take(100)}'")
 
-            // load template file as specified by metadata
+            // load the template file as specified by metadata
             val template = postMsg.projectDomain + "/" + postMsg.metadata.templateKey
             logger.info("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
             val sourceString = s3Service.getObjectAsString(template, sourceBucket)
             val templateString = sourceString.stripFrontMatter()
             val project = getProjectModel(postMsg.projectDomain, sourceBucket)
-            // build model from project and from html fragment
+            // build model from project and from HTML fragment
             val model = mutableMapOf<String, Any?>()
             model["project"] = project
             model["title"] = postMsg.metadata.title
@@ -165,7 +166,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
     }
 
     /**
-     * Parse and render the given CSS file to the destination bucket. This is most likely to be a straight pass through with no processing
+     * Parse and render the given CSS file to the destination bucket. This is most likely to be a straight pass-through with no processing
      * @param staticFileMsg
      * @param sourceBucket the source of the original CSS file TODO: move this to an environment variable for the processor
      * @param generationBucket the intermediate bucket for the generated files
@@ -204,7 +205,7 @@ class TemplateProcessorHandler : RequestHandler<SQSEvent, String> {
     /**
      * Calculate the final output file name
      * For posts:
-     * - this is the metadata.slug object if it exists, or the source file name minus extensions if no slug exists
+     * - this is the `metadata.slug` object if it exists, or the source file name minus extensions if no slug exists
      * For pages:
      * - For the home page (i.e. for page index.md) this needs to be index.html
      * - For all other pages, this should be the source file name minus the extension

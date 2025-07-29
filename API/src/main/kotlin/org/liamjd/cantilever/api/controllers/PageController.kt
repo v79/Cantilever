@@ -50,7 +50,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
     }
 
     /**
-     * Load a markdown file with the specified `srcKey` and return it as [MarkdownPageDTO] response
+     * Load a Markdown file with the specified `srcKey` and return it as [MarkdownPageDTO] response
      */
     fun loadMarkdownSource(request: Request<Unit>): Response<APIResult<MarkdownPageDTO>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
@@ -110,7 +110,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
     }
 
     /**
-     * Save a [MarkdownPageDTO] to the sources bucket
+     * Save a [MarkdownPageDTO] to the `sources` bucket
      */
     fun saveMarkdownPageSource(request: Request<ContentNode.PageNode>): Response<APIResult<String>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
@@ -140,7 +140,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
     }
 
     /**
-     * Delete a markdown page from the sources bucket and update the content tree
+     * Delete a Markdown page from the `sources` bucket and update the content tree
      */
     fun deleteMarkdownPageSource(request: Request<Unit>): Response<APIResult<String>> {
         val markdownSource = request.pathParameters["srcKey"]
@@ -187,7 +187,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
         loadContentTree(projectFolder)
         val folders = mutableListOf<ContentNode.FolderNode>()
         val rootFolder = ContentNode.FolderNode("$projectFolder/${S3_KEY.pagesPrefix}")
-        // The root folder isn't in the content tree, so we need to add it manually, and find all the pages that have it as their parent
+        // The root folder isn't in the content tree, so we need to add it manually and find all the pages that have it as their parent
         rootFolder.children.addAll(
             contentTree.items.filterIsInstance<ContentNode.PageNode>().filter { it.parent == rootFolder.srcKey }
                 .map { it.srcKey })
@@ -200,7 +200,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
     }
 
     /**
-     * Delete a folder from the sources bucket and update the content tree.
+     * Delete a folder from the `sources` bucket and update the content tree.
      * The folder must be empty and contain no pages.
      */
     fun deleteFolder(request: Request<Unit>): Response<APIResult<String>> {
@@ -307,7 +307,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
     }
 
     /**
-     * Convert a [ContentNode.PageNode] to a markdown, with each section string
+     * Convert a [ContentNode.PageNode] to a Markdown, with each section string
      */
     private fun convertNodeToMarkdown(page: ContentNode.PageNode): String {
         val separator = "---"

@@ -27,6 +27,7 @@ val cantileverModule = module {
     }
 }
 
+@Suppress("unused")
 class NewLambdaRouter : LambdaRouter() {
     override val corsDomain: String = System.getenv("cors_domain") ?: "https://www.cantilevers.org/"
     private val sourceBucket: String = System.getenv("source_bucket")

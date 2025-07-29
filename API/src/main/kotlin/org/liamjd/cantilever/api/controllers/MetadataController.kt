@@ -149,8 +149,8 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
      */
     private fun buildTemplateNode(templateKey: String): ContentNode.TemplateNode {
         val templateContents = s3Service.getObjectAsString(templateKey, sourceBucket)
-        val frontmatter = templateContents.getFrontMatter()
-        val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
+        val frontMatter = templateContents.getFrontMatter()
+        val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontMatter)
         return ContentNode.TemplateNode(
             srcKey = templateKey,
             title = metadata.name,

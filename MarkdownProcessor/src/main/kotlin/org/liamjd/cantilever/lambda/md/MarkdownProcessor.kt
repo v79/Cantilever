@@ -8,26 +8,26 @@ import com.vladsch.flexmark.util.ast.Node
 import com.vladsch.flexmark.util.data.MutableDataSet
 
 /**
- * Using the flexmark-java library, convert the markdown source to an HTML string
+ * Using the flexmark-java library, convert the Markdown source to an HTML string
  * Extensions enabled:
  * - [TablesExtension](https://github.com/vsch/flexmark-java/wiki/Tables-Extension)
  */
 
 /**
- * Generic interface for markdown conversion functions
+ * Generic interface for Markdown conversion functions
  */
 interface MarkdownConverter {
     /**
-     * Convert a markdown file to HTML
-     * @param mdSource the markdown source
+     * Convert a Markdown file to HTML
+     * @param mdSource the Markdown source
      * @return the HTML string
      */
     fun convertMDToHTML(mdSource: String): String
 
     /**
-     * Extract a list of all the images from the markdown source.
-     * This is so we can find out what image references are in the markdown source
-     * @param mdSource the markdown source
+     * Extract a list of all the images from the Markdown source.
+     * This is so we can find out what image references are in the Markdown source
+     * @param mdSource the Markdown source
      * @return a list of [Image] objects
      */
     fun extractImages(mdSource: String): List<Image>

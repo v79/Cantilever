@@ -40,8 +40,6 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
             )
         }
 
-        // Extract domain and project name from the project key
-        // Project key format is "domain.yaml"
         val domain = projectKey.substringBefore(".yaml")
 
         info("Retrieving project for domain '$domain'")
