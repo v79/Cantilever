@@ -153,6 +153,12 @@ The project uses GitHub Actions for CI/CD with two main workflows:
 4. Test locally using the provided test events
 5. Deploy to a development environment for integration testing
 
+### Logging
+
+1. For Lambda functions, make use of the LambdaLogger class provided by AWS Lambda
+2. Use three logging levels - INFO, WARN and ERROR as appropriate
+
+
 ### Common Patterns
 
 1. **Lambda Handler Pattern**:

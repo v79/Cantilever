@@ -16,9 +16,12 @@ import software.amazon.awscdk.services.dynamodb.*
 import software.amazon.awscdk.services.events.targets.SqsQueue
 import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.Function
+import software.amazon.awscdk.services.lambda.LoggingFormat
 import software.amazon.awscdk.services.lambda.Runtime
 import software.amazon.awscdk.services.lambda.eventsources.S3EventSource
 import software.amazon.awscdk.services.lambda.eventsources.SqsEventSource
+import software.amazon.awscdk.services.logs.LogGroup
+import software.amazon.awscdk.services.logs.RetentionDays
 import software.amazon.awscdk.services.route53.ARecord
 import software.amazon.awscdk.services.route53.HostedZone
 import software.amazon.awscdk.services.route53.HostedZoneAttributes
@@ -336,24 +339,24 @@ class CantileverStack(
             ).handler(apiRoutingLambda).proxy(true).build()
 
 
-  /*      println("Create DynamoDB database tables: project")
-        val projectTable = TableV2.Builder.create(this, "${stageName.uppercase()}-database-project-table")
-            .tableName("${stageName}-projects")
-            .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
-                Attribute.builder().name("domain").type(AttributeType.STRING).build()
-            ).sortKey(Attribute.builder().name("lastUpdated").type(AttributeType.NUMBER).build())
-            .globalSecondaryIndexes(
-                listOf(
-                    GlobalSecondaryIndexPropsV2.builder().indexName("ALL_PROJECTS")
-                        .partitionKey(Attribute.builder().name("domain").type(AttributeType.STRING).build()).sortKey(
-                        Attribute.builder().name("lastUpdated").type(
-                            AttributeType.NUMBER
-                        ).build()
-                    ).projectionType(ProjectionType.ALL).build()
-                )
-            )
-            .build()
-*/
+        /*      println("Create DynamoDB database tables: project")
+              val projectTable = TableV2.Builder.create(this, "${stageName.uppercase()}-database-project-table")
+                  .tableName("${stageName}-projects")
+                  .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
+                      Attribute.builder().name("domain").type(AttributeType.STRING).build()
+                  ).sortKey(Attribute.builder().name("lastUpdated").type(AttributeType.NUMBER).build())
+                  .globalSecondaryIndexes(
+                      listOf(
+                          GlobalSecondaryIndexPropsV2.builder().indexName("ALL_PROJECTS")
+                              .partitionKey(Attribute.builder().name("domain").type(AttributeType.STRING).build()).sortKey(
+                              Attribute.builder().name("lastUpdated").type(
+                                  AttributeType.NUMBER
+                              ).build()
+                          ).projectionType(ProjectionType.ALL).build()
+                      )
+                  )
+                  .build()
+      */
         println("Creating DynamoDB database tables - PK domain#type, SK srcKey")
         val contentNodeTable = TableV2.Builder.create(this, "${stageName.uppercase()}-database-content-node-table")
             .tableName("${stageName}-content-nodes")
@@ -364,10 +367,10 @@ class CantileverStack(
                 listOf(
                     GlobalSecondaryIndexPropsV2.builder().indexName("Project-NodeType-LastUpdated")
                         .partitionKey(Attribute.builder().name("domain").type(AttributeType.STRING).build()).sortKey(
-                        Attribute.builder().name("type#lastUpdated").type(
-                            AttributeType.STRING
-                        ).build()
-                    ).projectionType(ProjectionType.ALL).build()
+                            Attribute.builder().name("type#lastUpdated").type(
+                                AttributeType.STRING
+                            ).build()
+                        ).projectionType(ProjectionType.ALL).build()
                 )
             )
             .build()
@@ -375,7 +378,7 @@ class CantileverStack(
         println("Granting permissions to the lambdas to access the DynamoDB table")
         contentNodeTable.grantReadWriteData(apiRoutingLambda)
         contentNodeTable.grantWriteData(fileUploadLambda)
-        
+
 
         println("Creating API Gateway DNS record for $apiDomain")
         val apiDomainDNSRecord = ARecord.Builder.create(this, "cantilever-api-record-${stageName.uppercase()}").zone(
@@ -461,6 +464,7 @@ class CantileverStack(
      * - Java 21 runtime
      * - 320Mb RAM
      * - 2 minute timeout
+     * - JSON logging format
      * - one month's logs
      */
     private fun createLambda(
@@ -473,7 +477,13 @@ class CantileverStack(
         environment: Map<String, String>?
     ): Function =
         Function.Builder.create(stack, id).description(description ?: "").runtime(Runtime.JAVA_21).memorySize(memory)
-            .timeout(Duration.minutes(2)).code(Code.fromAsset(codePath)).handler(handler).environment(
+            .timeout(Duration.minutes(2)).code(Code.fromAsset(codePath)).handler(handler)
+            .loggingFormat(LoggingFormat.JSON).logGroup(
+                LogGroup.Builder.create(this, "/aws/lambda/${stack.stackName}-$id")
+                    .logGroupName("/aws/lambda/${stack.stackName}-$id").removalPolicy(RemovalPolicy.DESTROY)
+                    .retention(RetentionDays.ONE_MONTH).build()
+            )
+            .environment(
                 environment ?: emptyMap()
             )  // TODO: should this should be a CloudFormation parameter CfnParameter
             .build()
