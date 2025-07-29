@@ -38,7 +38,7 @@ Content)
 ## 25/07/2025
 
 Lots of research on dynamodb partition keys. Many discussions with LLMs. Trying to understand what is "good" high cardinality and "poor" high cardinality. For my files in S3, it's been suggested that "<domain>#<path>" is a good partition key, with "<type>#<leaf>" as a good sort key. Or "<domain>" and "<type>#<path".
-If I go with "<domain>#<type>" & "<path>" then I get reasonable cardinality, partitioned by project and file type, and the sort key allows me pick the specific file still. It supports queries such as "get all posts for this domain".
+If I go with "<domain>#<type>" & "<path>" then I get reasonable cardinality, partitioned by project and file type, and the sort key allows me to pick the specific file still. It supports queries such as "get all posts for this domain".
 Create a GSI as "<domain>" & "<path>" allows for simpler queries?
 Only thing missing is sorting by "lastUpdated".
 

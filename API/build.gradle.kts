@@ -86,6 +86,7 @@ tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
     archiveBaseName.set("APIRouter")
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer::class.java)
     dependsOn(
         parent?.project?.tasks?.named("copyAPISchema")
     )
