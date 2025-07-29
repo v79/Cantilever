@@ -1,3 +1,15 @@
+## If the stack is deleted:
+
+- Get the new cloudfront domain
+- Update CORS domain for Cognito and redeploy
+- Update appUrls for Cognito pools and redeploy
+- Update the editor destination bucket in WebEditor/deploy-staging.bat, and cloudfront distribution invalidation ID
+- Update WebEditor/.env.staging with Cognito callback URL (the domain) and Cognito client ID. Build and deploy to bucket.
+- Update A-Record in Route53 for dev-api.cantilevers.org to API gateway domain
+- Create a user in Cognito
+- Create a project in the app
+- Create or upload a post template
+
 ## 20/07/2025
 
 - [-] Better naming of resources using 'stageName' variable, which is "cantilever-[dev|prod]"
@@ -55,3 +67,8 @@ Only thing missing is sorting by "lastUpdated".
 - I've added testcontainers to the project, which allows me to write unit tests for DynamoDB etc (via localstack) instead of always having to deploy to the cloud to test. This has required changes to how the DynamoDBService is created and injected.
 - I'm not saving ContentNode.Template quite right though - it's not including the `sections` array.
 - Still getting weird SLF4J errors in the Cloudwatch logs
+
+## 29/07/2025
+
+- A lot of fairly pointless faffing about with logging and version numbers and stuff.
+- Destroyed the dev stack and recreated it.

@@ -197,7 +197,7 @@ class CantileverStack(
         val corsDomain = if (isProd) {
             deploymentDomain
         } else {
-            "https://d1e4hj5huhntr6.cloudfront.net" // hard-coded for now
+            "https://dco7fhfjo6vkm.cloudfront.net" // hard-coded for now
         }
         val apiRoutingLambda = createLambda(
             stack = this,
@@ -322,7 +322,7 @@ class CantileverStack(
         // The API Gateway
         // I don't like how much I have to hardcode the allowed headers here. I would like this to be configurable by the router.
         println("Creating API Gateway with Lambda integration for $stageName to domain $apiDomain")
-        val lambdaRestAPI = LambdaRestApi.Builder.create(this, "${stageName}-rest-api}")
+        val lambdaRestAPI = LambdaRestApi.Builder.create(this, "${stageName}-rest-api")
             .restApiName("Cantilever $stageName REST API")
             .description("Gateway function to Cantilever services, handling routing").disableExecuteApiEndpoint(true)
             .domainName(
@@ -340,7 +340,7 @@ class CantileverStack(
                         "X-Content-Length",
                         "Cantilever-Project-Domain",
                     )
-                ).allowMethods(listOf("GET", "PUT", "POST", "OPTIONS", "DELETE")).allowOrigins(listOf(deploymentDomain))
+                ).allowMethods(listOf("GET", "PUT", "POST", "OPTIONS", "DELETE")).allowOrigins(listOf(deploymentDomain, "https://www.cantilevers.org", "https://dco7fhfjo6vkm.cloudfront.net"))
                     .build()
             ).handler(apiRoutingLambda).proxy(true).build()
 
@@ -400,7 +400,7 @@ class CantileverStack(
         // Gemini suggested writing a custom resource and a lambda function to execute post-deployment
         // The alternative may be have two separate stacks, one for the distribution and one for the rest of the resources
         // or I just hardcode the URL for the editor bucket distribution
-        val appUrls = listOf(deploymentDomain, "https://d1e4hj5huhntr6.cloudfront.net")
+        val appUrls = listOf(deploymentDomain, "https://dco7fhfjo6vkm.cloudfront.net")
         val corbelAppUrls = listOf(
             "http://localhost:44817/callback", "corbelApp://auth"
         ) // port randomly chosen here, needs to match that in the Corbel application
