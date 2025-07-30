@@ -1,5 +1,6 @@
 package org.liamjd.cantilever.services
 
+import com.amazonaws.services.lambda.runtime.LambdaLogger
 import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentNode
@@ -9,6 +10,8 @@ import org.liamjd.cantilever.models.rest.TemplateListDTO
  * Interface for DynamoDB operations related to Cantilever projects
  */
 interface DynamoDBService {
+
+    var logger: LambdaLogger?
 
     /**
      * Get a project by its domain

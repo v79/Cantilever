@@ -1,5 +1,7 @@
 package org.liamjd.cantilever.services.impl
 
+import com.amazonaws.services.lambda.runtime.LambdaLogger
+import com.amazonaws.services.lambda.runtime.logging.LogLevel
 import kotlinx.coroutines.future.await
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -26,35 +28,41 @@ class DynamoDBServiceImpl(
     private val region: Region,
     val tableName: String = "cantilever-dev-content-nodes", // TODO: This should be configurable
     private val enableLogging: Boolean = true,
-    private val dynamoDbClient: DynamoDbAsyncClient
+    private val dynamoDbClient: DynamoDbAsyncClient,
 ) : DynamoDBService {
 
-    /**
-     * Log a message with the specified level
-     * @param level The log level (INFO, WARN, ERROR)
-     * @param message The message to log
-     */
-    private fun log(level: String, message: String) {
-        if (enableLogging) {
-            println("[$level] DynamoDBService: $message")
-        }
-    }
+    override var logger: LambdaLogger? = null
 
     /**
-     * Log an exception with the specified level
-     * @param level The log level (INFO, WARN, ERROR)
-     * @param message The message to log
-     * @param e The exception to log
+     * Execute a DynamoDB operation with standard error handling
+     * @param operationDescription A description of the operation (for logging)
+     * @param contextInfo Additional context information for error messages
+     * @param operation The operation to execute
+     * @return The result of the operation
      */
-    private fun log(level: String, message: String, e: Throwable) {
-        if (enableLogging) {
-            println("[$level] DynamoDBService: $message")
-            println("[$level] Exception: ${e.javaClass.simpleName}: ${e.message}")
-            e.stackTrace.take(5).forEach { println("[$level]   at $it") }
+    private suspend fun <T> executeDynamoOperation(
+        operationDescription: String,
+        contextInfo: String,
+        operation: suspend () -> T
+    ): T {
+        info("$operationDescription: $contextInfo")
+
+        try {
+            return operation()
+        } catch (e: DynamoDbException) {
+            log("ERROR", "Failed to $operationDescription: $contextInfo", e)
+            throw e
+        } catch (e: AwsServiceException) {
+            log("ERROR", "AWS service error while $operationDescription: $contextInfo", e)
+            throw e
+        } catch (e: SdkClientException) {
+            log("ERROR", "SDK client error while $operationDescription: $contextInfo", e)
+            throw e
+        } catch (e: Exception) {
+            log("ERROR", "Unexpected error while $operationDescription: $contextInfo", e)
+            throw e
         }
     }
-
-    private fun info(message: String) = log("INFO", message)
 
     /**
      * Get a project by its domain
@@ -62,9 +70,7 @@ class DynamoDBServiceImpl(
      * @return The project if found, null otherwise
      */
     override suspend fun getProject(domain: String): CantileverProject? {
-        info("Getting project with domain: $domain")
-
-        try {
+        return executeDynamoOperation("get project", "domain: $domain") {
             val key = mapOf(
                 "domain#type" to AttributeValue.builder().s("$domain#project").build(),
                 "srcKey" to AttributeValue.builder().s("$domain.yaml").build()
@@ -78,25 +84,13 @@ class DynamoDBServiceImpl(
             info("Executing GetItem request for domain: $domain")
             val response = dynamoDbClient.getItem(request).await()
 
-            return if (response.hasItem()) {
+            if (response.hasItem()) {
                 info("Project found for domain: $domain")
                 mapToProject(response.item())
             } else {
                 info("No project found for domain: $domain")
                 null
             }
-        } catch (e: DynamoDbException) {
-            log("ERROR", "Failed to get project with domain: $domain", e)
-            throw e
-        } catch (e: AwsServiceException) {
-            log("ERROR", "AWS service error while getting project with domain: $domain", e)
-            throw e
-        } catch (e: SdkClientException) {
-            log("ERROR", "SDK client error while getting project with domain: $domain", e)
-            throw e
-        } catch (e: Exception) {
-            log("ERROR", "Unexpected error while getting project with domain: $domain", e)
-            throw e
         }
     }
 
@@ -117,7 +111,7 @@ class DynamoDBServiceImpl(
                 "author" to AttributeValue.builder().s(project.author).build(),
                 "dateFormat" to AttributeValue.builder().s(project.dateFormat).build(),
                 "dateTimeFormat" to AttributeValue.builder().s(project.dateTimeFormat).build(),
-                "type#lastUpdated" to AttributeValue.builder().s("project#${System.currentTimeMillis()}").build()
+                "type#lastUpdated" to createLastUpdatedAttribute("project")
             )
 
             val request = PutItemRequest.builder()
@@ -299,10 +293,9 @@ class DynamoDBServiceImpl(
             val item = mutableMapOf<String, AttributeValue>(
                 "domain#type" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
                 "srcKey" to AttributeValue.builder().s(srcKey).build(),
-                "type#lastUpdated" to AttributeValue.builder().s("${contentType.dbType}#${System.currentTimeMillis()}")
-                    .build()
+                "type#lastUpdated" to createLastUpdatedAttribute(contentType.dbType)
             )
-            
+
             // Add node properties based on its type
             when (node) {
                 is ContentNode.PostNode -> {
@@ -310,22 +303,29 @@ class DynamoDBServiceImpl(
                     item["templateKey"] = AttributeValue.builder().s(node.templateKey).build()
                     item["slug"] = AttributeValue.builder().s(node.slug).build()
                     item["date"] = AttributeValue.builder().s(node.date.toString()).build()
-                    
+
                     // Add the node's own attributes with attr# prefix
                     node.attributes.forEach { (key, value) ->
                         item["attr#$key"] = AttributeValue.builder().s(value).build()
                     }
                 }
+
                 is ContentNode.TemplateNode -> {
                     item["title"] = AttributeValue.builder().s(node.title).build()
                     item["sections"] = AttributeValue.builder().s(node.sections.joinToString(",")).build()
                 }
-                is ContentNode.PageNode, is ContentNode.FolderNode, is ContentNode.StaticNode, is ContentNode.ImageNode -> {
+
+                is ContentNode.StaticNode, is ContentNode.ImageNode -> {
+                    // Static nodes might not have additional properties, but we can add a lastUpdated timestamp
+                    item["type#lastUpdated"] = createLastUpdatedAttribute("static")
+                }
+
+                is ContentNode.PageNode, is ContentNode.FolderNode -> {
                     // These types are not fully implemented yet or not relevant for this test
                     info("Node type ${node.javaClass.simpleName} not fully implemented for upsert")
                 }
             }
-            
+
             info("Adding additional attributes: $attributes")
             // Add additional attributes to the item with attr# prefix
             attributes.forEach { (key, value) ->
@@ -400,6 +400,7 @@ class DynamoDBServiceImpl(
                 when (contentType) {
                     SOURCE_TYPE.Templates -> mapToTemplateNode(response.item())
                     SOURCE_TYPE.Posts -> mapToPostNode(response.item())
+                    SOURCE_TYPE.Statics -> mapToStaticNode(response.item())
                     else -> throw IllegalArgumentException("Unsupported content type: ${contentType.dbType}")
                 }
             } else {
@@ -518,19 +519,7 @@ class DynamoDBServiceImpl(
                 log("WARN", "Missing srcKey in post item: $item")
             }
 
-            val lastUpdatedStr = item["type#lastUpdated"]?.s()
-            val lastUpdated = try {
-                if (lastUpdatedStr != null && lastUpdatedStr.contains("#")) {
-                    val timestamp = lastUpdatedStr.split("#")[1].toLongOrNull() ?: 0L
-                    Instant.fromEpochSeconds(timestamp)
-                } else {
-                    log("WARN", "Invalid type#lastUpdated format in post item: $lastUpdatedStr")
-                    Clock.System.now()
-                }
-            } catch (e: Exception) {
-                log("WARN", "Failed to parse lastUpdated timestamp: $lastUpdatedStr", e)
-                Clock.System.now()
-            }
+            val lastUpdated = extractLastUpdatedTimestamp(item, "post")
 
             // Parse the date string directly as a LocalDate instead of going through Instant
             val dateStr = item["date"]?.s() ?: ""
@@ -544,7 +533,7 @@ class DynamoDBServiceImpl(
             } else {
                 Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             }
-            
+
             return ContentNode.PostNode(
                 srcKey = srcKey,
                 title = item["title"]?.s() ?: "",
@@ -574,19 +563,7 @@ class DynamoDBServiceImpl(
                 log("WARN", "Missing srcKey in template item: $item")
             }
 
-            val lastUpdatedStr = item["type#lastUpdated"]?.s()
-            val lastUpdated = try {
-                if (lastUpdatedStr != null && lastUpdatedStr.contains("#")) {
-                    val timestamp = lastUpdatedStr.split("#")[1].toLongOrNull() ?: 0L
-                    Instant.fromEpochSeconds(timestamp)
-                } else {
-                    log("WARN", "Invalid type#lastUpdated format in template item: $lastUpdatedStr")
-                    Clock.System.now()
-                }
-            } catch (e: Exception) {
-                log("WARN", "Failed to parse lastUpdated timestamp: $lastUpdatedStr", e)
-                Clock.System.now()
-            }
+            val lastUpdated = extractLastUpdatedTimestamp(item, "template")
 
             return ContentNode.TemplateNode(
                 srcKey = srcKey,
@@ -599,4 +576,94 @@ class DynamoDBServiceImpl(
             throw e
         }
     }
+
+    /**
+     * Map a DynamoDB item to a ContentNode.StaticNode
+     * @param item The DynamoDB item
+     * @return The ContentNode.StaticNode
+     */
+    private fun mapToStaticNode(item: Map<String, AttributeValue>): ContentNode.StaticNode {
+        try {
+            val srcKey = item["srcKey"]?.s() ?: ""
+            if (srcKey.isEmpty()) {
+                log("WARN", "Missing srcKey in static item: $item")
+            }
+
+            val lastUpdated = extractLastUpdatedTimestamp(item, "static")
+
+            return ContentNode.StaticNode(
+                srcKey = srcKey,
+                lastUpdated = lastUpdated
+            )
+        } catch (e: Exception) {
+            log("ERROR", "Failed to map DynamoDB item to ContentNode.StaticNode: $item", e)
+            throw e
+        }
+    }
+
+    /**
+     * Extract the lastUpdated timestamp from a DynamoDB item
+     * @param item The DynamoDB item
+     * @param itemType The type of item (for logging purposes)
+     * @return The lastUpdated timestamp as an Instant
+     */
+    private fun extractLastUpdatedTimestamp(item: Map<String, AttributeValue>, itemType: String): Instant {
+        val lastUpdatedStr = item["type#lastUpdated"]?.s()
+        return try {
+            if (lastUpdatedStr != null && lastUpdatedStr.contains("#")) {
+                val timestamp = lastUpdatedStr.split("#")[1].toLongOrNull() ?: 0L
+                Instant.fromEpochSeconds(timestamp)
+            } else {
+                log("WARN", "Invalid type#lastUpdated format in $itemType item: $lastUpdatedStr")
+                Clock.System.now()
+            }
+        } catch (e: Exception) {
+            log("WARN", "Failed to parse lastUpdated timestamp: $lastUpdatedStr", e)
+            Clock.System.now()
+        }
+    }
+
+    /**
+     * Create a lastUpdated attribute value
+     * @param type The type of item
+     * @return The lastUpdated attribute value
+     */
+    private fun createLastUpdatedAttribute(type: String): AttributeValue {
+        return AttributeValue.builder().s("$type#${System.currentTimeMillis()}").build()
+    }
+
+    /**
+     * Log a message with the specified level
+     * @param level The log level (INFO, WARN, ERROR)
+     * @param message The message to log
+     */
+    private fun log(level: String, message: String) {
+        if (enableLogging) {
+            logger?.log("DynamoDBService: $message", LogLevel.fromString(level))
+                ?: println("[$level] DynamoDBService: $message")
+        }
+    }
+
+    /**
+     * Log an exception with the specified level. This will use the LamdbaLogger if available, otherwise it will print to standard output.
+     * @param level The log level (INFO, WARN, ERROR)
+     * @param message The message to log
+     * @param e The exception to log
+     */
+    private fun log(level: String, message: String, e: Throwable) {
+        if (enableLogging) {
+            logger?.apply {
+                val lvl = LogLevel.fromString(level)
+                this.log("DynamoDBService: $message", lvl)
+                this.log("Exception: ${e.javaClass.simpleName}: ${e.message}", lvl)
+                e.stackTrace.take(5).forEach { this.log("[$level]   at $it", lvl) }
+            } ?: run {
+                println("[$level] DynamoDBService: $message")
+                println("[$level] Exception: ${e.javaClass.simpleName}: ${e.message}")
+                e.stackTrace.take(5).forEach { println("[$level]   at $it") }
+            }
+        }
+    }
+
+    private fun info(message: String) = log("INFO", message)
 }

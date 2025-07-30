@@ -34,6 +34,7 @@ dependencies {
     // sdk v2
     implementation(platform(libs.aws.sdk.bom))
     implementation(libs.bundles.aws.sdk)
+    implementation(libs.aws.lambda.core)
 
     // testing
     testImplementation(libs.junit.api)

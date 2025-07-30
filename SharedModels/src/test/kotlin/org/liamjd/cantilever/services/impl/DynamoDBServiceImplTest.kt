@@ -296,6 +296,41 @@ class DynamoDBServiceImplTest {
             assertEquals(post.slug, retrievedPost.slug)
         }
     }
+    
+    @Test
+    fun `can save and load static content node`() {
+        // Setup
+        val staticNode = ContentNode.StaticNode(
+            srcKey = "sources/static/styles.css",
+            lastUpdated = Instant.fromEpochSeconds(100000L)
+        )
+
+        runBlocking {
+            // Execute
+            val saved = service.upsertContentNode(
+                srcKey = staticNode.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Statics,
+                node = staticNode,
+                attributes = emptyMap() // Static nodes only have srcKey and lastUpdated
+            )
+
+            // Verify
+            assertTrue(saved, "Failed to save static node. Check the logs.")
+
+            val retrievedNode = service.getContentNode(
+                srcKey = staticNode.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Statics
+            )
+            
+            // Verify the retrieved node
+            assertNotNull(retrievedNode, "Retrieved node should not be null")
+            assertIs<ContentNode.StaticNode>(retrievedNode, "Retrieved node should be a StaticNode")
+            assertEquals(staticNode.srcKey, retrievedNode.srcKey, "Source keys should match")
+            // Note: We don't check lastUpdated because it might be updated during the save process
+        }
+    }
 
 
     /**

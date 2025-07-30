@@ -5,6 +5,7 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.S3Event
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
 import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.common.SOURCE_TYPE.*
@@ -48,6 +49,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
 
     override fun handleRequest(event: S3Event, context: Context): String {
         logger = context.logger
+        dynamoDBService.logger = logger
         var response = "200 OK"
         val markdownQueueURL = System.getenv(QUEUE.MARKDOWN)
         val handlebarQueueURL = System.getenv(QUEUE.HANDLEBARS)
@@ -211,16 +213,24 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             logger.info("Received page file $srcKey and sending it to Markdown processor queue")
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             // extract the page model
-            val metadata =
+            val pageNode =
                 ContentMetaDataBuilder.PageBuilder.buildFromSourceString(sourceString, srcKey)
             val markdownBody = sourceString.stripFrontMatter()
             val pageModelMsg = MarkdownSQSMessage.PageUploadMsg(
                 projectDomain = projectDomain,
-                metadata = metadata,
+                metadata = pageNode,
                 markdownText = markdownBody
             )
             logger.info("Built page model for: ${pageModelMsg.metadata.srcKey}")
-            sendMarkdownMessage(queueUrl, pageModelMsg, srcKey)
+            runBlocking {
+                upsertContentNode(
+                    srcKey = srcKey,
+                    projectDomain = projectDomain,
+                    contentType = Pages,
+                    node = pageNode
+                )
+                sendMarkdownMessage(queueUrl, pageModelMsg, srcKey)
+            }
         } catch (qdne: QueueDoesNotExistException) {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
@@ -244,14 +254,21 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                 destinationKey = destinationKey
             )
             logger.info("Sending message to Handlebars queue for $cssMsg")
-            val msgResponse = sqsService.sendTemplateMessage(
-                toQueue = queueUrl,
-                body = cssMsg
+            val cssNode = ContentNode.StaticNode(
+                srcKey = srcKey,
+                lastUpdated = Clock.System.now()
             )
-            if (msgResponse != null) {
-                logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
-            } else {
-                logger.warn("No response received for message")
+            runBlocking {
+                upsertContentNode(srcKey = srcKey, projectDomain = projectDomain, contentType = Statics, node = cssNode)
+                val msgResponse = sqsService.sendTemplateMessage(
+                    toQueue = queueUrl,
+                    body = cssMsg
+                )
+                if (msgResponse != null) {
+                    logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                } else {
+                    logger.warn("No response received for message")
+                }
             }
         } catch (qdne: QueueDoesNotExistException) {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
@@ -277,17 +294,20 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             }
 
             // OK, we know it's a valid image type, so send it to the image processor queue
-            val metadata = ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", srcKey)
-            val imageMsg = ImageSQSMessage.ResizeImageMsg(projectDomain, metadata)
-            logger.info("Sending message to Image processor queue for $imageMsg")
-            val msgResponse = sqsService.sendImageMessage(
-                toQueue = queueUrl,
-                body = imageMsg
-            )
-            if (msgResponse != null) {
-                logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
-            } else {
-                logger.warn("No response received for message")
+            val imageNode = ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", srcKey)
+            val imageMsg = ImageSQSMessage.ResizeImageMsg(projectDomain, imageNode)
+            runBlocking {
+                upsertContentNode(srcKey = srcKey, projectDomain = projectDomain, Images, imageNode)
+                logger.info("Sending message to Image processor queue for $imageMsg")
+                val msgResponse = sqsService.sendImageMessage(
+                    toQueue = queueUrl,
+                    body = imageMsg
+                )
+                if (msgResponse != null) {
+                    logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                } else {
+                    logger.warn("No response received for message")
+                }
             }
 
         } catch (e: Exception) {
