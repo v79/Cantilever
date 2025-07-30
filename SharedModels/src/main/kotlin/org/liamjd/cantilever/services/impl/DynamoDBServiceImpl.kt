@@ -1,7 +1,6 @@
 package org.liamjd.cantilever.services.impl
 
 import com.amazonaws.services.lambda.runtime.LambdaLogger
-import com.amazonaws.services.lambda.runtime.logging.LogLevel
 import kotlinx.coroutines.future.await
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -11,6 +10,7 @@ import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.rest.TemplateListDTO
+import org.liamjd.cantilever.services.AWSLogger
 import org.liamjd.cantilever.services.DynamoDBService
 import software.amazon.awssdk.awscore.exception.AwsServiceException
 import software.amazon.awssdk.core.exception.SdkClientException
@@ -27,9 +27,9 @@ import software.amazon.awssdk.services.dynamodb.model.*
 class DynamoDBServiceImpl(
     private val region: Region,
     val tableName: String = "cantilever-dev-content-nodes", // TODO: This should be configurable
-    private val enableLogging: Boolean = true,
     private val dynamoDbClient: DynamoDbAsyncClient,
-) : DynamoDBService {
+    enableLogging: Boolean = true,
+) : DynamoDBService, AWSLogger(enableLogging,"DynamoDBService") {
 
     override var logger: LambdaLogger? = null
 
@@ -45,7 +45,7 @@ class DynamoDBServiceImpl(
         contextInfo: String,
         operation: suspend () -> T
     ): T {
-        info("$operationDescription: $contextInfo")
+        log("$operationDescription: $contextInfo")
 
         try {
             return operation()
@@ -81,14 +81,14 @@ class DynamoDBServiceImpl(
                 .key(key)
                 .build()
 
-            info("Executing GetItem request for domain: $domain")
+            log("Executing GetItem request for domain: $domain")
             val response = dynamoDbClient.getItem(request).await()
 
             if (response.hasItem()) {
-                info("Project found for domain: $domain")
+                log("Project found for domain: $domain")
                 mapToProject(response.item())
             } else {
-                info("No project found for domain: $domain")
+                log("No project found for domain: $domain")
                 null
             }
         }
@@ -100,7 +100,7 @@ class DynamoDBServiceImpl(
      * @return The saved project
      */
     override suspend fun saveProject(project: CantileverProject): CantileverProject {
-        info("Saving project: ${project.projectName} for domain: ${project.domain}")
+        log("Saving project: ${project.projectName} for domain: ${project.domain}")
 
         try {
             val item = mapOf(
@@ -119,10 +119,10 @@ class DynamoDBServiceImpl(
                 .item(item)
                 .build()
 
-            info("Executing PutItem request for project: ${project.projectName}")
+            log("Executing PutItem request for project: ${project.projectName}")
             dynamoDbClient.putItem(request).await()
 
-            info("Successfully saved project: ${project.projectName} for domain: ${project.domain}")
+            log("Successfully saved project: ${project.projectName} for domain: ${project.domain}")
             return project
         } catch (e: DynamoDbException) {
             log("ERROR", "Failed to save project: ${project.projectName} for domain: ${project.domain}", e)
@@ -146,7 +146,7 @@ class DynamoDBServiceImpl(
      * @return true if the project was deleted, false otherwise
      */
     override suspend fun deleteProject(domain: String, projectName: String): Boolean {
-        info("Deleting project: $projectName for domain: $domain")
+        log("Deleting project: $projectName for domain: $domain")
 
         try {
             val key = mapOf(
@@ -159,12 +159,12 @@ class DynamoDBServiceImpl(
                 .key(key)
                 .build()
 
-            info("Executing DeleteItem request for project: $projectName")
+            log("Executing DeleteItem request for project: $projectName")
             val response = dynamoDbClient.deleteItem(request).await()
 
             val isSuccessful = response.sdkHttpResponse().isSuccessful
             if (isSuccessful) {
-                info("Successfully deleted project: $projectName for domain: $domain")
+                log("Successfully deleted project: $projectName for domain: $domain")
             } else {
                 log(
                     "WARN",
@@ -196,7 +196,7 @@ class DynamoDBServiceImpl(
      * @return A list of projects for the domain
      */
     override suspend fun listProjects(domain: String): List<CantileverProject> {
-        info("Listing projects for domain: $domain")
+        log("Listing projects for domain: $domain")
 
         try {
             val request = QueryRequest.builder()
@@ -207,11 +207,11 @@ class DynamoDBServiceImpl(
                 )
                 .build()
 
-            info("Executing Query request for domain: $domain")
+            log("Executing Query request for domain: $domain")
             val response = dynamoDbClient.query(request).await()
 
             val projects = response.items().map { item -> mapToProject(item) }
-            info("Found ${projects.size} projects for domain: $domain")
+            log("Found ${projects.size} projects for domain: $domain")
 
             return projects
         } catch (e: DynamoDbException) {
@@ -234,7 +234,7 @@ class DynamoDBServiceImpl(
      * @return A list of all projects
      */
     override suspend fun listAllProjects(): List<CantileverProject> {
-        info("Listing all projects")
+        log("Listing all projects")
 
         try {
             val request = ScanRequest.builder()
@@ -248,11 +248,11 @@ class DynamoDBServiceImpl(
                 )
                 .build()
 
-            info("Executing Scan request for all projects")
+            log("Executing Scan request for all projects")
             val response = dynamoDbClient.scan(request).await()
 
             val projects = response.items().map { item -> mapToProject(item) }
-            info("Found ${projects.size} projects in total")
+            log("Found ${projects.size} projects in total")
 
             return projects
         } catch (e: DynamoDbException) {
@@ -287,7 +287,7 @@ class DynamoDBServiceImpl(
         node: ContentNode,
         attributes: Map<String, String>
     ): Boolean {
-        info("Upserting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
+        log("Upserting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
 
         try {
             val item = mutableMapOf<String, AttributeValue>(
@@ -322,11 +322,11 @@ class DynamoDBServiceImpl(
 
                 is ContentNode.PageNode, is ContentNode.FolderNode -> {
                     // These types are not fully implemented yet or not relevant for this test
-                    info("Node type ${node.javaClass.simpleName} not fully implemented for upsert")
+                    log("Node type ${node.javaClass.simpleName} not fully implemented for upsert")
                 }
             }
 
-            info("Adding additional attributes: $attributes")
+            log("Adding additional attributes: $attributes")
             // Add additional attributes to the item with attr# prefix
             attributes.forEach { (key, value) ->
                 item["attr#$key"] = AttributeValue.builder().s(value).build() // might not always be a string
@@ -337,11 +337,11 @@ class DynamoDBServiceImpl(
                 .item(item)
                 .build()
 
-            info("Executing PutItem request for content node: $srcKey")
+            log("Executing PutItem request for content node: $srcKey")
             val response = dynamoDbClient.putItem(request).await()
 
             if (response.sdkHttpResponse().isSuccessful) {
-                info("Successfully upserted content node: $srcKey in domain: $projectDomain")
+                log("Successfully upserted content node: $srcKey in domain: $projectDomain")
                 return true
             } else {
                 log(
@@ -379,7 +379,7 @@ class DynamoDBServiceImpl(
         projectDomain: String,
         contentType: SOURCE_TYPE
     ): ContentNode? {
-        info("Getting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
+        log("Getting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
 
         try {
             val key = mapOf(
@@ -392,11 +392,11 @@ class DynamoDBServiceImpl(
                 .key(key)
                 .build()
 
-            info("Executing GetItem request for content node: $srcKey")
+            log("Executing GetItem request for content node: $srcKey")
             val response = dynamoDbClient.getItem(request).await()
 
             return if (response.hasItem()) {
-                info("Content node found: $srcKey")
+                log("Content node found: $srcKey")
                 when (contentType) {
                     SOURCE_TYPE.Templates -> mapToTemplateNode(response.item())
                     SOURCE_TYPE.Posts -> mapToPostNode(response.item())
@@ -404,7 +404,7 @@ class DynamoDBServiceImpl(
                     else -> throw IllegalArgumentException("Unsupported content type: ${contentType.dbType}")
                 }
             } else {
-                info("No content node found for srcKey: $srcKey")
+                log("No content node found for srcKey: $srcKey")
                 null
             }
         } catch (e: DynamoDbException) {
@@ -428,7 +428,7 @@ class DynamoDBServiceImpl(
      * @return A list of templates for the domain
      */
     override suspend fun listAllTemplates(domain: String): TemplateListDTO {
-        info("Listing all templates for domain: $domain")
+        log("Listing all templates for domain: $domain")
 
         try {
             val request = QueryRequest.builder()
@@ -442,11 +442,11 @@ class DynamoDBServiceImpl(
                 )
                 .build()
 
-            info("Executing Query request for templates in domain: $domain")
+            log("Executing Query request for templates in domain: $domain")
             val response = dynamoDbClient.query(request).await()
 
             return if (response.count() > 0) {
-                info("Found ${response.count()} templates for domain: $domain")
+                log("Found ${response.count()} templates for domain: $domain")
                 response.items().map { item -> mapToTemplateNode(item) }.let { templates ->
                     TemplateListDTO(
                         templates = templates,
@@ -455,7 +455,7 @@ class DynamoDBServiceImpl(
                     )
                 }
             } else {
-                info("No templates found for domain: $domain")
+                log("No templates found for domain: $domain")
                 TemplateListDTO(
                     templates = emptyList(),
                     count = 0,
@@ -631,39 +631,4 @@ class DynamoDBServiceImpl(
     private fun createLastUpdatedAttribute(type: String): AttributeValue {
         return AttributeValue.builder().s("$type#${System.currentTimeMillis()}").build()
     }
-
-    /**
-     * Log a message with the specified level
-     * @param level The log level (INFO, WARN, ERROR)
-     * @param message The message to log
-     */
-    private fun log(level: String, message: String) {
-        if (enableLogging) {
-            logger?.log("DynamoDBService: $message", LogLevel.fromString(level))
-                ?: println("[$level] DynamoDBService: $message")
-        }
-    }
-
-    /**
-     * Log an exception with the specified level. This will use the LamdbaLogger if available, otherwise it will print to standard output.
-     * @param level The log level (INFO, WARN, ERROR)
-     * @param message The message to log
-     * @param e The exception to log
-     */
-    private fun log(level: String, message: String, e: Throwable) {
-        if (enableLogging) {
-            logger?.apply {
-                val lvl = LogLevel.fromString(level)
-                this.log("DynamoDBService: $message", lvl)
-                this.log("Exception: ${e.javaClass.simpleName}: ${e.message}", lvl)
-                e.stackTrace.take(5).forEach { this.log("[$level]   at $it", lvl) }
-            } ?: run {
-                println("[$level] DynamoDBService: $message")
-                println("[$level] Exception: ${e.javaClass.simpleName}: ${e.message}")
-                e.stackTrace.take(5).forEach { println("[$level]   at $it") }
-            }
-        }
-    }
-
-    private fun info(message: String) = log("INFO", message)
 }

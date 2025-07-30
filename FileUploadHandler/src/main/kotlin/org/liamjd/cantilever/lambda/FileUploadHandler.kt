@@ -15,6 +15,7 @@ import org.liamjd.cantilever.models.SrcKey
 import org.liamjd.cantilever.models.sqs.ImageSQSMessage
 import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
 import org.liamjd.cantilever.models.sqs.TemplateSQSMessage
+import org.liamjd.cantilever.services.AWSLogger
 import org.liamjd.cantilever.services.DynamoDBService
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
@@ -35,7 +36,8 @@ import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
  * "Posts" and "Pages" must be markdown files (.md). The source type is added to the SQS message queue so the receiver knows how to process it.
  */
 @Suppress("unused")
-class FileUploadHandler : RequestHandler<S3Event, String> {
+class FileUploadHandler : RequestHandler<S3Event, String>,
+    AWSLogger(enableLogging = true, msgSource = "FileUploadHandler") {
 
     private val s3Service: S3Service = S3ServiceImpl(Region.EU_WEST_2)
     private val sqsService: SQSService = SQSServiceImpl(Region.EU_WEST_2)
@@ -45,7 +47,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             dbClient
     )
 
-    private lateinit var logger: LambdaLogger
+    override var logger: LambdaLogger? = null
 
     override fun handleRequest(event: S3Event, context: Context): String {
         logger = context.logger
@@ -55,7 +57,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         val handlebarQueueURL = System.getenv(QUEUE.HANDLEBARS)
         val imageQueueURL = System.getenv(QUEUE.IMAGES)
 
-        logger.info("${event.records.size} upload events received")
+        log("${event.records.size} upload events received")
 
         try {
             for (eventRecord in event.records) {
@@ -68,20 +70,20 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                 val size = eventRecord.s3.`object`.sizeAsLong
                 val uploadFolder = SourceHelper.fromFolderName(folderName)
 
-                logger.info("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
+                log("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
 
                 try {
                     val fileType = srcKey.substringAfterLast('.').lowercase()
                     val contentType = s3Service.getContentType(srcKey, srcBucket)
-                    logger.info("FileUpload handler: source type is '$folderName'; file type is '$fileType'; content type is '$contentType'; uploaded to folder '$uploadFolder'")
+                    log("FileUpload handler: source type is '$folderName'; file type is '$fileType'; content type is '$contentType'; uploaded to folder '$uploadFolder'")
 
                     if (size == 0L) {
-                        logger.error("File $srcKey is empty, so not processing")
+                        log("ERROR", "File $srcKey is empty, so not processing")
                         response = "400 Bad Request"
                     } else {
                         when (uploadFolder) {
                             Root -> {
-                                logger.info("No action defined for ROOT upload")
+                                log("No action defined for ROOT upload")
                             }
 
                             Posts -> {
@@ -94,7 +96,10 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                                         projectDomain = projectDomain
                                     )
                                 } else {
-                                    logger.error("Posts must be written in Markdown format with the '.md' file extension")
+                                    log(
+                                        "ERROR",
+                                        "Posts must be written in Markdown format with the '.md' file extension"
+                                    )
                                 }
                             }
 
@@ -107,7 +112,10 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                                         projectDomain = projectDomain
                                     )
                                 } else {
-                                    logger.error("Pages must be written in Markdown format with the '.md' file extension")
+                                    log(
+                                        "ERROR",
+                                        "Pages must be written in Markdown format with the '.md' file extension"
+                                    )
                                 }
                             }
 
@@ -119,12 +127,15 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                                         projectDomain = projectDomain
                                     )
                                 } else {
-                                    logger.error("Templates must be written in Handlebars format with the '.html.hbs' file extension")
+                                    log(
+                                        "ERROR",
+                                        "Templates must be written in Handlebars format with the '.html.hbs' file extension"
+                                    )
                                 }
                             }
 
                             Statics -> {
-                                logger.info("Analysing file type for static file upload")
+                                log("Analysing file type for static file upload")
                                 when (fileType) {
                                     FILE_TYPE.CSS -> {
                                         processCSSUpload(
@@ -149,12 +160,12 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                     }
 
                 } catch (nske: NoSuchKeyException) {
-                    logger.error("FileUpload EXCEPTION ${nske.message}")
+                    log("ERROR", "FileUpload EXCEPTION ${nske.message}")
                     response = "500 Internal Server Error"
                 }
             }
         } finally {
-            logger.info("Request completed")
+            log("Request completed")
         }
 
         return response
@@ -169,13 +180,13 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         queueUrl: String,
         projectDomain: String
     ) {
-        logger.info("Sending post $srcKey to markdown processor queue")
+        log("Sending post $srcKey to markdown processor queue")
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             // extract metadata
             val metadata =
                 ContentMetaDataBuilder.PostBuilder.buildFromSourceString(sourceString.getFrontMatter(), srcKey)
-            logger.info("Extracted post metadata: $metadata")
+            log("Extracted post metadata: $metadata")
             // extract body
             val markdownBody = sourceString.stripFrontMatter()
             val postModelMsg = MarkdownSQSMessage.PostUploadMsg(
@@ -194,9 +205,9 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                 sendMarkdownMessage(queueUrl, postModelMsg, srcKey)
             }
         } catch (qdne: QueueDoesNotExistException) {
-            logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
+            log("ERROR", "Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
-            logger.error("Failed to parse metadata string; ${se.message}")
+            log("ERROR", "Failed to parse metadata string; ${se.message}")
         }
     }
 
@@ -210,7 +221,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         projectDomain: String
     ) {
         try {
-            logger.info("Received page file $srcKey and sending it to Markdown processor queue")
+            log("Received page file $srcKey and sending it to Markdown processor queue")
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             // extract the page model
             val pageNode =
@@ -221,7 +232,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                 metadata = pageNode,
                 markdownText = markdownBody
             )
-            logger.info("Built page model for: ${pageModelMsg.metadata.srcKey}")
+            log("Built page model for: ${pageModelMsg.metadata.srcKey}")
             runBlocking {
                 upsertContentNode(
                     srcKey = srcKey,
@@ -232,9 +243,9 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                 sendMarkdownMessage(queueUrl, pageModelMsg, srcKey)
             }
         } catch (qdne: QueueDoesNotExistException) {
-            logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
+            log("ERROR", "Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
-            logger.error("Failed to parse metadata string; ${se.message}")
+            log("ERROR", "Failed to parse metadata string; ${se.message}")
         }
     }
 
@@ -253,7 +264,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                 srcKey = srcKey,
                 destinationKey = destinationKey
             )
-            logger.info("Sending message to Handlebars queue for $cssMsg")
+            log("Sending message to Handlebars queue for $cssMsg")
             val cssNode = ContentNode.StaticNode(
                 srcKey = srcKey,
                 lastUpdated = Clock.System.now()
@@ -265,13 +276,13 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                     body = cssMsg
                 )
                 if (msgResponse != null) {
-                    logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                    log("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
                 } else {
-                    logger.warn("No response received for message")
+                    log("WARN", "No response received for message")
                 }
             }
         } catch (qdne: QueueDoesNotExistException) {
-            logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
+            log("ERROR", "Queue '$queueUrl' does not exist; ${qdne.message}")
         }
     }
 
@@ -284,12 +295,12 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             // check if the image is a supported file type
             val validImageTypes = listOf(MimeType.jpg, MimeType.png, MimeType.gif, MimeType.webp)
             if (contentType == null) {
-                logger.error("No Content-Type metadata for $srcKey")
+                log("ERROR", "No Content-Type metadata for $srcKey")
                 throw Exception("No Content-Type metadata for $srcKey")
             }
 
             if (!validImageTypes.contains(MimeType.parse(contentType))) {
-                logger.error("Invalid image type '$contentType' for $srcKey")
+                log("ERROR", "Invalid image type '$contentType' for $srcKey")
                 throw Exception("Invalid image type '$contentType' for $srcKey")
             }
 
@@ -298,22 +309,22 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val imageMsg = ImageSQSMessage.ResizeImageMsg(projectDomain, imageNode)
             runBlocking {
                 upsertContentNode(srcKey = srcKey, projectDomain = projectDomain, Images, imageNode)
-                logger.info("Sending message to Image processor queue for $imageMsg")
+                log("Sending message to Image processor queue for $imageMsg")
                 val msgResponse = sqsService.sendImageMessage(
                     toQueue = queueUrl,
                     body = imageMsg
                 )
                 if (msgResponse != null) {
-                    logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                    log("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
                 } else {
-                    logger.warn("No response received for message")
+                    log("WARN", "No response received for message")
                 }
             }
 
         } catch (e: Exception) {
-            logger.error("Failed to process image upload for $srcKey; ${e.message}")
+            log("ERROR", "Failed to process image upload for $srcKey; ${e.message}")
         } catch (qdne: QueueDoesNotExistException) {
-            logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
+            log("ERROR", "Queue '$queueUrl' does not exist; ${qdne.message}")
         }
     }
 
@@ -333,7 +344,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             // extract metadata
             val metadata = ContentMetaDataBuilder.TemplateBuilder.buildFromSourceString(sourceString, srcKey)
-            logger.info("Extracted metadata: $metadata")
+            log("Extracted metadata: $metadata")
             val attributes: MutableMap<String, String> = mutableMapOf()
             attributes.put("title", metadata.title)
             // TODO: add the names of the sections as a set
@@ -341,7 +352,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                 dynamoDBService.upsertContentNode(srcKey, projectDomain, Templates, metadata)
             }
         } catch (e: Exception) {
-            logger.error("Failed to process template upload for $srcKey; ${e.message}")
+            log("ERROR", "Failed to process template upload for $srcKey; ${e.message}")
         }
     }
 
@@ -361,9 +372,9 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             body = markdownMsg
         )
         if (msgResponse != null) {
-            logger.info("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+            log("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
         } else {
-            logger.warn("No response received for message")
+            log("WARN", "No response received for message")
         }
     }
 
@@ -380,7 +391,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
         contentType: SOURCE_TYPE,
         node: ContentNode
     ) {
-        logger.info("Upserting content node for $srcKey in project $projectDomain")
+        log("Upserting content node for $srcKey in project $projectDomain")
         dynamoDBService.upsertContentNode(
             srcKey = srcKey,
             projectDomain = projectDomain,
@@ -388,14 +399,5 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             node = node
         )
     }
-}
 
-/**
- * Wrappers for logging to make it slightly less annoying
- */
-fun LambdaLogger.info(function: String, message: String) = log("INFO: $function: $message\n")
-fun LambdaLogger.info(message: String) = info("FileUploadHandler", message)
-fun LambdaLogger.warn(function: String, message: String) = log("WARN: $function: $message\n")
-fun LambdaLogger.warn(message: String) = warn("FileUploadHandler", message)
-fun LambdaLogger.error(function: String, message: String) = log("ERROR: $function: $message\n")
-fun LambdaLogger.error(message: String) = error("FileUploadHandler", message)
+}

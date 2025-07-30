@@ -67,8 +67,8 @@ class DynamoDBServiceImplTest {
         // Create the test table
         createTable(dynamoDbClient)
 
-        // Initialize the service with the test configuration
-        service = DynamoDBServiceImpl(region, tableName, true, dynamoDbClient)
+        // Initialise the service with the test configuration
+        service = DynamoDBServiceImpl(region, tableName, dynamoDbClient, true)
         // You'll need to modify your service to accept a client or use reflection to inject it
     }
 
@@ -198,7 +198,7 @@ class DynamoDBServiceImplTest {
             assertEquals(template.sections, retrievedTemplate.sections)
         }
     }
-    
+
     @Test
     fun `can save a post`() {
         // Setup
@@ -241,7 +241,7 @@ class DynamoDBServiceImplTest {
             assertTrue(saved, "Failed to save post. Check the logs.")
         }
     }
-    
+
     @Test
     fun `can save a post with custom attributes`() {
         // Setup
@@ -271,7 +271,7 @@ class DynamoDBServiceImplTest {
                     "author" to (post.attributes["author"] ?: ""),
                     "category" to (post.attributes["category"] ?: ""),
                     "tags" to (post.attributes["tags"] ?: ""),
-                    
+
                     // Custom attributes not part of the standard PostNode properties
                     "featured" to "true",
                     "readingTime" to "5 minutes",
@@ -296,7 +296,7 @@ class DynamoDBServiceImplTest {
             assertEquals(post.slug, retrievedPost.slug)
         }
     }
-    
+
     @Test
     fun `can save and load static content node`() {
         // Setup
@@ -323,7 +323,7 @@ class DynamoDBServiceImplTest {
                 projectDomain = "test-domain",
                 contentType = SOURCE_TYPE.Statics
             )
-            
+
             // Verify the retrieved node
             assertNotNull(retrievedNode, "Retrieved node should not be null")
             assertIs<ContentNode.StaticNode>(retrievedNode, "Retrieved node should be a StaticNode")
