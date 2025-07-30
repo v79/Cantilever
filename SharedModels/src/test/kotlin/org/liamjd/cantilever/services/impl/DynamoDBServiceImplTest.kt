@@ -2,6 +2,7 @@ package org.liamjd.cantilever.services.impl
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.liamjd.cantilever.common.SOURCE_TYPE
@@ -138,6 +139,7 @@ class DynamoDBServiceImplTest {
                 srcKey = template.srcKey,
                 projectDomain = "test-domain",
                 contentType = SOURCE_TYPE.Templates,
+                node = template,
                 attributes = mapOf(
                     "title" to template.title,
                     "sections" to template.sections.joinToString(",") { it }
@@ -174,6 +176,7 @@ class DynamoDBServiceImplTest {
                 srcKey = template.srcKey,
                 projectDomain = "test-domain",
                 contentType = SOURCE_TYPE.Templates,
+                node = template,
                 attributes = mapOf(
                     "title" to template.title,
                     "sections" to template.sections.joinToString(",") { it }
@@ -193,6 +196,104 @@ class DynamoDBServiceImplTest {
             assertEquals(template.srcKey, retrievedTemplate.srcKey)
             assertEquals(template.title, retrievedTemplate.title)
             assertEquals(template.sections, retrievedTemplate.sections)
+        }
+    }
+    
+    @Test
+    fun `can save a post`() {
+        // Setup
+        val post = ContentNode.PostNode(
+            title = "Test Post",
+            templateKey = "sources/templates/post.html.hbs",
+            date = LocalDate(2025, 7, 30),
+            slug = "test-post",
+            attributes = mapOf(
+                "author" to "Test Author",
+                "category" to "Test Category",
+                "tags" to "test,post,unit-test"
+            )
+        )
+        post.srcKey = "sources/posts/2025/07/test-post.md"
+        post.body = "This is the body of the test post."
+        post.next = "sources/posts/2025/08/next-post.md"
+        post.prev = "sources/posts/2025/06/previous-post.md"
+
+        runBlocking {
+            // Execute
+            val saved = service.upsertContentNode(
+                srcKey = post.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Posts,
+                node = post,
+                attributes = mapOf(
+                    "title" to post.title,
+                    "templateKey" to post.templateKey,
+                    "date" to post.date.toString(),
+                    "slug" to post.slug,
+                    "body" to post.body,
+                    "author" to (post.attributes["author"] ?: ""),
+                    "category" to (post.attributes["category"] ?: ""),
+                    "tags" to (post.attributes["tags"] ?: "")
+                )
+            )
+
+            // Verify
+            assertTrue(saved, "Failed to save post. Check the logs.")
+        }
+    }
+    
+    @Test
+    fun `can save a post with custom attributes`() {
+        // Setup
+        val post = ContentNode.PostNode(
+            title = "Custom Attributes Post",
+            templateKey = "sources/templates/post.html.hbs",
+            date = LocalDate(2025, 7, 30),
+            slug = "custom-attributes-post",
+            attributes = mapOf(
+                "author" to "Test Author",
+                "category" to "Test Category",
+                "tags" to "test,post,custom-attributes"
+            )
+        )
+        post.srcKey = "sources/posts/2025/07/custom-attributes-post.md"
+        post.body = "This is a post with custom attributes."
+
+        runBlocking {
+            // Execute - Include standard attributes and additional custom attributes
+            val saved = service.upsertContentNode(
+                srcKey = post.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Posts,
+                node = post,
+                attributes = mapOf(
+                    // Attributes from the attributes map
+                    "author" to (post.attributes["author"] ?: ""),
+                    "category" to (post.attributes["category"] ?: ""),
+                    "tags" to (post.attributes["tags"] ?: ""),
+                    
+                    // Custom attributes not part of the standard PostNode properties
+                    "featured" to "true",
+                    "readingTime" to "5 minutes",
+                    "coverImage" to "sources/images/cover.jpg",
+                    "metaDescription" to "This is a meta description for SEO purposes",
+                    "publishStatus" to "published"
+                )
+            )
+
+            // Verify
+            assertTrue(saved, "Failed to save post with custom attributes. Check the logs.")
+
+            val retrievedPost = service.getContentNode(
+                srcKey = post.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Posts
+            )
+            assertNotNull(retrievedPost)
+            assertIs<ContentNode.PostNode>(retrievedPost)
+            assertEquals(post.srcKey, retrievedPost.srcKey)
+            assertEquals(post.title, retrievedPost.title)
+            assertEquals(post.slug, retrievedPost.slug)
         }
     }
 

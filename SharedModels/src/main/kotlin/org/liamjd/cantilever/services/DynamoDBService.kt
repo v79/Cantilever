@@ -51,14 +51,16 @@ interface DynamoDBService {
      * @param srcKey The source key for the content node
      * @param projectDomain The domain of the project
      * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
-     * @param attributes A map of attributes for the content node
+     * @param node The content node to upsert
+     * @param attributes A map of additional attributes for the content node // TODO: Support other value types
      * @return true if the content node was successfully upserted, false otherwise
      */
     suspend fun upsertContentNode(
         srcKey: String,
         projectDomain: String,
         contentType: SOURCE_TYPE,
-        attributes: Map<String, String>
+        node: ContentNode,
+        attributes: Map<String, String> = emptyMap()
     ): Boolean
 
     /**

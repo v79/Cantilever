@@ -3,6 +3,8 @@ package org.liamjd.cantilever.services.impl
 import kotlinx.coroutines.future.await
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentNode
@@ -52,13 +54,15 @@ class DynamoDBServiceImpl(
         }
     }
 
+    private fun info(message: String) = log("INFO", message)
+
     /**
      * Get a project by its domain
      * @param domain The project domain
      * @return The project if found, null otherwise
      */
     override suspend fun getProject(domain: String): CantileverProject? {
-        log("INFO", "Getting project with domain: $domain")
+        info("Getting project with domain: $domain")
 
         try {
             val key = mapOf(
@@ -71,14 +75,14 @@ class DynamoDBServiceImpl(
                 .key(key)
                 .build()
 
-            log("INFO", "Executing GetItem request for domain: $domain")
+            info("Executing GetItem request for domain: $domain")
             val response = dynamoDbClient.getItem(request).await()
 
             return if (response.hasItem()) {
-                log("INFO", "Project found for domain: $domain")
+                info("Project found for domain: $domain")
                 mapToProject(response.item())
             } else {
-                log("INFO", "No project found for domain: $domain")
+                info("No project found for domain: $domain")
                 null
             }
         } catch (e: DynamoDbException) {
@@ -102,7 +106,7 @@ class DynamoDBServiceImpl(
      * @return The saved project
      */
     override suspend fun saveProject(project: CantileverProject): CantileverProject {
-        log("INFO", "Saving project: ${project.projectName} for domain: ${project.domain}")
+        info("Saving project: ${project.projectName} for domain: ${project.domain}")
 
         try {
             val item = mapOf(
@@ -121,10 +125,10 @@ class DynamoDBServiceImpl(
                 .item(item)
                 .build()
 
-            log("INFO", "Executing PutItem request for project: ${project.projectName}")
+            info("Executing PutItem request for project: ${project.projectName}")
             dynamoDbClient.putItem(request).await()
 
-            log("INFO", "Successfully saved project: ${project.projectName} for domain: ${project.domain}")
+            info("Successfully saved project: ${project.projectName} for domain: ${project.domain}")
             return project
         } catch (e: DynamoDbException) {
             log("ERROR", "Failed to save project: ${project.projectName} for domain: ${project.domain}", e)
@@ -148,7 +152,7 @@ class DynamoDBServiceImpl(
      * @return true if the project was deleted, false otherwise
      */
     override suspend fun deleteProject(domain: String, projectName: String): Boolean {
-        log("INFO", "Deleting project: $projectName for domain: $domain")
+        info("Deleting project: $projectName for domain: $domain")
 
         try {
             val key = mapOf(
@@ -161,12 +165,12 @@ class DynamoDBServiceImpl(
                 .key(key)
                 .build()
 
-            log("INFO", "Executing DeleteItem request for project: $projectName")
+            info("Executing DeleteItem request for project: $projectName")
             val response = dynamoDbClient.deleteItem(request).await()
 
             val isSuccessful = response.sdkHttpResponse().isSuccessful
             if (isSuccessful) {
-                log("INFO", "Successfully deleted project: $projectName for domain: $domain")
+                info("Successfully deleted project: $projectName for domain: $domain")
             } else {
                 log(
                     "WARN",
@@ -198,7 +202,7 @@ class DynamoDBServiceImpl(
      * @return A list of projects for the domain
      */
     override suspend fun listProjects(domain: String): List<CantileverProject> {
-        log("INFO", "Listing projects for domain: $domain")
+        info("Listing projects for domain: $domain")
 
         try {
             val request = QueryRequest.builder()
@@ -209,11 +213,11 @@ class DynamoDBServiceImpl(
                 )
                 .build()
 
-            log("INFO", "Executing Query request for domain: $domain")
+            info("Executing Query request for domain: $domain")
             val response = dynamoDbClient.query(request).await()
 
             val projects = response.items().map { item -> mapToProject(item) }
-            log("INFO", "Found ${projects.size} projects for domain: $domain")
+            info("Found ${projects.size} projects for domain: $domain")
 
             return projects
         } catch (e: DynamoDbException) {
@@ -236,7 +240,7 @@ class DynamoDBServiceImpl(
      * @return A list of all projects
      */
     override suspend fun listAllProjects(): List<CantileverProject> {
-        log("INFO", "Listing all projects")
+        info("Listing all projects")
 
         try {
             val request = ScanRequest.builder()
@@ -250,11 +254,11 @@ class DynamoDBServiceImpl(
                 )
                 .build()
 
-            log("INFO", "Executing Scan request for all projects")
+            info("Executing Scan request for all projects")
             val response = dynamoDbClient.scan(request).await()
 
             val projects = response.items().map { item -> mapToProject(item) }
-            log("INFO", "Found ${projects.size} projects in total")
+            info("Found ${projects.size} projects in total")
 
             return projects
         } catch (e: DynamoDbException) {
@@ -278,15 +282,18 @@ class DynamoDBServiceImpl(
      * @param srcKey The source key for the content node
      * @param projectDomain The domain of the project
      * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
-     * @param attributes A map of attributes for the content node // TODO: Support more complex attributes
+     * @param node The content node to upsert
+     * @param attributes A map of additional attributes for the content node
+     * @return true if the content node was successfully upserted, false otherwise
      */
     override suspend fun upsertContentNode(
         srcKey: String,
         projectDomain: String,
         contentType: SOURCE_TYPE,
+        node: ContentNode,
         attributes: Map<String, String>
     ): Boolean {
-        log("INFO", "Upserting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
+        info("Upserting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
 
         try {
             val item = mutableMapOf<String, AttributeValue>(
@@ -295,10 +302,34 @@ class DynamoDBServiceImpl(
                 "type#lastUpdated" to AttributeValue.builder().s("${contentType.dbType}#${System.currentTimeMillis()}")
                     .build()
             )
-
-            // Add attributes to the item
+            
+            // Add node properties based on its type
+            when (node) {
+                is ContentNode.PostNode -> {
+                    item["title"] = AttributeValue.builder().s(node.title).build()
+                    item["templateKey"] = AttributeValue.builder().s(node.templateKey).build()
+                    item["slug"] = AttributeValue.builder().s(node.slug).build()
+                    item["date"] = AttributeValue.builder().s(node.date.toString()).build()
+                    
+                    // Add the node's own attributes with attr# prefix
+                    node.attributes.forEach { (key, value) ->
+                        item["attr#$key"] = AttributeValue.builder().s(value).build()
+                    }
+                }
+                is ContentNode.TemplateNode -> {
+                    item["title"] = AttributeValue.builder().s(node.title).build()
+                    item["sections"] = AttributeValue.builder().s(node.sections.joinToString(",")).build()
+                }
+                is ContentNode.PageNode, is ContentNode.FolderNode, is ContentNode.StaticNode, is ContentNode.ImageNode -> {
+                    // These types are not fully implemented yet or not relevant for this test
+                    info("Node type ${node.javaClass.simpleName} not fully implemented for upsert")
+                }
+            }
+            
+            info("Adding additional attributes: $attributes")
+            // Add additional attributes to the item with attr# prefix
             attributes.forEach { (key, value) ->
-                item[key] = AttributeValue.builder().s(value).build() // might not always be a string
+                item["attr#$key"] = AttributeValue.builder().s(value).build() // might not always be a string
             }
 
             val request = PutItemRequest.builder()
@@ -306,11 +337,11 @@ class DynamoDBServiceImpl(
                 .item(item)
                 .build()
 
-            log("INFO", "Executing PutItem request for content node: $srcKey")
+            info("Executing PutItem request for content node: $srcKey")
             val response = dynamoDbClient.putItem(request).await()
 
             if (response.sdkHttpResponse().isSuccessful) {
-                log("INFO", "Successfully upserted content node: $srcKey in domain: $projectDomain")
+                info("Successfully upserted content node: $srcKey in domain: $projectDomain")
                 return true
             } else {
                 log(
@@ -334,7 +365,6 @@ class DynamoDBServiceImpl(
             log("ERROR", "Unexpected error while upserting content node: $srcKey", e)
             throw e
         }
-        return false
     }
 
     /**
@@ -349,7 +379,7 @@ class DynamoDBServiceImpl(
         projectDomain: String,
         contentType: SOURCE_TYPE
     ): ContentNode? {
-        log("INFO", "Getting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
+        info("Getting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
 
         try {
             val key = mapOf(
@@ -362,17 +392,18 @@ class DynamoDBServiceImpl(
                 .key(key)
                 .build()
 
-            log("INFO", "Executing GetItem request for content node: $srcKey")
+            info("Executing GetItem request for content node: $srcKey")
             val response = dynamoDbClient.getItem(request).await()
 
             return if (response.hasItem()) {
-                log("INFO", "Content node found: $srcKey")
+                info("Content node found: $srcKey")
                 when (contentType) {
                     SOURCE_TYPE.Templates -> mapToTemplateNode(response.item())
+                    SOURCE_TYPE.Posts -> mapToPostNode(response.item())
                     else -> throw IllegalArgumentException("Unsupported content type: ${contentType.dbType}")
                 }
             } else {
-                log("INFO", "No content node found for srcKey: $srcKey")
+                info("No content node found for srcKey: $srcKey")
                 null
             }
         } catch (e: DynamoDbException) {
@@ -396,7 +427,7 @@ class DynamoDBServiceImpl(
      * @return A list of templates for the domain
      */
     override suspend fun listAllTemplates(domain: String): TemplateListDTO {
-        log("INFO", "Listing all templates for domain: $domain")
+        info("Listing all templates for domain: $domain")
 
         try {
             val request = QueryRequest.builder()
@@ -410,11 +441,11 @@ class DynamoDBServiceImpl(
                 )
                 .build()
 
-            log("INFO", "Executing Query request for templates in domain: $domain")
+            info("Executing Query request for templates in domain: $domain")
             val response = dynamoDbClient.query(request).await()
 
             return if (response.count() > 0) {
-                log("INFO", "Found ${response.count()} templates for domain: $domain")
+                info("Found ${response.count()} templates for domain: $domain")
                 response.items().map { item -> mapToTemplateNode(item) }.let { templates ->
                     TemplateListDTO(
                         templates = templates,
@@ -423,7 +454,7 @@ class DynamoDBServiceImpl(
                     )
                 }
             } else {
-                log("INFO", "No templates found for domain: $domain")
+                info("No templates found for domain: $domain")
                 TemplateListDTO(
                     templates = emptyList(),
                     count = 0,
@@ -471,6 +502,62 @@ class DynamoDBServiceImpl(
             )
         } catch (e: Exception) {
             log("ERROR", "Failed to map DynamoDB item to CantileverProject: $item", e)
+            throw e
+        }
+    }
+
+    /**
+     * Map a DynamoDB item to a ContentNode.PostNode
+     * @param item The DynamoDB item
+     * @return The ContentNode.PostNode
+     */
+    private fun mapToPostNode(item: Map<String, AttributeValue>): ContentNode.PostNode {
+        try {
+            val srcKey = item["srcKey"]?.s() ?: ""
+            if (srcKey.isEmpty()) {
+                log("WARN", "Missing srcKey in post item: $item")
+            }
+
+            val lastUpdatedStr = item["type#lastUpdated"]?.s()
+            val lastUpdated = try {
+                if (lastUpdatedStr != null && lastUpdatedStr.contains("#")) {
+                    val timestamp = lastUpdatedStr.split("#")[1].toLongOrNull() ?: 0L
+                    Instant.fromEpochSeconds(timestamp)
+                } else {
+                    log("WARN", "Invalid type#lastUpdated format in post item: $lastUpdatedStr")
+                    Clock.System.now()
+                }
+            } catch (e: Exception) {
+                log("WARN", "Failed to parse lastUpdated timestamp: $lastUpdatedStr", e)
+                Clock.System.now()
+            }
+
+            // Parse the date string directly as a LocalDate instead of going through Instant
+            val dateStr = item["date"]?.s() ?: ""
+            val postDate = if (dateStr.isNotEmpty()) {
+                try {
+                    kotlinx.datetime.LocalDate.parse(dateStr)
+                } catch (e: Exception) {
+                    log("WARN", "Failed to parse date: $dateStr, using current date", e)
+                    Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+                }
+            } else {
+                Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            }
+            
+            return ContentNode.PostNode(
+                srcKey = srcKey,
+                title = item["title"]?.s() ?: "",
+                templateKey = item["templateKey"]?.s() ?: "",
+                date = postDate,
+                slug = item["slug"]?.s() ?: "",
+                lastUpdated = lastUpdated,
+                attributes = item.filter { it.key.startsWith("attr#") }
+                    .mapKeys { it.key.removePrefix("attr#") }
+                    .mapValues { it.value.s() ?: "" },
+            )
+        } catch (e: Exception) {
+            log("ERROR", "Failed to map DynamoDB item to ContentNode.PostNode: $item", e)
             throw e
         }
     }

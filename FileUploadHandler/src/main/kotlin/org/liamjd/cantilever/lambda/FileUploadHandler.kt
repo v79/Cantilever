@@ -9,6 +9,7 @@ import kotlinx.serialization.SerializationException
 import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.common.SOURCE_TYPE.*
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
+import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.SrcKey
 import org.liamjd.cantilever.models.sqs.ImageSQSMessage
 import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
@@ -172,7 +173,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             // extract metadata
             val metadata =
                 ContentMetaDataBuilder.PostBuilder.buildFromSourceString(sourceString.getFrontMatter(), srcKey)
-            logger.info("Extracted metadata: $metadata")
+            logger.info("Extracted post metadata: $metadata")
             // extract body
             val markdownBody = sourceString.stripFrontMatter()
             val postModelMsg = MarkdownSQSMessage.PostUploadMsg(
@@ -180,7 +181,16 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
                 metadata = metadata,
                 markdownText = markdownBody
             )
-            sendMarkdownMessage(queueUrl, postModelMsg, srcKey)
+            runBlocking {
+                // upsert the content node in the DynamoDB table
+                upsertContentNode(
+                    srcKey = srcKey,
+                    projectDomain = projectDomain,
+                    contentType = Posts,
+                    node = metadata
+                )
+                sendMarkdownMessage(queueUrl, postModelMsg, srcKey)
+            }
         } catch (qdne: QueueDoesNotExistException) {
             logger.error("Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
@@ -308,7 +318,7 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
             attributes.put("title", metadata.title)
             // TODO: add the names of the sections as a set
             runBlocking {
-                dynamoDBService.upsertContentNode(srcKey, projectDomain, Templates, attributes)
+                dynamoDBService.upsertContentNode(srcKey, projectDomain, Templates, metadata)
             }
         } catch (e: Exception) {
             logger.error("Failed to process template upload for $srcKey; ${e.message}")
@@ -342,19 +352,20 @@ class FileUploadHandler : RequestHandler<S3Event, String> {
      * @param srcKey the source key of the content node
      * @param projectDomain the domain of the project
      * @param contentType the type of content (e.g. POST, PAGE, IMAGE, etc.)
+     * @param node the content node to upsert
      */
     private suspend fun upsertContentNode(
         srcKey: SrcKey,
         projectDomain: String,
         contentType: SOURCE_TYPE,
-        attributes: Map<String, String> = emptyMap()
+        node: ContentNode
     ) {
         logger.info("Upserting content node for $srcKey in project $projectDomain")
         dynamoDBService.upsertContentNode(
             srcKey = srcKey,
             projectDomain = projectDomain,
             contentType = contentType,
-            attributes = attributes
+            node = node
         )
     }
 }

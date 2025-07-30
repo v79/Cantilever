@@ -113,13 +113,15 @@ sealed class ContentNode {
             templateKey: String,
             date: LocalDate,
             slug: String,
-            attributes: Map<String, String> = emptyMap()
+            attributes: Map<String, String> = emptyMap(),
+            lastUpdated: Instant = Clock.System.now(),
         ) : this(
             title = title,
             templateKey = templateKey,
             date = date,
             slug = slug,
-            attributes = attributes
+            attributes = attributes,
+            lastUpdated = lastUpdated,
         ) {
             this.srcKey = srcKey
         }
