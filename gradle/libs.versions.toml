@@ -20,6 +20,7 @@ aws-lambda-log4j2 = "1.6.0"
 # Logging
 slf4j = "2.0.17"
 log4j = "2.23.1"
+log4j-layout-template-json = "2.23.1"
 
 # Kotlinx libraries
 kotlinx-datetime = "0.4.1"
@@ -74,6 +75,7 @@ slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 log4j-slf4j2-impl = { module = "org.apache.logging.log4j:log4j-slf4j2-impl", version.ref = "log4j" }
 log4j-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
 log4j-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
+log4j-layout-template-json = { module = "org.apache.logging.log4j:log4j-layout-template-json", version.ref = "log4j-layout-template-json" }
 
 # Kotlin libraries
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
@@ -107,7 +109,8 @@ logging = [
   "slf4j-api",
   "log4j-slf4j2-impl",
   "log4j-api",
-  "log4j-core"
+  "log4j-core",
+  "log4j-layout-template-json"
 ]
 aws-lambda = [
   "aws-lambda-core",

@@ -72,3 +72,8 @@ Only thing missing is sorting by "lastUpdated".
 
 - A lot of fairly pointless faffing about with logging and version numbers and stuff.
 - Destroyed the dev stack and recreated it.
+
+## 31/07/2025
+
+- Big detour into trying to get the LambdaContext.logger into the API class. This involved changes to the APIViaduct project and to all the controller classes. But it was in vain, the lambda context was never initialised at the right time. It's unfortunate that I can't use the lambda logger in the API. It might be able to recreate the log format through custom log4j2 configuration but I've never been good with log4j2 configuration.
+

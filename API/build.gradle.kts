@@ -47,9 +47,12 @@ dependencies {
     implementation(platform(libs.aws.sdk.bom))
     implementation(libs.bundles.aws.sdk)
 
-
     // lambda functions
     implementation(libs.bundles.aws.lambda)
+
+    // logging
+    implementation(libs.bundles.logging)
+    implementation(libs.aws.lambda.log4j2)
 
     // auth
     implementation(libs.java.jwt)
