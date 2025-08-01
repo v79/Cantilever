@@ -7,6 +7,9 @@ import com.amazonaws.services.lambda.runtime.events.S3Event
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
+import org.koin.dsl.module
 import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.common.SOURCE_TYPE.*
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
@@ -28,6 +31,20 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
 
 /**
+ * Set up koin dependency injection
+ */
+val fileUploadModule = module {
+    single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
+    single<SQSService> { SQSServiceImpl(Region.EU_WEST_2) }
+    single<DynamoDBService> {
+        DynamoDBServiceImpl(
+            region = Region.EU_WEST_2, enableLogging = true, dynamoDbClient =
+                DynamoDbAsyncClient.create()
+        )
+    }
+}
+
+/**
  * Responds to a file upload event (PUT or PUSH).
  * It analyses the file and determines where to send it.
  * `source_type` is determined by from the S3 object key:
@@ -36,16 +53,19 @@ import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException
  * "Posts" and "Pages" must be markdown files (.md). The source type is added to the SQS message queue so the receiver knows how to process it.
  */
 @Suppress("unused")
-class FileUploadHandler : RequestHandler<S3Event, String>,
+class FileUploadHandler(private val environmentProvider: EnvironmentProvider = SystemEnvironmentProvider()) :
+    RequestHandler<S3Event, String>, KoinComponent,
     AWSLogger(enableLogging = true, msgSource = "FileUploadHandler") {
 
-    private val s3Service: S3Service = S3ServiceImpl(Region.EU_WEST_2)
-    private val sqsService: SQSService = SQSServiceImpl(Region.EU_WEST_2)
-    private val dbClient = DynamoDbAsyncClient.create()
-    private val dynamoDBService: DynamoDBService = DynamoDBServiceImpl(
-        region = Region.EU_WEST_2, enableLogging = true, dynamoDbClient =
-            dbClient
-    )
+//    init {
+//        startKoin {
+//            modules(fileUploadModule)
+//        }
+//    }
+
+    private val s3Service: S3Service by inject()
+    private val sqsService: SQSService by inject()
+    private val dynamoDBService: DynamoDBService by inject()
 
     override var logger: LambdaLogger? = null
 
@@ -53,119 +73,125 @@ class FileUploadHandler : RequestHandler<S3Event, String>,
         logger = context.logger
         dynamoDBService.logger = logger
         var response = "200 OK"
-        val markdownQueueURL = System.getenv(QUEUE.MARKDOWN)
+        val markdownQueueURL = environmentProvider.getEnv(QUEUE.MARKDOWN)
         val handlebarQueueURL = System.getenv(QUEUE.HANDLEBARS)
         val imageQueueURL = System.getenv(QUEUE.IMAGES)
 
         log("${event.records.size} upload events received")
 
-        try {
-            for (eventRecord in event.records) {
-                // srcKey will be in the format www.<domain>.com/sources/<source_type>/<filename>
-                val srcKey = eventRecord.s3.`object`.urlDecodedKey
-                val srcBucket = eventRecord.s3.bucket.name
-                val projectDomain = srcKey.substringBefore('/')
-                // the folder determines the type, POST, PAGE, STATICS
-                val folderName = srcKey.removePrefix("$projectDomain/sources/").substringBefore('/')
-                val size = eventRecord.s3.`object`.sizeAsLong
-                val uploadFolder = SourceHelper.fromFolderName(folderName)
+        runBlocking {
+            try {
+                for (eventRecord in event.records) {
+                    // srcKey will be in the format www.<domain>.com/sources/<source_type>/<filename>
+                    val srcKey = eventRecord.s3.`object`.urlDecodedKey
+                    val srcBucket = eventRecord.s3.bucket.name
+                    val projectDomain = srcKey.substringBefore('/')
+                    // the folder determines the type, POST, PAGE, STATICS
+                    val folderName = srcKey.removePrefix("$projectDomain/sources/").substringBefore('/')
+                    val size = eventRecord.s3.`object`.sizeAsLong
+                    val uploadFolder = SourceHelper.fromFolderName(folderName)
 
-                log("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
+                    log("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
 
-                try {
-                    val fileType = srcKey.substringAfterLast('.').lowercase()
-                    val contentType = s3Service.getContentType(srcKey, srcBucket)
-                    log("FileUpload handler: source type is '$folderName'; file type is '$fileType'; content type is '$contentType'; uploaded to folder '$uploadFolder'")
+                    try {
+                        val fileType = srcKey.substringAfterLast('.').lowercase()
+                        val contentType = s3Service.getContentType(srcKey, srcBucket)
+                        log("FileUpload handler: source type is '$folderName'; file type is '$fileType'; content type is '$contentType'; uploaded to folder '$uploadFolder'")
 
-                    if (size == 0L) {
-                        log("ERROR", "File $srcKey is empty, so not processing")
-                        response = "400 Bad Request"
-                    } else {
-                        when (uploadFolder) {
-                            Root -> {
-                                log("No action defined for ROOT upload")
-                            }
-
-                            Posts -> {
-                                // I'd like to check ContentType too, but it is not set correctly for .md files uploaded via IntelliJ
-                                if (fileType == FILE_TYPE.MD) {
-                                    processPostUpload(
-                                        srcKey = srcKey,
-                                        srcBucket = srcBucket,
-                                        queueUrl = markdownQueueURL,
-                                        projectDomain = projectDomain
-                                    )
-                                } else {
-                                    log(
-                                        "ERROR",
-                                        "Posts must be written in Markdown format with the '.md' file extension"
-                                    )
+                        if (size == 0L) {
+                            log("ERROR", "File $srcKey is empty, so not processing")
+                            response = "400 Bad Request"
+                        } else {
+                            when (uploadFolder) {
+                                Root -> {
+                                    log("WARN", "No action defined for ROOT upload")
                                 }
-                            }
 
-                            Pages -> {
-                                if (fileType == FILE_TYPE.MD) {
-                                    processPageUpload(
-                                        srcKey = srcKey,
-                                        srcBucket = srcBucket,
-                                        queueUrl = markdownQueueURL,
-                                        projectDomain = projectDomain
-                                    )
-                                } else {
-                                    log(
-                                        "ERROR",
-                                        "Pages must be written in Markdown format with the '.md' file extension"
-                                    )
-                                }
-                            }
-
-                            Templates -> {
-                                if (fileType == FILE_TYPE.HBS) {
-                                    processTemplateUpload(
-                                        srcKey = srcKey,
-                                        srcBucket = srcBucket,
-                                        projectDomain = projectDomain
-                                    )
-                                } else {
-                                    log(
-                                        "ERROR",
-                                        "Templates must be written in Handlebars format with the '.html.hbs' file extension"
-                                    )
-                                }
-                            }
-
-                            Statics -> {
-                                log("Analysing file type for static file upload")
-                                when (fileType) {
-                                    FILE_TYPE.CSS -> {
-                                        processCSSUpload(
-                                            srcKey = srcKey,
-                                            queueUrl = handlebarQueueURL,
-                                            projectDomain = projectDomain
+                                Posts -> {
+                                    // I'd like to check ContentType too, but it is not set correctly for .md files uploaded via IntelliJ
+                                    if (fileType == FILE_TYPE.MD) {
+                                        if (!processPostUpload(
+                                                srcKey = srcKey,
+                                                srcBucket = srcBucket,
+                                                queueUrl = markdownQueueURL,
+                                                projectDomain = projectDomain
+                                            )
+                                        ) {
+                                            log("ERROR", "Error while processing uploaded post file.")
+                                        }
+                                    } else {
+                                        log(
+                                            "ERROR",
+                                            "Posts must be written in Markdown format with the '.md' file extension"
                                         )
                                     }
                                 }
-                            }
 
-                            Images -> {
-                                processImageUpload(
-                                    srcKey = srcKey,
-                                    projectDomain = projectDomain,
-                                    contentType = contentType,
-                                    queueUrl = imageQueueURL
-                                )
-                            }
+                                Pages -> {
+                                    if (fileType == FILE_TYPE.MD) {
+                                        processPageUpload(
+                                            srcKey = srcKey,
+                                            srcBucket = srcBucket,
+                                            queueUrl = markdownQueueURL,
+                                            projectDomain = projectDomain
+                                        )
+                                    } else {
+                                        log(
+                                            "ERROR",
+                                            "Pages must be written in Markdown format with the '.md' file extension"
+                                        )
+                                    }
+                                }
 
+                                Templates -> {
+                                    if (fileType == FILE_TYPE.HBS) {
+                                        processTemplateUpload(
+                                            srcKey = srcKey,
+                                            srcBucket = srcBucket,
+                                            projectDomain = projectDomain
+                                        )
+                                    } else {
+                                        log(
+                                            "ERROR",
+                                            "Templates must be written in Handlebars format with the '.hbs' file extension"
+                                        )
+                                    }
+                                }
+
+                                Statics -> {
+                                    // What other static files do we support?
+                                    when (fileType) {
+                                        FILE_TYPE.CSS -> {
+                                            processCSSUpload(
+                                                srcKey = srcKey,
+                                                queueUrl = handlebarQueueURL,
+                                                projectDomain = projectDomain
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Images -> {
+                                    // Should add some type checking here
+                                    processImageUpload(
+                                        srcKey = srcKey,
+                                        projectDomain = projectDomain,
+                                        contentType = contentType,
+                                        queueUrl = imageQueueURL
+                                    )
+                                }
+
+                            }
                         }
-                    }
 
-                } catch (nske: NoSuchKeyException) {
-                    log("ERROR", "FileUpload EXCEPTION ${nske.message}")
-                    response = "500 Internal Server Error"
+                    } catch (nske: NoSuchKeyException) {
+                        log("ERROR", "FileUpload EXCEPTION: ${nske.message}")
+                        response = "500 Internal Server Error"
+                    }
                 }
+            } finally {
+                log("Request completed")
             }
-        } finally {
-            log("Request completed")
         }
 
         return response
@@ -174,12 +200,12 @@ class FileUploadHandler : RequestHandler<S3Event, String>,
     /**
      * Process the uploaded POST Markdown file and send a message to the Markdown processor queue
      */
-    private fun processPostUpload(
+    private suspend fun processPostUpload(
         srcKey: String,
         srcBucket: String,
         queueUrl: String,
         projectDomain: String
-    ) {
+    ): Boolean {
         log("Sending post $srcKey to markdown processor queue")
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
@@ -194,27 +220,27 @@ class FileUploadHandler : RequestHandler<S3Event, String>,
                 metadata = metadata,
                 markdownText = markdownBody
             )
-            runBlocking {
-                // upsert the content node in the DynamoDB table
-                upsertContentNode(
-                    srcKey = srcKey,
-                    projectDomain = projectDomain,
-                    contentType = Posts,
-                    node = metadata
-                )
-                sendMarkdownMessage(queueUrl, postModelMsg, srcKey)
-            }
+            // upsert the content node in the DynamoDB table
+            upsertContentNode(
+                srcKey = srcKey,
+                projectDomain = projectDomain,
+                contentType = Posts,
+                node = metadata
+            )
+            sendMarkdownMessage(queueUrl, postModelMsg, srcKey)
+            return true
         } catch (qdne: QueueDoesNotExistException) {
             log("ERROR", "Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
             log("ERROR", "Failed to parse metadata string; ${se.message}")
         }
+        return false
     }
 
     /**
      * Process the uploaded PAGE Markdown file and send a message to the Markdown processor queue
      */
-    private fun processPageUpload(
+    private suspend fun processPageUpload(
         srcKey: String,
         srcBucket: String,
         queueUrl: String,
@@ -233,15 +259,13 @@ class FileUploadHandler : RequestHandler<S3Event, String>,
                 markdownText = markdownBody
             )
             log("Built page model for: ${pageModelMsg.metadata.srcKey}")
-            runBlocking {
-                upsertContentNode(
-                    srcKey = srcKey,
-                    projectDomain = projectDomain,
-                    contentType = Pages,
-                    node = pageNode
-                )
-                sendMarkdownMessage(queueUrl, pageModelMsg, srcKey)
-            }
+            upsertContentNode(
+                srcKey = srcKey,
+                projectDomain = projectDomain,
+                contentType = Pages,
+                node = pageNode
+            )
+            sendMarkdownMessage(queueUrl, pageModelMsg, srcKey)
         } catch (qdne: QueueDoesNotExistException) {
             log("ERROR", "Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
@@ -252,7 +276,7 @@ class FileUploadHandler : RequestHandler<S3Event, String>,
     /**
      * Process the uploaded CSS file and send a message to the Handlebars template processor queue
      */
-    private fun processCSSUpload(
+    private suspend fun processCSSUpload(
         srcKey: String,
         queueUrl: String,
         projectDomain: String
@@ -269,17 +293,15 @@ class FileUploadHandler : RequestHandler<S3Event, String>,
                 srcKey = srcKey,
                 lastUpdated = Clock.System.now()
             )
-            runBlocking {
-                upsertContentNode(srcKey = srcKey, projectDomain = projectDomain, contentType = Statics, node = cssNode)
-                val msgResponse = sqsService.sendTemplateMessage(
-                    toQueue = queueUrl,
-                    body = cssMsg
-                )
-                if (msgResponse != null) {
-                    log("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
-                } else {
-                    log("WARN", "No response received for message")
-                }
+            upsertContentNode(srcKey = srcKey, projectDomain = projectDomain, contentType = Statics, node = cssNode)
+            val msgResponse = sqsService.sendTemplateMessage(
+                toQueue = queueUrl,
+                body = cssMsg
+            )
+            if (msgResponse != null) {
+                log("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+            } else {
+                log("WARN", "No response received for message")
             }
         } catch (qdne: QueueDoesNotExistException) {
             log("ERROR", "Queue '$queueUrl' does not exist; ${qdne.message}")
@@ -290,7 +312,12 @@ class FileUploadHandler : RequestHandler<S3Event, String>,
      * Process the uploaded image file and send a message to the image processor queue.
      * First, check if it is a supported file type.
      */
-    private fun processImageUpload(srcKey: String, projectDomain: String, contentType: String?, queueUrl: String) {
+    private suspend fun processImageUpload(
+        srcKey: String,
+        projectDomain: String,
+        contentType: String?,
+        queueUrl: String
+    ) {
         try {
             // check if the image is a supported file type
             val validImageTypes = listOf(MimeType.jpg, MimeType.png, MimeType.gif, MimeType.webp)
@@ -307,18 +334,17 @@ class FileUploadHandler : RequestHandler<S3Event, String>,
             // OK, we know it's a valid image type, so send it to the image processor queue
             val imageNode = ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", srcKey)
             val imageMsg = ImageSQSMessage.ResizeImageMsg(projectDomain, imageNode)
-            runBlocking {
-                upsertContentNode(srcKey = srcKey, projectDomain = projectDomain, Images, imageNode)
-                log("Sending message to Image processor queue for $imageMsg")
-                val msgResponse = sqsService.sendImageMessage(
-                    toQueue = queueUrl,
-                    body = imageMsg
-                )
-                if (msgResponse != null) {
-                    log("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
-                } else {
-                    log("WARN", "No response received for message")
-                }
+
+            upsertContentNode(srcKey = srcKey, projectDomain = projectDomain, Images, imageNode)
+            log("Sending message to Image processor queue for $imageMsg")
+            val msgResponse = sqsService.sendImageMessage(
+                toQueue = queueUrl,
+                body = imageMsg
+            )
+            if (msgResponse != null) {
+                log("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+            } else {
+                log("WARN", "No response received for message")
             }
 
         } catch (e: Exception) {
@@ -335,7 +361,7 @@ class FileUploadHandler : RequestHandler<S3Event, String>,
      * @param srcBucket the S3 bucket where the template file is stored
      * @param projectDomain the domain of the project to which the template belongs
      */
-    private fun processTemplateUpload(
+    private suspend fun processTemplateUpload(
         srcKey: String,
         srcBucket: String,
         projectDomain: String
@@ -343,14 +369,11 @@ class FileUploadHandler : RequestHandler<S3Event, String>,
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             // extract metadata
-            val metadata = ContentMetaDataBuilder.TemplateBuilder.buildFromSourceString(sourceString, srcKey)
-            log("Extracted metadata: $metadata")
+            val templateNode = ContentMetaDataBuilder.TemplateBuilder.buildFromSourceString(sourceString, srcKey)
             val attributes: MutableMap<String, String> = mutableMapOf()
-            attributes.put("title", metadata.title)
+            attributes.put("title", templateNode.title)
             // TODO: add the names of the sections as a set
-            runBlocking {
-                dynamoDBService.upsertContentNode(srcKey, projectDomain, Templates, metadata)
-            }
+            dynamoDBService.upsertContentNode(srcKey, projectDomain, Templates, templateNode, attributes)
         } catch (e: Exception) {
             log("ERROR", "Failed to process template upload for $srcKey; ${e.message}")
         }
@@ -396,7 +419,8 @@ class FileUploadHandler : RequestHandler<S3Event, String>,
             srcKey = srcKey,
             projectDomain = projectDomain,
             contentType = contentType,
-            node = node
+            node = node,
+            emptyMap()
         )
     }
 

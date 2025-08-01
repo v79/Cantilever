@@ -40,12 +40,15 @@ dependencies {
     implementation(libs.aws.lambda.events)
     runtimeOnly(libs.aws.lambda.log4j2)
 
+    // DI
+    implementation(libs.koin.core)
+
     // testing
     testImplementation(libs.junit.api)
     testRuntimeOnly(libs.junit.engine)
     testImplementation(libs.aws.lambda.tests)
     testImplementation(libs.mockk)
-    testImplementation(kotlin("test"))
+    testImplementation(libs.bundles.koin.test)
 }
 
 tasks.getByName<Test>("test") {
