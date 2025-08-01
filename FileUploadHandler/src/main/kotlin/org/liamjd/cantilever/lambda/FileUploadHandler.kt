@@ -9,6 +9,9 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import org.koin.core.context.GlobalContext
+import org.koin.core.context.startKoin
+import org.koin.core.module.Module
 import org.koin.dsl.module
 import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.common.SOURCE_TYPE.*
@@ -45,6 +48,20 @@ val fileUploadModule = module {
 }
 
 /**
+ * This object is used to set up Koin dependency injection. It ensures that Koin is only started once, even in unit testing scenarios.
+ */
+object KoinSetup {
+    fun setup(modules: List<Module>) {
+        // Only start Koin if it's not already running
+        if (GlobalContext.getOrNull() == null) {
+            startKoin {
+                modules(fileUploadModule)
+            }
+        }
+    }
+}
+
+/**
  * Responds to a file upload event (PUT or PUSH).
  * It analyses the file and determines where to send it.
  * `source_type` is determined by from the S3 object key:
@@ -57,11 +74,9 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
     RequestHandler<S3Event, String>, KoinComponent,
     AWSLogger(enableLogging = true, msgSource = "FileUploadHandler") {
 
-//    init {
-//        startKoin {
-//            modules(fileUploadModule)
-//        }
-//    }
+    init {
+        KoinSetup.setup(listOf(fileUploadModule))
+    }
 
     private val s3Service: S3Service by inject()
     private val sqsService: SQSService by inject()
