@@ -42,13 +42,6 @@ internal class ProjectControllerTest : KoinTest {
     @RegisterExtension
     val koinTestExtension = KoinTestExtension.create {
         modules(module {
-            single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
-            single<DynamoDBService> {
-                DynamoDBServiceImpl(
-                    region = Region.EU_WEST_2,
-                    dynamoDbClient = mockk<DynamoDbAsyncClient>()
-                )
-            }
         })
     }
 

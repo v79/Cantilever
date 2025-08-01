@@ -63,7 +63,7 @@ interface DynamoDBService {
         projectDomain: String,
         contentType: SOURCE_TYPE,
         node: ContentNode,
-        attributes: Map<String, String> = emptyMap()
+        attributes: Map<String, String>
     ): Boolean
 
     /**

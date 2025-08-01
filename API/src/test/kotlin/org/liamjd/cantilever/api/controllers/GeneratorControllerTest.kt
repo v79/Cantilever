@@ -18,9 +18,6 @@ import org.koin.test.mock.declareMock
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
-import org.liamjd.cantilever.services.impl.S3ServiceImpl
-import org.liamjd.cantilever.services.impl.SQSServiceImpl
-import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.model.DeleteObjectResponse
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response
 import software.amazon.awssdk.services.s3.model.S3Object
@@ -44,8 +41,6 @@ class GeneratorControllerTest : KoinTest {
     @RegisterExtension
     val koinTestExtension = KoinTestExtension.create {
         modules(module {
-            single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
-            single<SQSService> { SQSServiceImpl(Region.EU_WEST_2) }
         })
     }
 
@@ -307,7 +302,12 @@ class GeneratorControllerTest : KoinTest {
             every { mockS3.listObjects("test/sources/pages/", sourceBucket) } returns mockPageListResponse
             every { mockS3.getObjectAsString("test/sources/pages/about.md", sourceBucket) } returns ""
             every { mockS3.objectExists("test/generated/metadata.json", generationBucket) } returns true
-            every { mockS3.getObjectAsString("test/generated/metadata.json", generationBucket) } returns mockPageJsonShort
+            every {
+                mockS3.getObjectAsString(
+                    "test/generated/metadata.json",
+                    generationBucket
+                )
+            } returns mockPageJsonShort
             every { mockS3.getObjectAsString("test/sources/pages/bio/about-me.md", sourceBucket) } returns ""
         }
         declareMock<SQSService> {
