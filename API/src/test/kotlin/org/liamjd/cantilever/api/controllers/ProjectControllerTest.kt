@@ -2,9 +2,10 @@ package org.liamjd.cantilever.api.controllers
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.junit5.MockKExtension
-import io.mockk.mockk
 import io.mockk.mockkClass
+import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -19,10 +20,6 @@ import org.koin.test.mock.declareMock
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.services.DynamoDBService
 import org.liamjd.cantilever.services.S3Service
-import org.liamjd.cantilever.services.impl.DynamoDBServiceImpl
-import org.liamjd.cantilever.services.impl.S3ServiceImpl
-import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -168,6 +165,9 @@ internal class ProjectControllerTest : KoinTest {
             coEvery { mockDynamoDB.getProject("newdomain.com") } returns null
             coEvery { mockDynamoDB.saveProject(any()) } returns savedProject
         }
+        declareMock<S3Service> {
+            every { mockS3.createFolder(any(), any()) } returns 0
+        }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
@@ -181,6 +181,7 @@ internal class ProjectControllerTest : KoinTest {
 
         assertNotNull(response)
         assertEquals(200, response.statusCode)
+        verify(atLeast = 5) { mockS3.createFolder(any(), any()) }
     }
 
     @Test

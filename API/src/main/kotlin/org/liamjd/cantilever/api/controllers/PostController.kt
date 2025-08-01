@@ -1,5 +1,8 @@
 package org.liamjd.cantilever.api.controllers
 
+import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import org.koin.core.component.KoinComponent
 import org.liamjd.apiviaduct.routing.Request
 import org.liamjd.apiviaduct.routing.Response
@@ -100,32 +103,25 @@ class PostController(sourceBucket: String, generationBucket: String) : KoinCompo
      * @return [PostListDTO] object containing the list of posts, a count and the last updated date/time
      */
     fun getPosts(request: Request<Unit>): Response<APIResult<PostListDTO>> {
-        try {
-            val domain = request.headers["cantilever-project-domain"]!!
-            return if (loadContentTree(domain)) {
-                info("Fetching all posts ")
-                val lastUpdated = s3Service.getUpdatedTime("$domain/metadata.json", generationBucket)
-                val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
-                val sorted = posts.sortedByDescending { it.date }
-                val postList = PostListDTO(
-                    count = sorted.size, lastUpdated = lastUpdated, posts = sorted
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        info("Retrieving posts for project $projectKeyHeader")
+        return runBlocking {
+            val postList = dynamoDBService.listAllPostsForProject(projectKeyHeader)
+            if (postList.isEmpty()) {
+                error("No posts found in DynamoDB for project $projectKeyHeader")
+                return@runBlocking Response.notFound(
+                    body = APIResult.Error("No posts found in DynamoDB for project $projectKeyHeader")
                 )
-                if (postList.posts.isEmpty()) {
-                    error("No posts found in content tree")
-                    Response.serverError(body = APIResult.Error("No posts found in content tree for project $domain; create some?"))
-                } else {
-                    Response.ok(body = APIResult.Success(value = postList))
-                }
-            } else {
-                error("Cannot find metadata.json for project $domain")
-                Response.notFound(body = APIResult.Error(statusText = "Cannot find file '${domain}/metadata.json' in bucket $generationBucket. Please regenerate the metadata."))
             }
-        } catch (nsk: NoSuchElementException) {
-            error("No project metadata found")
-            return Response.notFound(body = APIResult.Error(statusText = "No project metadata found"))
-        } catch (e: Exception) {
-            error("Error getting posts: ${e.message}")
-            return Response.serverError(body = APIResult.Error(statusText = "Error getting posts: ${e.message}"))
+            val sorted = postList.sortedByDescending { it.date }
+            val lastUpdated = sorted.last().date
+            val dateTime = lastUpdated.atStartOfDayIn(TimeZone.currentSystemDefault())
+            val postListDTO = PostListDTO(
+                lastUpdated = dateTime,
+                posts = sorted,
+                count = sorted.size,
+            )
+            return@runBlocking Response.ok(body = APIResult.Success(value = postListDTO))
         }
     }
 

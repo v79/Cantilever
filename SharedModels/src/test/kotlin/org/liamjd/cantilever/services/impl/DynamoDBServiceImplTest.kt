@@ -331,6 +331,64 @@ class DynamoDBServiceImplTest {
             // Note: We don't check lastUpdated because it might be updated during the save process
         }
     }
+    
+    @Test
+    fun `can list all posts for a project`() {
+        // Setup - Create multiple posts for the same domain
+        val post1 = ContentNode.PostNode(
+            title = "First Test Post",
+            templateKey = "sources/templates/post.html.hbs",
+            date = LocalDate(2025, 7, 30),
+            slug = "first-test-post",
+            attributes = mapOf("author" to "Test Author")
+        )
+        post1.srcKey = "sources/posts/2025/07/first-test-post.md"
+        
+        val post2 = ContentNode.PostNode(
+            title = "Second Test Post",
+            templateKey = "sources/templates/post.html.hbs",
+            date = LocalDate(2025, 8, 1),
+            slug = "second-test-post",
+            attributes = mapOf("author" to "Test Author")
+        )
+        post2.srcKey = "sources/posts/2025/08/second-test-post.md"
+        
+        runBlocking {
+            // Save the posts
+            service.upsertContentNode(
+                srcKey = post1.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Posts,
+                node = post1,
+                attributes = mapOf("title" to post1.title)
+            )
+            
+            service.upsertContentNode(
+                srcKey = post2.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Posts,
+                node = post2,
+                attributes = mapOf("title" to post2.title)
+            )
+            
+            // Execute - List all posts for the domain
+            val posts = service.listAllPostsForProject("test-domain")
+            
+            // Verify
+            assertNotNull(posts, "Posts list should not be null")
+            assertEquals(2, posts.size, "Should have found 2 posts")
+            
+            // Verify the posts contain the expected data
+            val foundPost1 = posts.find { it.srcKey == post1.srcKey }
+            val foundPost2 = posts.find { it.srcKey == post2.srcKey }
+            
+            assertNotNull(foundPost1, "First post should be in the results")
+            assertNotNull(foundPost2, "Second post should be in the results")
+            
+            assertEquals(post1.title, foundPost1?.title, "First post title should match")
+            assertEquals(post2.title, foundPost2?.title, "Second post title should match")
+        }
+    }
 
 
     /**

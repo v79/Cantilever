@@ -29,7 +29,7 @@ class DynamoDBServiceImpl(
     val tableName: String = "cantilever-dev-content-nodes", // TODO: This should be configurable
     private val dynamoDbClient: DynamoDbAsyncClient,
     enableLogging: Boolean = true,
-) : DynamoDBService, AWSLogger(enableLogging,"DynamoDBService") {
+) : DynamoDBService, AWSLogger(enableLogging, "DynamoDBService") {
 
     override var logger: LambdaLogger? = null
 
@@ -267,6 +267,36 @@ class DynamoDBServiceImpl(
         } catch (e: Exception) {
             log("ERROR", "Unexpected error while listing all projects", e)
             throw e
+        }
+    }
+
+    /**
+     * List all posts for a specific project domain
+     * @param domain The project domain
+     * @return A list of post content nodes for the domain
+     */
+    override suspend fun listAllPostsForProject(domain: String): List<ContentNode.PostNode> {
+        log("Listing all posts for domain: $domain")
+        
+        return executeDynamoOperation(
+            operationDescription = "list all posts for domain: $domain",
+            contextInfo = "domain: $domain"
+        ) {
+            val request = QueryRequest.builder()
+                .tableName(tableName)
+                .keyConditionExpression("#domainType = :domainTypeValue")
+                .expressionAttributeNames(mapOf("#domainType" to "domain#type"))
+                .expressionAttributeValues(mapOf(":domainTypeValue" to AttributeValue.builder().s("$domain#post").build()))
+                .build()
+
+            val response = dynamoDbClient.query(request).await()
+            if (response.count() > 0) {
+                log("Found ${response.count()} posts for domain: $domain")
+                response.items().map { item -> mapToPostNode(item) }
+            } else {
+                log("No posts found for domain: $domain")
+                emptyList()
+            }
         }
     }
 

@@ -124,6 +124,14 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
             }
 
             dynamoDBService.saveProject(newProject)
+            // create the default folders in S3
+            s3Service.createFolder(newProject.domain, sourceBucket)
+            s3Service.createFolder("${newProject.domain}/$pagesPrefix", sourceBucket)
+            s3Service.createFolder("${newProject.domain}/$templatesPrefix", sourceBucket)
+            s3Service.createFolder("${newProject.domain}/sources/pages", sourceBucket)
+            s3Service.createFolder("${newProject.domain}/sources/images", sourceBucket)
+            s3Service.createFolder("${newProject.domain}/sources/statics", sourceBucket)
+
 
             Response.ok(
                 body = APIResult.Success(value = "Successfully created project ${newProject.projectName}")

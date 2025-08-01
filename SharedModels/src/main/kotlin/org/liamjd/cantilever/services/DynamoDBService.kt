@@ -85,4 +85,11 @@ interface DynamoDBService {
      * @return A list of templates for the domain
      */
     suspend fun listAllTemplates(domain: String): TemplateListDTO
+
+    /**
+     * List all posts for a specific project domain
+     * @param domain The project domain
+     * @return A list of post content nodes for the domain
+     */
+    suspend fun listAllPostsForProject(domain: String): List<ContentNode.PostNode>
 }
