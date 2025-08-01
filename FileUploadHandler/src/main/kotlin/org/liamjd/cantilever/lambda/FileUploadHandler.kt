@@ -89,8 +89,8 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
         dynamoDBService.logger = logger
         var response = "200 OK"
         val markdownQueueURL = environmentProvider.getEnv(QUEUE.MARKDOWN)
-        val handlebarQueueURL = System.getenv(QUEUE.HANDLEBARS)
-        val imageQueueURL = System.getenv(QUEUE.IMAGES)
+        val handlebarQueueURL = environmentProvider.getEnv(QUEUE.HANDLEBARS)
+        val imageQueueURL = environmentProvider.getEnv(QUEUE.IMAGES)
 
         log("${event.records.size} upload events received")
 
@@ -133,12 +133,14 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                                             )
                                         ) {
                                             log("ERROR", "Error while processing uploaded post file.")
+                                            response = "500 Internal Server Error"
                                         }
                                     } else {
                                         log(
                                             "ERROR",
                                             "Posts must be written in Markdown format with the '.md' file extension"
                                         )
+                                        response = "400 Bad Request"
                                     }
                                 }
 
@@ -155,6 +157,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                                             "ERROR",
                                             "Pages must be written in Markdown format with the '.md' file extension"
                                         )
+                                        response = "400 Bad Request"
                                     }
                                 }
 
@@ -170,6 +173,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                                             "ERROR",
                                             "Templates must be written in Handlebars format with the '.hbs' file extension"
                                         )
+                                        response = "400 Bad Request"
                                     }
                                 }
 
