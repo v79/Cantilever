@@ -104,7 +104,6 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
             val metadata = ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", srcKey)
             dto = ImageDTO(srcKey, contentType, "") // we don't really need to return the bytes, the browser already has them
             contentTree.insertImage(metadata)
-            saveContentTree(projectKeyHeader)
         } catch (e: Exception) {
             error("Error uploading image $srcKey: ${e.message}")
             return Response.badRequest(APIResult.Error("Error uploading image $srcKey: ${e.message}"))

@@ -101,7 +101,6 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
             contentTree.insertTemplate(
                 newNode
             )
-            saveContentTree(projectKeyHeader)
             Response.ok(
                 body =
                     APIResult.OK("Updated file ${newNode.srcKey}, $length bytes")

@@ -126,14 +126,12 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
             val length =
                 s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
             contentTree.updatePage(pageToSave)
-            saveContentTree(projectKeyHeader)
             Response.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
             val length =
                 s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
             contentTree.insertPage(pageToSave)
-            saveContentTree(projectKeyHeader)
             Response.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
     }
@@ -159,7 +157,6 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
                     info("Deleting markdown file $decoded")
                     s3Service.deleteObject(decoded, sourceBucket)
                     contentTree.deletePage(pageNode)
-                    saveContentTree(projectKeyHeader)
                     Response.ok(body = APIResult.OK("Source $decoded deleted"))
                 } else {
                     error("Could not delete $decoded; object not found or was not a PageNode")
