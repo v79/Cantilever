@@ -102,20 +102,28 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                     val srcBucket = eventRecord.s3.bucket.name
                     val projectDomain = srcKey.substringBefore('/')
                     // the folder determines the type, POST, PAGE, STATICS
-                    val folderName = srcKey.removePrefix("$projectDomain/sources/").substringBefore('/')
+                    val parentFolder = srcKey.removePrefix("$projectDomain/sources/").substringBefore('/')
                     val size = eventRecord.s3.`object`.sizeAsLong
-                    val uploadFolder = SourceHelper.fromFolderName(folderName)
+                    val uploadFolder = SourceHelper.fromFolderName(parentFolder)
 
                     log("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
 
                     try {
                         val fileType = srcKey.substringAfterLast('.').lowercase()
                         val contentType = s3Service.getContentType(srcKey, srcBucket)
-                        log("FileUpload handler: source type is '$folderName'; file type is '$fileType'; content type is '$contentType'; uploaded to folder '$uploadFolder'")
+                        log("FileUpload handler: source type is '$parentFolder'; file type is '$fileType'; content type is '$contentType'; uploaded to folder '$uploadFolder'")
 
                         if (size == 0L) {
-                            log("ERROR", "File $srcKey is empty, so not processing")
-                            response = "400 Bad Request"
+                            // folders are a special case, being zero length but ending in a slash
+                            if (srcKey.endsWith('/')) {
+                                processFolderCreation(
+                                    srcKey = srcKey,
+                                    projectDomain = projectDomain,
+                                )
+                            } else {
+                                log("ERROR", "File $srcKey is empty, so not processing")
+                                response = "400 Bad Request"
+                            }
                         } else {
                             when (uploadFolder) {
                                 Root -> {
@@ -198,6 +206,12 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                                         contentType = contentType,
                                         queueUrl = imageQueueURL
                                     )
+                                }
+
+                                Folders -> {
+                                    // Folders are a special case, and they will already have been captured by the
+                                    // processFolderCreation method above, so we can ignore them here.
+                                    log("INFO", "Folder upload detected for $srcKey; no further processing required")
                                 }
 
                             }
@@ -374,6 +388,31 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
     }
 
     /**
+     * Process the creation of a folder.
+     * This is a special case where the source key ends with a slash (e.g. `www.example.com/sources/folders/my-folder/`).
+     * There is no queue message sent for folder creation, but it is recorded in the DynamoDB table.
+     * @param srcKey the source key of the folder
+     * @param projectDomain the domain of the project to which the folder belongs
+     */
+    private suspend fun processFolderCreation(
+        srcKey: String,
+        projectDomain: String
+    ) {
+        // Create a ContentNode for the folder
+        val folderNode = ContentNode.FolderNode(
+            srcKey = srcKey,
+            lastUpdated = Clock.System.now(),
+        )
+        // Upsert the content node in the DynamoDB table
+        upsertContentNode(
+            srcKey = srcKey,
+            projectDomain = projectDomain,
+            contentType = SOURCE_TYPE.Folders,
+            node = folderNode
+        )
+    }
+
+    /**
      * Process the uploaded template file. In the future, this will send a message to the template processor queue.
      * Currently, it does nothing as the template processing is handled by the Markdown processor.
      * @param srcKey the source key of the uploaded template file
@@ -433,7 +472,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
         contentType: SOURCE_TYPE,
         node: ContentNode
     ) {
-        log("Upserting content node for $srcKey in project $projectDomain")
+        log("Upserting '$contentType' node for '$srcKey' in project '$projectDomain'")
         dynamoDBService.upsertContentNode(
             srcKey = srcKey,
             projectDomain = projectDomain,

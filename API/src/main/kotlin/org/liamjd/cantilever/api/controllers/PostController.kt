@@ -55,13 +55,11 @@ class PostController(sourceBucket: String, generationBucket: String) : KoinCompo
             info("Updating existing file '${srcKey}'")
             val length = s3Service.putObjectAsString(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
             contentTree.updatePost(postToSave.toPostNode())
-            saveContentTree(projectKeyHeader)
             Response.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
             val length = s3Service.putObjectAsString(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
             contentTree.insertPost(postToSave.toPostNode())
-            saveContentTree(projectKeyHeader)
             Response.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
     }

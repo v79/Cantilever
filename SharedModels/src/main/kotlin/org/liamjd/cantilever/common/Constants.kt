@@ -51,7 +51,7 @@ object FILE_TYPE {
 }
 
 /**
- * The core types of object that Cantilever can process
+ * The core types of item that Cantilever can process
  */
 enum class SOURCE_TYPE(val folder: String, val dbType: String) {
     Pages("pages", "page"),
@@ -59,13 +59,14 @@ enum class SOURCE_TYPE(val folder: String, val dbType: String) {
     Templates("templates", "template"),
     Statics("statics", "static"),
     Images("images", "image"),
+    Folders("folders", "folder"),
     // This is a special type that represents the root of the sources bucket
     Root("", "root");
 
     object SourceHelper {
         /**
          * Return a [SOURCE_TYPE] for the given folder name
-         * @param folderName should be "posts", "pages", "templates" or "statics"
+         * @param folderName should be "posts", "pages", "templates", "folders" or "statics"
          */
         fun fromFolderName(folderName: String): SOURCE_TYPE =
             if(folderName.isBlank()) {

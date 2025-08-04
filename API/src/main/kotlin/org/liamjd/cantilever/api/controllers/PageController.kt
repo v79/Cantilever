@@ -97,7 +97,6 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
                     folderName += '/'
                 }
                 contentTree.insertFolder(ContentNode.FolderNode(folderName))
-                saveContentTree(projectKeyHeader)
 
                 Response.ok(body = APIResult.OK("Folder '$slugged' created"))
             } else {

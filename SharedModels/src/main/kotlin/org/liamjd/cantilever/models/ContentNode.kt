@@ -26,6 +26,7 @@ sealed class ContentNode {
 
     /**
      * A folder is a node in the tree which contains other nodes
+     * It is not used for the four core 'type' folders (pages, posts, templates, statics)
      */
     @Serializable
     @SerialName("folder")

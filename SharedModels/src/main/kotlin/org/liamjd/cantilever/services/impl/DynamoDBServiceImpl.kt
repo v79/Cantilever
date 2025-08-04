@@ -351,7 +351,8 @@ class DynamoDBServiceImpl(
                 }
 
                 is ContentNode.PageNode, is ContentNode.FolderNode -> {
-                    // These types are not fully implemented yet or not relevant for this test
+                    // These types are not fully implemented, yet
+                    // Folders won't have attributes on creation but could have them later
                     log("Node type ${node.javaClass.simpleName} not fully implemented for upsert")
                 }
             }
