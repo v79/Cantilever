@@ -402,7 +402,7 @@ internal class FileUploadHandlerTest : KoinTest {
             "x-amz-request-id", "x-amz-id-2"
         )
         val s3Record = S3EventNotification.S3EventNotificationRecord(
-            "eu-west-2", "eventName", "aws:s3", "12345", "1",
+            "eu-west-2", "ObjectCreated:Put", "aws:s3", "12345", "1",
             s3RequestParams, s3ResponseElements,
             s3Entity, s3Identity
         )

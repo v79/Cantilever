@@ -36,13 +36,6 @@ interface DynamoDBService {
     suspend fun deleteProject(domain: String, projectName: String): Boolean
 
     /**
-     * List all projects for a domain
-     * @param domain The project domain
-     * @return A list of projects for the domain
-     */
-    suspend fun listProjects(domain: String): List<CantileverProject>
-
-    /**
      * List all projects
      * @return A list of all projects
      */
@@ -67,6 +60,18 @@ interface DynamoDBService {
     ): Boolean
 
     /**
+     * Delete a content node from DynamoDB
+     * @param srcKey The source key for the content node
+     * @param projectDomain The domain of the project
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     */
+    suspend fun deleteContentNode(
+        srcKey: String,
+        projectDomain: String,
+        contentType: SOURCE_TYPE
+    )
+
+    /**
      * Get a content node by its source key, project domain and content type
      * @param srcKey The source key for the content node
      * @param projectDomain The domain of the project
@@ -78,6 +83,17 @@ interface DynamoDBService {
         projectDomain: String,
         contentType: SOURCE_TYPE
     ): ContentNode?
+
+    /**
+     * Get the count of content nodes for a specific project domain and content type
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @return The count of content nodes for the specified domain and content type
+     */
+    suspend fun getNodeCount(
+        projectDomain: String,
+        contentType: SOURCE_TYPE
+    ): Int
 
     /**
      * List all templates for a specific domain

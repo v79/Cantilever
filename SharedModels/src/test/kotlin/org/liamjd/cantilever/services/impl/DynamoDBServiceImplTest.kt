@@ -100,6 +100,63 @@ class DynamoDBServiceImplTest {
     }
 
     @Test
+    fun `getNodeCount should return correct count`() {
+        // Setup - Insert dummy nodes
+        val post1 = ContentNode.PostNode(
+            title = "Test Post 1",
+            templateKey = "template1",
+            date = LocalDate(2025, 8, 1),
+            slug = "test-post-1",
+            attributes = emptyMap()
+        )
+        post1.srcKey = "posts/2025/08/test-post-1.md"
+
+        val post2 = ContentNode.PostNode(
+            title = "Test Post 2",
+            templateKey = "template2",
+            date = LocalDate(2025, 8, 2),
+            slug = "test-post-2",
+            attributes = emptyMap()
+        )
+        post2.srcKey = "posts/2025/08/test-post-2.md"
+
+        runBlocking {
+            // Insert nodes
+            service.upsertContentNode(
+                srcKey = post1.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Posts,
+                node = post1,
+                attributes = emptyMap()
+            )
+            service.upsertContentNode(
+                srcKey = post2.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Posts,
+                node = post2,
+                attributes = emptyMap()
+            )
+
+            // Execute
+            val count = service.getNodeCount("test-domain", SOURCE_TYPE.Posts)
+
+            // Verify
+            assertEquals(2, count, "Node count should be 2")
+        }
+    }
+
+    @Test
+    fun `getNodeCount with no nodes should return zero`() {
+        runBlocking {
+            // Execute
+            val count = service.getNodeCount("test-domain", SOURCE_TYPE.Posts)
+
+            // Verify
+            assertEquals(0, count, "Node count should be 0 when no nodes exist")
+        }
+    }
+
+    @Test
     fun `saveProject should store project in DynamoDB`() {
         // Setup
         val project = CantileverProject(
@@ -387,6 +444,71 @@ class DynamoDBServiceImplTest {
             
             assertEquals(post1.title, foundPost1?.title, "First post title should match")
             assertEquals(post2.title, foundPost2?.title, "Second post title should match")
+        }
+    }
+
+    @Test
+    fun `can delete an existing content node`() {
+        // Setup
+        val nodeKey = "sources/posts/2025/07/sample-post.md"
+        val post = ContentNode.PostNode(
+            title = "Sample Post",
+            templateKey = "sources/templates/post.html.hbs",
+            date = LocalDate(2025, 7, 30),
+            slug = "sample-post",
+            attributes = mapOf("author" to "Test Author")
+        )
+        post.srcKey = nodeKey
+
+        runBlocking {
+            service.upsertContentNode(
+                srcKey = post.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Posts,
+                node = post,
+                attributes = emptyMap()
+            )
+
+            // Execute
+            service.deleteContentNode(
+                srcKey = nodeKey, projectDomain = "test-domain", contentType = SOURCE_TYPE.Posts
+            )
+
+            // Verify
+            val deletedNode = service.getContentNode(
+                srcKey = nodeKey, projectDomain = "test-domain", contentType = SOURCE_TYPE.Posts
+            )
+            assertNull(deletedNode, "Deleted node should not be retrievable")
+        }
+    }
+
+    @Test
+    fun `can delete a static content node`() {
+        // Setup
+        val staticKey = "sources/static/sample-style.css"
+        val staticNode = ContentNode.StaticNode(
+            srcKey = staticKey,
+            lastUpdated = Instant.fromEpochSeconds(100000L)
+        )
+        runBlocking {
+            service.upsertContentNode(
+                srcKey = staticNode.srcKey,
+                projectDomain = "test-domain",
+                contentType = SOURCE_TYPE.Statics,
+                node = staticNode,
+                attributes = emptyMap()
+            )
+
+            // Execute
+            val isDeleted = service.deleteContentNode(
+                srcKey = staticKey, projectDomain = "test-domain", contentType = SOURCE_TYPE.Statics
+            )
+
+            // Verify
+            val deletedStaticNode = service.getContentNode(
+                srcKey = staticKey, projectDomain = "test-domain", contentType = SOURCE_TYPE.Statics
+            )
+            assertNull(deletedStaticNode, "Deleted static node should not be retrievable")
         }
     }
 

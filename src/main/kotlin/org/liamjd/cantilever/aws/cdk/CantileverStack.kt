@@ -272,7 +272,7 @@ class CantileverStack(
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
         fileUploadLambda.addEventSource(
             S3EventSource.Builder.create(sourceBucket)
-                .events(mutableListOf(EventType.OBJECT_CREATED_PUT, EventType.OBJECT_CREATED_POST)).build()
+                .events(mutableListOf(EventType.OBJECT_CREATED_PUT, EventType.OBJECT_CREATED_POST, EventType.OBJECT_REMOVED)).build()
         )
 
         println("Add markdown processor SQS event source to markdown processor lambda")

@@ -191,45 +191,6 @@ class DynamoDBServiceImpl(
     }
 
     /**
-     * List all projects for a domain
-     * @param domain The project domain
-     * @return A list of projects for the domain
-     */
-    override suspend fun listProjects(domain: String): List<CantileverProject> {
-        log("Listing projects for domain: $domain")
-
-        try {
-            val request = QueryRequest.builder()
-                .tableName(tableName)
-                .keyConditionExpression("domain#type = :domainType")
-                .expressionAttributeValues(
-                    mapOf(":domainType" to AttributeValue.builder().s("$domain#project").build())
-                )
-                .build()
-
-            log("Executing Query request for domain: $domain")
-            val response = dynamoDbClient.query(request).await()
-
-            val projects = response.items().map { item -> mapToProject(item) }
-            log("Found ${projects.size} projects for domain: $domain")
-
-            return projects
-        } catch (e: DynamoDbException) {
-            log("ERROR", "Failed to list projects for domain: $domain", e)
-            throw e
-        } catch (e: AwsServiceException) {
-            log("ERROR", "AWS service error while listing projects for domain: $domain", e)
-            throw e
-        } catch (e: SdkClientException) {
-            log("ERROR", "SDK client error while listing projects for domain: $domain", e)
-            throw e
-        } catch (e: Exception) {
-            log("ERROR", "Unexpected error while listing projects for domain: $domain", e)
-            throw e
-        }
-    }
-
-    /**
      * List all projects
      * @return A list of all projects
      */
@@ -277,7 +238,7 @@ class DynamoDBServiceImpl(
      */
     override suspend fun listAllPostsForProject(domain: String): List<ContentNode.PostNode> {
         log("Listing all posts for domain: $domain")
-        
+
         return executeDynamoOperation(
             operationDescription = "list all posts for domain: $domain",
             contextInfo = "domain: $domain"
@@ -286,7 +247,11 @@ class DynamoDBServiceImpl(
                 .tableName(tableName)
                 .keyConditionExpression("#domainType = :domainTypeValue")
                 .expressionAttributeNames(mapOf("#domainType" to "domain#type"))
-                .expressionAttributeValues(mapOf(":domainTypeValue" to AttributeValue.builder().s("$domain#post").build()))
+                .expressionAttributeValues(
+                    mapOf(
+                        ":domainTypeValue" to AttributeValue.builder().s("$domain#post").build()
+                    )
+                )
                 .build()
 
             val response = dynamoDbClient.query(request).await()
@@ -399,6 +364,47 @@ class DynamoDBServiceImpl(
     }
 
     /**
+     * Delete a content node from DynamoDB
+     * @param srcKey The source key for the content node
+     * @param projectDomain The domain of the project
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     */
+    override suspend fun deleteContentNode(
+        srcKey: String,
+        projectDomain: String,
+        contentType: SOURCE_TYPE
+    ) {
+        log("Deleting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
+
+        try {
+            val key = mapOf(
+                "domain#type" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
+                "srcKey" to AttributeValue.builder().s(srcKey).build()
+            )
+
+            val request = DeleteItemRequest.builder()
+                .tableName(tableName)
+                .key(key)
+                .build()
+
+            log("Executing DeleteItem request for content node: $srcKey")
+            val response = dynamoDbClient.deleteItem(request).await()
+        } catch (e: DynamoDbException) {
+            log("ERROR", "Failed to delete content node: $srcKey in domain: $projectDomain", e)
+            throw e
+        } catch (e: AwsServiceException) {
+            log("ERROR", "AWS service error while deleting content node: $srcKey", e)
+            throw e
+        } catch (e: SdkClientException) {
+            log("ERROR", "SDK client error while deleting content node: $srcKey", e)
+            throw e
+        } catch (e: Exception) {
+            log("ERROR", "Unexpected error while deleting content node: $srcKey", e)
+            throw e
+        }
+    }
+
+    /**
      * Get a content node by its source key, project domain and content type
      * @param srcKey The source key for the content node
      * @param projectDomain The domain of the project
@@ -450,6 +456,43 @@ class DynamoDBServiceImpl(
         } catch (e: Exception) {
             log("ERROR", "Unexpected error while getting content node: $srcKey", e)
             throw e
+        }
+    }
+
+
+    /**
+     * Get the count of content nodes for a specific project domain and content type
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @return The count of content nodes for the specified domain and content type
+     */
+    override suspend fun getNodeCount(
+        projectDomain: String,
+        contentType: SOURCE_TYPE
+    ): Int {
+        log("Getting node count for domain: $projectDomain of type: ${contentType.dbType}")
+
+        return executeDynamoOperation(
+            operationDescription = "get node count",
+            contextInfo = "domain: $projectDomain, type: ${contentType.dbType}"
+        ) {
+            val request = QueryRequest.builder()
+                .tableName(tableName)
+                .keyConditionExpression("#domainType = :domainTypeValue")
+                .expressionAttributeNames(mapOf("#domainType" to "domain#type"))
+                .expressionAttributeValues(
+                    mapOf(
+                        ":domainTypeValue" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build()
+                    )
+                )
+                .select(Select.COUNT) // Only get the count
+                .build()
+
+            log("Executing Query request for node count in domain: $projectDomain")
+            val response = dynamoDbClient.query(request).await()
+
+            log("Node count for domain: $projectDomain is ${response.count()}")
+            response.count()
         }
     }
 

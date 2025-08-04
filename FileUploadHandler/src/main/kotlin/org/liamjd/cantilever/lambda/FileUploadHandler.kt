@@ -97,129 +97,153 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
         runBlocking {
             try {
                 for (eventRecord in event.records) {
-                    // srcKey will be in the format www.<domain>.com/sources/<source_type>/<filename>
-                    val srcKey = eventRecord.s3.`object`.urlDecodedKey
-                    val srcBucket = eventRecord.s3.bucket.name
-                    val projectDomain = srcKey.substringBefore('/')
-                    // the folder determines the type, POST, PAGE, STATICS
-                    val parentFolder = srcKey.removePrefix("$projectDomain/sources/").substringBefore('/')
-                    val size = eventRecord.s3.`object`.sizeAsLong
-                    val uploadFolder = SourceHelper.fromFolderName(parentFolder)
 
-                    log("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
+                    // Check if the event is ObjectCreated (PUT or POST) or ObjectRemoved (DELETE)
+                    if (eventRecord.eventName == "ObjectRemoved:Delete") {
+                        // handle deletion events
+                        // what are the relationships between nodes?
+                        // templates should have a count of their usage
+                        // images should have a count of their usage
+                        // posts know their previous and next post links
+                        // pages know their parent folder
+                        // folders know their index page, if any
+                        // folders know their children
 
-                    try {
-                        val fileType = srcKey.substringAfterLast('.').lowercase()
-                        val contentType = s3Service.getContentType(srcKey, srcBucket)
-                        log("FileUpload handler: source type is '$parentFolder'; file type is '$fileType'; content type is '$contentType'; uploaded to folder '$uploadFolder'")
 
-                        if (size == 0L) {
-                            // folders are a special case, being zero length but ending in a slash
-                            if (srcKey.endsWith('/')) {
-                                processFolderCreation(
-                                    srcKey = srcKey,
-                                    projectDomain = projectDomain,
-                                )
-                            } else {
-                                log("ERROR", "File $srcKey is empty, so not processing")
-                                response = "400 Bad Request"
-                            }
-                        } else {
-                            when (uploadFolder) {
-                                Root -> {
-                                    log("WARN", "No action defined for ROOT upload")
+
+                    }
+                    if (eventRecord.eventName == "ObjectCreated:Put" || eventRecord.eventName == "ObjectCreated:Post") {
+                        // Process the upload event
+                        // srcKey will be in the format www.<domain>.com/sources/<source_type>/<filename>
+                        val srcKey = eventRecord.s3.`object`.urlDecodedKey
+                        val srcBucket = eventRecord.s3.bucket.name
+                        val projectDomain = srcKey.substringBefore('/')
+                        // the folder determines the type, POST, PAGE, STATICS
+                        val parentFolder = srcKey.removePrefix("$projectDomain/sources/").substringBefore('/')
+                        val size = eventRecord.s3.`object`.sizeAsLong
+                        val uploadFolder = SourceHelper.fromFolderName(parentFolder)
+
+                        log("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
+
+                        try {
+                            val fileType = srcKey.substringAfterLast('.').lowercase()
+                            val contentType = s3Service.getContentType(srcKey, srcBucket)
+                            log("FileUpload handler: source type is '$parentFolder'; file type is '$fileType'; content type is '$contentType'; uploaded to folder '$uploadFolder'")
+
+                            if (size == 0L) {
+                                // folders are a special case, being zero length but ending in a slash
+                                if (srcKey.endsWith('/')) {
+                                    processFolderCreation(
+                                        srcKey = srcKey,
+                                        projectDomain = projectDomain,
+                                    )
+                                } else {
+                                    log("ERROR", "File $srcKey is empty, so not processing")
+                                    response = "400 Bad Request"
                                 }
+                            } else {
+                                when (uploadFolder) {
+                                    Root -> {
+                                        log("WARN", "No action defined for ROOT upload")
+                                    }
 
-                                Posts -> {
-                                    // I'd like to check ContentType too, but it is not set correctly for .md files uploaded via IntelliJ
-                                    if (fileType == FILE_TYPE.MD) {
-                                        if (!processPostUpload(
+                                    Posts -> {
+                                        // I'd like to check ContentType too, but it is not set correctly for .md files uploaded via IntelliJ
+                                        if (fileType == FILE_TYPE.MD) {
+                                            if (!processPostUpload(
+                                                    srcKey = srcKey,
+                                                    srcBucket = srcBucket,
+                                                    queueUrl = markdownQueueURL,
+                                                    projectDomain = projectDomain
+                                                )
+                                            ) {
+                                                log("ERROR", "Error while processing uploaded post file.")
+                                                response = "500 Internal Server Error"
+                                            }
+                                        } else {
+                                            log(
+                                                "ERROR",
+                                                "Posts must be written in Markdown format with the '.md' file extension"
+                                            )
+                                            response = "400 Bad Request"
+                                        }
+                                    }
+
+                                    Pages -> {
+                                        if (fileType == FILE_TYPE.MD) {
+                                            processPageUpload(
                                                 srcKey = srcKey,
                                                 srcBucket = srcBucket,
                                                 queueUrl = markdownQueueURL,
                                                 projectDomain = projectDomain
                                             )
-                                        ) {
-                                            log("ERROR", "Error while processing uploaded post file.")
-                                            response = "500 Internal Server Error"
+                                        } else {
+                                            log(
+                                                "ERROR",
+                                                "Pages must be written in Markdown format with the '.md' file extension"
+                                            )
+                                            response = "400 Bad Request"
                                         }
-                                    } else {
-                                        log(
-                                            "ERROR",
-                                            "Posts must be written in Markdown format with the '.md' file extension"
-                                        )
-                                        response = "400 Bad Request"
                                     }
-                                }
 
-                                Pages -> {
-                                    if (fileType == FILE_TYPE.MD) {
-                                        processPageUpload(
-                                            srcKey = srcKey,
-                                            srcBucket = srcBucket,
-                                            queueUrl = markdownQueueURL,
-                                            projectDomain = projectDomain
-                                        )
-                                    } else {
-                                        log(
-                                            "ERROR",
-                                            "Pages must be written in Markdown format with the '.md' file extension"
-                                        )
-                                        response = "400 Bad Request"
-                                    }
-                                }
-
-                                Templates -> {
-                                    if (fileType == FILE_TYPE.HBS) {
-                                        processTemplateUpload(
-                                            srcKey = srcKey,
-                                            srcBucket = srcBucket,
-                                            projectDomain = projectDomain
-                                        )
-                                    } else {
-                                        log(
-                                            "ERROR",
-                                            "Templates must be written in Handlebars format with the '.hbs' file extension"
-                                        )
-                                        response = "400 Bad Request"
-                                    }
-                                }
-
-                                Statics -> {
-                                    // What other static files do we support?
-                                    when (fileType) {
-                                        FILE_TYPE.CSS -> {
-                                            processCSSUpload(
+                                    Templates -> {
+                                        if (fileType == FILE_TYPE.HBS) {
+                                            processTemplateUpload(
                                                 srcKey = srcKey,
-                                                queueUrl = handlebarQueueURL,
+                                                srcBucket = srcBucket,
                                                 projectDomain = projectDomain
                                             )
+                                        } else {
+                                            log(
+                                                "ERROR",
+                                                "Templates must be written in Handlebars format with the '.hbs' file extension"
+                                            )
+                                            response = "400 Bad Request"
                                         }
                                     }
-                                }
 
-                                Images -> {
-                                    // Should add some type checking here
-                                    processImageUpload(
-                                        srcKey = srcKey,
-                                        projectDomain = projectDomain,
-                                        contentType = contentType,
-                                        queueUrl = imageQueueURL
-                                    )
-                                }
+                                    Statics -> {
+                                        // What other static files do we support?
+                                        when (fileType) {
+                                            FILE_TYPE.CSS -> {
+                                                processCSSUpload(
+                                                    srcKey = srcKey,
+                                                    queueUrl = handlebarQueueURL,
+                                                    projectDomain = projectDomain
+                                                )
+                                            }
+                                        }
+                                    }
 
-                                Folders -> {
-                                    // Folders are a special case, and they will already have been captured by the
-                                    // processFolderCreation method above, so we can ignore them here.
-                                    log("INFO", "Folder upload detected for $srcKey; no further processing required")
-                                }
+                                    Images -> {
+                                        // Should add some type checking here
+                                        processImageUpload(
+                                            srcKey = srcKey,
+                                            projectDomain = projectDomain,
+                                            contentType = contentType,
+                                            queueUrl = imageQueueURL
+                                        )
+                                    }
 
+                                    Folders -> {
+                                        // Folders are a special case, and they will already have been captured by the
+                                        // processFolderCreation method above, so we can ignore them here.
+                                        log(
+                                            "INFO",
+                                            "Folder upload detected for $srcKey; no further processing required"
+                                        )
+                                    }
+
+                                }
                             }
-                        }
 
-                    } catch (nske: NoSuchKeyException) {
-                        log("ERROR", "FileUpload EXCEPTION: ${nske.message}")
-                        response = "500 Internal Server Error"
+                        } catch (nske: NoSuchKeyException) {
+                            log("ERROR", "FileUpload EXCEPTION: ${nske.message}")
+                            response = "500 Internal Server Error"
+                        }
+                    } else {
+                        log("INFO", "Ignoring event '${eventRecord.eventName}'")
+                        continue
                     }
                 }
             } finally {
