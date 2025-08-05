@@ -33,8 +33,11 @@ How to do this?
 -[ ] getCountOfPostsWithTemplate(srcKey, domain) -> Int
 -[ ] getCountOfPagesWithTemplate(srcKey, domain) -> Int
 
-They have to be separated because the partition key is by type
+They have to be separated because the partition key is by type. Or do they?
 
+-[x] getKeyListMatchingAttributes(domain, type, attributesMap) -> List<SrcKey> 
+
+This works for custom attributes on posts, as they will be keyed as "attr#<keyname>". But does not solve the template query, because template is not a custom attribute, but a known key for ContentNode.PostNode.
 -[ ] getCountOf*WithImage(srcKey, domain) -> Int
 
 _Hypothetical, not tracked at all yet_

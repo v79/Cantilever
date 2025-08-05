@@ -101,6 +101,90 @@ class DynamoDBServiceImplTest {
     }
 
     @Test
+    fun `getKeyListMatchingAttributes should return matching keys`() = runBlocking {
+        // Setup
+        val post1 = ContentNode.PostNode(
+            title = "Matching Post",
+            templateKey = "template1",
+            date = LocalDate(2025, 8, 1),
+            slug = "matching-post",
+            attributes = mapOf("author" to "John Doe", "category" to "News")
+        )
+        post1.srcKey = "posts/2025/08/matching-post.md"
+
+        val post2 = ContentNode.PostNode(
+            title = "Non-Matching Post",
+            templateKey = "template2",
+            date = LocalDate(2025, 8, 2),
+            slug = "non-matching-post",
+            attributes = mapOf("author" to "Jane Doe", "category" to "Science")
+        )
+        post2.srcKey = "posts/2025/08/non-matching-post.md"
+
+        service.upsertContentNode(
+            srcKey = post1.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Posts,
+            node = post1,
+            attributes = post1.attributes
+        )
+        service.upsertContentNode(
+            srcKey = post2.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Posts,
+            node = post2,
+            attributes = post2.attributes
+        )
+
+        // how can I check what's actually in the table?
+        // attributes have been created as attr#name, which is not what I want
+
+        // Execute
+        val matchingKeys = service.getKeyListMatchingAttributes(
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Posts,
+            attributes = mapOf("author" to "John Doe", "category" to "News")
+        )
+
+        // Verify
+        assertNotNull(matchingKeys)
+        assertEquals(1, matchingKeys.size)
+        assertTrue(matchingKeys.contains(post1.srcKey))
+    }
+
+    @Test
+    fun `getKeyListMatchingAttributes with no matching keys should return empty list`() = runBlocking {
+        // Setup
+        val post = ContentNode.PostNode(
+            title = "Test Post",
+            templateKey = "template1",
+            date = LocalDate(2025, 8, 1),
+            slug = "test-post",
+            attributes = mapOf("author" to "John Doe", "category" to "News")
+        )
+        post.srcKey = "posts/2025/08/test-post.md"
+
+        service.upsertContentNode(
+            srcKey = post.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Posts,
+            node = post,
+            attributes = post.attributes
+        )
+
+        // Execute
+        val nonMatchingKeys = service.getKeyListMatchingAttributes(
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Posts,
+            attributes = mapOf("author" to "Jane Doe", "category" to "Science")
+        )
+
+        // Verify
+        assertNotNull(nonMatchingKeys)
+        assertTrue(nonMatchingKeys.isEmpty())
+    }
+
+    @Test
     fun `getNodeCount should return correct count`() {
         // Setup - Insert dummy nodes
         val post1 = ContentNode.PostNode(

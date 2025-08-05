@@ -509,6 +509,65 @@ class DynamoDBServiceImpl(
     }
 
     /**
+     * Get a list of content nodes with specific attributes for a project domain and content type
+     * For instance; to retrieve the list of all posts with a particular template, you can pass the template name as an attribute.
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g. Pages, Posts, Templates, Statics, Images)
+     * @param attributes A map of attributes to filter the content nodes
+     * @return A list of the src keys of nodes that match the specified attributes
+     */
+    override suspend fun getKeyListMatchingAttributes(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        attributes: Map<String, String>
+    ): List<String> {
+        log("Getting keys matching attributes for domain: $projectDomain of type: ${contentType.dbType}")
+
+        return executeDynamoOperation(
+            operationDescription = "get keys matching attributes",
+            contextInfo = "domain: $projectDomain, type: ${contentType.dbType}, attributes: $attributes"
+        ) {
+            val filterExpression = attributes.entries.joinToString(" AND ") { "#attr_${it.key} = :attrValue_${it.key}" }
+            val expressionAttributeNames = attributes.keys.associateWith { "attr#${it}" }
+                .mapKeys { "#attr_${it.key}" }
+            val expressionAttributeValues = attributes.entries.associate { ":attrValue_${it.key}" to AttributeValue.builder().s(it.value).build() }
+
+            println("\texpression: $filterExpression")
+            println("\tnames: $expressionAttributeNames")
+            println("\tvalues: $expressionAttributeValues")
+
+            val request = QueryRequest.builder()
+                .tableName(tableName)
+                .keyConditionExpression("#pk = :domainType")
+                .filterExpression(filterExpression)
+                .expressionAttributeNames(
+                    mapOf(
+                        "#pk" to "domain#type"
+                    ) + expressionAttributeNames
+                )
+                .expressionAttributeValues(
+                    mapOf(":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build()) +
+                            expressionAttributeValues
+                )
+                .projectionExpression("srcKey") // Only get the srcKey
+                .build()
+
+            log("Executing Query request for keys matching attributes in domain: $projectDomain")
+            val response = dynamoDbClient.query(request).await()
+
+            if (response.count() > 0) {
+                log("Found ${response.count()} keys matching attributes in domain: $projectDomain")
+                response.items().mapNotNull { it["srcKey"]?.s() }
+            } else {
+                log("No keys found matching attributes in domain: $projectDomain")
+                emptyList()
+            }
+        }
+    }
+
+    // ==========================================
+
+    /**
      * Map a DynamoDB item to a CantileverProject
      * @param item The DynamoDB item
      * @return The CantileverProject

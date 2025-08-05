@@ -103,4 +103,18 @@ interface DynamoDBService {
      * Recommend that you use list.filterIsInstance<ContentNode.*>() to filter the list to the specific type you need.
      */
     suspend fun listAllNodesForProject(domain: String, type: SOURCE_TYPE): List<ContentNode>
+
+    /**
+     * Get a list of content nodes with specific bespoke attributes for a project domain and content type
+     * For instance; to retrieve the list of all posts with a particular bespoke attribute (say, "mood"), you can pass the mood as an attribute.
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g. Pages, Posts, Templates, Statics, Images)
+     * @param attributes A map of attributes to filter the content nodes
+     * @return A list of the src keys of nodes that match the specified attributes
+     */
+    suspend fun getKeyListMatchingAttributes(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        attributes: Map<String, String>
+    ): List<String>
 }
