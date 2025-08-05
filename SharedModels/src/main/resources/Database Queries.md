@@ -30,10 +30,7 @@ How to do this?
 
 ### Counts of Nodes for Template or Static
 
--[ ] getCountOfPostsWithTemplate(srcKey, domain) -> Int
--[ ] getCountOfPagesWithTemplate(srcKey, domain) -> Int
-
-They have to be separated because the partition key is by type. Or do they?
+-[ ] getKeyListMatchingTemplate(domain, type?, templateKey) -> List<SrcKey>
 
 -[x] getKeyListMatchingAttributes(domain, type, attributesMap) -> List<SrcKey> 
 

@@ -61,9 +61,9 @@ sealed class ContentNode {
 
         @Transient
         val type: String? =
-            null // this is used by the front end to determine if it's a page or a post, but is  not needed here
+            null // this is used by the front end to determine if it's a page or a post, but is not needed here
 
-        // I might actually want to generate both index.html and the slug version of the file but for now let's just do index.html or slug
+        // I might actually want to generate both index.html and the slug version of the file, but for now let's just do index.html or slug
         override val url: String
             get() {
                 // intended url would be www.cantilevers.org/parentFolder/slug
@@ -106,7 +106,7 @@ sealed class ContentNode {
             }
 
         /**
-         * secondary constructor for when we know the srcKey
+         * Secondary constructor for when we know the srcKey
          */
         constructor(
             srcKey: String,
@@ -128,7 +128,7 @@ sealed class ContentNode {
         }
 
         /**
-         * secondary constructor to convert a temporary [PostYaml] object into a [PostNode]
+         * Secondary constructor to convert a temporary [PostYaml] object into a [PostNode]
          */
         internal constructor(postYaml: PostYaml) : this(
             title = postYaml.title,
@@ -145,7 +145,7 @@ sealed class ContentNode {
     }
 
     /**
-     * A template is a node in the tree which represents a handlebars template. It is used to generate the final HTML for a page
+     * A template is a node in the tree which represents a Handlebars template. It is used to generate the final HTML for a page
      */
     @Serializable
     @SerialName("template")
@@ -160,7 +160,7 @@ sealed class ContentNode {
     }
 
     /**
-     * A static is a node in the tree which represents a static file, such as a .css file. It is copied to the generated bucket without modification
+     * A Static is a node in the tree which represents a static file, such as a .css file. It is copied to the generated bucket without modification
      */
     @Serializable
     @SerialName("static")
@@ -213,6 +213,7 @@ internal class PostYaml(
  * It is split into items (pages, folders and posts), templates and statics
  */
 @Serializable
+@Deprecated("This class is being replaced with specific dynamodb queries and classes for ContentNode.")
 class ContentTree {
 
     val items: MutableList<ContentNode> = mutableListOf()

@@ -4,7 +4,6 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger
 import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentNode
-import org.liamjd.cantilever.models.rest.TemplateListDTO
 
 /**
  * Interface for DynamoDB operations related to Cantilever projects
@@ -117,4 +116,14 @@ interface DynamoDBService {
         contentType: SOURCE_TYPE,
         attributes: Map<String, String>
     ): List<String>
+
+    /**
+     * Get a list of content nodes that match a specific template key for a project domain and content type.
+     * This is useful for retrieving all nodes that use a specific template.
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g., Pages or Posts; not applicable for others)
+     * @param templateKey The key of the template to match,
+     * @return A list of src keys of nodes that match the specified template key
+     */
+    suspend fun getKeyListMatchingTemplate(projectDomain: String, contentType: SOURCE_TYPE, templateKey: String): List<String>
 }

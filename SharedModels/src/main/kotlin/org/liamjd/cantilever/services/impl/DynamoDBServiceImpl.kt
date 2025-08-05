@@ -9,7 +9,6 @@ import kotlinx.datetime.toLocalDateTime
 import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentNode
-import org.liamjd.cantilever.models.rest.TemplateListDTO
 import org.liamjd.cantilever.services.AWSLogger
 import org.liamjd.cantilever.services.DynamoDBService
 import software.amazon.awssdk.awscore.exception.AwsServiceException
@@ -521,20 +520,18 @@ class DynamoDBServiceImpl(
         contentType: SOURCE_TYPE,
         attributes: Map<String, String>
     ): List<String> {
-        log("Getting keys matching attributes for domain: $projectDomain of type: ${contentType.dbType}")
+        log("Getting nodes matching attributes for domain: $projectDomain of type: ${contentType.dbType}")
 
         return executeDynamoOperation(
-            operationDescription = "get keys matching attributes",
+            operationDescription = "get nodes matching attributes",
             contextInfo = "domain: $projectDomain, type: ${contentType.dbType}, attributes: $attributes"
         ) {
+            // We add an expression attribute name mapping because the incoming attributes don't match the column name exactly
             val filterExpression = attributes.entries.joinToString(" AND ") { "#attr_${it.key} = :attrValue_${it.key}" }
             val expressionAttributeNames = attributes.keys.associateWith { "attr#${it}" }
                 .mapKeys { "#attr_${it.key}" }
-            val expressionAttributeValues = attributes.entries.associate { ":attrValue_${it.key}" to AttributeValue.builder().s(it.value).build() }
-
-            println("\texpression: $filterExpression")
-            println("\tnames: $expressionAttributeNames")
-            println("\tvalues: $expressionAttributeValues")
+            val expressionAttributeValues =
+                attributes.entries.associate { ":attrValue_${it.key}" to AttributeValue.builder().s(it.value).build() }
 
             val request = QueryRequest.builder()
                 .tableName(tableName)
@@ -556,16 +553,68 @@ class DynamoDBServiceImpl(
             val response = dynamoDbClient.query(request).await()
 
             if (response.count() > 0) {
-                log("Found ${response.count()} keys matching attributes in domain: $projectDomain")
+                log("Found ${response.count()} nodes matching attributes in domain: $projectDomain")
                 response.items().mapNotNull { it["srcKey"]?.s() }
             } else {
-                log("No keys found matching attributes in domain: $projectDomain")
+                log("No nodes found matching attributes in domain: $projectDomain")
                 emptyList()
             }
         }
     }
 
-    // ==========================================
+    /**
+     * Get a list of content nodes that match a specific template key for a project domain and content type.
+     * This is useful for retrieving all nodes that use a specific template.
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g., Pages or Posts; not applicable for others)
+     * @param templateKey The key of the template to match,
+     * @return A list of src keys of nodes that match the specified template key
+     */
+    override suspend fun getKeyListMatchingTemplate(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        templateKey: String
+    ): List<String> {
+        log("Getting nodes matching template: $templateKey in domain: $projectDomain of type: ${contentType.dbType}")
+
+        return executeDynamoOperation(
+            operationDescription = "get nodes matching template",
+            contextInfo = "domain: $projectDomain, type: $contentType, template: $templateKey",
+        ) {
+            // We don't need a mapping of expressionAttributeNames because the key name is simple and matches the expression
+            val filterExpression = "templateKey = :templateKey"
+            val expressionAttributeValues = mapOf(":templateKey" to AttributeValue.builder().s(templateKey).build())
+
+            println("\texpression: $filterExpression")
+            println("\tvalues: $expressionAttributeValues")
+
+            val request = QueryRequest.builder()
+                .tableName(tableName)
+                .keyConditionExpression("#pk = :domainType")
+                .filterExpression(filterExpression)
+                .expressionAttributeNames(mapOf("#pk" to "domain#type"))
+                .expressionAttributeValues(
+                    mapOf(
+                        ":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build()
+                    ) + expressionAttributeValues
+                )
+                .projectionExpression("srcKey")
+                .build()
+
+            log("Executing Query request for nodes matching template '$templateKey' in domain: $projectDomain")
+            val response = dynamoDbClient.query(request).await()
+
+            if (response.count() > 0) {
+                log("Found ${response.count()} nodes matching template '$templateKey' in domain: $projectDomain")
+                response.items().mapNotNull { it["srcKey"]?.s() }
+            } else {
+                log("No nodes found matching template '$templateKey' in domain: $projectDomain")
+                emptyList()
+            }
+        }
+    }
+
+    // ========================================== Node mapping utilities ===========================
 
     /**
      * Map a DynamoDB item to a CantileverProject
