@@ -585,9 +585,6 @@ class DynamoDBServiceImpl(
             val filterExpression = "templateKey = :templateKey"
             val expressionAttributeValues = mapOf(":templateKey" to AttributeValue.builder().s(templateKey).build())
 
-            println("\texpression: $filterExpression")
-            println("\tvalues: $expressionAttributeValues")
-
             val request = QueryRequest.builder()
                 .tableName(tableName)
                 .keyConditionExpression("#pk = :domainType")

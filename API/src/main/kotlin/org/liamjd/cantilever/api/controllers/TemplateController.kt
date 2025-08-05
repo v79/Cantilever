@@ -138,28 +138,21 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
     fun getTemplateUsage(request: Request<Unit>): Response<APIResult<TemplateUseDTO>> {
         val templateKey = request.pathParameters["srcKey"]
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        if (templateKey != null) {
-            return if (loadContentTree(projectKeyHeader)) {
+        return if (templateKey != null) {
+            runBlocking {
                 val decoded = URLDecoder.decode(templateKey, Charsets.UTF_8)
                 info("Looking for uses of template $decoded")
-                // unfortunately need to strip away projectKeyHeader from the srcKey
                 val srcKey = decoded.removePrefix("$projectKeyHeader/")
-                val pages = contentTree.getPagesForTemplate(srcKey).map { it.srcKey }
-                val posts = contentTree.getPostsForTemplate(srcKey).map { it.srcKey }
+                val posts = dynamoDBService.getKeyListMatchingTemplate(projectKeyHeader, SOURCE_TYPE.Posts, srcKey)
+                val pages = dynamoDBService.getKeyListMatchingTemplate(projectKeyHeader, SOURCE_TYPE.Pages, srcKey)
                 val count = pages.size + posts.size
                 val dto = TemplateUseDTO(count = count, pageKeys = pages, postKeys = posts)
                 info("Found ${dto.count} uses, across ${dto.pageKeys.size} pages and ${dto.postKeys.size} posts")
                 Response.ok(APIResult.Success(dto))
-            } else {
-                error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
-                Response.notFound(
-                    body = APIResult.Error(
-                        statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"
-                    )
-                )
             }
+        } else {
+            Response.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
         }
-        return Response.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
     }
 
     /**
