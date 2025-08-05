@@ -96,16 +96,11 @@ interface DynamoDBService {
     ): Int
 
     /**
-     * List all templates for a specific domain
+     * List all nodes for a specific project domain and content type
      * @param domain The project domain
-     * @return A list of templates for the domain
+     * @param type The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @return A list of content nodes for the specified domain and content type. These will be of type [ContentNode].
+     * Recommend that you use list.filterIsInstance<ContentNode.*>() to filter the list to the specific type you need.
      */
-    suspend fun listAllTemplates(domain: String): TemplateListDTO
-
-    /**
-     * List all posts for a specific project domain
-     * @param domain The project domain
-     * @return A list of post content nodes for the domain
-     */
-    suspend fun listAllPostsForProject(domain: String): List<ContentNode.PostNode>
+    suspend fun listAllNodesForProject(domain: String, type: SOURCE_TYPE): List<ContentNode>
 }

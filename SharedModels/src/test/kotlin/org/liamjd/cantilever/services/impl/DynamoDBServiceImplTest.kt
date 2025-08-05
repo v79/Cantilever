@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentNode
+import org.liamjd.cantilever.models.rest.TemplateListDTO
 import org.testcontainers.containers.localstack.LocalStackContainer
 import org.testcontainers.utility.DockerImageName
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
@@ -206,14 +207,19 @@ class DynamoDBServiceImplTest {
             // Verify
             assertTrue(saved)
 
-            val templates = service.listAllTemplates("test-domain")
+            val templates = service.listAllNodesForProject("test-domain", SOURCE_TYPE.Templates).filterIsInstance<ContentNode.TemplateNode>()
+            val dto = TemplateListDTO(
+                count = templates.size,
+                lastUpdated = Instant.fromEpochSeconds(100000L),
+                templates = templates
+            )
             println("Retrieved templates: $templates")
-            assertNotNull(templates)
-            assertTrue(templates.templates.isNotEmpty())
-            assertEquals(1, templates.templates.size)
-            assertEquals(template.srcKey, templates.templates[0].srcKey)
-            assertEquals(template.title, templates.templates[0].title)
-            assertEquals(2, templates.templates[0].sections.size)
+            assertNotNull(dto)
+            assertTrue(dto.templates.isNotEmpty())
+            assertEquals(1, dto.templates.size)
+            assertEquals(template.srcKey, dto.templates[0].srcKey)
+            assertEquals(template.title, dto.templates[0].title)
+            assertEquals(2, dto.templates[0].sections.size)
         }
     }
 
@@ -388,7 +394,7 @@ class DynamoDBServiceImplTest {
             // Note: We don't check lastUpdated because it might be updated during the save process
         }
     }
-    
+
     @Test
     fun `can list all posts for a project`() {
         // Setup - Create multiple posts for the same domain
@@ -400,7 +406,7 @@ class DynamoDBServiceImplTest {
             attributes = mapOf("author" to "Test Author")
         )
         post1.srcKey = "sources/posts/2025/07/first-test-post.md"
-        
+
         val post2 = ContentNode.PostNode(
             title = "Second Test Post",
             templateKey = "sources/templates/post.html.hbs",
@@ -409,7 +415,7 @@ class DynamoDBServiceImplTest {
             attributes = mapOf("author" to "Test Author")
         )
         post2.srcKey = "sources/posts/2025/08/second-test-post.md"
-        
+
         runBlocking {
             // Save the posts
             service.upsertContentNode(
@@ -419,7 +425,7 @@ class DynamoDBServiceImplTest {
                 node = post1,
                 attributes = mapOf("title" to post1.title)
             )
-            
+
             service.upsertContentNode(
                 srcKey = post2.srcKey,
                 projectDomain = "test-domain",
@@ -427,21 +433,22 @@ class DynamoDBServiceImplTest {
                 node = post2,
                 attributes = mapOf("title" to post2.title)
             )
-            
+
             // Execute - List all posts for the domain
-            val posts = service.listAllPostsForProject("test-domain")
-            
+            val posts = service.listAllNodesForProject("test-domain", SOURCE_TYPE.Posts)
+                .filterIsInstance<ContentNode.PostNode>()
+
             // Verify
             assertNotNull(posts, "Posts list should not be null")
             assertEquals(2, posts.size, "Should have found 2 posts")
-            
+
             // Verify the posts contain the expected data
             val foundPost1 = posts.find { it.srcKey == post1.srcKey }
             val foundPost2 = posts.find { it.srcKey == post2.srcKey }
-            
+
             assertNotNull(foundPost1, "First post should be in the results")
             assertNotNull(foundPost2, "Second post should be in the results")
-            
+
             assertEquals(post1.title, foundPost1?.title, "First post title should match")
             assertEquals(post2.title, foundPost2?.title, "Second post title should match")
         }

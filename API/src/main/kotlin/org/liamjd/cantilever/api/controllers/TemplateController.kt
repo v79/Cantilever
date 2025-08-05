@@ -2,11 +2,13 @@ package org.liamjd.cantilever.api.controllers
 
 import com.charleskorn.kaml.Yaml
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
 import org.koin.core.component.KoinComponent
 import org.liamjd.apiviaduct.routing.Request
 import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
+import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.ContentNode
@@ -118,7 +120,13 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
             Response.badRequest(body = APIResult.Error("Invalid project key"))
         } else {
             val templates = runBlocking {
-                dynamoDBService.listAllTemplates(projectKeyHeader)
+                val templates = dynamoDBService.listAllNodesForProject(projectKeyHeader, SOURCE_TYPE.Templates)
+                    .filterIsInstance<ContentNode.TemplateNode>()
+                TemplateListDTO(
+                    count = templates.size,
+                    lastUpdated = Clock.System.now(),
+                    templates = templates
+                )
             }
             Response.ok(body = APIResult.Success(value = templates))
         }

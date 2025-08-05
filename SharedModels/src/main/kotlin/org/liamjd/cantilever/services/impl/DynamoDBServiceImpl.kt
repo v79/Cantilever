@@ -232,40 +232,6 @@ class DynamoDBServiceImpl(
     }
 
     /**
-     * List all posts for a specific project domain
-     * @param domain The project domain
-     * @return A list of post content nodes for the domain
-     */
-    override suspend fun listAllPostsForProject(domain: String): List<ContentNode.PostNode> {
-        log("Listing all posts for domain: $domain")
-
-        return executeDynamoOperation(
-            operationDescription = "list all posts for domain: $domain",
-            contextInfo = "domain: $domain"
-        ) {
-            val request = QueryRequest.builder()
-                .tableName(tableName)
-                .keyConditionExpression("#domainType = :domainTypeValue")
-                .expressionAttributeNames(mapOf("#domainType" to "domain#type"))
-                .expressionAttributeValues(
-                    mapOf(
-                        ":domainTypeValue" to AttributeValue.builder().s("$domain#post").build()
-                    )
-                )
-                .build()
-
-            val response = dynamoDbClient.query(request).await()
-            if (response.count() > 0) {
-                log("Found ${response.count()} posts for domain: $domain")
-                response.items().map { item -> mapToPostNode(item) }
-            } else {
-                log("No posts found for domain: $domain")
-                emptyList()
-            }
-        }
-    }
-
-    /**
      * Upsert a content node in DynamoDB. This will either insert a new content node or update an existing one.
      * The content node is identified by its source key, project domain and content type.
      * @param srcKey The source key for the content node
@@ -497,14 +463,21 @@ class DynamoDBServiceImpl(
     }
 
     /**
-     * List all templates for a specific domain
+     * List all nodes for a specific project domain and content type
      * @param domain The project domain
-     * @return A list of templates for the domain
+     * @param type The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @return A list of content nodes for the specified domain and content type
      */
-    override suspend fun listAllTemplates(domain: String): TemplateListDTO {
-        log("Listing all templates for domain: $domain")
+    override suspend fun listAllNodesForProject(
+        domain: String,
+        type: SOURCE_TYPE
+    ): List<ContentNode> {
+        log("Listing all nodes for domain: $domain of type: ${type.dbType}")
 
-        try {
+        return executeDynamoOperation(
+            operationDescription = "list all nodes for domain: $domain",
+            contextInfo = "domain: $domain, type: ${type.dbType}"
+        ) {
             val request = QueryRequest.builder()
                 .tableName(tableName)
                 .keyConditionExpression("#pk = :domainType")
@@ -512,42 +485,26 @@ class DynamoDBServiceImpl(
                     mapOf("#pk" to "domain#type")
                 )
                 .expressionAttributeValues(
-                    mapOf(":domainType" to AttributeValue.builder().s("$domain#template").build())
+                    mapOf(":domainType" to AttributeValue.builder().s("$domain#${type.dbType}").build())
                 )
                 .build()
 
-            log("Executing Query request for templates in domain: $domain")
             val response = dynamoDbClient.query(request).await()
 
-            return if (response.count() > 0) {
-                log("Found ${response.count()} templates for domain: $domain")
-                response.items().map { item -> mapToTemplateNode(item) }.let { templates ->
-                    TemplateListDTO(
-                        templates = templates,
-                        count = response.count(),
-                        lastUpdated = Clock.System.now()
-                    )
+            if (response.count() > 0) {
+                log("Found ${response.count()} nodes for domain: $domain of type: ${type.dbType}")
+                response.items().map { item ->
+                    when (type) {
+                        SOURCE_TYPE.Posts -> mapToPostNode(item)
+                        SOURCE_TYPE.Templates -> mapToTemplateNode(item)
+                        SOURCE_TYPE.Statics -> mapToStaticNode(item)
+                        else -> throw IllegalArgumentException("Unsupported content type: ${type.dbType}")
+                    }
                 }
             } else {
-                log("No templates found for domain: $domain")
-                TemplateListDTO(
-                    templates = emptyList(),
-                    count = 0,
-                    lastUpdated = Clock.System.now()
-                )
+                log("No nodes found for domain: $domain of type: ${type.dbType}")
+                emptyList()
             }
-        } catch (e: DynamoDbException) {
-            log("ERROR", "Failed to list templates for domain: $domain", e)
-            throw e
-        } catch (e: AwsServiceException) {
-            log("ERROR", "AWS service error while listing templates for domain: $domain", e)
-            throw e
-        } catch (e: SdkClientException) {
-            log("ERROR", "SDK client error while listing templates for domain: $domain", e)
-            throw e
-        } catch (e: Exception) {
-            log("ERROR", "Unexpected error while listing templates for domain: $domain", e)
-            throw e
         }
     }
 

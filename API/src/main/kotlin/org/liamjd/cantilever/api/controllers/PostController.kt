@@ -7,6 +7,7 @@ import org.koin.core.component.KoinComponent
 import org.liamjd.apiviaduct.routing.Request
 import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
@@ -104,7 +105,8 @@ class PostController(sourceBucket: String, generationBucket: String) : KoinCompo
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         info("Retrieving posts for project $projectKeyHeader")
         return runBlocking {
-            val postList = dynamoDBService.listAllPostsForProject(projectKeyHeader)
+            val list = dynamoDBService.listAllNodesForProject(projectKeyHeader, SOURCE_TYPE.Posts)
+            val postList = list.filterIsInstance<ContentNode.PostNode>()
             if (postList.isEmpty()) {
                 error("No posts found in DynamoDB for project $projectKeyHeader")
                 return@runBlocking Response.notFound(

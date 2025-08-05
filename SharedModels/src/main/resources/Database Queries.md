@@ -16,9 +16,7 @@ ContentNodes represent Posts, Pages, Templates, Statics, Images, Folders
 -[x] deleteContentNode(srcKey, domain, type)
 -[x] getContentNode(srcKey, domain, type) -> ContentNode?
 -[x] getNodeCount(domain, type) -> Int
--[ ] listAllNodesForProject(domain, type) -> List<ContentNode>
-
-This should replace the existing 'listAllTemplates' and 'listAllPostsForProject' methods
+-[x] listAllNodesForProject(domain, type) -> List<ContentNode>
 
 ### Pages only
 
