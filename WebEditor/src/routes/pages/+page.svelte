@@ -167,7 +167,7 @@
 			console.log('no token');
 			return;
 		} else {
-			console.log('fetching pages...');
+			console.log('fetching pages and folders...');
 			const pgCount = await fetchPages($userStore.token, $project.domain);
 			const folderCount = await fetchFolders($userStore.token, $project.domain);
 			if (pgCount instanceof Error) {
@@ -322,9 +322,13 @@
 		modalStore.trigger(deleteFolderModal);
 	}
 
+	/**
+	 * This will construct the TreeViewNodes from the folders and pages
+	 * and subscribe to the folders store to update the view when folders change.
+	 */
 	const foldersUnsubscribe = folders.subscribe((value) => {
 		var rootFolderKey = '';
-		if($project.domain) {
+		if ($project.domain) {
 			rootFolderKey = $project.domain + '/sources/pages/';
 		}
 		// console.dir(rootFolderKey);
@@ -342,7 +346,9 @@
 						// find it in the pages list
 						let page = $pages?.pages.find((p) => p.srcKey === child);
 						if (page) {
-							let displaySrcKey = page.srcKey.slice($project.domain ? $project.domain.length + 1 : 0);
+							let displaySrcKey = page.srcKey.slice(
+								$project.domain ? $project.domain.length + 1 : 0
+							);
 							if (page.isRoot) {
 								childNodes.push({
 									id: child,
@@ -361,7 +367,8 @@
 						}
 					}
 				}
-				let displayTitle = folder.url?.slice($project.domain ? $project.domain.length + 1 : 0) ?? 'unknown';
+				let displayTitle =
+					folder.url?.slice($project.domain ? $project.domain.length + 1 : 0) ?? 'unknown';
 				pgFolderNodes.push({
 					id: folder.srcKey,
 					lead: FolderIconComponent,
