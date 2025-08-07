@@ -383,7 +383,7 @@ class CantileverStack(
 
         println("Granting permissions to the lambdas to access the DynamoDB table")
         contentNodeTable.grantReadWriteData(apiRoutingLambda)
-        contentNodeTable.grantWriteData(fileUploadLambda)
+        contentNodeTable.grantReadWriteData(fileUploadLambda)
 
 
         println("Creating API Gateway DNS record for $apiDomain")

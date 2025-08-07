@@ -295,7 +295,7 @@ class DynamoDBServiceImpl(
                 }
 
                 is ContentNode.FolderNode -> {
-                    // Folders don't have specific properties
+                    item["children"] = AttributeValue.builder().ss(node.children).build()
                 }
             }
 
@@ -310,7 +310,8 @@ class DynamoDBServiceImpl(
                 .item(item)
                 .build()
 
-            log("Executing PutItem request for content node: $srcKey")
+            log("Executing PutItem request for '${contentType.dbType}' content node '$srcKey'")
+            log("Item to be upserted: $item")
             val response = dynamoDbClient.putItem(request).await()
 
             if (response.sdkHttpResponse().isSuccessful) {
@@ -415,6 +416,7 @@ class DynamoDBServiceImpl(
                     SOURCE_TYPE.Templates -> mapToTemplateNode(response.item())
                     SOURCE_TYPE.Posts -> mapToPostNode(response.item())
                     SOURCE_TYPE.Statics -> mapToStaticNode(response.item())
+                    SOURCE_TYPE.Folders -> mapToFolderNode(response.item())
                     else -> throw IllegalArgumentException("Unsupported content type: ${contentType.dbType}")
                 }
             } else {
@@ -789,7 +791,6 @@ class DynamoDBServiceImpl(
      * Map a DynamoDB item to a FolderNode
      * @param item The DynamoDB item
      * @return The ContentNode.FolderNode
-     * TODO: ideally we'd return things like child counts but they aren't persisted yet
      */
     private fun mapToFolderNode(item: Map<String, AttributeValue>): ContentNode.FolderNode {
         try {
@@ -797,7 +798,8 @@ class DynamoDBServiceImpl(
             if (srcKey.isEmpty()) {
                 log("WARN", "Missing srcKey in folder item: $item")
             }
-            return ContentNode.FolderNode(srcKey)
+            val children = item["children"]?.ss() ?: emptyList()
+            return ContentNode.FolderNode(srcKey = srcKey, children = children.toMutableList())
         } catch (e: Exception) {
             log("ERROR", "Failed to map DynamoDB item to ContentNode.StaticNode: $item", e)
             throw e

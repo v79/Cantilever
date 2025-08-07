@@ -327,16 +327,50 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
             if (pageKeyOnly.contains("/")) {
                 log("Creating folder nodes")
                 val parentFolder = pageKeyOnly.substringBeforeLast('/')
+                val parentSrcKey = "$projectDomain/sources/pages/$parentFolder"
                 val parentFolderNode = ContentNode.FolderNode(
-                    srcKey = "$projectDomain/sources/pages/$parentFolder",
+                    srcKey = parentSrcKey,
                     lastUpdated = Clock.System.now()
                 )
+                // check if the folder node already exists. If it does, get its children
+                val existingFolderNode = dynamoDBService.getContentNode(parentSrcKey, projectDomain, Folders)
+                if (existingFolderNode != null && existingFolderNode is ContentNode.FolderNode) {
+                    log("Folder node already exists for $parentSrcKey; getting children")
+                    parentFolderNode.children += existingFolderNode.children
+                }
+                if (!parentFolderNode.children.contains(pageNode.srcKey)) {
+                    parentFolderNode.children += srcKey
+                }
+
                 upsertContentNode(
-                    srcKey = "$projectDomain/sources/pages/$parentFolder",
+                    srcKey = parentSrcKey,
                     projectDomain = projectDomain,
                     contentType = Folders,
                     parentFolderNode
                 )
+            } else {
+                // In this case, the page has been uploaded to the root of the pages folder
+                // We need to update the children of the root folder node
+                val rootFolderNode = dynamoDBService.getContentNode(
+                    srcKey = "$projectDomain/sources/pages/",
+                    projectDomain = projectDomain,
+                    contentType = Folders
+                )
+                if (rootFolderNode != null && rootFolderNode is ContentNode.FolderNode) {
+                    log("Root folder node already exists; updating children")
+                    if (!rootFolderNode.children.contains(pageNode.srcKey)) {
+                        rootFolderNode.children += srcKey
+                    }
+                    upsertContentNode(
+                        srcKey = "$projectDomain/sources/pages/",
+                        projectDomain = projectDomain,
+                        contentType = Folders,
+                        rootFolderNode
+                    )
+                    log("Root folder node updated with new child page")
+                } else {
+                    log("WARN: Root folder node does not exist; cannot update children")
+                }
             }
         } catch (qdne: QueueDoesNotExistException) {
             log("ERROR", "Queue '$queueUrl' does not exist; ${qdne.message}")
