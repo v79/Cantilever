@@ -1,10 +1,12 @@
 package org.liamjd.cantilever.api.controllers
 
+import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
 import org.koin.core.component.KoinComponent
 import org.liamjd.apiviaduct.routing.Request
 import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.common.S3_KEY
+import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.common.toS3Key
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
@@ -26,26 +28,17 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
      * @return [PageListDTO] object containing the list of Pages, a count and the last updated date/time
      */
     fun getPages(request: Request<Unit>): Response<APIResult<PageListDTO>> {
-        val projectMetadataKey = request.headers["cantilever-project-domain"] + "/" + S3_KEY.metadataKey
-        return if (s3Service.objectExists(projectMetadataKey, generationBucket)) {
-            loadContentTree(request.headers["cantilever-project-domain"]!!)
-            info("Fetching all pages from $projectMetadataKey")
-            val lastUpdated = s3Service.getUpdatedTime(projectMetadataKey, generationBucket)
-            val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
-//            val folders = contentTree.items.filterIsInstance<ContentNode.FolderNode>().filter { it.srcKey.startsWith(S3_KEY.pagesPrefix) }
-            val sorted = pages.sortedByDescending { it.srcKey }
-//            sorted.forEach { println(it.srcKey) }
-            val pageList = PageListDTO(
-                count = sorted.size,
-                lastUpdated = lastUpdated,
-                pages = sorted
-            )
-            Response.ok(body = APIResult.Success(value = pageList))
+        val domain = request.headers["cantilever-project-domain"]
+
+        return if (domain.isNullOrBlank()) {
+            Response.badRequest(body = APIResult.Error("Invalid project key'"))
         } else {
-            error("Cannot find file '${projectMetadataKey}/${S3_KEY.metadataKey}' in bucket $generationBucket")
-            Response.notFound(
-                body = APIResult.Error(statusText = "Cannot find file '${projectMetadataKey}/${S3_KEY.metadataKey}' in bucket $sourceBucket")
-            )
+            val pageList = runBlocking {
+                val pages = dynamoDBService.listAllNodesForProject(domain, SOURCE_TYPE.Pages)
+                    .filterIsInstance<ContentNode.PageNode>()
+                PageListDTO(count = pages.size, lastUpdated = Clock.System.now(), pages = pages)
+            }
+            Response.ok(body = APIResult.Success(value = pageList))
         }
     }
 
@@ -178,21 +171,18 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
      * Return a list of all the folders which contain pages (i.e. under /sources/pages/)
      */
     fun getFolders(request: Request<Unit>): Response<APIResult<FolderListDTO>> {
-        info("Loading page folders")
-        val projectFolder = request.headers["cantilever-project-domain"]!!
-        loadContentTree(projectFolder)
-        val folders = mutableListOf<ContentNode.FolderNode>()
-        val rootFolder = ContentNode.FolderNode("$projectFolder/${S3_KEY.pagesPrefix}")
-        // The root folder isn't in the content tree, so we need to add it manually and find all the pages that have it as their parent
-        rootFolder.children.addAll(
-            contentTree.items.filterIsInstance<ContentNode.PageNode>().filter { it.parent == rootFolder.srcKey }
-                .map { it.srcKey })
-        folders.add(rootFolder)
-        // Then we can add all the other folders
-        folders += contentTree.items.filterIsInstance<ContentNode.FolderNode>()
-            .filter { it.srcKey.startsWith("$projectFolder/${S3_KEY.pagesPrefix}") }
-        val dto = FolderListDTO(folders.size, folders.toList())
-        return Response.ok(body = APIResult.Success(dto))
+        val domain = request.headers["cantilever-project-domain"]
+
+        return if (domain.isNullOrBlank()) {
+            Response.badRequest(body = APIResult.Error("Invalid project key'"))
+        } else {
+            val folderList = runBlocking {
+                val folders = dynamoDBService.listAllNodesForProject(domain, SOURCE_TYPE.Folders)
+                    .filterIsInstance<ContentNode.FolderNode>()
+                FolderListDTO(count = folders.size, folders = folders)
+            }
+            Response.ok(body = APIResult.Success(value = folderList))
+        }
     }
 
     /**

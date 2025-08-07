@@ -264,7 +264,7 @@ class DynamoDBServiceImpl(
                     item["slug"] = AttributeValue.builder().s(node.slug).build()
                     item["date"] = AttributeValue.builder().s(node.date.toString()).build()
 
-                    // Add the node's own attributes with attr# prefix
+                    // Add the node's own custom attributes with attr# prefix
                     node.attributes.forEach { (key, value) ->
                         item["attr#$key"] = AttributeValue.builder().s(value).build()
                     }
@@ -280,10 +280,22 @@ class DynamoDBServiceImpl(
                     item["type#lastUpdated"] = createLastUpdatedAttribute("static")
                 }
 
-                is ContentNode.PageNode, is ContentNode.FolderNode -> {
-                    // These types are not fully implemented, yet
-                    // Folders won't have attributes on creation but could have them later
-                    log("Node type ${node.javaClass.simpleName} not fully implemented for upsert")
+                is ContentNode.PageNode -> {
+                    // srcKey, lastUpdated, title, templateKey, slug, isRoot, attributes, sections, parent
+                    item["title"] = AttributeValue.builder().s(node.title).build()
+                    item["slug"] = AttributeValue.builder().s(node.slug).build()
+                    item["isRoot"] = AttributeValue.builder().bool(node.isRoot).build()
+                    item["templateKey"] = AttributeValue.builder().s(node.templateKey).build()
+                    item["sections"] = AttributeValue.builder().ss(node.sections.keys).build()
+                    item["parent"] = AttributeValue.builder().s(node.parent).build()
+                    // Add the node's own custom attributes with attr# prefix
+                    node.attributes.forEach { (key, value) ->
+                        item["attr#$key"] = AttributeValue.builder().s(value).build()
+                    }
+                }
+
+                is ContentNode.FolderNode -> {
+                    // Folders don't have specific properties
                 }
             }
 
@@ -497,6 +509,8 @@ class DynamoDBServiceImpl(
                         SOURCE_TYPE.Posts -> mapToPostNode(item)
                         SOURCE_TYPE.Templates -> mapToTemplateNode(item)
                         SOURCE_TYPE.Statics -> mapToStaticNode(item)
+                        SOURCE_TYPE.Pages -> mapToPageNode(item)
+                        SOURCE_TYPE.Folders -> mapToFolderNode(item)
                         else -> throw IllegalArgumentException("Unsupported content type: ${type.dbType}")
                     }
                 }
@@ -688,6 +702,40 @@ class DynamoDBServiceImpl(
     }
 
     /**
+     * Map a DynamoDB item to a ContentNode.PageNode
+     * @param item The DynamoDB item
+     * @return The ContentNode.PageNode
+     * TODO: Many of the key fields are not yet mapped!
+     */
+    private fun mapToPageNode(item: Map<String, AttributeValue>): ContentNode.PageNode {
+        try {
+            val srcKey = item["srcKey"]?.s() ?: ""
+            if (srcKey.isEmpty()) {
+                log("WARN", "Missing srcKey in page item: $item")
+            }
+
+            val lastUpdated = extractLastUpdatedTimestamp(item, "page")
+
+            return ContentNode.PageNode(
+                srcKey = srcKey,
+                lastUpdated = lastUpdated,
+                title = item["title"]?.s() ?: "",
+                templateKey = item["templateKey"]?.s() ?: "<TEMPLATE-KEY-NOT-FOUND>",
+                slug = item["slug"]?.s() ?: "<SLUG-NOT-FOUND>",
+                isRoot = false,
+                attributes = item.filter { it.key.startsWith("attr#") }
+                    .mapKeys { it.key.removePrefix("attr#") }
+                    .mapValues { it.value.s() ?: "" },
+                sections = emptyMap(),
+                parent = "<PARENT-NOT-FOUND>",
+            )
+        } catch (e: Exception) {
+            log("ERROR", "Failed to map DynamoDB item to ContentNode.PageNode: $item", e)
+            throw e
+        }
+    }
+
+    /**
      * Map a DynamoDB item to a ContentNode.TemplateNode
      * @param item The DynamoDB item
      * @return The ContentNode.TemplateNode
@@ -731,6 +779,25 @@ class DynamoDBServiceImpl(
                 srcKey = srcKey,
                 lastUpdated = lastUpdated
             )
+        } catch (e: Exception) {
+            log("ERROR", "Failed to map DynamoDB item to ContentNode.StaticNode: $item", e)
+            throw e
+        }
+    }
+
+    /**
+     * Map a DynamoDB item to a FolderNode
+     * @param item The DynamoDB item
+     * @return The ContentNode.FolderNode
+     * TODO: ideally we'd return things like child counts but they aren't persisted yet
+     */
+    private fun mapToFolderNode(item: Map<String, AttributeValue>): ContentNode.FolderNode {
+        try {
+            val srcKey = item["srcKey"]?.s() ?: ""
+            if (srcKey.isEmpty()) {
+                log("WARN", "Missing srcKey in folder item: $item")
+            }
+            return ContentNode.FolderNode(srcKey)
         } catch (e: Exception) {
             log("ERROR", "Failed to map DynamoDB item to ContentNode.StaticNode: $item", e)
             throw e

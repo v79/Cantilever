@@ -94,7 +94,7 @@ internal class FileUploadHandlerTest : KoinTest {
         declareMock<EnvironmentProvider> {
             every { mockEnv.getEnv("markdown_processing_queue") } returns "markdown_processing_queue"
             every { mockEnv.getEnv("handlebar_template_queue") } returns "handlebar_template_queue"
-            every { mockEnv.getEnv("image_processing_queue")} returns "image_processing_queue"
+            every { mockEnv.getEnv("image_processing_queue") } returns "image_processing_queue"
         }
     }
 
@@ -298,6 +298,84 @@ internal class FileUploadHandlerTest : KoinTest {
                 eq("domain.com/sources/pages/my-page.md"), eq("domain.com"),
                 eq(SOURCE_TYPE.Pages),
                 any<ContentNode.PageNode>(), any()
+            )
+        }
+        coVerify {
+            mockSQS.sendMarkdownMessage(
+                eq("markdown_processing_queue"),
+                any(),
+                any()
+            )
+        }
+    }
+
+    @Test
+    fun `will create folder node for page with nested folder path`() {
+        // setup
+        val pageString = """
+            ---
+            title: My Page
+            templateKey: sources/templates/page.html.hbs
+            slug: my-page
+            isRoot: true
+            ---
+            Page content
+        """.trimIndent()
+
+        declareMock<S3Service> {
+            every {
+                mockS3Service.getContentType(
+                    "domain.com/sources/pages/biography/index.md",
+                    "test-bucket"
+                )
+            } returns "text/markdown"
+            every {
+                mockS3Service.getObjectAsString("domain.com/sources/pages/biography/index.md", "test-bucket")
+            } returns pageString
+        }
+        declareMock<DynamoDBService> {
+            every { mockDynamoDBService.logger = any() } just runs
+            every { mockDynamoDBService.logger } returns mockLogger
+            coEvery {
+                mockDynamoDBService.upsertContentNode(
+                    "domain.com/sources/pages/biography/index.md", "domain.com",
+                    SOURCE_TYPE.Pages, any<ContentNode.PageNode>(), emptyMap()
+                )
+            } returns true
+            coEvery {
+                mockDynamoDBService.upsertContentNode(
+                    "domain.com/sources/pages/biography",
+                    "domain.com",
+                    SOURCE_TYPE.Folders,
+                    any<ContentNode.FolderNode>(),
+                    emptyMap()
+                )
+            } returns true
+        }
+        declareMock<SQSService> {
+            coEvery { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSQSResponse
+        }
+
+        val event = createS3Event("test-bucket", "domain.com/sources/pages/biography/index.md", 123L)
+        val handler = FileUploadHandler(mockEnv)
+
+        // execute
+        val response = handler.handleRequest(event, mockContext)
+
+        // verify
+        assertEquals("200 OK", response)
+        coVerify {
+            mockDynamoDBService.upsertContentNode(
+                eq("domain.com/sources/pages/biography/index.md"), eq("domain.com"),
+                eq(SOURCE_TYPE.Pages),
+                any<ContentNode.PageNode>(), any()
+            )
+            mockDynamoDBService.upsertContentNode(
+                "domain.com/sources/pages/biography",
+                "domain.com",
+                SOURCE_TYPE.Folders,
+                any<ContentNode.FolderNode>(),
+                emptyMap()
             )
         }
         coVerify {

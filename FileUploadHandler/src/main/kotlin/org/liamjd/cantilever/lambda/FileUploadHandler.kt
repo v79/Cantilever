@@ -110,7 +110,6 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                         // folders know their children
 
 
-
                     }
                     if (eventRecord.eventName == "ObjectCreated:Put" || eventRecord.eventName == "ObjectCreated:Post") {
                         // Process the upload event
@@ -323,6 +322,22 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                 node = pageNode
             )
             sendMarkdownMessage(queueUrl, pageModelMsg, srcKey)
+            val pageKeyOnly = srcKey.removePrefix("$projectDomain/sources/pages/")
+
+            if (pageKeyOnly.contains("/")) {
+                log("Creating folder nodes")
+                val parentFolder = pageKeyOnly.substringBeforeLast('/')
+                val parentFolderNode = ContentNode.FolderNode(
+                    srcKey = "$projectDomain/sources/pages/$parentFolder",
+                    lastUpdated = Clock.System.now()
+                )
+                upsertContentNode(
+                    srcKey = "$projectDomain/sources/pages/$parentFolder",
+                    projectDomain = projectDomain,
+                    contentType = Folders,
+                    parentFolderNode
+                )
+            }
         } catch (qdne: QueueDoesNotExistException) {
             log("ERROR", "Queue '$queueUrl' does not exist; ${qdne.message}")
         } catch (se: SerializationException) {
