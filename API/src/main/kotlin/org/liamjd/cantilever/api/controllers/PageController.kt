@@ -165,28 +165,37 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
      * The folder must be empty and contain no pages.
      */
     fun deleteFolder(request: Request<Unit>): Response<APIResult<String>> {
-        val folderKey = request.pathParameters["srcKey"]
-        return if (folderKey != null) {
-            val decoded = URLDecoder.decode(folderKey, Charset.defaultCharset())
-            if (s3Service.objectExists(decoded, sourceBucket)) {
-                val folderNode = contentTree.getNode(decoded)
-                if (folderNode != null && folderNode is ContentNode.FolderNode) {
-                    if (folderNode.children.isEmpty()) {
-                        info("Deleting folder $decoded")
-                        s3Service.deleteObject(decoded, sourceBucket)
-                        Response.ok(body = APIResult.OK("Folder $decoded deleted"))
+        val domain = request.headers["cantilever-project-domain"]
+        if (domain.isNullOrBlank()) {
+            return Response.badRequest(
+                body = APIResult.Error("Invalid project domain'")
+            )
+        } else {
+            val folderKey = request.pathParameters["srcKey"]
+            return if (folderKey != null) {
+                runBlocking {
+                    val decoded = URLDecoder.decode(folderKey, Charset.defaultCharset())
+                    if (s3Service.objectExists(decoded, sourceBucket)) {
+                        val folderNode = dynamoDBService.getContentNode(decoded, domain, SOURCE_TYPE.Folders)
+                        if (folderNode != null && folderNode is ContentNode.FolderNode) {
+                            if (folderNode.children.isEmpty()) {
+                                info("Deleting folder $decoded")
+                                s3Service.deleteObject(decoded, sourceBucket)
+                                Response.ok(body = APIResult.OK("Folder $decoded deleted"))
+                            } else {
+                                warn("Folder $decoded is not empty so it was not deleted")
+                                Response.badRequest(body = APIResult.Error("Folder $decoded is not empty"))
+                            }
+                        } else {
+                            Response.badRequest(body = APIResult.Error("Folder $decoded not found"))
+                        }
                     } else {
-                        warn("Folder $decoded is not empty so it was not deleted")
-                        Response.badRequest(body = APIResult.Error("Folder $decoded is not empty"))
+                        Response.badRequest(body = APIResult.Error("Folder $decoded not found"))
                     }
-                } else {
-                    Response.badRequest(body = APIResult.Error("Folder $decoded not found"))
                 }
             } else {
-                Response.badRequest(body = APIResult.Error("Folder $decoded not found"))
+                Response.badRequest(body = APIResult.Error("No folderKey specified"))
             }
-        } else {
-            Response.badRequest(body = APIResult.Error("No folderKey specified"))
         }
     }
 
@@ -205,21 +214,18 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
         try {
             if (s3Service.objectExists(from, sourceBucket) && s3Service.objectExists(to, sourceBucket)) {
                 // confirm that from is the index of the folder
-                val folderNode = contentTree.getNode(
-                    if (folder.endsWith("/")) {
-                        folder
-                    } else {
-                        "$folder/"
-                    }
-                )
-                if (folderNode is ContentNode.FolderNode) {
-                    if (folderNode.indexPage == from) {
-                        runBlocking {
+                runBlocking {
+                    val folderNode = dynamoDBService.getContentNode(folder, projectKeyHeader, SOURCE_TYPE.Folders)
+                    return@runBlocking if (folderNode is ContentNode.FolderNode) {
+                        if (folderNode.indexPage == from) {
                             // update the metadata for each of these pages
                             val fromString = s3Service.getObjectAsString(from, sourceBucket)
                             val toString = s3Service.getObjectAsString(to, sourceBucket)
                             val fromMeta =
-                                ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(fromString, from)
+                                ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(
+                                    fromString,
+                                    from
+                                )
                             val updatedFrom = fromMeta.copy(isRoot = false)
 
                             val toMeta =
@@ -259,15 +265,13 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
                                 emptyMap() // no attributes to update yet
                             )
                         }
-                        return Response.ok(
+                        Response.ok(
                             body = APIResult.OK("Reassigned index from $from to $to in folder $folder")
                         )
 
                     } else {
-                        return Response.badRequest(body = APIResult.Error("$from is not the index of $folder"))
+                        Response.badRequest(body = APIResult.Error("$from is not the index of $folder"))
                     }
-                } else {
-                    return Response.badRequest(body = APIResult.Error("$folder is not a folder"))
                 }
             } else {
                 return Response.badRequest(body = APIResult.Error("Source files not found for index reassignment"))
@@ -275,6 +279,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
         } catch (e: Exception) {
             return Response.serverError(body = APIResult.Error("Error: ${e.message}"))
         }
+        return Response.serverError(body = APIResult.Error("Unknown error occurred during index reassignment"))
     }
 
     /**
