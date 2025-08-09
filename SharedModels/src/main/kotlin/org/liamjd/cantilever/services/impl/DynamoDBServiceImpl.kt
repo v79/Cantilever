@@ -296,8 +296,10 @@ class DynamoDBServiceImpl(
                 }
 
                 is ContentNode.FolderNode -> {
-                    item["children"] = AttributeValue.builder().ss(node.children).build()
-                }
+                    if(node.children.isNotEmpty()) {
+                        item["children"] = AttributeValue.builder().ss(node.children).build()
+                    }
+                    }
             }
 
             log("Adding additional attributes: $attributes")

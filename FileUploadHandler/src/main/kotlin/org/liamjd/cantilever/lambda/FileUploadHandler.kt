@@ -105,6 +105,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                     log("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
 
                     // Check if the event is ObjectCreated (PUT or POST) or ObjectRemoved (DELETE)
+                    // TODO: Better to switch/when on this
                     if (eventRecord.eventName == "ObjectRemoved:Delete" || eventRecord.eventName == "ObjectRemoved:DeleteMarkerCreated") {
                         // handle deletion events
                         // what are the relationships between nodes?
@@ -234,9 +235,6 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                             log("ERROR", "FileUpload EXCEPTION: ${nske.message}")
                             response = "500 Internal Server Error"
                         }
-                    } else {
-                        log("INFO", "Ignoring event '${eventRecord.eventName}'")
-                        continue
                     }
                 }
             } finally {
