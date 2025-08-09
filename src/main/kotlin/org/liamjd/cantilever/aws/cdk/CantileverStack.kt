@@ -439,7 +439,7 @@ class CantileverStack(
 
     /**
      * Create a destination bucket for the website content
-     * This bucket has a fixed name, and access is cntrolled by the CloudFront distribution.
+     * This bucket has a fixed name, and access is controlled by the CloudFront distribution.
      */
     private fun createDestinationBucket(): Bucket =
         Bucket.Builder.create(this, "${stageName}-website}").versioned(false)

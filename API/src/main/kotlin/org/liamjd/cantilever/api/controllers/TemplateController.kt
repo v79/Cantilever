@@ -7,7 +7,6 @@ import org.koin.core.component.KoinComponent
 import org.liamjd.apiviaduct.routing.Request
 import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.common.stripFrontMatter
@@ -162,23 +161,18 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
         val templateKey = request.pathParameters["srcKey"]
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         if (templateKey != null) {
-            return if (loadContentTree(projectKeyHeader)) {
+            runBlocking {
                 val decoded = URLDecoder.decode(templateKey, Charsets.UTF_8)
-                info("Deleting template $decoded")
-                val pages = contentTree.getPagesForTemplate(decoded)
-                val posts = contentTree.getPostsForTemplate(decoded)
-                return if (pages.isEmpty() && posts.isEmpty()) {
-                    info("No pages or posts use this template, deleting")
-                    val templateNode = contentTree.getTemplate(decoded)
-                    return if (templateNode == null) {
-                        error("Could not find template $decoded in content tree")
-                        Response.badRequest(APIResult.Error("Could not find template $decoded in content tree"))
-                    } else {
-                        s3Service.deleteObject(decoded, sourceBucket)
-                        contentTree.deleteTemplate(templateNode)
-                        saveContentTree(projectKeyHeader)
-                        Response.ok(APIResult.OK("Deleted template $decoded"))
-                    }
+                info("Attempting to deleting template '$decoded'; ensuring no pages or posts use the template")
+                val pages = dynamoDBService.getKeyListMatchingTemplate(projectKeyHeader, SOURCE_TYPE.Pages, decoded)
+                val posts = dynamoDBService.getKeyListMatchingTemplate(projectKeyHeader, SOURCE_TYPE.Posts, decoded)
+                val response = if (pages.isEmpty() && posts.isEmpty()) {
+                    info("No pages or posts use this template, deleting from bucket")
+                    s3Service.deleteObject(
+                        decoded,
+                        sourceBucket
+                    ) // relying on FileUploadController to respond to the delete event and remove the record from DynamoDB
+                    Response.ok(APIResult.OK("Deleted template $decoded"))
                 } else {
                     error("Cannot delete template $decoded, it is used by ${pages.size} pages and ${posts.size} posts")
                     Response.badRequest(
@@ -187,16 +181,12 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                         )
                     )
                 }
-            } else {
-                error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
-                Response.notFound(
-                    body = APIResult.Error(
-                        statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"
-                    )
-                )
+                return@runBlocking response
             }
+        } else {
+            return Response.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
         }
-        return Response.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
+        return Response.serverError(APIResult.Error("Server error while attempting to delete template; should not have reached here"))
     }
 
     /**

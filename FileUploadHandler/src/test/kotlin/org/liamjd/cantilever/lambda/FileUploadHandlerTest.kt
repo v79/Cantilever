@@ -274,6 +274,7 @@ internal class FileUploadHandlerTest : KoinTest {
         declareMock<DynamoDBService> {
             every { mockDynamoDBService.logger = any() } just runs
             every { mockDynamoDBService.logger } returns mockLogger
+            coEvery { mockDynamoDBService.getContentNode("domain.com/sources/pages/","domain.com", SOURCE_TYPE.Folders)} returns null
             coEvery {
                 mockDynamoDBService.upsertContentNode(
                     "domain.com/sources/pages/my-page.md", "domain.com",
@@ -351,6 +352,9 @@ internal class FileUploadHandlerTest : KoinTest {
                     emptyMap()
                 )
             } returns true
+            coEvery {
+                mockDynamoDBService.getContentNode("domain.com/sources/pages/biography","domain.com", SOURCE_TYPE.Folders)
+            } returns null
         }
         declareMock<SQSService> {
             coEvery { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSQSResponse

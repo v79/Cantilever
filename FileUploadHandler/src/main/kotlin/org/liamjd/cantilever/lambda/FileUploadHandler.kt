@@ -21,10 +21,7 @@ import org.liamjd.cantilever.models.SrcKey
 import org.liamjd.cantilever.models.sqs.ImageSQSMessage
 import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
 import org.liamjd.cantilever.models.sqs.TemplateSQSMessage
-import org.liamjd.cantilever.services.AWSLogger
-import org.liamjd.cantilever.services.DynamoDBService
-import org.liamjd.cantilever.services.S3Service
-import org.liamjd.cantilever.services.SQSService
+import org.liamjd.cantilever.services.*
 import org.liamjd.cantilever.services.impl.DynamoDBServiceImpl
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import org.liamjd.cantilever.services.impl.SQSServiceImpl
@@ -41,8 +38,7 @@ val fileUploadModule = module {
     single<SQSService> { SQSServiceImpl(Region.EU_WEST_2) }
     single<DynamoDBService> {
         DynamoDBServiceImpl(
-            region = Region.EU_WEST_2, enableLogging = true, dynamoDbClient =
-                DynamoDbAsyncClient.create()
+            region = Region.EU_WEST_2, enableLogging = true, dynamoDbClient = DynamoDbAsyncClient.create()
         )
     }
 }
@@ -71,8 +67,7 @@ object KoinSetup {
  */
 @Suppress("unused")
 class FileUploadHandler(private val environmentProvider: EnvironmentProvider = SystemEnvironmentProvider()) :
-    RequestHandler<S3Event, String>, KoinComponent,
-    AWSLogger(enableLogging = true, msgSource = "FileUploadHandler") {
+    RequestHandler<S3Event, String>, KoinComponent, AWSLogger(enableLogging = true, msgSource = "FileUploadHandler") {
 
     init {
         KoinSetup.setup(listOf(fileUploadModule))
@@ -92,16 +87,29 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
         val handlebarQueueURL = environmentProvider.getEnv(QUEUE.HANDLEBARS)
         val imageQueueURL = environmentProvider.getEnv(QUEUE.IMAGES)
 
-        log("${event.records.size} upload events received")
+        log("${event.records.size} file events received")
 
         runBlocking {
             try {
                 for (eventRecord in event.records) {
+                    // srcKey will be in the format <www.domain.com>/sources/<source_type>/<filename>
+                    val srcKey = eventRecord.s3.`object`.urlDecodedKey
+                    val fileType = srcKey.substringAfterLast('.').lowercase()
+                    val srcBucket = eventRecord.s3.bucket.name
+                    val projectDomain = srcKey.substringBefore('/')
+                    val size = eventRecord.s3.`object`.sizeAsLong
+                    // the folder determines the type, POST, PAGE, STATICS
+                    val parentFolder = srcKey.removePrefix("$projectDomain/sources/").substringBefore('/')
+                    val sourceType = SourceHelper.fromFolderName(parentFolder)
+
+                    log("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
 
                     // Check if the event is ObjectCreated (PUT or POST) or ObjectRemoved (DELETE)
-                    if (eventRecord.eventName == "ObjectRemoved:Delete") {
+                    if (eventRecord.eventName == "ObjectRemoved:Delete" || eventRecord.eventName == "ObjectRemoved:DeleteMarkerCreated") {
                         // handle deletion events
                         // what are the relationships between nodes?
+                        // maybe I just soft delete the node by adding a 'deleted' attribute?
+                        // then a separate task can clean up the relationships and purge deleted items
                         // templates should have a count of their usage
                         // images should have a count of their usage
                         // posts know their previous and next post links
@@ -109,25 +117,14 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                         // folders know their index page, if any
                         // folders know their children
 
-
+                        // TODO: Do some sanity checks
+                        deleteContentNode(srcKey, projectDomain, sourceType)
                     }
                     if (eventRecord.eventName == "ObjectCreated:Put" || eventRecord.eventName == "ObjectCreated:Post") {
                         // Process the upload event
-                        // srcKey will be in the format www.<domain>.com/sources/<source_type>/<filename>
-                        val srcKey = eventRecord.s3.`object`.urlDecodedKey
-                        val srcBucket = eventRecord.s3.bucket.name
-                        val projectDomain = srcKey.substringBefore('/')
-                        // the folder determines the type, POST, PAGE, STATICS
-                        val parentFolder = srcKey.removePrefix("$projectDomain/sources/").substringBefore('/')
-                        val size = eventRecord.s3.`object`.sizeAsLong
-                        val uploadFolder = SourceHelper.fromFolderName(parentFolder)
-
-                        log("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
-
                         try {
-                            val fileType = srcKey.substringAfterLast('.').lowercase()
                             val contentType = s3Service.getContentType(srcKey, srcBucket)
-                            log("FileUpload handler: source type is '$parentFolder'; file type is '$fileType'; content type is '$contentType'; uploaded to folder '$uploadFolder'")
+                            log("FileUpload handler: source type is '$parentFolder'; file type is '$fileType'; content type is '$contentType'; uploaded to folder '$sourceType'")
 
                             if (size == 0L) {
                                 // folders are a special case, being zero length but ending in a slash
@@ -141,7 +138,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                                     response = "400 Bad Request"
                                 }
                             } else {
-                                when (uploadFolder) {
+                                when (sourceType) {
                                     Root -> {
                                         log("WARN", "No action defined for ROOT upload")
                                     }
@@ -188,9 +185,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                                     Templates -> {
                                         if (fileType == FILE_TYPE.HBS) {
                                             processTemplateUpload(
-                                                srcKey = srcKey,
-                                                srcBucket = srcBucket,
-                                                projectDomain = projectDomain
+                                                srcKey = srcKey, srcBucket = srcBucket, projectDomain = projectDomain
                                             )
                                         } else {
                                             log(
@@ -228,8 +223,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                                         // Folders are a special case, and they will already have been captured by the
                                         // processFolderCreation method above, so we can ignore them here.
                                         log(
-                                            "INFO",
-                                            "Folder upload detected for $srcKey; no further processing required"
+                                            "INFO", "Folder upload detected for $srcKey; no further processing required"
                                         )
                                     }
 
@@ -257,10 +251,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      * Process the uploaded POST Markdown file and send a message to the Markdown processor queue
      */
     private suspend fun processPostUpload(
-        srcKey: String,
-        srcBucket: String,
-        queueUrl: String,
-        projectDomain: String
+        srcKey: String, srcBucket: String, queueUrl: String, projectDomain: String
     ): Boolean {
         log("Sending post $srcKey to markdown processor queue")
         try {
@@ -272,16 +263,11 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
             // extract body
             val markdownBody = sourceString.stripFrontMatter()
             val postModelMsg = MarkdownSQSMessage.PostUploadMsg(
-                projectDomain = projectDomain,
-                metadata = metadata,
-                markdownText = markdownBody
+                projectDomain = projectDomain, metadata = metadata, markdownText = markdownBody
             )
             // upsert the content node in the DynamoDB table
             upsertContentNode(
-                srcKey = srcKey,
-                projectDomain = projectDomain,
-                contentType = Posts,
-                node = metadata
+                srcKey = srcKey, projectDomain = projectDomain, contentType = Posts, node = metadata
             )
             sendMarkdownMessage(queueUrl, postModelMsg, srcKey)
             return true
@@ -297,29 +283,20 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      * Process the uploaded PAGE Markdown file and send a message to the Markdown processor queue
      */
     private suspend fun processPageUpload(
-        srcKey: String,
-        srcBucket: String,
-        queueUrl: String,
-        projectDomain: String
+        srcKey: String, srcBucket: String, queueUrl: String, projectDomain: String
     ) {
         try {
             log("Received page file $srcKey and sending it to Markdown processor queue")
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             // extract the page model
-            val pageNode =
-                ContentMetaDataBuilder.PageBuilder.buildFromSourceString(sourceString, srcKey)
+            val pageNode = ContentMetaDataBuilder.PageBuilder.buildFromSourceString(sourceString, srcKey)
             val markdownBody = sourceString.stripFrontMatter()
             val pageModelMsg = MarkdownSQSMessage.PageUploadMsg(
-                projectDomain = projectDomain,
-                metadata = pageNode,
-                markdownText = markdownBody
+                projectDomain = projectDomain, metadata = pageNode, markdownText = markdownBody
             )
             log("Built page model for: ${pageModelMsg.metadata.srcKey}")
             upsertContentNode(
-                srcKey = srcKey,
-                projectDomain = projectDomain,
-                contentType = Pages,
-                node = pageNode
+                srcKey = srcKey, projectDomain = projectDomain, contentType = Pages, node = pageNode
             )
             sendMarkdownMessage(queueUrl, pageModelMsg, srcKey)
             val pageKeyOnly = srcKey.removePrefix("$projectDomain/sources/pages/")
@@ -329,8 +306,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                 val parentFolder = pageKeyOnly.substringBeforeLast('/')
                 val parentSrcKey = "$projectDomain/sources/pages/$parentFolder"
                 val parentFolderNode = ContentNode.FolderNode(
-                    srcKey = parentSrcKey,
-                    lastUpdated = Clock.System.now()
+                    srcKey = parentSrcKey, lastUpdated = Clock.System.now()
                 )
                 // check if the folder node already exists. If it does, get its children
                 val existingFolderNode = dynamoDBService.getContentNode(parentSrcKey, projectDomain, Folders)
@@ -343,18 +319,13 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                 }
 
                 upsertContentNode(
-                    srcKey = parentSrcKey,
-                    projectDomain = projectDomain,
-                    contentType = Folders,
-                    parentFolderNode
+                    srcKey = parentSrcKey, projectDomain = projectDomain, contentType = Folders, parentFolderNode
                 )
             } else {
                 // In this case, the page has been uploaded to the root of the pages folder
                 // We need to update the children of the root folder node
                 val rootFolderNode = dynamoDBService.getContentNode(
-                    srcKey = "$projectDomain/sources/pages/",
-                    projectDomain = projectDomain,
-                    contentType = Folders
+                    srcKey = "$projectDomain/sources/pages/", projectDomain = projectDomain, contentType = Folders
                 )
                 if (rootFolderNode != null && rootFolderNode is ContentNode.FolderNode) {
                     log("Root folder node already exists; updating children")
@@ -383,26 +354,20 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      * Process the uploaded CSS file and send a message to the Handlebars template processor queue
      */
     private suspend fun processCSSUpload(
-        srcKey: String,
-        queueUrl: String,
-        projectDomain: String
+        srcKey: String, queueUrl: String, projectDomain: String
     ) {
         try {
             val destinationKey = "css/" + srcKey.removePrefix(S3_KEY.staticsPrefix)
             val cssMsg = TemplateSQSMessage.StaticRenderMsg(
-                projectDomain = projectDomain,
-                srcKey = srcKey,
-                destinationKey = destinationKey
+                projectDomain = projectDomain, srcKey = srcKey, destinationKey = destinationKey
             )
             log("Sending message to Handlebars queue for $cssMsg")
             val cssNode = ContentNode.StaticNode(
-                srcKey = srcKey,
-                lastUpdated = Clock.System.now()
+                srcKey = srcKey, lastUpdated = Clock.System.now()
             )
             upsertContentNode(srcKey = srcKey, projectDomain = projectDomain, contentType = Statics, node = cssNode)
             val msgResponse = sqsService.sendTemplateMessage(
-                toQueue = queueUrl,
-                body = cssMsg
+                toQueue = queueUrl, body = cssMsg
             )
             if (msgResponse != null) {
                 log("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
@@ -419,10 +384,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      * First, check if it is a supported file type.
      */
     private suspend fun processImageUpload(
-        srcKey: String,
-        projectDomain: String,
-        contentType: String?,
-        queueUrl: String
+        srcKey: String, projectDomain: String, contentType: String?, queueUrl: String
     ) {
         try {
             // check if the image is a supported file type
@@ -444,8 +406,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
             upsertContentNode(srcKey = srcKey, projectDomain = projectDomain, Images, imageNode)
             log("Sending message to Image processor queue for $imageMsg")
             val msgResponse = sqsService.sendImageMessage(
-                toQueue = queueUrl,
-                body = imageMsg
+                toQueue = queueUrl, body = imageMsg
             )
             if (msgResponse != null) {
                 log("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
@@ -468,8 +429,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      * @param projectDomain the domain of the project to which the folder belongs
      */
     private suspend fun processFolderCreation(
-        srcKey: String,
-        projectDomain: String
+        srcKey: String, projectDomain: String
     ) {
         // Create a ContentNode for the folder
         val folderNode = ContentNode.FolderNode(
@@ -478,10 +438,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
         )
         // Upsert the content node in the DynamoDB table
         upsertContentNode(
-            srcKey = srcKey,
-            projectDomain = projectDomain,
-            contentType = SOURCE_TYPE.Folders,
-            node = folderNode
+            srcKey = srcKey, projectDomain = projectDomain, contentType = Folders, node = folderNode
         )
     }
 
@@ -493,16 +450,14 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      * @param projectDomain the domain of the project to which the template belongs
      */
     private suspend fun processTemplateUpload(
-        srcKey: String,
-        srcBucket: String,
-        projectDomain: String
+        srcKey: String, srcBucket: String, projectDomain: String
     ) {
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             // extract metadata
             val templateNode = ContentMetaDataBuilder.TemplateBuilder.buildFromSourceString(sourceString, srcKey)
             val attributes: MutableMap<String, String> = mutableMapOf()
-            attributes.put("title", templateNode.title)
+            attributes["title"] = templateNode.title
             // TODO: add the names of the sections as a set
             dynamoDBService.upsertContentNode(srcKey, projectDomain, Templates, templateNode, attributes)
         } catch (e: Exception) {
@@ -517,13 +472,10 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      * @param srcKey the source key of the file
      */
     private fun sendMarkdownMessage(
-        queueUrl: String,
-        markdownMsg: MarkdownSQSMessage,
-        srcKey: SrcKey
+        queueUrl: String, markdownMsg: MarkdownSQSMessage, srcKey: SrcKey
     ) {
         val msgResponse = sqsService.sendMarkdownMessage(
-            toQueue = queueUrl,
-            body = markdownMsg
+            toQueue = queueUrl, body = markdownMsg
         )
         if (msgResponse != null) {
             log("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
@@ -540,19 +492,30 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      * @param node the content node to upsert
      */
     private suspend fun upsertContentNode(
-        srcKey: SrcKey,
-        projectDomain: String,
-        contentType: SOURCE_TYPE,
-        node: ContentNode
+        srcKey: SrcKey, projectDomain: String, contentType: SOURCE_TYPE, node: ContentNode
     ) {
         log("Upserting '$contentType' node for '$srcKey' in project '$projectDomain'")
         dynamoDBService.upsertContentNode(
-            srcKey = srcKey,
-            projectDomain = projectDomain,
-            contentType = contentType,
-            node = node,
-            emptyMap()
+            srcKey = srcKey, projectDomain = projectDomain, contentType = contentType, node = node, emptyMap()
         )
+    }
+
+    /**
+     * Delete the content node from the DynamoDB table.
+     * @param srcKey the source key of the content node
+     * @param projectDomain the domain of the project
+     * @param contentType the type of content (e.g. POST, PAGE, IMAGE, etc.)
+     * @param node the content node to delete
+     * @return the result of the DynamoDB delete operation
+     */
+    private suspend fun deleteContentNode(
+        srcKey: SrcKey, projectDomain: String, contentType: SOURCE_TYPE
+    ): DynamoDBResult {
+        log("WARN", "Deleting '$contentType' node for '$srcKey' in project '$projectDomain'")
+        val result = dynamoDBService.deleteContentNode(
+            srcKey = srcKey, projectDomain = projectDomain, contentType = contentType
+        )
+        return result
     }
 
 }

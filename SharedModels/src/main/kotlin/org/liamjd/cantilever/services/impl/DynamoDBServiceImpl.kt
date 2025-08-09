@@ -10,6 +10,7 @@ import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.services.AWSLogger
+import org.liamjd.cantilever.services.DynamoDBResult
 import org.liamjd.cantilever.services.DynamoDBService
 import software.amazon.awssdk.awscore.exception.AwsServiceException
 import software.amazon.awssdk.core.exception.SdkClientException
@@ -346,12 +347,13 @@ class DynamoDBServiceImpl(
      * @param srcKey The source key for the content node
      * @param projectDomain The domain of the project
      * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @return a DynamoDB-specific response indicating success or failure of the operation
      */
     override suspend fun deleteContentNode(
         srcKey: String,
         projectDomain: String,
         contentType: SOURCE_TYPE
-    ) {
+    ): DynamoDBResult {
         log("Deleting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
 
         try {
@@ -367,6 +369,15 @@ class DynamoDBServiceImpl(
 
             log("Executing DeleteItem request for content node: $srcKey")
             val response = dynamoDbClient.deleteItem(request).await()
+            if (response.sdkHttpResponse().isSuccessful) {
+                return DynamoDBResult.OK
+            } else {
+                return DynamoDBResult.Error(
+                    "Error while deleting content node: $srcKey in domain: $projectDomain; status code ${
+                        response.sdkHttpResponse().statusCode()
+                    } (${response.sdkHttpResponse().statusText()})"
+                )
+            }
         } catch (e: DynamoDbException) {
             log("ERROR", "Failed to delete content node: $srcKey in domain: $projectDomain", e)
             throw e

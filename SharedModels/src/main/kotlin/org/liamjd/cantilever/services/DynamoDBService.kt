@@ -68,7 +68,7 @@ interface DynamoDBService {
         srcKey: String,
         projectDomain: String,
         contentType: SOURCE_TYPE
-    )
+    ): DynamoDBResult
 
     /**
      * Get a content node by its source key, project domain and content type
