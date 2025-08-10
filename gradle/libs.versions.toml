@@ -19,8 +19,8 @@ aws-lambda-log4j2 = "1.6.0"
 
 # Logging
 slf4j = "2.0.17"
-log4j = "2.23.1"
-log4j-layout-template-json = "2.23.1"
+log4j = "2.25.1"
+log4j-layout-template-json = "2.25.1"
 
 # Kotlinx libraries
 kotlinx-datetime = "0.4.1"
