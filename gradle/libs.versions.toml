@@ -28,7 +28,7 @@ kotlinx-serialization-json = "1.6.2"
 
 # Testing
 junit = "5.11.3"
-mockk = "1.13.4"
+mockk = "1.13.14"
 koin-core = "3.4.0"
 koin-test = "3.3.3"
 kotlin-test = "2.2.0"

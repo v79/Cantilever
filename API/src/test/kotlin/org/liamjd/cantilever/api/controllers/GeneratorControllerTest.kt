@@ -1,8 +1,11 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
-import io.mockk.*
+import io.mockk.every
 import io.mockk.junit5.MockKExtension
+import io.mockk.mockk
+import io.mockk.mockkClass
+import io.mockk.verify
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -380,8 +383,8 @@ class GeneratorControllerTest : KoinTest {
 
         assertNotNull(response)
         assertEquals(204, response.statusCode)
-        verify {
-            mockS3.deleteObject("test/generated/images/milkyway.jpg", generationBucket)?.wasNot(Called)
+        verify(exactly = 0) {
+            mockS3.deleteObject("test/generated/images/milkyway.jpg", generationBucket)
         }
     }
 
