@@ -1,11 +1,10 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
-import io.mockk.every
+import io.mockk.*
 import io.mockk.junit5.MockKExtension
-import io.mockk.mockk
-import io.mockk.mockkClass
-import io.mockk.verify
+import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -19,6 +18,9 @@ import org.koin.test.junit5.KoinTestExtension
 import org.koin.test.junit5.mock.MockProviderExtension
 import org.koin.test.mock.declareMock
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.SOURCE_TYPE
+import org.liamjd.cantilever.models.ContentNode
+import org.liamjd.cantilever.services.DynamoDBService
 import org.liamjd.cantilever.services.S3Service
 import org.liamjd.cantilever.services.SQSService
 import software.amazon.awssdk.services.s3.model.DeleteObjectResponse
@@ -37,6 +39,7 @@ class GeneratorControllerTest : KoinTest {
 
     private val mockS3: S3Service by inject()
     private val mockSQS: SQSService by inject()
+    private val mockDynamoDBService: DynamoDBService by inject()
     private val sourceBucket = "sourceBucket"
     private val generationBucket = "generationBucket"
 
@@ -298,29 +301,38 @@ class GeneratorControllerTest : KoinTest {
         val mockSqsResponse = mockk<SendMessageResponse>()
         val mockPageListResponse = mockk<ListObjectsV2Response>()
         val mockS3Obj = mockk<S3Object>()
+        val page = ContentNode.PageNode(
+            srcKey = "test/sources/pages/about.md",
+            lastUpdated = Clock.System.now(),
+            title = "About me",
+            templateKey = "about.html.hbs",
+            slug = "about-me",
+            isRoot = false,
+            attributes = emptyMap(),
+            sections = emptyMap(),
+            parent = ""
+        )
         every { mockPageListResponse.contents() } returns listOf(mockS3Obj)
         every { mockPageListResponse.keyCount() } returns 1
         every { mockS3Obj.key() } returns "test/sources/pages/about.md"
         declareMock<S3Service> {
             every { mockS3.listObjects("test/sources/pages/", sourceBucket) } returns mockPageListResponse
             every { mockS3.getObjectAsString("test/sources/pages/about.md", sourceBucket) } returns ""
-            every { mockS3.objectExists("test/generated/metadata.json", generationBucket) } returns true
-            every {
-                mockS3.getObjectAsString(
-                    "test/generated/metadata.json",
-                    generationBucket
-                )
-            } returns mockPageJsonShort
             every { mockS3.getObjectAsString("test/sources/pages/bio/about-me.md", sourceBucket) } returns ""
         }
         declareMock<SQSService> {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
+        declareMock<DynamoDBService> {
+            coEvery {
+                mockDynamoDBService.listAllNodesForProject("test", SOURCE_TYPE.Pages)
+            } returns listOf(page)
+        }
         every { mockSqsResponse.messageId() } returns "3456"
         val controller = GeneratorController(sourceBucket, generationBucket)
         val request = buildRequest(path = "/generate/page/*", pathPattern = "/generate/page/{srcKey}")
 
-        val response = controller.generatePage(request)
+        val response = runBlocking { controller.generatePage(request) }
 
         assertNotNull(response)
         assertEquals(200, response.statusCode)

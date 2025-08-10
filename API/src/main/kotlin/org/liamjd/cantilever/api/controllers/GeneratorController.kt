@@ -1,5 +1,6 @@
 package org.liamjd.cantilever.api.controllers
 
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerializationException
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -43,41 +44,44 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
         val requestKey = request.pathParameters["srcKey"]
             ?: return Response.badRequest(body = APIResult.Error("No srcKey provided"))
         var srcKey = ""
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        try {
-            loadContentTree(projectKeyHeader)
-            if (requestKey == "*") {
-                info("GeneratorController: Received request to regenerate all pages")
-                val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
-                var count = 0
-                if (pages.isNotEmpty()) {
-                    pages.forEach { page ->
-                        val sourceString = s3Service.getObjectAsString(page.srcKey, sourceBucket)
-                        val msgResponse = queuePageRegeneration(projectKeyHeader, page.srcKey, sourceString)
-                        if (msgResponse != null) {
-                            count++
-                        } else {
-                            error("No response when queueing page ${page.srcKey}")
+        val domain = request.headers["cantilever-project-domain"]!!
+
+        return runBlocking {
+            try {
+                if (requestKey == "*") {
+                    info("GeneratorController: Received request to regenerate all pages")
+                    val pages = dynamoDBService.listAllNodesForProject(domain, SOURCE_TYPE.Pages)
+                        .filterIsInstance<ContentNode.PageNode>()
+                    var count = 0
+                    if (pages.isNotEmpty()) {
+                        pages.forEach { page ->
+                            val sourceString = s3Service.getObjectAsString(page.srcKey, sourceBucket)
+                            val msgResponse = queuePageRegeneration(domain, page.srcKey, sourceString)
+                            if (msgResponse != null) {
+                                count++
+                            } else {
+                                error("No response when queueing page ${page.srcKey}")
+                            }
                         }
+                        info("Queued $count pages for regeneration")
+                        Response.ok(body = APIResult.Success(value = "Queued $count pages for regeneration"))
+                    } else {
+                        Response.noContent(APIResult.Error("No pages exist to be regenerated"))
                     }
-                    info("Queued $count pages for regeneration")
-                    return Response.ok(body = APIResult.Success(value = "Queued $count pages for regeneration"))
                 } else {
-                    return Response.notFound(body = APIResult.Error("No pages found to regenerate"))
+                    srcKey = URLDecoder.decode(requestKey, Charset.defaultCharset())
+                    info("GeneratorController: Received request to regenerate page '$srcKey'")
+                    val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
+                    queuePageRegeneration(domain, srcKey, sourceString)
+                    Response.ok(body = APIResult.Success(value = "Regenerated page '$requestKey'"))
                 }
-            } else {
-                srcKey = URLDecoder.decode(requestKey, Charset.defaultCharset())
-                info("GeneratorController: Received request to regenerate page '$srcKey'")
-                val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
-                queuePageRegeneration(projectKeyHeader, srcKey, sourceString)
-                return Response.ok(body = APIResult.Success(value = "Regenerated page '$requestKey'"))
+            } catch (nske: NoSuchKeyException) {
+                error("${nske.message} for key $srcKey")
+                Response.notFound(body = APIResult.Error(statusText = "Could not find page with key '$srcKey'"))
+            } catch (e: Exception) {
+                error("Error generating page: ${e.message}")
+                Response.serverError(body = APIResult.Error("Error generating page: ${e.message}"))
             }
-        } catch (nske: NoSuchKeyException) {
-            error("${nske.message} for key $srcKey")
-            return Response.notFound(body = APIResult.Error(statusText = "Could not find page with key '$srcKey'"))
-        } catch (e: Exception) {
-            error("Error generating page: ${e.message}")
-            return Response.serverError(body = APIResult.Error("Error generating page: ${e.message}"))
         }
     }
 
