@@ -1,5 +1,6 @@
 package org.liamjd.cantilever.api.controllers
 
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerializationException
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -43,9 +44,8 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
         val requestKey = request.pathParameters["srcKey"]
             ?: return Response.badRequest(body = APIResult.Error("No srcKey provided"))
         var srcKey = ""
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        val domain = request.headers["cantilever-project-domain"]!!
         try {
-            loadContentTree(projectKeyHeader)
             if (requestKey == "*") {
                 info("GeneratorController: Received request to regenerate all pages")
                 val pages = contentTree.items.filterIsInstance<ContentNode.PageNode>()
@@ -53,7 +53,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                 if (pages.isNotEmpty()) {
                     pages.forEach { page ->
                         val sourceString = s3Service.getObjectAsString(page.srcKey, sourceBucket)
-                        val msgResponse = queuePageRegeneration(projectKeyHeader, page.srcKey, sourceString)
+                        val msgResponse = queuePageRegeneration(domain, page.srcKey, sourceString)
                         if (msgResponse != null) {
                             count++
                         } else {
@@ -69,7 +69,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                 srcKey = URLDecoder.decode(requestKey, Charset.defaultCharset())
                 info("GeneratorController: Received request to regenerate page '$srcKey'")
                 val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
-                queuePageRegeneration(projectKeyHeader, srcKey, sourceString)
+                queuePageRegeneration(domain, srcKey, sourceString)
                 return Response.ok(body = APIResult.Success(value = "Regenerated page '$requestKey'"))
             }
         } catch (nske: NoSuchKeyException) {
@@ -90,44 +90,46 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
     fun generatePost(request: Request<Unit>): Response<APIResult<String>> {
         val requestKey = request.pathParameters["srcKey"]
         var srcKey = ""
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        val domain = request.headers["cantilever-project-domain"]!!
         try {
-            loadContentTree(projectKeyHeader)
-            if (requestKey == "*") {
-                info("GeneratorController: Received request to regenerate all posts")
-                val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
-                var count = 0
-                if (posts.isNotEmpty()) {
-                    posts.forEach { post ->
-                        val sourceString = s3Service.getObjectAsString(post.srcKey, sourceBucket)
-                        val postSrcKey = post.srcKey.removePrefix(postsPrefix)
-                        val msgResponse = queuePostRegeneration(
-                            postSrcKey = postSrcKey,
-                            sourceString = sourceString,
-                            projectDomain = projectKeyHeader
-                        )
-                        if (msgResponse != null) {
-                            count++
-                        } else {
-                            error("No response when queueing post ${post.srcKey}")
+            runBlocking {
+                if (requestKey == "*") {
+                    info("GeneratorController: Received request to regenerate all posts")
+                    val posts = dynamoDBService.listAllNodesForProject(domain, SOURCE_TYPE.Posts)
+                        .filterIsInstance<ContentNode.PostNode>()
+                    var count = 0
+                    if (posts.isNotEmpty()) {
+                        posts.forEach { post ->
+                            val sourceString = s3Service.getObjectAsString(post.srcKey, sourceBucket)
+                            val postSrcKey = post.srcKey.removePrefix(postsPrefix)
+                            val msgResponse = queuePostRegeneration(
+                                postSrcKey = postSrcKey,
+                                sourceString = sourceString,
+                                projectDomain = domain
+                            )
+                            if (msgResponse != null) {
+                                count++
+                            } else {
+                                error("No response when queueing post ${post.srcKey}")
+                            }
                         }
+                        info("Queued $count posts for regeneration")
+                        return@runBlocking Response.ok(body = APIResult.Success(value = "Queued $count posts for regeneration"))
+                    } else {
+                        return@runBlocking Response.notFound(body = APIResult.Error("No posts found to regenerate"))
                     }
-                    info("Queued $count posts for regeneration")
-                    return Response.ok(body = APIResult.Success(value = "Queued $count posts for regeneration"))
                 } else {
-                    return Response.notFound(body = APIResult.Error("No posts found to regenerate"))
+                    srcKey = postsPrefix + requestKey
+                    info("GeneratorController: Received request to regenerate post '$srcKey'")
+                    val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
+                    val postSrcKey = srcKey.removePrefix(postsPrefix)
+                    queuePostRegeneration(
+                        postSrcKey = postSrcKey,
+                        sourceString = sourceString,
+                        projectDomain = domain
+                    )
+                    return@runBlocking Response.ok(body = APIResult.Success(value = "Regenerated post '$requestKey'"))
                 }
-            } else {
-                srcKey = postsPrefix + requestKey
-                info("GeneratorController: Received request to regenerate post '$srcKey'")
-                val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
-                val postSrcKey = srcKey.removePrefix(postsPrefix)
-                queuePostRegeneration(
-                    postSrcKey = postSrcKey,
-                    sourceString = sourceString,
-                    projectDomain = projectKeyHeader
-                )
-                return Response.ok(body = APIResult.Success(value = "Regenerated post '$requestKey'"))
             }
         } catch (nske: NoSuchKeyException) {
             error("${nske.message} for key $srcKey")
@@ -136,6 +138,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
             error("Error generating post: ${e.javaClass}: ${e.message}")
             return Response.serverError(body = APIResult.Error("Error generating post: ${e.message}"))
         }
+        return Response.serverError(body = APIResult.Error("Unexpected error while generating posts"))
     }
 
     /**
@@ -150,14 +153,14 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                 body = APIResult.Error("Regeneration of all templates is not supported.")
             )
         }
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        val domain = request.headers["cantilever-project-domain"]!!
         // TODO: https://github.com/v79/Cantilever/issues/26 this only works for HTML handlebars templates, i.e. those whose file names end in ".index.html" in the "templates" folder.
         // Also, annoying that I have to double-decode this.
         // And I need to strip off the domain from the requestKey
         val templateKey =
             URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset())
                 .substringAfter(
-                    "$projectKeyHeader/"
+                    "$domain/"
                 )
         info(
             "Received request to regenerate pages based on template '$templateKey'"
@@ -165,42 +168,49 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
         var count = 0
 
         // We don't know if the template is for a Page or a Post. This is less than ideal as I have to check both. But I could short-circuit the second check if the first one succeeds?
-        try {
-            loadContentTree(projectKeyHeader)
-            contentTree.getPagesForTemplate(templateKey).forEach { page ->
-                info("Regenerating page ${page.srcKey} because it has template ${page.templateKey}")
-                val pageSource = s3Service.getObjectAsString(page.srcKey, sourceBucket)
-                val response = queuePageRegeneration(
-                    pageSrcKey = page.srcKey,
-                    sourceString = pageSource,
-                    projectDomain = projectKeyHeader
-                )
-                if (response != null) {
-                    count++
-                } else {
-                    error(error_NO_RESPONSE)
+        runBlocking {
+            try {
+                val pageSrcKeys = dynamoDBService.getKeyListMatchingTemplate(domain, SOURCE_TYPE.Pages, templateKey)
+                // we only have a list of keys, not actual nodes
+                pageSrcKeys.forEach { srcKey ->
+                    val pageNode = dynamoDBService.getContentNode(srcKey, domain, SOURCE_TYPE.Pages)
+                    if (pageNode is ContentNode.PageNode) {
+                        info("Regenerating page ${pageNode.srcKey} because it has template ${pageNode.templateKey}")
+                        val pageSource = s3Service.getObjectAsString(pageNode.srcKey, sourceBucket)
+                        val response = queuePageRegeneration(
+                            pageSrcKey = pageNode.srcKey,
+                            sourceString = pageSource,
+                            projectDomain = domain
+                        )
+                        if (response != null) {
+                            count++
+                        } else {
+                            error(error_NO_RESPONSE)
+                        }
+                    }
                 }
-            }
 
-            contentTree.getPostsForTemplate(templateKey).forEach { post ->
-                info("Regenerating post ${post.srcKey} because it has template ${post.templateKey}")
-                val postSource = s3Service.getObjectAsString(post.srcKey, sourceBucket)
-                val msgResponse = queuePostRegeneration(
-                    postSrcKey = post.srcKey,
-                    sourceString = postSource,
-                    projectDomain = projectKeyHeader
-                )
-                if (msgResponse != null) {
-                    count++
-                } else {
-                    error(error_NO_RESPONSE)
+
+                contentTree.getPostsForTemplate(templateKey).forEach { post ->
+                    info("Regenerating post ${post.srcKey} because it has template ${post.templateKey}")
+                    val postSource = s3Service.getObjectAsString(post.srcKey, sourceBucket)
+                    val msgResponse = queuePostRegeneration(
+                        postSrcKey = post.srcKey,
+                        sourceString = postSource,
+                        projectDomain = domain
+                    )
+                    if (msgResponse != null) {
+                        count++
+                    } else {
+                        error(error_NO_RESPONSE)
+                    }
                 }
+            } catch (se: SerializationException) {
+                error("Error processing pages.json; error is ${se.message}")
+                return@runBlocking Response.serverError(
+                    body = APIResult.Error("Error processing pages.json; error is ${se.message}")
+                )
             }
-        } catch (se: SerializationException) {
-            error("Error processing pages.json; error is ${se.message}")
-            return Response.serverError(
-                body = APIResult.Error("Error processing pages.json; error is ${se.message}")
-            )
         }
 
         return if (count == 0) {

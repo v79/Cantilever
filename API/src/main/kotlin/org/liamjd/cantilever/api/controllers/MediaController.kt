@@ -53,7 +53,6 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
             request.pathParameters["srcKey"] ?: return Response.badRequest(APIResult.Error("No srcKey provided"))
         val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
         val resolution = request.pathParameters["resolution"]
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         info("Fetching image $decodedKey at resolution $resolution")
         // srcKey will be /sources/images/<image-name>.<ext>, so we need to strip off the /sources/images/ prefix and add the /generated/images/ prefix
         // I also need to move the <ext> to the end of the generated key
@@ -87,11 +86,9 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
      */
     @OptIn(ExperimentalEncodingApi::class)
     fun uploadImage(request: Request<ImageDTO>): Response<APIResult<ImageDTO>> {
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        loadContentTree(projectKeyHeader)
-
+        val domain = request.headers["cantilever-project-domain"]!!
         val imageBody = request.body
-        val srcKey = "$projectKeyHeader/sources/images/${imageBody.srcKey}"
+        val srcKey = "$domain/sources/images/${imageBody.srcKey}"
         val contentType = imageBody.contentType
         var dto: ImageDTO? = null
         try {
@@ -99,11 +96,7 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
             val bytes = Base64.decode(imageBody.bytes, startIndex)
             info("Uploading image $srcKey with ${bytes.size} bytes")
             s3Service.putObjectAsBytes(key = srcKey, bucket = sourceBucket, contentType = contentType, contents = bytes)
-
-            // add the image to the content tree
-            val metadata = ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", srcKey)
             dto = ImageDTO(srcKey, contentType, "") // we don't really need to return the bytes, the browser already has them
-            contentTree.insertImage(metadata)
         } catch (e: Exception) {
             error("Error uploading image $srcKey: ${e.message}")
             return Response.badRequest(APIResult.Error("Error uploading image $srcKey: ${e.message}"))
@@ -118,10 +111,9 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
     fun deleteImage(request: Request<Unit>): Response<APIResult<String>> {
         val srcKey =
             request.pathParameters["srcKey"] ?: return Response.badRequest(APIResult.Error("No srcKey provided"))
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        val domain = request.headers["cantilever-project-domain"]!!
         val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
-        loadContentTree(projectKeyHeader)
-        loadProjectDefinition(projectKeyHeader)
+        loadProjectDefinition(domain)
 
         info("Deleting image $decodedKey and all its generated versions")
         s3Service.deleteObject(decodedKey, sourceBucket)
@@ -141,8 +133,6 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
         )
 
         contentTree.deleteImage(ContentMetaDataBuilder.ImageBuilder.buildFromSourceString("", decodedKey))
-        println("Content tree now has ${contentTree.images.size} images")
-        saveContentTree(projectKeyHeader)
 
         return Response.ok(APIResult.Success(value = "Image'${srcKey}' deleted successfully"))
     }
