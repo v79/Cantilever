@@ -11,7 +11,7 @@ coroutines = "1.10.2"
 # AWS
 aws-cdk = "2.206.0"
 aws-constructs = "10.4.2"
-aws-sdk = "2.20.68"
+aws-sdk = "2.32.19"
 aws-lambda-core = "1.3.0"
 aws-lambda-events = "3.16.0"
 aws-lambda-tests = "1.1.1"
