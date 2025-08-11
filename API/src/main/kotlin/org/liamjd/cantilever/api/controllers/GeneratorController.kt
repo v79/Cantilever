@@ -93,52 +93,55 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
      */
     fun generatePost(request: Request<Unit>): Response<APIResult<String>> {
         val requestKey = request.pathParameters["srcKey"]
-        var srcKey = ""
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        try {
-            loadContentTree(projectKeyHeader)
-            if (requestKey == "*") {
-                info("GeneratorController: Received request to regenerate all posts")
-                val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
-                var count = 0
-                if (posts.isNotEmpty()) {
-                    posts.forEach { post ->
-                        val sourceString = s3Service.getObjectAsString(post.srcKey, sourceBucket)
-                        val postSrcKey = post.srcKey.removePrefix(postsPrefix)
-                        val msgResponse = queuePostRegeneration(
-                            postSrcKey = postSrcKey,
-                            sourceString = sourceString,
-                            projectDomain = projectKeyHeader
-                        )
-                        if (msgResponse != null) {
-                            count++
-                        } else {
-                            error("No response when queueing post ${post.srcKey}")
+            ?: return Response.badRequest(body = APIResult.Error("No srcKey provided"))
+        val domain = request.headers["cantilever-project-domain"]!!
+
+        return runBlocking {
+            try {
+                if (requestKey == "*") {
+                    info("GeneratorController: Received request to regenerate all posts")
+                    val posts = dynamoDBService.listAllNodesForProject(domain, SOURCE_TYPE.Posts)
+                        .filterIsInstance<ContentNode.PostNode>()
+                    var count = 0
+                    if (posts.isNotEmpty()) {
+                        posts.forEach { post ->
+                            val sourceString = s3Service.getObjectAsString(post.srcKey, sourceBucket)
+                            val msgResponse = queuePostRegeneration(
+                                postSrcKey = post.srcKey,
+                                sourceString = sourceString,
+                                projectDomain = domain
+                            )
+                            if (msgResponse != null) {
+                                count++
+                            } else {
+                                error("No response when queueing post ${post.srcKey}")
+                            }
                         }
+                        info("Queued $count posts for regeneration")
+                        Response.ok(body = APIResult.Success(value = "Queued $count posts for regeneration"))
+
+                    } else {
+                        Response.noContent(APIResult.Error("No posts exist to be regenerated"))
                     }
-                    info("Queued $count posts for regeneration")
-                    return Response.ok(body = APIResult.Success(value = "Queued $count posts for regeneration"))
                 } else {
-                    return Response.notFound(body = APIResult.Error("No posts found to regenerate"))
+                    val srcKey = URLDecoder.decode(requestKey, Charset.defaultCharset())
+                    info("GeneratorController: Received request to regenerate post '$srcKey'")
+                    val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
+                    queuePostRegeneration(
+                        postSrcKey = srcKey,
+                        sourceString = sourceString,
+                        projectDomain = domain
+                    )
+                    Response.ok(body = APIResult.Success(value = "Regenerated post '$srcKey'"))
+
                 }
-            } else {
-                srcKey = postsPrefix + requestKey
-                info("GeneratorController: Received request to regenerate post '$srcKey'")
-                val sourceString = s3Service.getObjectAsString(srcKey, sourceBucket)
-                val postSrcKey = srcKey.removePrefix(postsPrefix)
-                queuePostRegeneration(
-                    postSrcKey = postSrcKey,
-                    sourceString = sourceString,
-                    projectDomain = projectKeyHeader
-                )
-                return Response.ok(body = APIResult.Success(value = "Regenerated post '$requestKey'"))
+            } catch (nske: NoSuchKeyException) {
+                error("${nske.message} for key $requestKey")
+                Response.notFound(body = APIResult.Error(statusText = "Could not find post with key '$requestKey'"))
+            } catch (e: Exception) {
+                error("Error generating post: ${e.javaClass}: ${e.message}")
+                Response.serverError(body = APIResult.Error("Error generating post: ${e.message}"))
             }
-        } catch (nske: NoSuchKeyException) {
-            error("${nske.message} for key $srcKey")
-            return Response.notFound(body = APIResult.Error(statusText = "Could not find post with key '$srcKey'"))
-        } catch (e: Exception) {
-            error("Error generating post: ${e.javaClass}: ${e.message}")
-            return Response.serverError(body = APIResult.Error("Error generating post: ${e.message}"))
         }
     }
 

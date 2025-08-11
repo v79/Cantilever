@@ -5,6 +5,7 @@ import io.mockk.*
 import io.mockk.junit5.MockKExtension
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -88,24 +89,37 @@ class GeneratorControllerTest : KoinTest {
     @Test
     fun `responds to request to regenerate post and sends to markdown queue`() {
         val mockSqsResponse = mockk<SendMessageResponse>()
+        val post = ContentNode.PostNode(
+            srcKey = "test/sources/post/my-holiday-post.md",
+            title = "My holiday post",
+            templateKey = "sources/templates/post.html.hbs",
+            date = LocalDate.parse(
+                "2023-10-20"
+            ),
+            slug = "my-holiday-post",
+            attributes = emptyMap(),
+            lastUpdated = Clock.System.now()
+        )
         declareMock<S3Service> {
-            every { mockS3.getObjectAsString("sources/posts/my-holiday-post.md", sourceBucket) } returns """
+            every { mockS3.getObjectAsString("test/sources/posts/my-holiday-post.md", sourceBucket) } returns """
                 title: My holiday post
-                templateKey: sources/templates/post
+                templateKey: sources/templates/post.html.hbs
                 slug: my-holiday-post
                 date: 2023-10-20
                 attributes: {}
             """.trimIndent()
-            every { mockS3.objectExists("test/metadata.json", generationBucket) } returns true
-            every { mockS3.getObjectAsString("test/metadata.json", generationBucket) } returns mockMetaJson
-
         }
         declareMock<SQSService> {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
         }
+        declareMock<DynamoDBService> {
+            coEvery { mockDynamoDBService.listAllNodesForProject("test", SOURCE_TYPE.Posts) } returns listOf(post)
+        }
         every { mockSqsResponse.messageId() } returns "1234"
+
         val controller = GeneratorController(sourceBucket, generationBucket)
-        val request = buildRequest(path = "/generate/test/my-holiday-post.md", pathPattern = "/generate/page/{srcKey}")
+        val encoded = URLEncoder.encode("test/sources/posts/my-holiday-post.md", "UTF-8")
+        val request = buildRequest(path = "/generate/post/$encoded", pathPattern = "/generate/post/{srcKey}")
 
         val response = controller.generatePost(request)
 
