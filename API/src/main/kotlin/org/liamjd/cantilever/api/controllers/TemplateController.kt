@@ -25,8 +25,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
      */
     fun loadHandlebarsSource(request: Request<Unit>): Response<APIResult<ContentNode.TemplateNode>> {
         val handlebarSource = request.pathParameters["srcKey"]
-
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        val domain = request.headers["cantilever-project-domain"]!!
         return if (handlebarSource != null) {
             val decoded = URLDecoder.decode(handlebarSource, Charset.defaultCharset())
             info("Loading handlebar file $decoded")

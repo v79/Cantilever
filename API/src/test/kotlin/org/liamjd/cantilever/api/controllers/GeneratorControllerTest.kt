@@ -130,161 +130,23 @@ class GeneratorControllerTest : KoinTest {
     @Test
     fun `responds to request to regenerate pages based on a template`() {
         val mockSqsResponse = mockk<SendMessageResponse>()
-        val mockPageJson = """
-       {
-  "lastUpdated": "2023-10-20T09:50:13.895554407Z",
-  "container": {
-    "srcKey": "sources/pages/",
-    "children": [
-      {
-        "type": "folder",
-        "srcKey": "sources/pages/bio/",
-        "children": [
-          {
-            "type": "page",
-            "title": "About me",
-            "srcKey": "test/sources/pages/bio/about-me.md",
-            "templateKey": "sources/templates/about.html.hbs",
-            "url": "bio/about-me",
-            "attributes": {},
-            "sections": {
-              "body": ""
-            },
-            "lastUpdated": "2023-10-19T19:03:59Z"
-          }
-        ],
-        "isRoot": false,
-        "count": 1
-      },
-      {
-        "type": "folder",
-        "srcKey": "test/sources/pages/folder/",
-        "children": null,
-        "isRoot": false,
-        "count": 0
-      },
-      {
-        "type": "folder",
-        "srcKey": "sources/pages/",
-        "children": [
-          {
-            "type": "page",
-            "title": "About Cantilever",
-            "srcKey": "test/sources/pages/about.md",
-            "templateKey": "sources/templates/about.html.hbs",
-            "url": "about",
-            "attributes": {
-              "siteName": "Cantilever",
-              "author": "Liam Davison"
-            },
-            "sections": {
-              "body": ""
-            },
-            "lastUpdated": "2023-10-20T09:50:05Z"
-          },
-          {
-            "type": "page",
-            "title": "Testing Emoji",
-            "srcKey": "test/sources/pages/about.md",
-            "templateKey": "sources/templates/about.html.hbs",
-            "url": "emoji",
-            "attributes": {
-              "siteName": "Cantilever",
-              "author": "Liam Davison"
-            },
-            "sections": {
-              "body": ""
-            },
-            "lastUpdated": "2023-10-20T09:49:59Z"
-          },
-          {
-            "type": "page",
-            "title": "Cantilever",
-            "srcKey": "test/sources/pages/index.md",
-            "templateKey": "index",
-            "url": "index",
-            "attributes": {
-              "siteName": "Cantilever",
-              "author": "Liam John Davison"
-            },
-            "sections": {
-              "body": "",
-              "blockA": "",
-              "links": ""
-            },
-            "lastUpdated": "2023-08-19T16:36:08Z"
-          },
-          {
-            "type": "page",
-            "title": "Page Model",
-            "srcKey": "test/sources/pages/about.md",
-            "templateKey": "sources/templates/about.html.hbs",
-            "url": "page-model",
-            "attributes": {},
-            "sections": {
-              "body": ""
-            },
-            "lastUpdated": "2023-10-20T07:07:55Z"
-          },
-          {
-            "type": "page",
-            "title": "Todo",
-            "srcKey": "test/sources/pages/about.md",
-            "templateKey": "sources/templates/about.html.hbs",
-            "url": "todo",
-            "attributes": {
-              "siteName": "Cantilever",
-              "author": "Liam Davison"
-            },
-            "sections": {
-              "body": ""
-            },
-            "lastUpdated": "2023-10-20T09:49:49Z"
-          }
-        ],
-        "isRoot": false,
-        "count": 5
-      }
-    ],
-    "isRoot": false,
-    "count": 9
-  }
-}
-        """.trimIndent()
-
-        val mockPostJson = """
-            {
-  "count": 1,
-  "lastUpdated": "2023-07-03T19:46:47.042018Z",
-  "posts": [
-    {
-      "title": "Momentum lost",
-      "srcKey": "test/sources/posts/momentum-lost.md",
-      "url": "momentum-lost",
-      "date": "2023-05-13",
-      "lastUpdated": "2023-07-03T19:46:46.686504Z",
-      "templateKey": "templates/post.html.hbs"
-        }
-  ]
-}
-        """.trimIndent()
-
-
         val mockTodoPage = ""
         val mockTemplateText = ""
+        val page1 = buildPageNode("test/sources/pages/dynamodb-design-thoughts.md")
+        val page2 = buildPageNode("test/sources/pages/dynamodb-design-thoughts.md")
+        val page3 = buildPageNode("test/sources/pages/about.md")
+        val page4 = buildPageNode("test/sources/pages/new-approach.md.md")
 
         declareMock<S3Service> {
             every { mockS3.objectExists(any(), sourceBucket) } returns true
-            every { mockS3.objectExists("test/generated/metadata.json", generationBucket) } returns true
-            every { mockS3.getObjectAsString("test/generated/metadata.json", generationBucket) } returns mockMetaJson
             every {
                 mockS3.getObjectAsString(
-                    "test/sources/pages/dynamodb-design-thoughts.md", sourceBucket
+                    page1.srcKey, sourceBucket
                 )
             } returns mockTodoPage
-            every { mockS3.getObjectAsString("test/sources/pages/bio/about-me.md", sourceBucket) } returns mockTodoPage
-            every { mockS3.getObjectAsString("test/sources/pages/about.md", sourceBucket) } returns mockTodoPage
-            every { mockS3.getObjectAsString("test/sources/pages/new-approach.md", sourceBucket) } returns mockTodoPage
+            every { mockS3.getObjectAsString(page2.srcKey, sourceBucket) } returns mockTodoPage
+            every { mockS3.getObjectAsString(page3.srcKey, sourceBucket) } returns mockTodoPage
+            every { mockS3.getObjectAsString(page4.srcKey, sourceBucket) } returns mockTodoPage
 
             every {
                 mockS3.getObjectAsString(
@@ -294,6 +156,34 @@ class GeneratorControllerTest : KoinTest {
         }
         declareMock<SQSService> {
             every { mockSQS.sendMarkdownMessage("markdown_processing_queue", any(), any()) } returns mockSqsResponse
+        }
+        declareMock<DynamoDBService> {
+            coEvery {
+                mockDynamoDBService.getKeyListMatchingTemplate(
+                    "test",
+                    SOURCE_TYPE.Pages,
+                    "sources/templates/about.html.hbs"
+                )
+            } returns listOf(page1.srcKey, page2.srcKey, page3.srcKey, page4.srcKey)
+            coEvery {
+                mockDynamoDBService.getKeyListMatchingTemplate(
+                    "test",
+                    SOURCE_TYPE.Posts,
+                    "sources/templates/about.html.hbs"
+                )
+            } returns emptyList()
+            coEvery {
+                mockDynamoDBService.getContentNode(page1.srcKey, "test", SOURCE_TYPE.Pages)
+            } returns page1
+            coEvery {
+                mockDynamoDBService.getContentNode(page2.srcKey, "test", SOURCE_TYPE.Pages)
+            } returns page2
+            coEvery {
+                mockDynamoDBService.getContentNode(page3.srcKey, "test", SOURCE_TYPE.Pages)
+            } returns page3
+            coEvery {
+                mockDynamoDBService.getContentNode(page4.srcKey, "test", SOURCE_TYPE.Pages)
+            } returns page4
         }
         every { mockSqsResponse.messageId() } returns "2345"
         val controller = GeneratorController(sourceBucket, generationBucket)
@@ -457,6 +347,20 @@ class GeneratorControllerTest : KoinTest {
         return org.liamjd.apiviaduct.routing.Request(apiGatewayProxyRequestEvent, Unit, pathPattern)
     }
 
+    /**
+     * Utility function to build a ContentNode.PageNode
+     */
+    private fun buildPageNode(srcKey: String): ContentNode.PageNode = ContentNode.PageNode(
+        srcKey = srcKey,
+        title = srcKey,
+        templateKey = "test/sources/templates/about.html.hbs",
+        slug = srcKey,
+        lastUpdated = Clock.System.now(),
+        attributes = emptyMap(),
+        sections = mapOf("body" to ""),
+        isRoot = false,
+    )
+
     @Language("JSON")
     private val mockPageJsonShort = """
         {
@@ -466,7 +370,7 @@ class GeneratorControllerTest : KoinTest {
       "srcKey": "test/sources/pages/about.md",
       "lastUpdated": "2023-11-12T15:24:05.563049390Z",
       "title": "About Cantilever",
-      "templateKey": "sources/templates/about.html.hbs",
+      "templateKey": "test/sources/templates/about.html.hbs",
       "slug": "about",
       "isRoot": false,
       "attributes": {
@@ -476,7 +380,7 @@ class GeneratorControllerTest : KoinTest {
       "sections": {
         "body": ""
       },
-      "parent": "sources/pages"
+      "parent": "test/sources/pages"
     }
     ]
     }
@@ -491,7 +395,7 @@ class GeneratorControllerTest : KoinTest {
       "srcKey": "test/sources/pages/about.md",
       "lastUpdated": "2023-11-12T15:24:05.563049390Z",
       "title": "About Cantilever",
-      "templateKey": "sources/templates/about.html.hbs",
+      "templateKey": "test/sources/templates/about.html.hbs",
       "slug": "about",
       "isRoot": false,
       "attributes": {
@@ -508,7 +412,7 @@ class GeneratorControllerTest : KoinTest {
       "srcKey": "test/sources/pages/bio/about-me.md",
       "lastUpdated": "2023-11-12T15:24:05.627497495Z",
       "title": "About me",
-      "templateKey": "sources/templates/about.html.hbs",
+      "templateKey": "test/sources/templates/about.html.hbs",
       "slug": "bio/about-me",
       "isRoot": true,
       "attributes": {
@@ -516,14 +420,14 @@ class GeneratorControllerTest : KoinTest {
       "sections": {
         "body": ""
       },
-      "parent": "sources/pages/bio"
+      "parent": "test/sources/pages/bio"
     },
     {
       "type": "page",
       "srcKey": "test/sources/pages/dynamodb-design-thoughts.md",
       "lastUpdated": "2023-11-12T15:24:05.735423913Z",
       "title": "DynamoDB Design Thoughts",
-      "templateKey": "sources/templates/about.html.hbs",
+      "templateKey": "test/sources/templates/about.html.hbs",
       "slug": "dynamodb-design-thoughts",
       "isRoot": false,
       "attributes": {
@@ -538,7 +442,7 @@ class GeneratorControllerTest : KoinTest {
       "srcKey": "test/sources/pages/index.md",
       "lastUpdated": "2023-11-12T15:24:05.768820097Z",
       "title": "Cantilever",
-      "templateKey": "sources/templates/index.html.hbs",
+      "templateKey": "test/sources/templates/index.html.hbs",
       "slug": "index",
       "isRoot": false,
       "attributes": {
@@ -549,14 +453,14 @@ class GeneratorControllerTest : KoinTest {
         "body": "",
         "links": ""
       },
-      "parent": "sources/pages"
+      "parent": "test/sources/pages"
     },
     {
       "type": "page",
       "srcKey": "test/sources/pages/new-approach.md",
       "lastUpdated": "2023-11-12T15:24:05.819663508Z",
       "title": "New Approach",
-      "templateKey": "sources/templates/about.html.hbs",
+      "templateKey": "test/sources/templates/about.html.hbs",
       "slug": "new-approach",
       "isRoot": false,
       "attributes": {
@@ -564,7 +468,7 @@ class GeneratorControllerTest : KoinTest {
       "sections": {
         "body": ""
       },
-      "parent": "sources/pages"
+      "parent": "test/sources/pages"
     }
 ],
 "images": [

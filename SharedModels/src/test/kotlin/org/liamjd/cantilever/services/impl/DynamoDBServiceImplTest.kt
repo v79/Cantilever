@@ -601,7 +601,7 @@ class DynamoDBServiceImplTest {
     }
 
     @Test
-    fun `getKeyListMatchingTemplate should return matching nodes`() = runBlocking {
+    fun `getKeyListMatchingTemplate should return single matching post`() = runBlocking {
         // Setup
         val post1 = ContentNode.PostNode(
             title = "Matching Post",

@@ -9,7 +9,6 @@ import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.apiviaduct.schema.OpenAPIPath
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.*
-import org.liamjd.cantilever.common.S3_KEY.postsPrefix
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.sqs.MarkdownSQSMessage
@@ -157,69 +156,73 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                 body = APIResult.Error("Regeneration of all templates is not supported.")
             )
         }
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        val domain = request.headers["cantilever-project-domain"]!!
         // TODO: https://github.com/v79/Cantilever/issues/26 this only works for HTML handlebars templates, i.e. those whose file names end in ".index.html" in the "templates" folder.
         // Also, annoying that I have to double-decode this.
-        // And I need to strip off the domain from the requestKey
         val templateKey =
             URLDecoder.decode(URLDecoder.decode(requestKey, Charset.defaultCharset()), Charset.defaultCharset())
-                .substringAfter(
-                    "$projectKeyHeader/"
-                )
         info(
-            "Received request to regenerate pages based on template '$templateKey'"
+            "Received request to regenerate pages or posts based on template '$templateKey'"
         )
-        var count = 0
 
-        // We don't know if the template is for a Page or a Post. This is less than ideal as I have to check both. But I could short-circuit the second check if the first one succeeds?
-        try {
-            loadContentTree(projectKeyHeader)
-            contentTree.getPagesForTemplate(templateKey).forEach { page ->
-                info("Regenerating page ${page.srcKey} because it has template ${page.templateKey}")
-                val pageSource = s3Service.getObjectAsString(page.srcKey, sourceBucket)
-                val response = queuePageRegeneration(
-                    pageSrcKey = page.srcKey,
-                    sourceString = pageSource,
-                    projectDomain = projectKeyHeader
-                )
-                if (response != null) {
-                    count++
-                } else {
-                    error(error_NO_RESPONSE)
+        return runBlocking {
+            try {
+                // We don't know if the template is for a Page or a Post. This is less than ideal as I have to check both. But I could short-circuit the second check if the first one succeeds?
+                val postSrcKeys = dynamoDBService.getKeyListMatchingTemplate(domain, SOURCE_TYPE.Posts, templateKey)
+                var count = 0
+                postSrcKeys.forEach { srcKey ->
+                    val node = dynamoDBService.getContentNode(srcKey, domain, SOURCE_TYPE.Posts)
+                    if (node is ContentNode.PostNode) {
+                        info("Regenerating post ${node.srcKey} because it has template ${node.templateKey}")
+                        val pageSource = s3Service.getObjectAsString(node.srcKey, sourceBucket)
+                        val response = queuePostRegeneration(
+                            postSrcKey = node.srcKey,
+                            sourceString = pageSource,
+                            projectDomain = domain
+                        )
+                        if (response != null) {
+                            count++
+                        } else {
+                            error(error_NO_RESPONSE)
+                        }
+                    }
                 }
-            }
-
-            contentTree.getPostsForTemplate(templateKey).forEach { post ->
-                info("Regenerating post ${post.srcKey} because it has template ${post.templateKey}")
-                val postSource = s3Service.getObjectAsString(post.srcKey, sourceBucket)
-                val msgResponse = queuePostRegeneration(
-                    postSrcKey = post.srcKey,
-                    sourceString = postSource,
-                    projectDomain = projectKeyHeader
-                )
-                if (msgResponse != null) {
-                    count++
-                } else {
-                    error(error_NO_RESPONSE)
+                val pageSourceKeys = dynamoDBService.getKeyListMatchingTemplate(domain, SOURCE_TYPE.Pages, templateKey)
+                pageSourceKeys.forEach { srcKey ->
+                    val node = dynamoDBService.getContentNode(srcKey, domain, SOURCE_TYPE.Pages)
+                    if (node is ContentNode.PageNode) {
+                        info("Regenerating page ${node.srcKey} because it has template ${node.templateKey}")
+                        val pageSource = s3Service.getObjectAsString(node.srcKey, sourceBucket)
+                        val response = queuePageRegeneration(
+                            pageSrcKey = node.srcKey,
+                            sourceString = pageSource,
+                            projectDomain = domain
+                        )
+                        if (response != null) {
+                            count++
+                        } else {
+                            error(error_NO_RESPONSE)
+                        }
+                    }
                 }
-            }
-        } catch (se: SerializationException) {
-            error("Error processing pages.json; error is ${se.message}")
-            return Response.serverError(
-                body = APIResult.Error("Error processing pages.json; error is ${se.message}")
-            )
-        }
+                if (count == 0) {
+                    Response.ok(
+                        APIResult.Success(
+                            value = "No pages or posts with the template '$templateKey' were suitable for regeneration."
+                        )
+                    )
+                } else {
+                    Response.accepted(
+                        APIResult.Success(value = "Queued $count files with the '$templateKey' template for regeneration.")
+                    )
+                }
 
-        return if (count == 0) {
-            Response.ok(
-                APIResult.Success(
-                    value = "No pages or posts with the template '$templateKey' were suitable for regeneration."
+            } catch (se: SerializationException) {
+                error("Error processing pages.json; error is ${se.message}")
+                Response.serverError(
+                    body = APIResult.Error("Error processing pages.json; error is ${se.message}")
                 )
-            )
-        } else {
-            Response.accepted(
-                APIResult.Success(value = "Queued $count files with the '$templateKey' template for regeneration.")
-            )
+            }
         }
     }
 
@@ -250,16 +253,16 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
     }
 
     /**
+     * TODO: I haven't linked images with pages or posts in DynamoDB yet.
      * The generation bucket will accumulate a lot of files over time. This method will clear out generated image resolutions which are no longer referenced in metadata.json
      */
     fun clearGeneratedImages(request: Request<Unit>): Response<APIResult<String>> {
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-
         info("Received request to clear generated images from folder $projectKeyHeader/images/")
-        loadContentTree(projectKeyHeader)
         val listResponse = s3Service.listObjects("$projectKeyHeader/generated/images/", generationBucket)
         var count = 0
         val deleteList = mutableListOf<String>()
+        loadContentTree(projectKeyHeader)
         if (listResponse.hasContents()) {
             // this will not respond with any particular order. I'll need to iterate twice?
             deleteList.addAll(listResponse.contents().map { it.key().removePrefix("$projectKeyHeader/sources/") })
@@ -268,8 +271,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                 // the problem is we are iterating over the objects in the bucket, not the metadata.json file.
                 // this iteration will include both the original image and the thumbnails */
                 if (contentTree.images.any {
-                        it.srcKey.removePrefix("$projectKeyHeader/sources/") == obj.key()
-                            .removePrefix("$projectKeyHeader/generated/")
+                        it.srcKey.replace("sources","generated") == obj.key()
                     }) {
                     info("Image ${obj.key()} is still referenced in metadata.json")
                     // We've found the image in the metadata, so we don't want to delete it.
@@ -303,7 +305,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
         )
     }
 
-    // TODO: WE'VE DONE THIS TWICE NOW
+// TODO: WE'VE DONE THIS TWICE NOW
     /**
      * Send a message to the Markdown queue for a Page
      */
