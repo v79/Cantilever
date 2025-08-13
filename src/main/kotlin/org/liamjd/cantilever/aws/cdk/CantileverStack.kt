@@ -272,7 +272,13 @@ class CantileverStack(
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
         fileUploadLambda.addEventSource(
             S3EventSource.Builder.create(sourceBucket)
-                .events(mutableListOf(EventType.OBJECT_CREATED_PUT, EventType.OBJECT_CREATED_POST, EventType.OBJECT_REMOVED)).build()
+                .events(
+                    mutableListOf(
+                        EventType.OBJECT_CREATED_PUT,
+                        EventType.OBJECT_CREATED_POST,
+                        EventType.OBJECT_REMOVED
+                    )
+                ).build()
         )
 
         println("Add markdown processor SQS event source to markdown processor lambda")
@@ -340,7 +346,13 @@ class CantileverStack(
                         "X-Content-Length",
                         "Cantilever-Project-Domain",
                     )
-                ).allowMethods(listOf("GET", "PUT", "POST", "OPTIONS", "DELETE")).allowOrigins(listOf(deploymentDomain, "https://www.cantilevers.org", "https://dco7fhfjo6vkm.cloudfront.net"))
+                ).allowMethods(listOf("GET", "PUT", "POST", "OPTIONS", "DELETE")).allowOrigins(
+                    listOf(
+                        deploymentDomain,
+                        "https://www.cantilevers.org",
+                        "https://dco7fhfjo6vkm.cloudfront.net"
+                    )
+                )
                     .build()
             ).handler(apiRoutingLambda).proxy(true).build()
 
@@ -364,6 +376,8 @@ class CantileverStack(
                   .build()
       */
         println("Creating DynamoDB database tables - PK domain#type, SK srcKey")
+        println("GSI: Project-NodeType-LastUpdated : Just returns the project definitions")
+        println("GSI: Type-Date : Returns items with the Date attribute, mostly just posts.")
         val contentNodeTable = TableV2.Builder.create(this, "${stageName}-database-content-node-table")
             .tableName("${stageName}-content-nodes")
             .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
@@ -376,7 +390,11 @@ class CantileverStack(
                             Attribute.builder().name("type#lastUpdated").type(
                                 AttributeType.STRING
                             ).build()
-                        ).projectionType(ProjectionType.ALL).build()
+                        ).projectionType(ProjectionType.ALL).build(),
+                    GlobalSecondaryIndexPropsV2.builder().indexName("Type-Date")
+                        .partitionKey(Attribute.builder().name("type").type(AttributeType.STRING).build())
+                        .sortKey(Attribute.builder().name("date").type(AttributeType.STRING).build())
+                        .projectionType(ProjectionType.ALL).build()
                 )
             )
             .build()
