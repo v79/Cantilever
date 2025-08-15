@@ -1,10 +1,8 @@
 package org.liamjd.cantilever.api.controllers
 
-import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentTree
@@ -42,34 +40,6 @@ abstract class APIController(val sourceBucket: String, val generationBucket: Str
         } catch (e: Exception) {
             error("Error reading '$metadataKey' from bucket $generationBucket: ${e.message}")
             return false
-        }
-    }
-
-    /**
-     * Save the content tree to the S3 bucket after a change
-     */
-    @Deprecated("Replace with DynamoDBService calls")
-    fun saveContentTree(domain: String) {
-        val metadataKey =
-            "$domain/${S3_KEY.metadataKey}"
-        info("Saving content tree $metadataKey to bucket $generationBucket")
-        val json = Json { prettyPrint = true }
-        val metadata = json.encodeToString(ContentTree.serializer(), contentTree)
-        s3Service.putObjectAsString(metadataKey, generationBucket, metadata, MimeType.json.toString())
-    }
-
-    /**
-     * Load the project definition 'cantilever.yaml' from the S3 bucket
-     */
-    @Deprecated("Replace with DynamoDBService calls: DynamoDBServiceImpl::getProject")
-    fun loadProjectDefinition(domain: String) {
-        val projectKey = "$domain.yaml"
-        if (s3Service.objectExists(projectKey, sourceBucket)) {
-            info("Reading $projectKey from bucket $sourceBucket")
-            val projectYaml = s3Service.getObjectAsString(projectKey, sourceBucket)
-            project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
-        } else {
-            error("No '$projectKey' file found in bucket $sourceBucket!")
         }
     }
 

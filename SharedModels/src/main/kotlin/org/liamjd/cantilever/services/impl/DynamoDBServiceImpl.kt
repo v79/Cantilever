@@ -26,7 +26,7 @@ import software.amazon.awssdk.services.dynamodb.model.*
  */
 class DynamoDBServiceImpl(
     private val region: Region,
-    val tableName: String = "cantilever-dev-content-nodes", // TODO: This should be configurable
+    val tableName: String = "cantilever-dev-cantileverdevdatabasecontentnodetable62135F84-44G7850XR76D", // TODO: This should be configurable
     private val dynamoDbClient: DynamoDbAsyncClient,
     enableLogging: Boolean = true,
 ) : DynamoDBService, AWSLogger(enableLogging, "DynamoDBService") {

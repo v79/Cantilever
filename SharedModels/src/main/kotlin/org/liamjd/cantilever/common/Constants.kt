@@ -27,6 +27,7 @@ object S3_KEY {
     @Deprecated("Use metadataKey instead")
     const val templatesKey = "$generated/templates.json"
     const val defaultPostTemplateKey = "$templatesPrefix/post.hbs"
+    @Deprecated("Use dynamoDB service instead")
     const val metadataKey = "$generated/metadata.json"
 }
 
@@ -60,7 +61,7 @@ enum class SOURCE_TYPE(val folder: String, val dbType: String) {
     Statics("statics", "static"),
     Images("images", "image"),
     Folders("folders", "folder"),
-    // This is a special type that represents the root of the sources bucket
+    // This is a special type that represents the root of the Sources bucket
     Root("", "root");
 
     object SourceHelper {

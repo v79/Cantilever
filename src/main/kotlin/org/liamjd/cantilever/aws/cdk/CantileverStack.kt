@@ -86,7 +86,7 @@ class CantileverStack(
         println(blue + "STACK $stackName" + reset)
         println(blue + "STAGE: ${stageName};  ENVIRONMENT: $env; deploymentDomain: $deploymentDomain; isPROD: $isProd" + reset)
 
-        Tags.of(this).add("stageName", versionString)
+        Tags.of(this).add("version", versionString)
 
         // Source bucket where Markdown, template files will be stored
         // I may wish to change the removal and deletion policies
@@ -377,9 +377,8 @@ class CantileverStack(
       */
         println("Creating DynamoDB database tables - PK domain#type, SK srcKey")
         println("GSI: Project-NodeType-LastUpdated : Just returns the project definitions")
-        println("GSI: Type-Date : Returns items with the Date attribute, mostly just posts.")
+        println("LSI: Type-Date : Returns items with the Date attribute, mostly just posts.")
         val contentNodeTable = TableV2.Builder.create(this, "${stageName}-database-content-node-table")
-            .tableName("${stageName}-content-nodes")
             .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
                 Attribute.builder().name("domain#type").type(AttributeType.STRING).build()
             ).sortKey(Attribute.builder().name("srcKey").type(AttributeType.STRING).build())
@@ -391,13 +390,20 @@ class CantileverStack(
                                 AttributeType.STRING
                             ).build()
                         ).projectionType(ProjectionType.ALL).build(),
-                    GlobalSecondaryIndexPropsV2.builder().indexName("Type-Date")
-                        .partitionKey(Attribute.builder().name("type").type(AttributeType.STRING).build())
+                )
+            )
+            .localSecondaryIndexes(
+                listOf(
+                    LocalSecondaryIndexProps.builder().indexName("Type-Date")
                         .sortKey(Attribute.builder().name("date").type(AttributeType.STRING).build())
-                        .projectionType(ProjectionType.ALL).build()
+                        .projectionType(ProjectionType.KEYS_ONLY).build()
                 )
             )
             .build()
+        /*GlobalSecondaryIndexPropsV2.builder().indexName("Type-Date")
+            .partitionKey(Attribute.builder().name("type").type(AttributeType.STRING).build())
+            .sortKey(Attribute.builder().name("date").type(AttributeType.STRING).build())
+            .projectionType(ProjectionType.ALL).build()*/
 
         println("Granting permissions to the lambdas to access the DynamoDB table")
         contentNodeTable.grantReadWriteData(apiRoutingLambda)

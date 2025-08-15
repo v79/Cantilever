@@ -24,7 +24,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
     APIController(sourceBucket, generationBucket) {
 
     /**
-     * Return a list of all the pages in the content tree
+     * Return a list of all the pages
      * @return [PageListDTO] object containing the list of Pages, a count and the last updated date/time
      */
     fun getPages(request: Request<Unit>): Response<APIResult<PageListDTO>> {
@@ -161,7 +161,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
     }
 
     /**
-     * Delete a folder from the `sources` bucket and update the content tree.
+     * Delete a folder from the `sources` bucket.
      * The folder must be empty and contain no pages.
      */
     fun deleteFolder(request: Request<Unit>): Response<APIResult<String>> {
