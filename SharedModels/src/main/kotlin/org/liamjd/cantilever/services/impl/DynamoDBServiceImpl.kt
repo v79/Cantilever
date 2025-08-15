@@ -264,6 +264,8 @@ class DynamoDBServiceImpl(
                     item["templateKey"] = AttributeValue.builder().s(node.templateKey).build()
                     item["slug"] = AttributeValue.builder().s(node.slug).build()
                     item["date"] = AttributeValue.builder().s(node.date.toString()).build()
+                    item["next"] = AttributeValue.builder().s(node.next).build()
+                    item["prev"] = AttributeValue.builder().s(node.prev).build()
 
                     // Add the node's own custom attributes with attr# prefix
                     node.attributes.forEach { (key, value) ->
@@ -296,10 +298,11 @@ class DynamoDBServiceImpl(
                 }
 
                 is ContentNode.FolderNode -> {
-                    if(node.children.isNotEmpty()) {
+                    if (node.children.isNotEmpty()) {
                         item["children"] = AttributeValue.builder().ss(node.children).build()
+                        item["indexPage"] = AttributeValue.builder().s(node.indexPage).build()
                     }
-                    }
+                }
             }
 
             log("Adding additional attributes: $attributes")
