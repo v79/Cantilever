@@ -264,8 +264,8 @@ class DynamoDBServiceImpl(
                     item["templateKey"] = AttributeValue.builder().s(node.templateKey).build()
                     item["slug"] = AttributeValue.builder().s(node.slug).build()
                     item["date"] = AttributeValue.builder().s(node.date.toString()).build()
-                    item["next"] = AttributeValue.builder().s(node.next).build()
-                    item["prev"] = AttributeValue.builder().s(node.prev).build()
+                    item["next"] = AttributeValue.builder().s(node.next ?: "").build()
+                    item["prev"] = AttributeValue.builder().s(node.prev ?: "").build()
 
                     // Add the node's own custom attributes with attr# prefix
                     node.attributes.forEach { (key, value) ->
@@ -740,12 +740,12 @@ class DynamoDBServiceImpl(
                 title = item["title"]?.s() ?: "",
                 templateKey = item["templateKey"]?.s() ?: "<TEMPLATE-KEY-NOT-FOUND>",
                 slug = item["slug"]?.s() ?: "<SLUG-NOT-FOUND>",
-                isRoot = false,
+                isRoot = item["isRoot"]?.bool() ?: false,
                 attributes = item.filter { it.key.startsWith("attr#") }
                     .mapKeys { it.key.removePrefix("attr#") }
                     .mapValues { it.value.s() ?: "" },
                 sections = emptyMap(),
-                parent = "<PARENT-NOT-FOUND>",
+                parent = item["parent"]?.s() ?: "",
             )
         } catch (e: Exception) {
             log("ERROR", "Failed to map DynamoDB item to ContentNode.PageNode: $item", e)

@@ -36,7 +36,7 @@ import kotlin.test.assertNotNull
  * These tests are really just happy paths for now
  */
 @ExtendWith(MockKExtension::class)
-class GeneratorControllerTest : KoinTest {
+internal class GeneratorControllerTest : KoinTest {
 
     private val mockS3: S3Service by inject()
     private val mockSQS: SQSService by inject()

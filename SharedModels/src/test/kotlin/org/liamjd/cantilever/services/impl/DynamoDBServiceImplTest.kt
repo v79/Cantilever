@@ -22,7 +22,7 @@ import kotlin.test.*
  * Basic tests for DynamoDBServiceImpl
  * Note: These tests don't actually connect to DynamoDB, they just verify the class structure
  */
-class DynamoDBServiceImplTest {
+internal class DynamoDBServiceImplTest {
 
     companion object {
         @JvmStatic

@@ -25,7 +25,7 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
     fun rebuildFromSources(request: Request<Unit>): Response<APIResult<String>> {
         val domain = request.headers["cantilever-project-domain"]!!
         info("Rebuilding $domain metadata from sources")
-        val sourcesFolder = domain + "/" + S3_KEY.sources
+        val sourcesFolder = domain + "/" + S3_KEY.sources + "/"
         val postsFolder = domain + "/" + S3_KEY.postsPrefix
         val pagesFolder = domain + "/" + S3_KEY.pagesPrefix
         val staticsFolder = domain + "/" + S3_KEY.staticsPrefix
@@ -43,19 +43,22 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
         val templates = mutableListOf<ContentNode.TemplateNode>()
         val statics = mutableListOf<ContentNode.StaticNode>()
         val images = mutableListOf<ContentNode.ImageNode>()
-        val folders = mutableListOf<ContentNode.FolderNode>()
+        val folders = mutableSetOf<ContentNode.FolderNode>()
         // TODO: this only returns 1000 items, need to paginate
         val items = s3Service.listObjects(sourcesFolder, sourceBucket)
         if (items.hasContents()) {
-            // Special cases are 'sources/', 'sources/posts/', 'sources/pages/' - these should be ignored
+            // Special cases are 'sources/', 'sources/posts/',  etc. - these should be ignored. But not 'sources/pages/' as I need that as the parent folder for pages.
             val ignoreList =
-                listOf(sourcesFolder, postsFolder, pagesFolder)
+                listOf(sourcesFolder, postsFolder, templatesFolder, staticsFolder, imagesFolder)
+            info("Folder ignore list: $ignoreList")
             items.contents().forEach {
+                // Folders (items with a name ending in "/" may be real or implied in S3
+                // I.E. not every folder actually exists in s3
                 if (it.key() !in ignoreList) {
                     info("Processing ${it.key()}")
-                    if (it.key().endsWith("/") && it.key() !in ignoreList) {
+                    if (it.key().endsWith("/") && it.key().startsWith(pagesFolder) && !isIgnored(it.key(), ignoreList)) {
                         val folder = ContentNode.FolderNode(it.key())
-                        info("Found folder ${it.key()} and created node $folder")
+                        info("Found page folder ${it.key()} and created node $folder")
                         folders.add(folder)
                         folderCount++
                         filesProcessed++
@@ -69,8 +72,10 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
                         if (it.key().startsWith(pagesFolder) && it.key() != pagesFolder) {
                             val page = buildPageNode(it.key())
                             pages.add(page)
-                            pagesCount +=
-                                filesProcessed++
+                            pagesCount++
+                            filesProcessed++
+                            // ensure folder nodes exist for this page's full parent chain
+                            addFolderChainForPage(page, pagesFolder, ignoreList, folders)
                         }
                         if (it.key().startsWith(templatesFolder) && it.key() != templatesFolder) {
                             val template = buildTemplateNode(it.key())
@@ -101,11 +106,14 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
             runBlocking {
                 // update database entries
                 pages.forEach { page ->
-                    val parent =
-                        contentTree.items.find { node -> node.srcKey == page.parent + "/" } as ContentNode.FolderNode?
-                    parent?.children?.add(page.srcKey)
-                    if (page.isRoot) {
-                        parent?.indexPage = page.srcKey
+                    val parent = folders.find { folder -> folder.srcKey == page.parent }
+                    if (parent != null) {
+                        if (!parent.children.contains(page.srcKey)) {
+                            parent.children.add(page.srcKey)
+                        }
+                        if (page.isRoot) {
+                            parent.indexPage = page.srcKey
+                        }
                     }
                     dynamoDBService.upsertContentNode(page.srcKey, domain, SOURCE_TYPE.Pages, page, page.attributes)
                 }
@@ -149,7 +157,7 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
 
         return Response.ok(
             body = APIResult.Success(
-                "Rebuild node database for $domain with $filesProcessed ($postsCount posts, $pagesCount pages, $imagesCount images, $templatesCount templates, $staticsCount statics)"
+                "Rebuild node database for $domain with $filesProcessed ($postsCount posts, $pagesCount pages, $imagesCount images, $templatesCount templates, $staticsCount statics, $folderCount folders)"
             )
         )
     }
@@ -188,6 +196,50 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
             title = metadata.name,
             sections = metadata.sections ?: emptyList()
         )
+    }
+
+    /**
+     * Return true if the key should be ignored based on the ignore list, treating trailing slashes as equivalent
+     */
+    private fun isIgnored(key: String, ignoreList: List<String>): Boolean {
+        val k = key.trimEnd('/')
+        return ignoreList.any { it.trimEnd('/') == k }
+    }
+
+    /**
+     * Ensure FolderNodes are created for the full parent chain of the given page, within the pages folder tree only.
+     * Also add the page as a child of its immediate parent folder.
+     */
+    private fun addFolderChainForPage(
+        page: ContentNode.PageNode,
+        pagesFolder: String,
+        ignoreList: List<String>,
+        folders: MutableSet<ContentNode.FolderNode>
+    ) {
+        val pagesRoot = pagesFolder.trimEnd('/') + "/"
+        val parentPath = page.parent // already ends with "/"
+        if (!parentPath.startsWith(pagesRoot)) return
+        // build relative path under pages root
+        val relative = parentPath.removePrefix(pagesRoot).trimEnd('/')
+        if (relative.isEmpty()) return // page in root pages folder; we don't want to create a folder called sources/pages//
+        val parts = relative.split('/')
+        var current = pagesRoot
+        for ((index, part) in parts.withIndex()) {
+            current += "$part/"
+            if (!isIgnored(current, ignoreList)) {
+                val existing = folders.find { it.srcKey == current }
+                if (existing == null) {
+                    folders.add(ContentNode.FolderNode(current))
+                }
+            }
+            // if this is the last part, it's the immediate parent; add page as child
+            if (index == parts.lastIndex) {
+                val parentFolder = folders.find { it.srcKey == current }
+                if (parentFolder != null && !parentFolder.children.contains(page.srcKey)) {
+                    parentFolder.children.add(page.srcKey)
+                }
+            }
+        }
     }
 
     override fun info(message: String) = println("INFO: MetadataController: $message")

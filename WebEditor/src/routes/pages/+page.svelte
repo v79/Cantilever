@@ -1,42 +1,37 @@
 <script lang="ts">
-	import PostListItem from '$lib/components/FileListItem.svelte';
-	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
-	import NestedFileList from '$lib/components/NestedFileList.svelte';
-	import TextInput from '$lib/forms/textInput.svelte';
-	import { PageItem } from '$lib/models/markdown';
-	import { FolderNode } from '$lib/models/pages.svelte';
-	import { TemplateNode } from '$lib/models/templates.svelte';
-	import { CLEAR_MARKDOWN, markdownStore } from '$lib/stores/contentStore.svelte';
-	import { project } from '$lib/stores/projectStore.svelte';
-	import { userStore } from '$lib/stores/userStore.svelte';
-	import {
-		getModalStore,
-		getToastStore,
-		type ToastSettings,
-		type TreeViewNode
-	} from '@skeletonlabs/skeleton';
-	import { onMount } from 'svelte';
-	import { Add, Delete, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
-	import CreateNewFolder from 'svelte-google-materialdesign-icons/Create_new_folder.svelte';
-	import {
-		createFolder,
-		deleteFolder,
-		deletePage,
-		fetchFolders,
-		fetchPage,
-		fetchPages,
-		folders,
-		pages,
-		savePage
-	} from '$lib/stores/pageStore.svelte';
-	import FolderIconComponent from './FolderIconComponent.svelte';
-	import FolderListItem from './FolderListItem.svelte';
-	import IndexPageIconComponent from './IndexPageIconComponent.svelte';
-	import PageIconComponent from './PageIconComponent.svelte';
-	import SectionTabs from './SectionTabs.svelte';
-	import ParentAndIndexInput from './parentAndIndexInput.svelte';
+    import PostListItem from '$lib/components/FileListItem.svelte';
+    import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
+    import NestedFileList from '$lib/components/NestedFileList.svelte';
+    import TextInput from '$lib/forms/textInput.svelte';
+    import {PageItem} from '$lib/models/markdown';
+    import {FolderNode} from '$lib/models/pages.svelte';
+    import {TemplateNode} from '$lib/models/templates.svelte';
+    import {CLEAR_MARKDOWN, markdownStore} from '$lib/stores/contentStore.svelte';
+    import {project} from '$lib/stores/projectStore.svelte';
+    import {userStore} from '$lib/stores/userStore.svelte';
+    import {getModalStore, getToastStore, type ToastSettings, type TreeViewNode} from '@skeletonlabs/skeleton';
+    import {onMount} from 'svelte';
+    import {Add, Delete, Icon, Refresh, Save} from 'svelte-google-materialdesign-icons';
+    import CreateNewFolder from 'svelte-google-materialdesign-icons/Create_new_folder.svelte';
+    import {
+        createFolder,
+        deleteFolder,
+        deletePage,
+        fetchFolders,
+        fetchPage,
+        fetchPages,
+        folders,
+        pages,
+        savePage
+    } from '$lib/stores/pageStore.svelte';
+    import FolderIconComponent from './FolderIconComponent.svelte';
+    import FolderListItem from './FolderListItem.svelte';
+    import IndexPageIconComponent from './IndexPageIconComponent.svelte';
+    import PageIconComponent from './PageIconComponent.svelte';
+    import SectionTabs from './SectionTabs.svelte';
+    import ParentAndIndexInput from './parentAndIndexInput.svelte';
 
-	const modalStore = getModalStore();
+    const modalStore = getModalStore();
 	const toastStore = getToastStore();
 
 	$: webPageTitle = $markdownStore.metadata?.title ? ' - ' + $markdownStore.metadata?.title : '';
@@ -186,6 +181,23 @@
 				toast.message = 'Loaded ' + folderCount + ' folders';
 				toastStore.trigger(toast);
 			}
+			// map pages to their folders
+			$pages?.pages.forEach((page) => {
+				if (page.parent) {
+					let folder = $folders?.folders.find((f) => f.srcKey === page.parent);
+					if (folder) {
+						folder.children.push(page.srcKey);
+					} else {
+						console.warn(
+							'Page ' +
+								page.srcKey +
+								' has parent ' +
+								page.parent +
+								' but no matching folder found.'
+						);
+					}
+				}
+			});
 		}
 	}
 
@@ -340,12 +352,14 @@
 			for (const folder of value.folders) {
 				let childNodes = [] as TreeViewNode[];
 				// console.log('Iterating through folder ' + folder.srcKey);
+				// console.dir(folder);
 				if (folder.children.length > 0) {
 					for (const child of folder.children) {
 						// child is just the srcKey of the page
 						// find it in the pages list
 						let page = $pages?.pages.find((p) => p.srcKey === child);
 						if (page) {
+							console.dir(page);
 							let displaySrcKey = page.srcKey.slice(
 								$project.domain ? $project.domain.length + 1 : 0
 							);

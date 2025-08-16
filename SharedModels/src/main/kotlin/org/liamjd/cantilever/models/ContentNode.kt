@@ -20,6 +20,7 @@ typealias SrcKey = String // an S3 bucket object key
 @OptIn(ExperimentalSerializationApi::class)
 sealed class ContentNode {
     abstract val srcKey: SrcKey
+
     @OptIn(ExperimentalTime::class)
     abstract val lastUpdated: Instant
     abstract val url: String
@@ -40,6 +41,21 @@ sealed class ContentNode {
             get() = children.size
 
         override val url = srcKey.removePrefix(S3_KEY.pagesPrefix)
+
+        override fun equals(other: Any?): Boolean {
+            if (other !is FolderNode) return false
+            return srcKey == other.srcKey
+        }
+
+        override fun hashCode(): Int {
+            var result = srcKey.hashCode()
+            result = 31 * result + lastUpdated.hashCode()
+            result = 31 * result + children.hashCode()
+            result = 31 * result + (indexPage?.hashCode() ?: 0)
+            result = 31 * result + url.hashCode()
+            result = 31 * result + count
+            return result
+        }
     }
 
     /**
@@ -68,7 +84,7 @@ sealed class ContentNode {
             get() {
                 // intended url would be www.cantilevers.org/parentFolder/slug
                 // but parent looks like wwww.cantilevers.org/sources/pages/parentFolder
-                val parentFolder = parent.replaceFirst("/sources/pages","")
+                val parentFolder = parent.replaceFirst("/sources/pages", "")
                 return if (isRoot) {
                     "${parentFolder}/index.html"
                 } else {
