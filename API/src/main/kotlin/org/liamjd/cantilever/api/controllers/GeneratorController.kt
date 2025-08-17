@@ -254,26 +254,23 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
 
     /**
      * TODO: I haven't linked images with pages or posts in DynamoDB yet.
-     * The generation bucket will accumulate a lot of files over time. This method will clear out generated image resolutions which are no longer referenced in metadata.json
+     * TODO: This function won't behave as there is no contentTree to check with
+     * The generation bucket will accumulate a lot of files over time. This method will clear out generated image resolutions which are no longer referenced in the database
      */
     fun clearGeneratedImages(request: Request<Unit>): Response<APIResult<String>> {
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        info("Received request to clear generated images from folder $projectKeyHeader/images/")
-        val listResponse = s3Service.listObjects("$projectKeyHeader/generated/images/", generationBucket)
+        val domain = request.headers["cantilever-project-domain"]!!
+        info("Received request to clear generated images from folder $domain/images/")
+        val listResponse = s3Service.listObjects("$domain/generated/images/", generationBucket)
         var count = 0
         val deleteList = mutableListOf<String>()
-        loadContentTree(projectKeyHeader)
         if (listResponse.hasContents()) {
             // this will not respond with any particular order. I'll need to iterate twice?
-            deleteList.addAll(listResponse.contents().map { it.key().removePrefix("$projectKeyHeader/sources/") })
+            deleteList.addAll(listResponse.contents().map { it.key().removePrefix("$domain/sources/") })
             listResponse.contents().forEach { obj ->
-                //* check if the image is still referenced in metadata.json
-                // the problem is we are iterating over the objects in the bucket, not the metadata.json file.
+                //* check if the image is still referenced in database
+                // the problem is we are iterating over the objects in the bucket, not the database file.
                 // this iteration will include both the original image and the thumbnails */
-                if (contentTree.images.any {
-                        it.srcKey.replace("sources","generated") == obj.key()
-                    }) {
-                    info("Image ${obj.key()} is still referenced in metadata.json")
+
                     // We've found the image in the metadata, so we don't want to delete it.
                     // BUT we don't want to delete any of its image resolutions either.
                     // Put the image resolution keys into a 'do not delete' list?
@@ -283,7 +280,6 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                             println("Removing ${imageResolution.key()} from delete list")
                             deleteList.remove(imageResolution.key())
                         }
-                }
             }
             deleteList.forEach { key ->
                 info("Deleting object $key")
@@ -301,7 +297,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
             return Response.noContent(body = APIResult.Success("No generated images to clear"))
         }
         return Response.ok(
-            body = APIResult.Success("Deleted $count generated images from folder $projectKeyHeader/images/")
+            body = APIResult.Success("Deleted $count generated images from folder $domain/images/")
         )
     }
 

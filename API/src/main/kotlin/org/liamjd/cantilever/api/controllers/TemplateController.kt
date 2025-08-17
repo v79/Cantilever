@@ -66,7 +66,7 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
      */
     fun saveTemplate(request: Request<ContentNode.TemplateNode>): Response<APIResult<String>> {
         val templateNode = request.body
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        val domain = request.headers["cantilever-project-domain"]!!
         val srcKey = URLDecoder.decode(templateNode.srcKey, Charset.defaultCharset())
 
         // both branches do the same thing
@@ -79,28 +79,22 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                 "text/plain"
             )
             templateNode.body = ""
-            contentTree.updateTemplate(
-                templateNode
-            )
             Response.ok(
                 body =
                     APIResult.OK("Updated file ${templateNode.srcKey}, $length bytes")
             )
         } else {
-            info("Creating new file '$projectKeyHeader/$srcKey' by copying from '${templateNode.srcKey}'")
+            info("Creating new file '$domain/$srcKey' by copying from '${templateNode.srcKey}'")
             // we need to update the sourceKey to include the projectHeaderKey, and we need to remove the body before adding into the contentTree
-            val newNode = templateNode.copy(srcKey = "$projectKeyHeader/$srcKey")
+            val newNode = templateNode.copy(srcKey = "$domain/$srcKey")
             newNode.body = templateNode.body
             val length = s3Service.putObjectAsString(
-                "$projectKeyHeader/$srcKey",
+                "$domain/$srcKey",
                 sourceBucket,
                 convertTemplateToYamlString(newNode),
                 "text/plain"
             )
             newNode.body = ""
-            contentTree.insertTemplate(
-                newNode
-            )
             Response.ok(
                 body =
                     APIResult.OK("Updated file ${newNode.srcKey}, $length bytes")
