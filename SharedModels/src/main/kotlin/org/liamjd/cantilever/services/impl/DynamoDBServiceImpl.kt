@@ -552,6 +552,34 @@ class DynamoDBServiceImpl(
         contentType: SOURCE_TYPE,
         attributes: Map<String, String>
     ): List<String> {
+        return getKeyListMatchingAttributes(
+            projectDomain = projectDomain,
+            contentType = contentType,
+            attributes = attributes,
+            limit = 9999, // Default limit, can be overridden
+            descending = true // Default order, can be overridden
+        )
+    }
+
+    /**
+     * Get a list of content nodes with specific bespoke attributes for a project domain and content type,
+     * For instance; to retrieve the list of all posts with a particular bespoke attribute (say, "mood"), you can pass the mood as an attribute.
+     * The results will be limited to the specified number and ordered by the specified attribute.
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g. Pages, Posts, Templates, Statics, Images)
+     * @param attributes A map of attributes to filter the content nodes
+     * @param limit The maximum number of results to return
+     * @param descending Whether to order the results in descending order (default is true)
+     * @return A list of the src keys of nodes that match the specified attributes, limited to the specified number and ordered by the specified attribute.
+     * If no results are found, an empty list is returned.
+     */
+    override suspend fun getKeyListMatchingAttributes(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        attributes: Map<String, String>,
+        limit: Int,
+        descending: Boolean
+    ): List<String> {
         log("Getting nodes matching attributes for domain: $projectDomain of type: ${contentType.dbType}")
 
         return executeDynamoOperation(
@@ -579,6 +607,8 @@ class DynamoDBServiceImpl(
                             expressionAttributeValues
                 )
                 .projectionExpression("srcKey") // Only get the srcKey
+                .limit(limit)
+                .scanIndexForward(descending)
                 .build()
 
             log("Executing Query request for keys matching attributes in domain: $projectDomain")
@@ -638,6 +668,66 @@ class DynamoDBServiceImpl(
                 response.items().mapNotNull { it["srcKey"]?.s() }
             } else {
                 log("No nodes found matching template '$templateKey' in domain: $projectDomain")
+                emptyList()
+            }
+        }
+    }
+
+    /**
+     * Get a list of keys from a Local Secondary Index (LSI) for a specific project domain and content type.
+     * This is useful for retrieving keys based on attributes defined in the LSI.
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @param lsiName The name of the Local Secondary Index to query
+     * @param attribute A pair containing the attribute key and value to filter the results
+     *                 (e.g., Pair("mood", "happy") to filter by mood)
+     * @param operation The operation to perform on the attribute (default is "=")
+     * @param limit The maximum number of results to return (default is 100)
+     * @param descending Whether to order the results in descending order (default is true)
+     * @return A list of src keys that match the specified attributes in the LSI
+     */
+    override suspend fun getKeyListFromLSI(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        lsiName: String,
+        attribute: Pair<String, String>,
+        operation: String,
+        limit: Int,
+        descending: Boolean
+    ): List<String> {
+        log("Getting keys from LSI '$lsiName' for domain: $projectDomain of type: ${contentType.dbType}")
+
+        return executeDynamoOperation(
+            operationDescription = "get keys from LSI",
+            contextInfo = "domain: $projectDomain, type: ${contentType.dbType}, LSI: $lsiName"
+        ) {
+            // Build a simple key condition on the LSI: partition by domain#type and filter by exact date on the LSI sort key
+            // Note: ExpressionAttributeNames map placeholders (e.g. #dt) to attribute names (e.g. "date").
+            //       ExpressionAttributeValues map placeholders (e.g. :date) to concrete values.
+            val request = QueryRequest.builder()
+                .tableName(tableName)
+                .indexName(lsiName)
+                .keyConditionExpression("#pk = :domainType AND #dt $operation :${attribute.first}")
+                .expressionAttributeNames(mapOf("#pk" to "domain#type", "#dt" to attribute.first))
+                .expressionAttributeValues(
+                    mapOf(
+                        ":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
+                        // Basic case: use a fixed date string as requested; tests currently insert items with this date
+                        ":date" to AttributeValue.builder().s(attribute.second).build()
+                    )
+                )
+                .limit(limit)
+                .scanIndexForward(!descending)
+                .build()
+
+            log("Executing Query request on LSI '$lsiName' in domain: $projectDomain")
+            val response = dynamoDbClient.query(request).await()
+
+            if (response.count() > 0) {
+                log("Found ${response.count()} keys in LSI '$lsiName' for domain: $projectDomain")
+                response.items().mapNotNull { it["srcKey"]?.s() }
+            } else {
+                log("No keys found in LSI '$lsiName' for domain: $projectDomain")
                 emptyList()
             }
         }

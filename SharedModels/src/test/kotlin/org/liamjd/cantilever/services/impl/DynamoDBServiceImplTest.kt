@@ -207,7 +207,8 @@ internal class DynamoDBServiceImplTest {
             // Verify
             assertTrue(saved)
 
-            val templates = service.listAllNodesForProject("test-domain", SOURCE_TYPE.Templates).filterIsInstance<ContentNode.TemplateNode>()
+            val templates = service.listAllNodesForProject("test-domain", SOURCE_TYPE.Templates)
+                .filterIsInstance<ContentNode.TemplateNode>()
             val dto = TemplateListDTO(
                 count = templates.size,
                 lastUpdated = Instant.fromEpochSeconds(100000L),
@@ -649,6 +650,76 @@ internal class DynamoDBServiceImplTest {
         assertTrue(matchingKeys.contains(post1.srcKey))
     }
 
+    @Test
+    fun `getKeyListFromLSI returns the post before post2`() = runBlocking {
+        // Setup
+        val post1 = ContentNode.PostNode(
+            title = "Matching Post",
+            templateKey = "template1",
+            date = LocalDate(2025, 8, 1),
+            slug = "matching-post",
+            attributes = mapOf("author" to "John Doe", "category" to "News")
+        )
+        post1.srcKey = "posts/2025/08/matching-post.md"
+
+        val post2 = ContentNode.PostNode(
+            title = "Non-Matching Post",
+            templateKey = "template2",
+            date = LocalDate(2025, 8, 2),
+            slug = "non-matching-post",
+            attributes = mapOf("author" to "Jane Doe", "category" to "Science")
+        )
+        post2.srcKey = "posts/2025/08/non-matching-post.md"
+
+        val post3 = ContentNode.PostNode(
+            title = "Another Non-Matching Post",
+            templateKey = "template2",
+            date = LocalDate(2025, 8, 3),
+            slug = "another-non-matching-post",
+            attributes = mapOf("author" to "Jane Doe", "category" to "Science")
+        )
+        post3.srcKey = "posts/2025/08/non-matching-post.md"
+
+        service.upsertContentNode(
+            srcKey = post1.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Posts,
+            node = post1,
+            attributes = post1.attributes
+        )
+        service.upsertContentNode(
+            srcKey = post2.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Posts,
+            node = post2,
+            attributes = post2.attributes
+        )
+        service.upsertContentNode(
+            srcKey = post3.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Posts,
+            node = post3,
+            attributes = post3.attributes
+        )
+        // Execute
+        val matchingKeys = service.getKeyListFromLSI(
+            projectDomain = "test-domain",
+            lsiName = "Type-Date",
+            contentType = SOURCE_TYPE.Posts,
+            attribute = "date" to "2025-08-02",
+            operation = "<",
+            limit = 5,
+            descending = true
+        )
+
+        // Verify
+        assertNotNull(matchingKeys)
+        assertEquals(1, matchingKeys.size)
+        assertTrue(matchingKeys.contains(post1.srcKey))
+    }
+
+    /** =============================================================== */
+
     /**
      * Create the DynamoDB table for testing. This is a pretty hand-coded representation of the table structure
      * that the service expects. The real table is created in the CDK scripts.
@@ -684,6 +755,10 @@ internal class DynamoDBServiceImplTest {
                 software.amazon.awssdk.services.dynamodb.model.AttributeDefinition.builder()
                     .attributeName("type#lastUpdated")
                     .attributeType(software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType.S)
+                    .build(),
+                software.amazon.awssdk.services.dynamodb.model.AttributeDefinition.builder()
+                    .attributeName("date")
+                    .attributeType(software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType.S)
                     .build()
             )
             .globalSecondaryIndexes(
@@ -708,6 +783,26 @@ internal class DynamoDBServiceImplTest {
                         software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput.builder()
                             .readCapacityUnits(1L)
                             .writeCapacityUnits(1L)
+                            .build()
+                    )
+                    .build()
+            )
+            .localSecondaryIndexes(
+                software.amazon.awssdk.services.dynamodb.model.LocalSecondaryIndex.builder()
+                    .indexName("Type-Date")
+                    .keySchema(
+                        software.amazon.awssdk.services.dynamodb.model.KeySchemaElement.builder()
+                            .attributeName("domain#type")
+                            .keyType(software.amazon.awssdk.services.dynamodb.model.KeyType.HASH)
+                            .build(),
+                        software.amazon.awssdk.services.dynamodb.model.KeySchemaElement.builder()
+                            .attributeName("date")
+                            .keyType(software.amazon.awssdk.services.dynamodb.model.KeyType.RANGE)
+                            .build()
+                    )
+                    .projection(
+                        software.amazon.awssdk.services.dynamodb.model.Projection.builder()
+                            .projectionType(software.amazon.awssdk.services.dynamodb.model.ProjectionType.KEYS_ONLY)
                             .build()
                     )
                     .build()

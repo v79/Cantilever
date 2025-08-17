@@ -60,7 +60,8 @@ object KoinSetup {
  * Processes a message to transform the source and template into a complete HTML web page
  */
 @Suppress("unused")
-class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvider = SystemEnvironmentProvider()) : RequestHandler<SQSEvent, String>, KoinComponent,
+class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvider = SystemEnvironmentProvider()) :
+    RequestHandler<SQSEvent, String>, KoinComponent,
     AWSLogger(enableLogging = true, msgSource = "TemplateProcessorHandler") {
 
     init {
@@ -100,10 +101,10 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
                     }
                 }
             } catch (se: SerializationException) {
-                log("ERROR","Failed to deserialize eventRecord $eventRecord, exception: ${se.message}")
+                log("ERROR", "Failed to deserialize eventRecord $eventRecord, exception: ${se.message}")
                 responses.add("500 Server Error")
             } catch (nske: NoSuchKeyException) {
-                log("ERROR","Could not load file from S3, exception: ${nske.message}")
+                log("ERROR", "Could not load file from S3, exception: ${nske.message}")
                 responses.add("500 Server Error")
             }
         }
@@ -126,9 +127,10 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
         destinationBucket: String
     ) {
         try {
+            val domain = pageMsg.projectDomain
             val pageTemplateKey = pageMsg.projectDomain + "/" + pageMsg.metadata.templateKey
             val project = getProjectModel(pageMsg.projectDomain, sourceBucket)
-            val navigationBuilder = NavigationBuilder()
+            val navigationBuilder = NavigationBuilder(dynamoDBService, domain)
             // load the page.html.hbs template
             log("Loading template $pageTemplateKey")
             val sourceString = s3Service.getObjectAsString(pageTemplateKey, sourceBucket)
@@ -157,7 +159,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             s3Service.putObjectAsString(pageMsg.metadata.url, destinationBucket, html, "text/html")
             log("Written final HTML file to '${pageMsg.metadata.url}'")
         } catch (nske: NoSuchKeyException) {
-            log("ERROR","Could not load file from S3, exception: ${nske.message}")
+            log("ERROR", "Could not load file from S3, exception: ${nske.message}")
         }
     }
 
@@ -175,6 +177,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
         destinationBucket: String
     ) {
         try {
+            val domain = postMsg.projectDomain
             val body = s3Service.getObjectAsString(postMsg.fragmentSrcKey, generationBucket)
             log("Loaded body fragment from '${postMsg.fragmentSrcKey}: ${body.take(100)}'")
 
@@ -191,7 +194,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             model["body"] = body.stripFrontMatter()
             model["date"] = postMsg.metadata.date
             // TODO: try-catch this
-            val navigationBuilder = NavigationBuilder()
+            val navigationBuilder = NavigationBuilder(dynamoDBService, domain)
 
             val nav = navigationBuilder.getPostNavigationObjects(postMsg.metadata)
             nav.entries.forEach {
@@ -205,7 +208,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             s3Service.putObjectAsString(project.domainKey + postMsg.metadata.url, destinationBucket, html, "text/html")
             log("Written final HTML file to '${project.domainKey}${postMsg.metadata.url}'")
         } catch (nske: NoSuchKeyException) {
-            log("ERROR","Could not load file from S3, exception: ${nske.message}")
+            log("ERROR", "Could not load file from S3, exception: ${nske.message}")
         }
     }
 
@@ -241,7 +244,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             )
             log("Written final CSS file to '${project.domainKey}${staticFileMsg.destinationKey}'")
         } catch (nske: NoSuchKeyException) {
-            log("ERROR","Could not load file from S3, exception: ${nske.message}")
+            log("ERROR", "Could not load file from S3, exception: ${nske.message}")
         }
     }
 
@@ -280,7 +283,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             val projectYaml = s3Service.getObjectAsString("$domain.yaml", sourceBucket)
             return Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
         } catch (nske: NoSuchKeyException) {
-            log("ERROR","Could not load project model '$domain.yaml' from S3, exception: ${nske.message}")
+            log("ERROR", "Could not load project model '$domain.yaml' from S3, exception: ${nske.message}")
             throw nske
         }
     }

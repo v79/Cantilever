@@ -114,7 +114,27 @@ interface DynamoDBService {
     suspend fun getKeyListMatchingAttributes(
         projectDomain: String,
         contentType: SOURCE_TYPE,
-        attributes: Map<String, String>
+        attributes: Map<String, String>,
+    ): List<String>
+
+    /**
+     * Get a list of content nodes with specific bespoke attributes for a project domain and content type,
+     * For instance; to retrieve the list of all posts with a particular bespoke attribute (say, "mood"), you can pass the mood as an attribute.
+     * The results will be limited to the specified number and ordered by the specified attribute.
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g. Pages, Posts, Templates, Statics, Images)
+     * @param attributes A map of attributes to filter the content nodes
+     * @param limit The maximum number of results to return
+     * @param descending Whether to order the results in descending order (default is true)
+     * @return A list of the src keys of nodes that match the specified attributes, limited to the specified number and ordered by the specified attribute.
+     * If no results are found, an empty list is returned.
+     */
+    suspend fun getKeyListMatchingAttributes(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        attributes: Map<String, String>,
+        limit: Int,
+        descending: Boolean = true
     ): List<String>
 
     /**
@@ -125,5 +145,32 @@ interface DynamoDBService {
      * @param templateKey The key of the template to match,
      * @return A list of src keys of nodes that match the specified template key
      */
-    suspend fun getKeyListMatchingTemplate(projectDomain: String, contentType: SOURCE_TYPE, templateKey: String): List<String>
+    suspend fun getKeyListMatchingTemplate(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        templateKey: String
+    ): List<String>
+
+    /**
+     * Get a list of keys from a Local Secondary Index (LSI) for a specific project domain and content type.
+     * This is useful for retrieving keys based on attributes defined in the LSI.
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @param lsiName The name of the Local Secondary Index to query
+     * @param attribute A pair containing the attribute key and value to filter the results
+     *                 (e.g., Pair("mood", "happy") to filter by mood)
+     * @param operation The operation to perform on the attribute (default is "=")
+     * @param limit The maximum number of results to return (default is 100)
+     * @param descending Whether to order the results in descending order (default is true)
+     * @return A list of src keys that match the specified attributes in the LSI
+     */
+    suspend fun getKeyListFromLSI(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        lsiName: String,
+        attribute: Pair<String, String>,
+        operation: String = "=",
+        limit: Int = 100,
+        descending: Boolean = true
+    ): List<String>
 }
