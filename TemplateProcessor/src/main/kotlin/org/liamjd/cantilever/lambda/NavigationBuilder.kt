@@ -1,9 +1,8 @@
 package org.liamjd.cantilever.lambda
 
 import org.liamjd.cantilever.models.ContentNode
-import org.liamjd.cantilever.models.ContentTree
 
-class NavigationBuilder(private val contentTree: ContentTree) {
+class NavigationBuilder() {
 
     /**
      * Return a useful map of [ContentNode.PostNode] objects
@@ -65,14 +64,16 @@ class NavigationBuilder(private val contentTree: ContentTree) {
      * Return a useful map of [ContentNode.PostNode] objects, sorted by date
      */
     fun filterPosts(): List<ContentNode.PostNode> {
-        return contentTree.items.filterIsInstance<ContentNode.PostNode>().sortedByDescending { it.date }
+//        return contentTree.items.filterIsInstance<ContentNode.PostNode>().sortedByDescending { it.date }
+        return emptyList()
     }
 
     /**
      * Return a useful map of [ContentNode.PageNode] objects, sorted by lastUpdated date
      */
     fun filterPages(): List<ContentNode.PageNode> {
-        return contentTree.items.filterIsInstance<ContentNode.PageNode>().sortedByDescending { it.lastUpdated }
+//        return contentTree.items.filterIsInstance<ContentNode.PageNode>().sortedByDescending { it.lastUpdated }
+        return emptyList()
     }
 
     /**

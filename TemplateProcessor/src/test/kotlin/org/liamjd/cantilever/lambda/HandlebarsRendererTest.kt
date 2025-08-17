@@ -1,22 +1,68 @@
 package org.liamjd.cantilever.lambda
 
+import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.LambdaLogger
 import io.mockk.every
-import io.mockk.just
+import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
-import io.mockk.runs
+import io.mockk.mockkClass
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.Month
-import kotlin.test.*
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.koin.core.context.stopKoin
+import org.koin.dsl.module
+import org.koin.test.KoinTest
+import org.koin.test.inject
+import org.koin.test.junit5.KoinTestExtension
+import org.koin.test.junit5.mock.MockProviderExtension
+import org.koin.test.mock.declareMock
+import org.liamjd.cantilever.common.EnvironmentProvider
+import org.liamjd.cantilever.services.DynamoDBService
+import org.liamjd.cantilever.services.S3Service
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
-internal class HandlebarsRendererTest {
+@ExtendWith(MockKExtension::class)
+internal class HandlebarsRendererTest : KoinTest {
 
-    private val mockLogger = mockk<LambdaLogger>()
+    private val mockS3Service: S3Service by inject()
+    private val mockDynamoDBService: DynamoDBService by inject()
+    private val mockContext: Context = mockk(relaxed = true)
+    private val mockLogger = mockk<LambdaLogger>(relaxed = true)
+    private val mockEnv = mockk<EnvironmentProvider>()
 
-    @BeforeTest
-    fun initTests() {
-        every { mockLogger.log(any<String>()) } just runs
+    @JvmField
+    @RegisterExtension
+    val koinTestExtension = KoinTestExtension.create {
+        modules(module {
+        })
+    }
+
+    @JvmField
+    @RegisterExtension
+    val mockProvider = MockProviderExtension.create { clazz ->
+        mockkClass(clazz)
+    }
+
+    @BeforeEach
+    fun setup() {
+        declareMock<Context> {
+            every { mockContext.logger } returns mockLogger
+        }
+        declareMock<EnvironmentProvider> {
+
+        }
+    }
+
+    @AfterEach
+    fun tearDown() {
+        stopKoin()
     }
 
     @Test
@@ -27,15 +73,13 @@ internal class HandlebarsRendererTest {
         val expectedResult = "<html><title>Handlebars</title></html>"
         val model = mapOf<String, Any?>("title" to title)
 
-        with(mockLogger) {
-            val renderer = HandlebarsRenderer()
+        val renderer = HandlebarsRenderer()
 
-            // execute
-            val result = renderer.render(model, templateString)
+        // execute
+        val result = renderer.render(model, templateString)
 
-            // verify
-            assertEquals(expectedResult, result)
-        }
+        // verify
+        assertEquals(expectedResult, result)
     }
 
     @Test
@@ -46,15 +90,13 @@ internal class HandlebarsRendererTest {
         val expectedResult = "<html><title>Test</title><body><p>Handlebars</p></html>"
         val model = mapOf<String, Any?>("body" to body)
 
-        with(mockLogger) {
-            val renderer = HandlebarsRenderer()
+        val renderer = HandlebarsRenderer()
 
-            // execute
-            val result = renderer.render(model, templateString)
+        // execute
+        val result = renderer.render(model, templateString)
 
-            // verify
-            assertEquals(expectedResult, result)
-        }
+        // verify
+        assertEquals(expectedResult, result)
     }
 
     @Test
@@ -64,29 +106,25 @@ internal class HandlebarsRendererTest {
         val posts = listOf(TestPost("First"), TestPost("Second"))
         val model = mapOf<String, Any?>("posts" to posts)
 
-        with(mockLogger) {
-            val renderer = HandlebarsRenderer()
+        val renderer = HandlebarsRenderer()
 
-            val result = renderer.render(model, templateString)
-            println(result)
-            assertTrue(result.contains("First"))
-            assertFalse(result.contains("Second"))
-        }
+        val result = renderer.render(model, templateString)
+        println(result)
+        assertTrue(result.contains("First"))
+        assertFalse(result.contains("Second"))
     }
 
     @Test
     fun `can render an object where the name starts with at`() {
         val templateString = "next: {{@next.title}}"
-        val model = mapOf<String,TestLink?>("@next" to TestLink("NEXT"))
+        val model = mapOf<String, TestLink?>("@next" to TestLink("NEXT"))
         val expectedResult = "next: NEXT"
 
-        with(mockLogger) {
-            val renderer = HandlebarsRenderer()
-            // execute
-            val result = renderer.render(model, templateString)
-            // verify
-            assertEquals(expectedResult, result)
-        }
+        val renderer = HandlebarsRenderer()
+        // execute
+        val result = renderer.render(model, templateString)
+        // verify
+        assertEquals(expectedResult, result)
     }
 
     @Test
@@ -94,16 +132,14 @@ internal class HandlebarsRendererTest {
         // setup
         val templateString = """{{ localDate this.date this.dateFormat }}"""
         val expectedResult = "24/09/2023"
-        val date = LocalDate(2023,9,24)
-        val model = mapOf<String,Any?>("date" to date, "dateFormat" to "dd/MM/yyyy")
+        val date = LocalDate(2023, 9, 24)
+        val model = mapOf<String, Any?>("date" to date, "dateFormat" to "dd/MM/yyyy")
 
-        with(mockLogger) {
-            val renderer = HandlebarsRenderer()
-            // execute
-            val result = renderer.render(model, templateString)
-            // verify
-            assertEquals(expectedResult, result)
-        }
+        val renderer = HandlebarsRenderer()
+        // execute
+        val result = renderer.render(model, templateString)
+        // verify
+        assertEquals(expectedResult, result)
     }
 
     @Test
@@ -112,15 +148,13 @@ internal class HandlebarsRendererTest {
         val templateString = """{{ localDate this.date "HH:mm dd MMM yyyy" }}"""
         val expectedResult = "20:14 21 Oct 2023"
         val dateTime = LocalDateTime(year = 2023, month = Month.OCTOBER, dayOfMonth = 21, hour = 20, minute = 14)
-        val model = mapOf<String,Any?>("date" to dateTime)
+        val model = mapOf<String, Any?>("date" to dateTime)
 
-        with(mockLogger) {
-            val renderer = HandlebarsRenderer()
-            // execute
-            val result = renderer.render(model, templateString)
-            // verify
-            assertEquals(expectedResult,result)
-        }
+        val renderer = HandlebarsRenderer()
+        // execute
+        val result = renderer.render(model, templateString)
+        // verify
+        assertEquals(expectedResult, result)
     }
 
     @Test
@@ -129,15 +163,13 @@ internal class HandlebarsRendererTest {
         val templateString = """{{ localDate this.date "ISO_WEEK_DATE" }}"""
         val expectedResult = "2023-W42-6"
         val dateTime = LocalDateTime(year = 2023, month = Month.OCTOBER, dayOfMonth = 21, hour = 20, minute = 14)
-        val model = mapOf<String,Any?>("date" to dateTime)
+        val model = mapOf<String, Any?>("date" to dateTime)
 
-        with(mockLogger) {
-            val renderer = HandlebarsRenderer()
-            // execute
-            val result = renderer.render(model, templateString)
-            // verify
-            assertEquals(expectedResult,result)
-        }
+        val renderer = HandlebarsRenderer()
+        // execute
+        val result = renderer.render(model, templateString)
+        // verify
+        assertEquals(expectedResult, result)
     }
 
     @Test
@@ -149,15 +181,13 @@ internal class HandlebarsRendererTest {
         val model = mapOf<String, Any?>("title" to title)
         println("model=$model")
 
-        with(mockLogger) {
-            val renderer = HandlebarsRenderer()
+        val renderer = HandlebarsRenderer()
 
-            // execute
-            val result = renderer.render(model, templateString)
+        // execute
+        val result = renderer.render(model, templateString)
 
-            // verify
-            assertEquals(expectedResult, result)
-        }
+        // verify
+        assertEquals(expectedResult, result)
     }
 }
 

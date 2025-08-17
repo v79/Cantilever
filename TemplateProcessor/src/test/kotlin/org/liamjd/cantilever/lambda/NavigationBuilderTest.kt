@@ -2,18 +2,32 @@ package org.liamjd.cantilever.lambda
 
 import com.amazonaws.services.lambda.runtime.LambdaLogger
 import io.mockk.every
-import io.mockk.just
+import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
-import io.mockk.runs
-import kotlinx.datetime.Clock
+import io.mockk.mockkClass
 import kotlinx.datetime.LocalDate
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.koin.core.context.stopKoin
+import org.koin.dsl.module
+import org.koin.test.KoinTest
+import org.koin.test.junit5.KoinTestExtension
+import org.koin.test.junit5.mock.MockProviderExtension
+import org.koin.test.mock.declareMock
+import org.liamjd.cantilever.common.EnvironmentProvider
 import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.services.S3Service
-import kotlin.test.*
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
-/**
-internal class NavigationBuilderTest {
+
+@ExtendWith(MockKExtension::class)
+internal class NavigationBuilderTest : KoinTest {
 
     private val mockLogger = mockk<LambdaLogger>()
     private val mockS3 = mockk<S3Service>()
@@ -22,9 +36,30 @@ internal class NavigationBuilderTest {
     private val postListJson: String = buildFullJson()
     private val onlyTwoPosts: String = buildJsonWithOnlyTwo()
 
-    @BeforeTest
-    fun initTests() {
-        every { mockLogger.log(any<String>()) } just runs
+    @JvmField
+    @RegisterExtension
+    val koinTestExtension = KoinTestExtension.create {
+        modules(module {
+        })
+    }
+
+    @JvmField
+    @RegisterExtension
+    val mockProvider = MockProviderExtension.create { clazz ->
+        mockkClass(clazz)
+    }
+
+    @BeforeEach
+    fun setup() {
+
+        declareMock<EnvironmentProvider> {
+
+        }
+    }
+
+    @AfterEach
+    fun tearDown() {
+        stopKoin()
     }
 
     @Test
@@ -41,8 +76,8 @@ internal class NavigationBuilderTest {
             date = LocalDate(2023, 9, 18)
         )
         with(mockLogger) {
-            val builder = NavigationBuilder(mockS3)
-            val nav = builder.getPostNavigationObjects(currentPost, sourceBucket)
+            val builder = NavigationBuilder()
+            val nav = builder.getPostNavigationObjects(currentPost)
             assertNotNull(nav) {
                 assertNotNull(nav["@prev"]) {
                     assertEquals("Jetpack Compose Theming Woes", it.title)
@@ -70,8 +105,8 @@ internal class NavigationBuilderTest {
             date = LocalDate(2023, 9, 18)
         )
         with(mockLogger) {
-            val builder = NavigationBuilder(mockS3)
-            val nav = builder.getPostNavigationObjects(currentPost, sourceBucket)
+            val builder = NavigationBuilder()
+            val nav = builder.getPostNavigationObjects(currentPost)
             assertNotNull(nav) {
                 assertNull(nav["@prev"])
                 assertNotNull(nav["@last"])
@@ -99,8 +134,8 @@ internal class NavigationBuilderTest {
             date = LocalDate(2023, 9, 18)
         )
         with(mockLogger) {
-            val builder = NavigationBuilder(mockS3)
-            val nav = builder.getPostNavigationObjects(currentPost, sourceBucket)
+            val builder = NavigationBuilder()
+            val nav = builder.getPostNavigationObjects(currentPost)
             assertNotNull(nav) {
                 assertNotNull(nav["@prev"]) {
                     assertEquals("Adding static file support", it.title)
@@ -127,8 +162,8 @@ internal class NavigationBuilderTest {
             date = LocalDate(2023, 9, 18)
         )
         with(mockLogger) {
-            val builder = NavigationBuilder(mockS3)
-            val nav = builder.getPostNavigationObjects(currentPost, sourceBucket)
+            val builder = NavigationBuilder()
+            val nav = builder.getPostNavigationObjects(currentPost)
             assertNotNull(nav) {
                 assertEquals(0, it.size)
             }
@@ -194,4 +229,3 @@ internal class NavigationBuilderTest {
     """.trimIndent()
 }
 
- */
