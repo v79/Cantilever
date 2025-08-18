@@ -2,8 +2,10 @@ package org.liamjd.cantilever.api.controllers
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockkClass
+import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -18,9 +20,6 @@ import org.koin.test.mock.declareMock
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.services.DynamoDBService
 import org.liamjd.cantilever.services.S3Service
-import org.liamjd.cantilever.services.impl.DynamoDBServiceImpl
-import org.liamjd.cantilever.services.impl.S3ServiceImpl
-import software.amazon.awssdk.regions.Region
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -40,8 +39,6 @@ internal class ProjectControllerTest : KoinTest {
     @RegisterExtension
     val koinTestExtension = KoinTestExtension.create {
         modules(module {
-            single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
-            single<DynamoDBService> { DynamoDBServiceImpl(Region.EU_WEST_2) }
         })
     }
 
@@ -65,7 +62,7 @@ internal class ProjectControllerTest : KoinTest {
             dateFormat = "dd/MM/yyyy",
             dateTimeFormat = "HH:mm dd/MM/yyyy"
         )
-        
+
         declareMock<DynamoDBService> {
             coEvery { mockDynamoDB.getProject(domain) } returns mockProject
         }
@@ -99,7 +96,7 @@ internal class ProjectControllerTest : KoinTest {
             projectName = "Project name 2",
             author = "Author name"
         )
-        
+
         val updatedProject = CantileverProject(
             domain = "example.com",
             projectName = "Project name 2",
@@ -107,7 +104,7 @@ internal class ProjectControllerTest : KoinTest {
             dateFormat = "dd/MM/yyyy",
             dateTimeFormat = "HH:mm dd/MM/yyyy"
         )
-        
+
         declareMock<DynamoDBService> {
             coEvery { mockDynamoDB.saveProject(any()) } returns updatedProject
         }
@@ -147,7 +144,7 @@ internal class ProjectControllerTest : KoinTest {
         assertNotNull(response)
         assertEquals(400, response.statusCode)
     }
-    
+
     @Test
     fun `successfully creates a new project`() {
         val mockCantileverProject = CantileverProject(
@@ -155,7 +152,7 @@ internal class ProjectControllerTest : KoinTest {
             projectName = "New Project",
             author = "Author name"
         )
-        
+
         val savedProject = CantileverProject(
             domain = "newdomain.com",
             projectName = "New Project",
@@ -163,10 +160,13 @@ internal class ProjectControllerTest : KoinTest {
             dateFormat = "dd/MM/yyyy",
             dateTimeFormat = "HH:mm dd/MM/yyyy"
         )
-        
+
         declareMock<DynamoDBService> {
             coEvery { mockDynamoDB.getProject("newdomain.com") } returns null
             coEvery { mockDynamoDB.saveProject(any()) } returns savedProject
+        }
+        declareMock<S3Service> {
+            every { mockS3.createFolder(any(), any()) } returns 0
         }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
@@ -181,8 +181,9 @@ internal class ProjectControllerTest : KoinTest {
 
         assertNotNull(response)
         assertEquals(200, response.statusCode)
+        verify(atLeast = 5) { mockS3.createFolder(any(), any()) }
     }
-    
+
     @Test
     fun `returns conflict if project already exists`() {
         val mockCantileverProject = CantileverProject(
@@ -190,7 +191,7 @@ internal class ProjectControllerTest : KoinTest {
             projectName = "Existing Project",
             author = "Author name"
         )
-        
+
         val existingProject = CantileverProject(
             domain = "existingdomain.com",
             projectName = "Existing Project",
@@ -198,7 +199,7 @@ internal class ProjectControllerTest : KoinTest {
             dateFormat = "dd/MM/yyyy",
             dateTimeFormat = "HH:mm dd/MM/yyyy"
         )
-        
+
         declareMock<DynamoDBService> {
             coEvery { mockDynamoDB.getProject("existingdomain.com") } returns existingProject
         }
@@ -217,10 +218,14 @@ internal class ProjectControllerTest : KoinTest {
         assertEquals(409, response.statusCode)
     }
 
-      /**
+    /**
      * Utility function to build the fake request object
      */
-    private fun buildRequest(path: String, pathPattern: String, body: String = ""): org.liamjd.apiviaduct.routing.Request<Unit> {
+    private fun buildRequest(
+        path: String,
+        pathPattern: String,
+        body: String = ""
+    ): org.liamjd.apiviaduct.routing.Request<Unit> {
         val apiGatewayProxyRequestEvent = APIGatewayProxyRequestEvent()
         apiGatewayProxyRequestEvent.body = ""
         apiGatewayProxyRequestEvent.path = path

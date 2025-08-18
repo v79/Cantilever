@@ -1,5 +1,7 @@
 package org.liamjd.cantilever.api
 
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.liamjd.apiviaduct.routing.*
@@ -12,6 +14,7 @@ import org.liamjd.cantilever.services.impl.DynamoDBServiceImpl
 import org.liamjd.cantilever.services.impl.S3ServiceImpl
 import org.liamjd.cantilever.services.impl.SQSServiceImpl
 import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 
 /**
  * Set up koin dependency injection
@@ -19,12 +22,17 @@ import software.amazon.awssdk.regions.Region
 val cantileverModule = module {
     single<S3Service> { S3ServiceImpl(Region.EU_WEST_2) }
     single<SQSService> { SQSServiceImpl(Region.EU_WEST_2) }
-    single<DynamoDBService> { DynamoDBServiceImpl(Region.EU_WEST_2) }
+    single<DynamoDBService> {
+        DynamoDBServiceImpl(
+            Region.EU_WEST_2, dynamoDbClient = DynamoDbAsyncClient.create()
+        )
+    }
 }
 
+@Suppress("unused")
 class NewLambdaRouter : LambdaRouter() {
+    private val logger: Logger = LogManager.getLogger(NewLambdaRouter::class.java)
     override val corsDomain: String = System.getenv("cors_domain") ?: "https://www.cantilevers.org/"
-
     private val sourceBucket: String = System.getenv("source_bucket")
     private val generationBucket: String = System.getenv("generation_bucket")
 
@@ -32,6 +40,7 @@ class NewLambdaRouter : LambdaRouter() {
         startKoin {
             modules(cantileverModule)
         }
+        logger.info("NewLambdaRouter initialized with source bucket: $sourceBucket, generation bucket: $generationBucket")
     }
 
     // Set up controllers; better would be to use DI
@@ -55,10 +64,10 @@ class NewLambdaRouter : LambdaRouter() {
     )
 
     override val router: Router = lambdaRouter {
+        /** ============== /warm ================== **/
         get("/warm") { _: Request<Unit> ->
-            println("NEW API: Ping received; warming"); Response.ok(
-            "Warmed"
-        )
+            logger.info("NEW API: Ping received; warming")
+            Response.ok("Warmed")
         }.supplies(MimeType.plainText)
 
         /** ============== /project ================== **/

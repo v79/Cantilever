@@ -6,8 +6,8 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.*
-import org.liamjd.cantilever.api.models.ResultSerializer.APIResultSurrogate
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonUnquotedLiteral
 
 @JvmInline
 @Serializable(with = RawJsonStringSerializer::class)
@@ -16,9 +16,9 @@ value class RawJsonString(val content: String) : CharSequence by content
 /**
  * An APIResult may be either:
  *
- * - OK or Error, which have a simple message string property
+ * - OK or Error, which has a simple message string property
  * - Success, which returns an object of type 'R'
- * - JsonSuccess, which returns a complete Json string
+ * - JsonSuccess, which returns a complete JSON string
  */
 @Serializable(with = ResultSerializer::class)
 sealed interface APIResult<out R : Any> {
@@ -48,7 +48,7 @@ class ResultSerializer<R : Any>(rSerializer: KSerializer<R>) : KSerializer<APIRe
 
     @Serializable
     @SerialName("result")
-    data class APIResultSurrogate<R : Any> constructor(
+    data class APIResultSurrogate<R : Any>(
         @Transient
         val type: ResultType = ResultType.OK,
         @EncodeDefault(EncodeDefault.Mode.NEVER)
@@ -76,12 +76,15 @@ class ResultSerializer<R : Any>(rSerializer: KSerializer<R>) : KSerializer<APIRe
                     throw SerializationException("Unable to serialize object with null data for Result.Success")
                 }
             }
+
             APIResultSurrogate.ResultType.JSON -> {
-               TODO("NOT YET IMPLEMENTED DESERIALIZATION OF ARBITRARY JSON BODY AND I DON'T NEED TO ANYWAY")
+                TODO("NOT YET IMPLEMENTED DESERIALIZATION OF ARBITRARY JSON BODY AND I DON'T NEED TO ANYWAY")
             }
+
             APIResultSurrogate.ResultType.OK -> {
                 APIResult.OK(surrogate.message ?: "")
             }
+
             APIResultSurrogate.ResultType.Error -> {
                 APIResult.Error(surrogate.message ?: "")
             }
@@ -90,7 +93,11 @@ class ResultSerializer<R : Any>(rSerializer: KSerializer<R>) : KSerializer<APIRe
 
     override fun serialize(encoder: Encoder, value: APIResult<R>) {
         val surrogate = when (value) {
-            is APIResult.Error -> APIResultSurrogate(type = APIResultSurrogate.ResultType.Error, message = value.statusText)
+            is APIResult.Error -> APIResultSurrogate(
+                type = APIResultSurrogate.ResultType.Error,
+                message = value.statusText
+            )
+
             is APIResult.OK -> APIResultSurrogate(type = APIResultSurrogate.ResultType.OK, message = value.message)
             is APIResult.Success -> APIResultSurrogate(type = APIResultSurrogate.ResultType.Success, data = value.value)
             is APIResult.JsonSuccess -> {
@@ -103,7 +110,9 @@ class ResultSerializer<R : Any>(rSerializer: KSerializer<R>) : KSerializer<APIRe
 
 @OptIn(ExperimentalSerializationApi::class)
 object RawJsonStringSerializer : KSerializer<RawJsonString> {
-    override val descriptor = PrimitiveSerialDescriptor("org.liamjd.cantilever.api.models.RawJsonString", PrimitiveKind.STRING)
+    override val descriptor =
+        PrimitiveSerialDescriptor("org.liamjd.cantilever.api.models.RawJsonString", PrimitiveKind.STRING)
+
     override fun deserialize(decoder: Decoder): RawJsonString = RawJsonString(decoder.decodeString())
     override fun serialize(encoder: Encoder, value: RawJsonString) {
         return when (encoder) {
@@ -111,6 +120,7 @@ object RawJsonStringSerializer : KSerializer<RawJsonString> {
                 println("RawJsonStringSerializer: raw encoding")
                 encoder.encodeJsonElement(JsonUnquotedLiteral(value.content))
             }
+
             else -> {
                 println("RawJsonStringSerializer: plain encoding $value")
                 encoder.encodeString(value.content)

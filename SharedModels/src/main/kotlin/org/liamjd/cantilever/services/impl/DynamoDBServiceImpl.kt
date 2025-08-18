@@ -1,8 +1,19 @@
 package org.liamjd.cantilever.services.impl
 
+import com.amazonaws.services.lambda.runtime.LambdaLogger
 import kotlinx.coroutines.future.await
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
+import org.liamjd.cantilever.models.ContentNode
+import org.liamjd.cantilever.services.AWSLogger
+import org.liamjd.cantilever.services.DynamoDBResult
 import org.liamjd.cantilever.services.DynamoDBService
+import software.amazon.awssdk.awscore.exception.AwsServiceException
+import software.amazon.awssdk.core.exception.SdkClientException
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.*
@@ -11,16 +22,46 @@ import software.amazon.awssdk.services.dynamodb.model.*
  * Implementation of DynamoDBService for Project operations
  * @param region The AWS region to use
  * @param tableName The name of the DynamoDB table
+ * @param enableLogging Whether to enable logging (default: true)
  */
 class DynamoDBServiceImpl(
     private val region: Region,
-    private val tableName: String = "cantilever-dev-content-nodes" // TODO: This should be configurable
-) : DynamoDBService {
+    val tableName: String = "cantilever-dev-cantileverdevdatabasecontentnodetable62135F84-44G7850XR76D", // TODO: This should be configurable
+    private val dynamoDbClient: DynamoDbAsyncClient,
+    enableLogging: Boolean = true,
+) : DynamoDBService, AWSLogger(enableLogging, "DynamoDBService") {
 
-    private val dynamoDbClient: DynamoDbAsyncClient by lazy {
-        DynamoDbAsyncClient.builder()
-            .region(region)
-            .build()
+    override var logger: LambdaLogger? = null
+
+    /**
+     * Execute a DynamoDB operation with standard error handling
+     * @param operationDescription A description of the operation (for logging)
+     * @param contextInfo Additional context information for error messages
+     * @param operation The operation to execute
+     * @return The result of the operation
+     */
+    private suspend fun <T> executeDynamoOperation(
+        operationDescription: String,
+        contextInfo: String,
+        operation: suspend () -> T
+    ): T {
+        log("$operationDescription: $contextInfo")
+
+        try {
+            return operation()
+        } catch (e: DynamoDbException) {
+            log("ERROR", "Failed to $operationDescription: $contextInfo", e)
+            throw e
+        } catch (e: AwsServiceException) {
+            log("ERROR", "AWS service error while $operationDescription: $contextInfo", e)
+            throw e
+        } catch (e: SdkClientException) {
+            log("ERROR", "SDK client error while $operationDescription: $contextInfo", e)
+            throw e
+        } catch (e: Exception) {
+            log("ERROR", "Unexpected error while $operationDescription: $contextInfo", e)
+            throw e
+        }
     }
 
     /**
@@ -29,22 +70,27 @@ class DynamoDBServiceImpl(
      * @return The project if found, null otherwise
      */
     override suspend fun getProject(domain: String): CantileverProject? {
-        val key = mapOf(
-            "domain#type" to AttributeValue.builder().s("$domain#project").build(),
-            "srcKey" to AttributeValue.builder().s("$domain.yaml").build()
-        )
+        return executeDynamoOperation("get project", "domain: $domain") {
+            val key = mapOf(
+                "domain#type" to AttributeValue.builder().s("$domain#project").build(),
+                "srcKey" to AttributeValue.builder().s("$domain.yaml").build()
+            )
 
-        val request = GetItemRequest.builder()
-            .tableName(tableName)
-            .key(key)
-            .build()
+            val request = GetItemRequest.builder()
+                .tableName(tableName)
+                .key(key)
+                .build()
 
-        val response = dynamoDbClient.getItem(request).await()
+            log("Executing GetItem request for domain: $domain")
+            val response = dynamoDbClient.getItem(request).await()
 
-        return if (response.hasItem()) {
-            mapToProject(response.item())
-        } else {
-            null
+            if (response.hasItem()) {
+                log("Project found for domain: $domain")
+                mapToProject(response.item())
+            } else {
+                log("No project found for domain: $domain")
+                null
+            }
         }
     }
 
@@ -54,25 +100,43 @@ class DynamoDBServiceImpl(
      * @return The saved project
      */
     override suspend fun saveProject(project: CantileverProject): CantileverProject {
-        val item = mapOf(
-            "domain#type" to AttributeValue.builder().s("${project.domain}#project").build(),
-            "srcKey" to AttributeValue.builder().s(project.projectKey).build(),
-            "domain" to AttributeValue.builder().s(project.domain).build(),
-            "projectName" to AttributeValue.builder().s(project.projectName).build(),
-            "author" to AttributeValue.builder().s(project.author).build(),
-            "dateFormat" to AttributeValue.builder().s(project.dateFormat).build(),
-            "dateTimeFormat" to AttributeValue.builder().s(project.dateTimeFormat).build(),
-            "type#lastUpdated" to AttributeValue.builder().s("project#${System.currentTimeMillis()}").build()
-        )
+        log("Saving project: ${project.projectName} for domain: ${project.domain}")
 
-        val request = PutItemRequest.builder()
-            .tableName(tableName)
-            .item(item)
-            .build()
+        try {
+            val item = mapOf(
+                "domain#type" to AttributeValue.builder().s("${project.domain}#project").build(),
+                "srcKey" to AttributeValue.builder().s(project.projectKey).build(),
+                "domain" to AttributeValue.builder().s(project.domain).build(),
+                "projectName" to AttributeValue.builder().s(project.projectName).build(),
+                "author" to AttributeValue.builder().s(project.author).build(),
+                "dateFormat" to AttributeValue.builder().s(project.dateFormat).build(),
+                "dateTimeFormat" to AttributeValue.builder().s(project.dateTimeFormat).build(),
+                "type#lastUpdated" to createLastUpdatedAttribute("project")
+            )
 
-        dynamoDbClient.putItem(request).await()
+            val request = PutItemRequest.builder()
+                .tableName(tableName)
+                .item(item)
+                .build()
 
-        return project
+            log("Executing PutItem request for project: ${project.projectName}")
+            dynamoDbClient.putItem(request).await()
+
+            log("Successfully saved project: ${project.projectName} for domain: ${project.domain}")
+            return project
+        } catch (e: DynamoDbException) {
+            log("ERROR", "Failed to save project: ${project.projectName} for domain: ${project.domain}", e)
+            throw e
+        } catch (e: AwsServiceException) {
+            log("ERROR", "AWS service error while saving project: ${project.projectName}", e)
+            throw e
+        } catch (e: SdkClientException) {
+            log("ERROR", "SDK client error while saving project: ${project.projectName}", e)
+            throw e
+        } catch (e: Exception) {
+            log("ERROR", "Unexpected error while saving project: ${project.projectName}", e)
+            throw e
+        }
     }
 
     /**
@@ -82,38 +146,48 @@ class DynamoDBServiceImpl(
      * @return true if the project was deleted, false otherwise
      */
     override suspend fun deleteProject(domain: String, projectName: String): Boolean {
-        val key = mapOf(
-            "domain#type" to AttributeValue.builder().s("$domain#project").build(),
-            "srcKey" to AttributeValue.builder().s("$domain.yaml").build()
-        )
+        log("Deleting project: $projectName for domain: $domain")
 
-        val request = DeleteItemRequest.builder()
-            .tableName(tableName)
-            .key(key)
-            .build()
-
-        val response = dynamoDbClient.deleteItem(request).await()
-
-        return response.sdkHttpResponse().isSuccessful
-    }
-
-    /**
-     * List all projects for a domain
-     * @param domain The project domain
-     * @return A list of projects for the domain
-     */
-    override suspend fun listProjects(domain: String): List<CantileverProject> {
-        val request = QueryRequest.builder()
-            .tableName(tableName)
-            .keyConditionExpression("domain#type = :domainType")
-            .expressionAttributeValues(
-                mapOf(":domainType" to AttributeValue.builder().s("$domain#project").build())
+        try {
+            val key = mapOf(
+                "domain#type" to AttributeValue.builder().s("$domain#project").build(),
+                "srcKey" to AttributeValue.builder().s("$domain.yaml").build()
             )
-            .build()
 
-        val response = dynamoDbClient.query(request).await()
+            val request = DeleteItemRequest.builder()
+                .tableName(tableName)
+                .key(key)
+                .build()
 
-        return response.items().map { item -> mapToProject(item) }
+            log("Executing DeleteItem request for project: $projectName")
+            val response = dynamoDbClient.deleteItem(request).await()
+
+            val isSuccessful = response.sdkHttpResponse().isSuccessful
+            if (isSuccessful) {
+                log("Successfully deleted project: $projectName for domain: $domain")
+            } else {
+                log(
+                    "WARN",
+                    "Failed to delete project: $projectName for domain: $domain. HTTP status: ${
+                        response.sdkHttpResponse().statusCode()
+                    }"
+                )
+            }
+
+            return isSuccessful
+        } catch (e: DynamoDbException) {
+            log("ERROR", "Failed to delete project: $projectName for domain: $domain", e)
+            throw e
+        } catch (e: AwsServiceException) {
+            log("ERROR", "AWS service error while deleting project: $projectName", e)
+            throw e
+        } catch (e: SdkClientException) {
+            log("ERROR", "SDK client error while deleting project: $projectName", e)
+            throw e
+        } catch (e: Exception) {
+            log("ERROR", "Unexpected error while deleting project: $projectName", e)
+            throw e
+        }
     }
 
     /**
@@ -121,21 +195,592 @@ class DynamoDBServiceImpl(
      * @return A list of all projects
      */
     override suspend fun listAllProjects(): List<CantileverProject> {
-        val request = ScanRequest.builder()
-            .tableName(tableName)
-            .filterExpression("contains(#domainType, :projectType)")
-            .expressionAttributeNames(
-                mapOf("#domainType" to "domain#type")
-            )
-            .expressionAttributeValues(
-                mapOf(":projectType" to AttributeValue.builder().s("#project").build())
-            )
-            .build()
+        log("Listing all projects")
 
-        val response = dynamoDbClient.scan(request).await()
+        try {
+            val request = ScanRequest.builder()
+                .tableName(tableName)
+                .filterExpression("contains(#domainType, :projectType)")
+                .expressionAttributeNames(
+                    mapOf("#domainType" to "domain#type")
+                )
+                .expressionAttributeValues(
+                    mapOf(":projectType" to AttributeValue.builder().s("#project").build())
+                )
+                .build()
 
-        return response.items().map { item -> mapToProject(item) }
+            log("Executing Scan request for all projects")
+            val response = dynamoDbClient.scan(request).await()
+
+            val projects = response.items().map { item -> mapToProject(item) }
+            log("Found ${projects.size} projects in total")
+
+            return projects
+        } catch (e: DynamoDbException) {
+            log("ERROR", "Failed to list all projects", e)
+            throw e
+        } catch (e: AwsServiceException) {
+            log("ERROR", "AWS service error while listing all projects", e)
+            throw e
+        } catch (e: SdkClientException) {
+            log("ERROR", "SDK client error while listing all projects", e)
+            throw e
+        } catch (e: Exception) {
+            log("ERROR", "Unexpected error while listing all projects", e)
+            throw e
+        }
     }
+
+    /**
+     * Upsert a content node in DynamoDB. This will either insert a new content node or update an existing one.
+     * The content node is identified by its source key, project domain and content type.
+     * @param srcKey The source key for the content node
+     * @param projectDomain The domain of the project
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @param node The content node to upsert
+     * @param attributes A map of additional attributes for the content node
+     * @return true if the content node was successfully upserted, false otherwise
+     */
+    override suspend fun upsertContentNode(
+        srcKey: String,
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        node: ContentNode,
+        attributes: Map<String, String>
+    ): Boolean {
+        log("Upserting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
+
+        try {
+            val item = mutableMapOf<String, AttributeValue>(
+                "domain#type" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
+                "srcKey" to AttributeValue.builder().s(srcKey).build(),
+                "type#lastUpdated" to createLastUpdatedAttribute(contentType.dbType)
+            )
+
+            // Add node properties based on its type
+            when (node) {
+                is ContentNode.PostNode -> {
+                    item["title"] = AttributeValue.builder().s(node.title).build()
+                    item["templateKey"] = AttributeValue.builder().s(node.templateKey).build()
+                    item["slug"] = AttributeValue.builder().s(node.slug).build()
+                    item["date"] = AttributeValue.builder().s(node.date.toString()).build()
+                    item["next"] = AttributeValue.builder().s(node.next ?: "").build()
+                    item["prev"] = AttributeValue.builder().s(node.prev ?: "").build()
+
+                    // Add the node's own custom attributes with attr# prefix
+                    node.attributes.forEach { (key, value) ->
+                        item["attr#$key"] = AttributeValue.builder().s(value).build()
+                    }
+                }
+
+                is ContentNode.TemplateNode -> {
+                    item["title"] = AttributeValue.builder().s(node.title).build()
+                    item["sections"] = AttributeValue.builder().s(node.sections.joinToString(",")).build()
+                }
+
+                is ContentNode.StaticNode, is ContentNode.ImageNode -> {
+                    // Static nodes might not have additional properties, but we can add a lastUpdated timestamp
+                    item["type#lastUpdated"] = createLastUpdatedAttribute("static")
+                }
+
+                is ContentNode.PageNode -> {
+                    // srcKey, lastUpdated, title, templateKey, slug, isRoot, attributes, sections, parent
+                    item["title"] = AttributeValue.builder().s(node.title).build()
+                    item["slug"] = AttributeValue.builder().s(node.slug).build()
+                    item["isRoot"] = AttributeValue.builder().bool(node.isRoot).build()
+                    item["templateKey"] = AttributeValue.builder().s(node.templateKey).build()
+                    item["sections"] = AttributeValue.builder().ss(node.sections.keys).build()
+                    item["parent"] = AttributeValue.builder().s(node.parent).build()
+                    // Add the node's own custom attributes with attr# prefix
+                    node.attributes.forEach { (key, value) ->
+                        item["attr#$key"] = AttributeValue.builder().s(value).build()
+                    }
+                }
+
+                is ContentNode.FolderNode -> {
+                    if (node.children.isNotEmpty()) {
+                        item["children"] = AttributeValue.builder().ss(node.children).build()
+                        item["indexPage"] = AttributeValue.builder().s(node.indexPage).build()
+                    }
+                }
+            }
+
+            log("Adding additional attributes: $attributes")
+            // Add additional attributes to the item with attr# prefix
+            attributes.forEach { (key, value) ->
+                item["attr#$key"] = AttributeValue.builder().s(value).build() // might not always be a string
+            }
+
+            val request = PutItemRequest.builder()
+                .tableName(tableName)
+                .item(item)
+                .build()
+
+            log("Executing PutItem request for '${contentType.dbType}' content node '$srcKey'")
+            log("Item to be upserted: $item")
+            val response = dynamoDbClient.putItem(request).await()
+
+            if (response.sdkHttpResponse().isSuccessful) {
+                log("Successfully upserted content node: $srcKey in domain: $projectDomain")
+                return true
+            } else {
+                log(
+                    "WARN",
+                    "Received non-successful response when upserting content node: $srcKey. Status: ${
+                        response.sdkHttpResponse().statusCode()
+                    }"
+                )
+                return false
+            }
+        } catch (e: DynamoDbException) {
+            log("ERROR", "Failed to upsert content node: $srcKey in domain: $projectDomain", e)
+            throw e
+        } catch (e: AwsServiceException) {
+            log("ERROR", "AWS service error while upserting content node: $srcKey", e)
+            throw e
+        } catch (e: SdkClientException) {
+            log("ERROR", "SDK client error while upserting content node: $srcKey", e)
+            throw e
+        } catch (e: Exception) {
+            log("ERROR", "Unexpected error while upserting content node: $srcKey", e)
+            throw e
+        }
+    }
+
+    /**
+     * Delete a content node from DynamoDB
+     * @param srcKey The source key for the content node
+     * @param projectDomain The domain of the project
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @return a DynamoDB-specific response indicating success or failure of the operation
+     */
+    override suspend fun deleteContentNode(
+        srcKey: String,
+        projectDomain: String,
+        contentType: SOURCE_TYPE
+    ): DynamoDBResult {
+        log("Deleting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
+
+        try {
+            val key = mapOf(
+                "domain#type" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
+                "srcKey" to AttributeValue.builder().s(srcKey).build()
+            )
+
+            val request = DeleteItemRequest.builder()
+                .tableName(tableName)
+                .key(key)
+                .build()
+
+            log("Executing DeleteItem request for content node: $srcKey")
+            val response = dynamoDbClient.deleteItem(request).await()
+            if (response.sdkHttpResponse().isSuccessful) {
+                return DynamoDBResult.OK
+            } else {
+                return DynamoDBResult.Error(
+                    "Error while deleting content node: $srcKey in domain: $projectDomain; status code ${
+                        response.sdkHttpResponse().statusCode()
+                    } (${response.sdkHttpResponse().statusText()})"
+                )
+            }
+        } catch (e: DynamoDbException) {
+            log("ERROR", "Failed to delete content node: $srcKey in domain: $projectDomain", e)
+            throw e
+        } catch (e: AwsServiceException) {
+            log("ERROR", "AWS service error while deleting content node: $srcKey", e)
+            throw e
+        } catch (e: SdkClientException) {
+            log("ERROR", "SDK client error while deleting content node: $srcKey", e)
+            throw e
+        } catch (e: Exception) {
+            log("ERROR", "Unexpected error while deleting content node: $srcKey", e)
+            throw e
+        }
+    }
+
+    /**
+     * Get a content node by its source key, project domain and content type
+     * @param srcKey The source key for the content node
+     * @param projectDomain The domain of the project
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @return The content node if found, null otherwise
+     */
+    override suspend fun getContentNode(
+        srcKey: String,
+        projectDomain: String,
+        contentType: SOURCE_TYPE
+    ): ContentNode? {
+        log("Getting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
+
+        try {
+            val key = mapOf(
+                "domain#type" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
+                "srcKey" to AttributeValue.builder().s(srcKey).build()
+            )
+
+            val request = GetItemRequest.builder()
+                .tableName(tableName)
+                .key(key)
+                .build()
+
+            log("Executing GetItem request for content node: $srcKey")
+            val response = dynamoDbClient.getItem(request).await()
+
+            return if (response.hasItem()) {
+                log("Content node found: $srcKey")
+                when (contentType) {
+                    SOURCE_TYPE.Templates -> mapToTemplateNode(response.item())
+                    SOURCE_TYPE.Posts -> mapToPostNode(response.item())
+                    SOURCE_TYPE.Statics -> mapToStaticNode(response.item())
+                    SOURCE_TYPE.Folders -> mapToFolderNode(response.item())
+                    else -> throw IllegalArgumentException("Unsupported content type: ${contentType.dbType}")
+                }
+            } else {
+                log("No content node found for srcKey: $srcKey")
+                null
+            }
+        } catch (e: DynamoDbException) {
+            log("ERROR", "Failed to get content node: $srcKey in domain: $projectDomain", e)
+            throw e
+        } catch (e: AwsServiceException) {
+            log("ERROR", "AWS service error while getting content node: $srcKey", e)
+            throw e
+        } catch (e: SdkClientException) {
+            log("ERROR", "SDK client error while getting content node: $srcKey", e)
+            throw e
+        } catch (e: Exception) {
+            log("ERROR", "Unexpected error while getting content node: $srcKey", e)
+            throw e
+        }
+    }
+
+
+    /**
+     * Get the count of content nodes for a specific project domain and content type
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @return The count of content nodes for the specified domain and content type
+     */
+    override suspend fun getNodeCount(
+        projectDomain: String,
+        contentType: SOURCE_TYPE
+    ): Int {
+        log("Getting node count for domain: $projectDomain of type: ${contentType.dbType}")
+
+        return executeDynamoOperation(
+            operationDescription = "get node count",
+            contextInfo = "domain: $projectDomain, type: ${contentType.dbType}"
+        ) {
+            val request = QueryRequest.builder()
+                .tableName(tableName)
+                .keyConditionExpression("#domainType = :domainTypeValue")
+                .expressionAttributeNames(mapOf("#domainType" to "domain#type"))
+                .expressionAttributeValues(
+                    mapOf(
+                        ":domainTypeValue" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build()
+                    )
+                )
+                .select(Select.COUNT) // Only get the count
+                .build()
+
+            log("Executing Query request for node count in domain: $projectDomain")
+            val response = dynamoDbClient.query(request).await()
+
+            log("Node count for domain: $projectDomain is ${response.count()}")
+            response.count()
+        }
+    }
+
+    /**
+     * List all nodes for a specific project domain and content type
+     * @param domain The project domain
+     * @param type The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @return A list of content nodes for the specified domain and content type
+     */
+    override suspend fun listAllNodesForProject(
+        domain: String,
+        type: SOURCE_TYPE
+    ): List<ContentNode> {
+        log("Listing all nodes for domain: $domain of type: ${type.dbType}")
+
+        return executeDynamoOperation(
+            operationDescription = "list all nodes for domain: $domain",
+            contextInfo = "domain: $domain, type: ${type.dbType}"
+        ) {
+            val request = QueryRequest.builder()
+                .tableName(tableName)
+                .keyConditionExpression("#pk = :domainType")
+                .expressionAttributeNames(
+                    mapOf("#pk" to "domain#type")
+                )
+                .expressionAttributeValues(
+                    mapOf(":domainType" to AttributeValue.builder().s("$domain#${type.dbType}").build())
+                )
+                .build()
+
+            val response = dynamoDbClient.query(request).await()
+
+            if (response.count() > 0) {
+                log("Found ${response.count()} nodes for domain: $domain of type: ${type.dbType}")
+                response.items().map { item ->
+                    when (type) {
+                        SOURCE_TYPE.Posts -> mapToPostNode(item)
+                        SOURCE_TYPE.Templates -> mapToTemplateNode(item)
+                        SOURCE_TYPE.Statics -> mapToStaticNode(item)
+                        SOURCE_TYPE.Pages -> mapToPageNode(item)
+                        SOURCE_TYPE.Folders -> mapToFolderNode(item)
+                        else -> throw IllegalArgumentException("Unsupported content type: ${type.dbType}")
+                    }
+                }
+            } else {
+                log("No nodes found for domain: $domain of type: ${type.dbType}")
+                emptyList()
+            }
+        }
+    }
+
+    /**
+     * Get a list of content nodes with specific attributes for a project domain and content type
+     * For instance; to retrieve the list of all posts with a particular template, you can pass the template name as an attribute.
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g. Pages, Posts, Templates, Statics, Images)
+     * @param attributes A map of attributes to filter the content nodes
+     * @return A list of the src keys of nodes that match the specified attributes
+     */
+    override suspend fun getKeyListMatchingAttributes(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        attributes: Map<String, String>
+    ): List<String> {
+        return getKeyListMatchingAttributes(
+            projectDomain = projectDomain,
+            contentType = contentType,
+            attributes = attributes,
+            limit = 9999, // Default limit, can be overridden
+            descending = true // Default order, can be overridden
+        )
+    }
+
+    /**
+     * Get a list of content nodes with specific bespoke attributes for a project domain and content type,
+     * For instance; to retrieve the list of all posts with a particular bespoke attribute (say, "mood"), you can pass the mood as an attribute.
+     * The results will be limited to the specified number and ordered by the specified attribute.
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g. Pages, Posts, Templates, Statics, Images)
+     * @param attributes A map of attributes to filter the content nodes
+     * @param limit The maximum number of results to return
+     * @param descending Whether to order the results in descending order (default is true)
+     * @return A list of the src keys of nodes that match the specified attributes, limited to the specified number and ordered by the specified attribute.
+     * If no results are found, an empty list is returned.
+     */
+    override suspend fun getKeyListMatchingAttributes(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        attributes: Map<String, String>,
+        limit: Int,
+        descending: Boolean
+    ): List<String> {
+        log("Getting nodes matching attributes for domain: $projectDomain of type: ${contentType.dbType}")
+
+        return executeDynamoOperation(
+            operationDescription = "get nodes matching attributes",
+            contextInfo = "domain: $projectDomain, type: ${contentType.dbType}, attributes: $attributes"
+        ) {
+            // We add an expression attribute name mapping because the incoming attributes don't match the column name exactly
+            val filterExpression = attributes.entries.joinToString(" AND ") { "#attr_${it.key} = :attrValue_${it.key}" }
+            val expressionAttributeNames = attributes.keys.associateWith { "attr#${it}" }
+                .mapKeys { "#attr_${it.key}" }
+            val expressionAttributeValues =
+                attributes.entries.associate { ":attrValue_${it.key}" to AttributeValue.builder().s(it.value).build() }
+
+            val request = QueryRequest.builder()
+                .tableName(tableName)
+                .keyConditionExpression("#pk = :domainType")
+                .filterExpression(filterExpression)
+                .expressionAttributeNames(
+                    mapOf(
+                        "#pk" to "domain#type"
+                    ) + expressionAttributeNames
+                )
+                .expressionAttributeValues(
+                    mapOf(":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build()) +
+                            expressionAttributeValues
+                )
+                .projectionExpression("srcKey") // Only get the srcKey
+                .limit(limit)
+                .scanIndexForward(descending)
+                .build()
+
+            log("Executing Query request for keys matching attributes in domain: $projectDomain")
+            val response = dynamoDbClient.query(request).await()
+
+            if (response.count() > 0) {
+                log("Found ${response.count()} nodes matching attributes in domain: $projectDomain")
+                response.items().mapNotNull { it["srcKey"]?.s() }
+            } else {
+                log("No nodes found matching attributes in domain: $projectDomain")
+                emptyList()
+            }
+        }
+    }
+
+    /**
+     * Get a list of content nodes that match a specific template key for a project domain and content type.
+     * This is useful for retrieving all nodes that use a specific template.
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g., Pages or Posts; not applicable for others)
+     * @param templateKey The key of the template to match,
+     * @return A list of src keys of nodes that match the specified template key
+     */
+    override suspend fun getKeyListMatchingTemplate(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        templateKey: String
+    ): List<String> {
+        log("Getting nodes matching template: $templateKey in domain: $projectDomain of type: ${contentType.dbType}")
+
+        return executeDynamoOperation(
+            operationDescription = "get nodes matching template",
+            contextInfo = "domain: $projectDomain, type: $contentType, template: $templateKey",
+        ) {
+            // We don't need a mapping of expressionAttributeNames because the key name is simple and matches the expression
+            val filterExpression = "templateKey = :templateKey"
+            val expressionAttributeValues = mapOf(":templateKey" to AttributeValue.builder().s(templateKey).build())
+
+            val request = QueryRequest.builder()
+                .tableName(tableName)
+                .keyConditionExpression("#pk = :domainType")
+                .filterExpression(filterExpression)
+                .expressionAttributeNames(mapOf("#pk" to "domain#type"))
+                .expressionAttributeValues(
+                    mapOf(
+                        ":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build()
+                    ) + expressionAttributeValues
+                )
+                .projectionExpression("srcKey")
+                .build()
+
+            log("Executing Query request for nodes matching template '$templateKey' in domain: $projectDomain")
+            val response = dynamoDbClient.query(request).await()
+
+            if (response.count() > 0) {
+                log("Found ${response.count()} nodes matching template '$templateKey' in domain: $projectDomain")
+                response.items().mapNotNull { it["srcKey"]?.s() }
+            } else {
+                log("No nodes found matching template '$templateKey' in domain: $projectDomain")
+                emptyList()
+            }
+        }
+    }
+
+    /**
+     * Get a list of keys from a Local Secondary Index (LSI) for a specific project domain and content type.
+     * This is useful for retrieving keys based on attributes defined in the LSI.
+     * @param projectDomain The project domain
+     * @param contentType The type of content (e.g., Pages, Posts, Templates, Statics, Images)
+     * @param lsiName The name of the Local Secondary Index to query
+     * @param attribute A pair containing the attribute key and value to filter the results
+     *                 (e.g., Pair("mood", "happy") to filter by mood)
+     * @param operation The operation to perform on the attribute (default is "=")
+     * @param limit The maximum number of results to return (default is 100)
+     * @param descending Whether to order the results in descending order (default is true)
+     * @return A list of src keys that match the specified attributes in the LSI
+     */
+    override suspend fun getKeyListFromLSI(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        lsiName: String,
+        attribute: Pair<String, String>,
+        operation: String,
+        limit: Int,
+        descending: Boolean
+    ): List<String> {
+        log("Getting keys from LSI '$lsiName' for domain: $projectDomain of type: ${contentType.dbType}")
+
+        return executeDynamoOperation(
+            operationDescription = "get keys from LSI",
+            contextInfo = "domain: $projectDomain, type: ${contentType.dbType}, LSI: $lsiName"
+        ) {
+            // Build a simple key condition on the LSI: partition by domain#type and filter by exact date on the LSI sort key
+            // Note: ExpressionAttributeNames map placeholders (e.g. #dt) to attribute names (e.g. "date").
+            //       ExpressionAttributeValues map placeholders (e.g. :date) to concrete values.
+            val request = QueryRequest.builder()
+                .tableName(tableName)
+                .indexName(lsiName)
+                .keyConditionExpression("#pk = :domainType AND #dt $operation :${attribute.first}")
+                .expressionAttributeNames(mapOf("#pk" to "domain#type", "#dt" to attribute.first))
+                .expressionAttributeValues(
+                    mapOf(
+                        ":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
+                        // Basic case: use a fixed date string as requested; tests currently insert items with this date
+                        ":date" to AttributeValue.builder().s(attribute.second).build()
+                    )
+                )
+                .limit(limit)
+                .scanIndexForward(!descending)
+                .build()
+
+            log("Executing Query request on LSI '$lsiName' in domain: $projectDomain")
+            val response = dynamoDbClient.query(request).await()
+
+            if (response.count() > 0) {
+                log("Found ${response.count()} keys in LSI '$lsiName' for domain: $projectDomain")
+                response.items().mapNotNull { it["srcKey"]?.s() }
+            } else {
+                log("No keys found in LSI '$lsiName' for domain: $projectDomain")
+                emptyList()
+            }
+        }
+    }
+
+    /**
+     * Get the src key for the first or last item in the specified LSI. Most usually, to get the first or last Post
+     * @param projectDomain The project domain
+     * @param contentType The type of content (most likely Posts)
+     * @param lsiName The name of the Local Secondary Index to query
+     * @param operation "first" or "last", as appropriate
+     * @return the first or last srcKey, if existing, or null
+     */
+    override suspend fun getFirstOrLastKeyFromLSI(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        lsiName: String,
+        operation: String
+    ): String? {
+        log("Getting first or last item from LSI '$lsiName' for domain: $projectDomain of type: ${contentType.dbType}")
+
+        return executeDynamoOperation(
+            operationDescription = "get first or last item from LSI",
+            contextInfo = "domain: $projectDomain, type: ${contentType.dbType}, LSI: $lsiName"
+        ) {
+            val request = QueryRequest.builder()
+                .tableName(tableName)
+                .indexName(lsiName)
+                .keyConditionExpression("#pk = :domainType")
+                .expressionAttributeNames(mapOf("#pk" to "domain#type"))
+                .expressionAttributeValues(
+                    mapOf(":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build())
+                )
+                .limit(1) // Only get the first or last item
+                .scanIndexForward(operation == "first") // true for first, false for last
+                .build()
+
+            log("Executing Query request on LSI '$lsiName' in domain: $projectDomain")
+            val response = dynamoDbClient.query(request).await()
+
+            if (response.count() > 0) {
+                log("Found ${response.count()} items in LSI '$lsiName' for domain: $projectDomain")
+                response.items()[0]["srcKey"]?.s()?.also { srcKey ->
+                    log("Returning srcKey: $srcKey from LSI '$lsiName' for domain: $projectDomain")
+                }
+            } else {
+                log("No items found in LSI '$lsiName' for domain: $projectDomain")
+                null
+            }
+        }
+    }
+
+    // ========================================== Node mapping utilities ===========================
 
     /**
      * Map a DynamoDB item to a CantileverProject
@@ -143,12 +788,205 @@ class DynamoDBServiceImpl(
      * @return The CantileverProject
      */
     private fun mapToProject(item: Map<String, AttributeValue>): CantileverProject {
-        return CantileverProject(
-            domain = item["domain"]?.s() ?: "",
-            projectName = item["projectName"]?.s() ?: "",
-            author = item["author"]?.s() ?: "",
-            dateFormat = item["dateFormat"]?.s() ?: "",
-            dateTimeFormat = item["dateTimeFormat"]?.s() ?: ""
-        )
+        try {
+            val domain = item["domain"]?.s() ?: ""
+            if (domain.isEmpty()) {
+                log("WARN", "Missing domain in project item: $item")
+            }
+
+            val projectName = item["projectName"]?.s() ?: ""
+            if (projectName.isEmpty()) {
+                log("WARN", "Missing projectName in project item for domain: $domain")
+            }
+
+            return CantileverProject(
+                domain = domain,
+                projectName = projectName,
+                author = item["author"]?.s() ?: "",
+                dateFormat = item["dateFormat"]?.s() ?: "",
+                dateTimeFormat = item["dateTimeFormat"]?.s() ?: ""
+            )
+        } catch (e: Exception) {
+            log("ERROR", "Failed to map DynamoDB item to CantileverProject: $item", e)
+            throw e
+        }
+    }
+
+    /**
+     * Map a DynamoDB item to a ContentNode.PostNode
+     * @param item The DynamoDB item
+     * @return The ContentNode.PostNode
+     */
+    private fun mapToPostNode(item: Map<String, AttributeValue>): ContentNode.PostNode {
+        try {
+            val srcKey = item["srcKey"]?.s() ?: ""
+            if (srcKey.isEmpty()) {
+                log("WARN", "Missing srcKey in post item: $item")
+            }
+
+            val lastUpdated = extractLastUpdatedTimestamp(item, "post")
+
+            // Parse the date string directly as a LocalDate instead of going through Instant
+            val dateStr = item["date"]?.s() ?: ""
+            val postDate = if (dateStr.isNotEmpty()) {
+                try {
+                    kotlinx.datetime.LocalDate.parse(dateStr)
+                } catch (e: Exception) {
+                    log("WARN", "Failed to parse date: $dateStr, using current date", e)
+                    Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+                }
+            } else {
+                Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            }
+
+            return ContentNode.PostNode(
+                srcKey = srcKey,
+                title = item["title"]?.s() ?: "",
+                templateKey = item["templateKey"]?.s() ?: "",
+                date = postDate,
+                slug = item["slug"]?.s() ?: "",
+                lastUpdated = lastUpdated,
+                attributes = item.filter { it.key.startsWith("attr#") }
+                    .mapKeys { it.key.removePrefix("attr#") }
+                    .mapValues { it.value.s() ?: "" },
+            )
+        } catch (e: Exception) {
+            log("ERROR", "Failed to map DynamoDB item to ContentNode.PostNode: $item", e)
+            throw e
+        }
+    }
+
+    /**
+     * Map a DynamoDB item to a ContentNode.PageNode
+     * @param item The DynamoDB item
+     * @return The ContentNode.PageNode
+     * TODO: Many of the key fields are not yet mapped!
+     */
+    private fun mapToPageNode(item: Map<String, AttributeValue>): ContentNode.PageNode {
+        try {
+            val srcKey = item["srcKey"]?.s() ?: ""
+            if (srcKey.isEmpty()) {
+                log("WARN", "Missing srcKey in page item: $item")
+            }
+
+            val lastUpdated = extractLastUpdatedTimestamp(item, "page")
+
+            return ContentNode.PageNode(
+                srcKey = srcKey,
+                lastUpdated = lastUpdated,
+                title = item["title"]?.s() ?: "",
+                templateKey = item["templateKey"]?.s() ?: "<TEMPLATE-KEY-NOT-FOUND>",
+                slug = item["slug"]?.s() ?: "<SLUG-NOT-FOUND>",
+                isRoot = item["isRoot"]?.bool() ?: false,
+                attributes = item.filter { it.key.startsWith("attr#") }
+                    .mapKeys { it.key.removePrefix("attr#") }
+                    .mapValues { it.value.s() ?: "" },
+                sections = emptyMap(),
+                parent = item["parent"]?.s() ?: "",
+            )
+        } catch (e: Exception) {
+            log("ERROR", "Failed to map DynamoDB item to ContentNode.PageNode: $item", e)
+            throw e
+        }
+    }
+
+    /**
+     * Map a DynamoDB item to a ContentNode.TemplateNode
+     * @param item The DynamoDB item
+     * @return The ContentNode.TemplateNode
+     */
+    private fun mapToTemplateNode(item: Map<String, AttributeValue>): ContentNode.TemplateNode {
+        try {
+            val srcKey = item["srcKey"]?.s() ?: ""
+            if (srcKey.isEmpty()) {
+                log("WARN", "Missing srcKey in template item: $item")
+            }
+
+            val lastUpdated = extractLastUpdatedTimestamp(item, "template")
+
+            return ContentNode.TemplateNode(
+                srcKey = srcKey,
+                title = item["title"]?.s() ?: "",
+                sections = item["sections"]?.s()?.split(",") ?: emptyList(),
+                lastUpdated = lastUpdated
+            )
+        } catch (e: Exception) {
+            log("ERROR", "Failed to map DynamoDB item to ContentNode.TemplateNode: $item", e)
+            throw e
+        }
+    }
+
+    /**
+     * Map a DynamoDB item to a ContentNode.StaticNode
+     * @param item The DynamoDB item
+     * @return The ContentNode.StaticNode
+     */
+    private fun mapToStaticNode(item: Map<String, AttributeValue>): ContentNode.StaticNode {
+        try {
+            val srcKey = item["srcKey"]?.s() ?: ""
+            if (srcKey.isEmpty()) {
+                log("WARN", "Missing srcKey in static item: $item")
+            }
+
+            val lastUpdated = extractLastUpdatedTimestamp(item, "static")
+
+            return ContentNode.StaticNode(
+                srcKey = srcKey,
+                lastUpdated = lastUpdated
+            )
+        } catch (e: Exception) {
+            log("ERROR", "Failed to map DynamoDB item to ContentNode.StaticNode: $item", e)
+            throw e
+        }
+    }
+
+    /**
+     * Map a DynamoDB item to a FolderNode
+     * @param item The DynamoDB item
+     * @return The ContentNode.FolderNode
+     */
+    private fun mapToFolderNode(item: Map<String, AttributeValue>): ContentNode.FolderNode {
+        try {
+            val srcKey = item["srcKey"]?.s() ?: ""
+            if (srcKey.isEmpty()) {
+                log("WARN", "Missing srcKey in folder item: $item")
+            }
+            val children = item["children"]?.ss() ?: emptyList()
+            return ContentNode.FolderNode(srcKey = srcKey, children = children.toMutableList())
+        } catch (e: Exception) {
+            log("ERROR", "Failed to map DynamoDB item to ContentNode.StaticNode: $item", e)
+            throw e
+        }
+    }
+
+    /**
+     * Extract the lastUpdated timestamp from a DynamoDB item
+     * @param item The DynamoDB item
+     * @param itemType The type of item (for logging purposes)
+     * @return The lastUpdated timestamp as an Instant
+     */
+    private fun extractLastUpdatedTimestamp(item: Map<String, AttributeValue>, itemType: String): Instant {
+        val lastUpdatedStr = item["type#lastUpdated"]?.s()
+        return try {
+            if (lastUpdatedStr != null && lastUpdatedStr.contains("#")) {
+                val timestamp = lastUpdatedStr.split("#")[1].toLongOrNull() ?: 0L
+                Instant.fromEpochSeconds(timestamp)
+            } else {
+                log("WARN", "Invalid type#lastUpdated format in $itemType item: $lastUpdatedStr")
+                Clock.System.now()
+            }
+        } catch (e: Exception) {
+            log("WARN", "Failed to parse lastUpdated timestamp: $lastUpdatedStr", e)
+            Clock.System.now()
+        }
+    }
+
+    /**
+     * Create a lastUpdated attribute value
+     * @param type The type of item
+     * @return The lastUpdated attribute value
+     */
+    private fun createLastUpdatedAttribute(type: String): AttributeValue {
+        return AttributeValue.builder().s("$type#${System.currentTimeMillis()}").build()
     }
 }

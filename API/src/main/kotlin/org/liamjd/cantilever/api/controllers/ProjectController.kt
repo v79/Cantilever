@@ -7,7 +7,6 @@ import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import org.liamjd.apiviaduct.routing.Request
 import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
@@ -19,7 +18,6 @@ import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.Template
 import org.liamjd.cantilever.models.TemplateList
 import org.liamjd.cantilever.models.TemplateMetadata
-import org.liamjd.cantilever.services.DynamoDBService
 
 private const val APP_JSON = "application/json"
 
@@ -29,9 +27,6 @@ private const val APP_JSON = "application/json"
  */
 class ProjectController(sourceBucket: String, generationBucket: String) : KoinComponent,
     APIController(sourceBucket, generationBucket) {
-
-    private val dynamoDBService: DynamoDBService by inject()
-
 
     /**
      * Return the project definition from DynamoDB.
@@ -45,8 +40,6 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
             )
         }
 
-        // Extract domain and project name from the project key
-        // Project key format is "domain.yaml"
         val domain = projectKey.substringBefore(".yaml")
 
         info("Retrieving project for domain '$domain'")
@@ -131,6 +124,14 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
             }
 
             dynamoDBService.saveProject(newProject)
+            // create the default folders in S3
+            s3Service.createFolder(newProject.domain, sourceBucket)
+            s3Service.createFolder("${newProject.domain}/$pagesPrefix", sourceBucket)
+            s3Service.createFolder("${newProject.domain}/$templatesPrefix", sourceBucket)
+            s3Service.createFolder("${newProject.domain}/sources/pages", sourceBucket)
+            s3Service.createFolder("${newProject.domain}/sources/images", sourceBucket)
+            s3Service.createFolder("${newProject.domain}/sources/statics", sourceBucket)
+
 
             Response.ok(
                 body = APIResult.Success(value = "Successfully created project ${newProject.projectName}")

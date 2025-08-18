@@ -16,9 +16,12 @@ import software.amazon.awscdk.services.dynamodb.*
 import software.amazon.awscdk.services.events.targets.SqsQueue
 import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.Function
+import software.amazon.awscdk.services.lambda.LoggingFormat
 import software.amazon.awscdk.services.lambda.Runtime
 import software.amazon.awscdk.services.lambda.eventsources.S3EventSource
 import software.amazon.awscdk.services.lambda.eventsources.SqsEventSource
+import software.amazon.awscdk.services.logs.LogGroup
+import software.amazon.awscdk.services.logs.RetentionDays
 import software.amazon.awscdk.services.route53.ARecord
 import software.amazon.awscdk.services.route53.HostedZone
 import software.amazon.awscdk.services.route53.HostedZoneAttributes
@@ -50,7 +53,7 @@ class CantileverStack(
 ) : Stack(scope, id, props) {
 
     enum class ENV {
-        destination_bucket, source_bucket, generation_bucket, markdown_processing_queue, handlebar_template_queue, image_processing_queue, cors_domain, cognito_region, cognito_user_pools_id
+        destination_bucket, source_bucket, generation_bucket, markdown_processing_queue, handlebar_template_queue, image_processing_queue, cors_domain, cognito_region, cognito_user_pools_id, dynamo_table_name
     }
 
     // TODO: I suppose I'm going to need to set up a dev and production environment for this sort of thing. Boo.
@@ -80,9 +83,10 @@ class CantileverStack(
         @Suppress("UNCHECKED_CAST") val env =
             scope.node.tryGetContext(envKey ?: "env") as LinkedHashMap<String, String>?
         println()
+        println(blue + "STACK $stackName" + reset)
         println(blue + "STAGE: ${stageName};  ENVIRONMENT: $env; deploymentDomain: $deploymentDomain; isPROD: $isProd" + reset)
 
-        Tags.of(this).add("stageName", versionString)
+        Tags.of(this).add("version", versionString)
 
         // Source bucket where Markdown, template files will be stored
         // I may wish to change the removal and deletion policies
@@ -101,12 +105,12 @@ class CantileverStack(
         var editorBucketDistribution: Distribution? = null
         if (!isProd) {
             println("Creating Cloudfront distribution for editor bucket in development mode")
-            // Unfortunately the distribution won't be invalidated automatically, so I need to do that manually
+            // Unfortunately, the distribution won't be invalidated automatically, so I need to do that manually
             // Or disable caching
             editorBucketDistribution = Distribution(
                 this,
-                "CantileverEditorBucketDistribution-${stageName.uppercase()}",
-                DistributionProps.builder().comment("EditorBucketDistribution-${stageName.uppercase()}")
+                "${stageName}-editor-bucket-distribution",
+                DistributionProps.builder().comment("${stageName}-editor-bucket-distribution")
                     .defaultBehavior(
                         BehaviorOptions.builder().origin(S3BucketOrigin.withOriginAccessControl(editorBucket))
                             .cachePolicy(CachePolicy.CACHING_DISABLED).build()
@@ -127,11 +131,12 @@ class CantileverStack(
         println("Creating FileUploadHandler Lambda function")
         val fileUploadLambda = createLambda(
             stack = this,
-            id = "${stageName.uppercase()}-file-upload",
+            id = "${stageName}-file-upload",
             description = "Lambda function which responds to file upload events",
             codePath = "./FileUploadHandler/build/libs/FileUploadHandler.jar",
             handler = "org.liamjd.cantilever.lambda.FileUploadHandler",
             memory = 256,
+            isProd = isProd,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
@@ -143,11 +148,12 @@ class CantileverStack(
         println("Creating MarkdownProcessorHandler Lambda function")
         val markdownProcessorLambda = createLambda(
             stack = this,
-            id = "${stageName.uppercase()}-markdown-processor",
+            id = "${stageName}-markdown-processor",
             description = "Lambda function which converts a markdown file to an HTML file or fragment",
             codePath = "./MarkdownProcessor/build/libs/MarkdownProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.md.MarkdownProcessorHandler",
             memory = 320,
+            isProd = isProd,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.generation_bucket.name to generationBucket.bucketName,
@@ -159,10 +165,11 @@ class CantileverStack(
         println("Creating TemplateProcessorHandler Lambda function")
         val templateProcessorLambda = createLambda(
             stack = this,
-            id = "${stageName.uppercase()}-cantilever-handlebar-processor",
+            id = "${stageName}-handlebar-processor",
             description = "Lambda function which renders a handlebars template with the given HTML fragment after markdown processing",
             codePath = "./TemplateProcessor/build/libs/TemplateProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.TemplateProcessorHandler",
+            isProd = isProd,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.generation_bucket.name to generationBucket.bucketName,
@@ -190,15 +197,16 @@ class CantileverStack(
         val corsDomain = if (isProd) {
             deploymentDomain
         } else {
-            "https://d1e4hj5huhntr6.cloudfront.net" // hard-coded for now
+            "https://dco7fhfjo6vkm.cloudfront.net" // hard-coded for now
         }
         val apiRoutingLambda = createLambda(
             stack = this,
-            id = "${stageName.uppercase()}-api-router",
+            id = "${stageName}-api-router",
             description = "Lambda function which handles API routing, for API Gateway",
             codePath = "./API/build/libs/APIRouter.jar",
             handler = "org.liamjd.cantilever.api.NewLambdaRouter",
             memory = 360,
+            isProd = isProd,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.generation_bucket.name to generationBucket.bucketName,
@@ -214,11 +222,12 @@ class CantileverStack(
         println("Creating image processing Lambda function")
         val imageProcessorLambda = createLambda(
             stack = this,
-            id = "${stageName.uppercase()}-image-processor-lambda",
+            id = "${stageName}-image-processor-lambda",
             description = "Lambda function which processes images",
             codePath = "./ImageProcessor/build/libs/ImageProcessorHandler.jar",
             handler = "org.liamjd.cantilever.lambda.image.ImageProcessorHandler",
             memory = 256,
+            isProd = isProd,
             environment = mapOf(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.generation_bucket.name to generationBucket.bucketName,
@@ -263,7 +272,13 @@ class CantileverStack(
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
         fileUploadLambda.addEventSource(
             S3EventSource.Builder.create(sourceBucket)
-                .events(mutableListOf(EventType.OBJECT_CREATED_PUT, EventType.OBJECT_CREATED_POST)).build()
+                .events(
+                    mutableListOf(
+                        EventType.OBJECT_CREATED_PUT,
+                        EventType.OBJECT_CREATED_POST,
+                        EventType.OBJECT_REMOVED
+                    )
+                ).build()
         )
 
         println("Add markdown processor SQS event source to markdown processor lambda")
@@ -306,14 +321,14 @@ class CantileverStack(
         println("Creating API Gateway integrations")
         val certificate = Certificate.fromCertificateArn(
             this,
-            "cantilever-api-edge-certificate-${stageName.uppercase()}",
+            "${stageName}-api-edge-certificate}",
             "arn:aws:acm:us-east-1:086949310404:certificate/9b8f27c6-87be-4c14-a368-e6ad3ac4fb68"
         )
 
         // The API Gateway
         // I don't like how much I have to hardcode the allowed headers here. I would like this to be configurable by the router.
         println("Creating API Gateway with Lambda integration for $stageName to domain $apiDomain")
-        val lambdaRestAPI = LambdaRestApi.Builder.create(this, "cantilever-rest-api-${stageName.uppercase()}")
+        val lambdaRestAPI = LambdaRestApi.Builder.create(this, "${stageName}-rest-api")
             .restApiName("Cantilever $stageName REST API")
             .description("Gateway function to Cantilever services, handling routing").disableExecuteApiEndpoint(true)
             .domainName(
@@ -331,32 +346,39 @@ class CantileverStack(
                         "X-Content-Length",
                         "Cantilever-Project-Domain",
                     )
-                ).allowMethods(listOf("GET", "PUT", "POST", "OPTIONS", "DELETE")).allowOrigins(listOf(deploymentDomain))
+                ).allowMethods(listOf("GET", "PUT", "POST", "OPTIONS", "DELETE")).allowOrigins(
+                    listOf(
+                        deploymentDomain,
+                        "https://www.cantilevers.org",
+                        "https://dco7fhfjo6vkm.cloudfront.net"
+                    )
+                )
                     .build()
             ).handler(apiRoutingLambda).proxy(true).build()
 
 
-  /*      println("Create DynamoDB database tables: project")
-        val projectTable = TableV2.Builder.create(this, "${stageName.uppercase()}-database-project-table")
-            .tableName("${stageName}-projects")
-            .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
-                Attribute.builder().name("domain").type(AttributeType.STRING).build()
-            ).sortKey(Attribute.builder().name("lastUpdated").type(AttributeType.NUMBER).build())
-            .globalSecondaryIndexes(
-                listOf(
-                    GlobalSecondaryIndexPropsV2.builder().indexName("ALL_PROJECTS")
-                        .partitionKey(Attribute.builder().name("domain").type(AttributeType.STRING).build()).sortKey(
-                        Attribute.builder().name("lastUpdated").type(
-                            AttributeType.NUMBER
-                        ).build()
-                    ).projectionType(ProjectionType.ALL).build()
-                )
-            )
-            .build()
-*/
+        /*      println("Create DynamoDB database tables: project")
+              val projectTable = TableV2.Builder.create(this, "${stageName.uppercase()}-database-project-table")
+                  .tableName("${stageName}-projects")
+                  .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
+                      Attribute.builder().name("domain").type(AttributeType.STRING).build()
+                  ).sortKey(Attribute.builder().name("lastUpdated").type(AttributeType.NUMBER).build())
+                  .globalSecondaryIndexes(
+                      listOf(
+                          GlobalSecondaryIndexPropsV2.builder().indexName("ALL_PROJECTS")
+                              .partitionKey(Attribute.builder().name("domain").type(AttributeType.STRING).build()).sortKey(
+                              Attribute.builder().name("lastUpdated").type(
+                                  AttributeType.NUMBER
+                              ).build()
+                          ).projectionType(ProjectionType.ALL).build()
+                      )
+                  )
+                  .build()
+      */
         println("Creating DynamoDB database tables - PK domain#type, SK srcKey")
-        val contentNodeTable = TableV2.Builder.create(this, "${stageName.uppercase()}-database-content-node-table")
-            .tableName("${stageName}-content-nodes")
+        println("GSI: Project-NodeType-LastUpdated : Just returns the project definitions")
+        println("LSI: Type-Date : Returns items with the Date attribute, mostly just posts.")
+        val contentNodeTable = TableV2.Builder.create(this, "${stageName}-database-content-node-table")
             .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
                 Attribute.builder().name("domain#type").type(AttributeType.STRING).build()
             ).sortKey(Attribute.builder().name("srcKey").type(AttributeType.STRING).build())
@@ -364,23 +386,35 @@ class CantileverStack(
                 listOf(
                     GlobalSecondaryIndexPropsV2.builder().indexName("Project-NodeType-LastUpdated")
                         .partitionKey(Attribute.builder().name("domain").type(AttributeType.STRING).build()).sortKey(
-                        Attribute.builder().name("type#lastUpdated").type(
-                            AttributeType.STRING
-                        ).build()
-                    ).projectionType(ProjectionType.ALL).build()
+                            Attribute.builder().name("type#lastUpdated").type(
+                                AttributeType.STRING
+                            ).build()
+                        ).projectionType(ProjectionType.ALL).build(),
+                )
+            )
+            .localSecondaryIndexes(
+                listOf(
+                    LocalSecondaryIndexProps.builder().indexName("Type-Date")
+                        .sortKey(Attribute.builder().name("date").type(AttributeType.STRING).build())
+                        .projectionType(ProjectionType.KEYS_ONLY).build()
                 )
             )
             .build()
+        /*GlobalSecondaryIndexPropsV2.builder().indexName("Type-Date")
+            .partitionKey(Attribute.builder().name("type").type(AttributeType.STRING).build())
+            .sortKey(Attribute.builder().name("date").type(AttributeType.STRING).build())
+            .projectionType(ProjectionType.ALL).build()*/
 
-        println("Granting permissions to the API Gateway to access the DynamoDB table")
+        println("Granting permissions to the lambdas to access the DynamoDB table")
         contentNodeTable.grantReadWriteData(apiRoutingLambda)
-        
+        contentNodeTable.grantReadWriteData(fileUploadLambda)
+
 
         println("Creating API Gateway DNS record for $apiDomain")
-        val apiDomainDNSRecord = ARecord.Builder.create(this, "cantilever-api-record-${stageName.uppercase()}").zone(
+        val apiDomainDNSRecord = ARecord.Builder.create(this, "${stageName}-api-record}").zone(
             HostedZone.fromHostedZoneAttributes(
                 this,
-                "cantiliever-api-zone-${stageName.uppercase()}",
+                "${stageName}-api-zone}",
                 HostedZoneAttributes.builder().hostedZoneId("Z01474271BEFJPTG86EOG").zoneName("cantilevers.org").build()
             )
         ).recordName(apiDomain).target(RecordTarget.fromAlias(ApiGateway(lambdaRestAPI))).build()
@@ -390,14 +424,14 @@ class CantileverStack(
         // Gemini suggested writing a custom resource and a lambda function to execute post-deployment
         // The alternative may be have two separate stacks, one for the distribution and one for the rest of the resources
         // or I just hardcode the URL for the editor bucket distribution
-        val appUrls = listOf(deploymentDomain, "https://d1e4hj5huhntr6.cloudfront.net")
+        val appUrls = listOf(deploymentDomain, "https://dco7fhfjo6vkm.cloudfront.net")
         val corbelAppUrls = listOf(
             "http://localhost:44817/callback", "corbelApp://auth"
         ) // port randomly chosen here, needs to match that in the Corbel application
         println("Registering app clients with Cognito identity pool for domains $appUrls")
         cPool.addClient(
             "cantilever-app",
-            UserPoolClientOptions.builder().userPoolClientName("$stageName-webapp-client-pool")
+            UserPoolClientOptions.builder().userPoolClientName("${stageName}-webapp-client-pool")
                 .authFlows(AuthFlow.builder().build()).oAuth(
                     OAuthSettings.builder().flows(OAuthFlows.builder().implicitCodeGrant(true).build())
                         .callbackUrls(appUrls).logoutUrls(appUrls).build()
@@ -405,7 +439,7 @@ class CantileverStack(
         )
         cPool.addClient(
             "corbel-app",
-            UserPoolClientOptions.builder().userPoolClientName("$stageName-corbel-app-client-pool")
+            UserPoolClientOptions.builder().userPoolClientName("${stageName}-corbel-app-client-pool")
                 .authFlows(AuthFlow.builder().build()).oAuth(
                     OAuthSettings.builder().flows(
                         OAuthFlows.builder().implicitCodeGrant(false).authorizationCodeGrant(true).build()
@@ -429,10 +463,10 @@ class CantileverStack(
 
     /**
      * Create a destination bucket for the website content
-     * This bucket has a fixed name, and access is cntrolled by the CloudFront distribution.
+     * This bucket has a fixed name, and access is controlled by the CloudFront distribution.
      */
     private fun createDestinationBucket(): Bucket =
-        Bucket.Builder.create(this, "cantilever-website-${stageName.uppercase()}").versioned(false)
+        Bucket.Builder.create(this, "${stageName}-website}").versioned(false)
             .removalPolicy(RemovalPolicy.DESTROY).autoDeleteObjects(true).blockPublicAccess(
                 BlockPublicAccess.BLOCK_ALL
             ).build()
@@ -443,7 +477,7 @@ class CantileverStack(
      * @param public Whether the bucket should be publicly readable
      */
     private fun createBucket(name: String, public: Boolean = false): Bucket =
-        Bucket.Builder.create(this, "${stageName.uppercase()}-${name}").versioned(false)
+        Bucket.Builder.create(this, "${stageName}-${name}").versioned(false)
             .removalPolicy(RemovalPolicy.DESTROY).autoDeleteObjects(true).publicReadAccess(public).versioned(true)
             .build()
 
@@ -451,7 +485,7 @@ class CantileverStack(
      * Create a bucket for the editor to store its static files.
      */
     private fun createEditorBucket(): Bucket =
-        Bucket.Builder.create(this, "${stageName.uppercase()}-editor").versioned(false)
+        Bucket.Builder.create(this, "${stageName}-editor").versioned(false)
             .removalPolicy(RemovalPolicy.DESTROY).autoDeleteObjects(true).objectOwnership(ObjectOwnership.OBJECT_WRITER)
             .blockPublicAccess(BlockPublicAccess.BLOCK_ALL).websiteIndexDocument("index.html").build()
 
@@ -460,6 +494,7 @@ class CantileverStack(
      * - Java 21 runtime
      * - 320Mb RAM
      * - 2 minute timeout
+     * - JSON logging format
      * - one month's logs
      */
     private fun createLambda(
@@ -469,11 +504,27 @@ class CantileverStack(
         codePath: String,
         handler: String,
         memory: Int = 320,
-        environment: Map<String, String>?
+        environment: Map<String, String>?,
+        isProd: Boolean
     ): Function =
         Function.Builder.create(stack, id).description(description ?: "").runtime(Runtime.JAVA_21).memorySize(memory)
-            .timeout(Duration.minutes(2)).code(Code.fromAsset(codePath)).handler(handler).environment(
+            .timeout(Duration.minutes(2)).code(Code.fromAsset(codePath)).handler(handler)
+            .loggingFormat(LoggingFormat.JSON).logGroup(
+                LogGroup.Builder.create(this, "/aws/lambda/${stack.stackName}/$id")
+                    .logGroupName("/aws/lambda/${stack.stackName}/${id}").removalPolicy(RemovalPolicy.DESTROY)
+                    .retention(
+                        if (isProd) {
+                            RetentionDays.ONE_MONTH
+                        } else {
+                            RetentionDays.ONE_WEEK
+                        }
+                    ).build()
+            )
+            .environment(
                 environment ?: emptyMap()
             )  // TODO: should this should be a CloudFormation parameter CfnParameter
             .build()
+
+    fun info(message: String) =
+        println("\t" + green + message + reset)
 }

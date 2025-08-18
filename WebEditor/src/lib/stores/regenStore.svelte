@@ -17,8 +17,8 @@
 			body: JSON.stringify({}),
 			mode: 'cors'
 		});
-		const data = await response.text();
-		return data;
+		const data = await response.json();
+		return data.data;
 	}
 
 	// rebuild all the posts

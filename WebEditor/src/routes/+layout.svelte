@@ -56,6 +56,7 @@
 		rebuildAllPosts
 	} from '$lib/stores/regenStore.svelte';
 	import SpinnerStore, { spinner } from '$lib/stores/spinnerStore.svelte';
+	import { version } from '$lib/stores/versionStore';
 	import { onMount } from 'svelte';
 	import ExpandMore from 'svelte-google-materialdesign-icons/Expand_more.svelte';
 	import { PUBLIC_CANTILEVER_API_URL } from '$env/static/public';
@@ -197,7 +198,7 @@
 		<!-- App Bar -->
 		<AppBar gridColumns="grid-cols-3" slotDefault="place-self-center" slotTrail="place-content-end">
 			<svelte:fragment slot="lead">
-				<strong class="text-xl">Cantilever v0.1.0</strong>
+				<strong class="text-xl">Cantilever v{version}</strong>
 
 				{#if loggedIn && $project && $project.domain}
 					<button

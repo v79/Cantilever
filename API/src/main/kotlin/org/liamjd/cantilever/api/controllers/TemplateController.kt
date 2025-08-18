@@ -1,12 +1,13 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.charleskorn.kaml.Yaml
-import kotlinx.serialization.SerializationException
+import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
 import org.koin.core.component.KoinComponent
 import org.liamjd.apiviaduct.routing.Request
 import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.common.S3_KEY
+import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.ContentNode
@@ -20,12 +21,11 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
     APIController(sourceBucket, generationBucket) {
 
     /**
-     * Load a handlebars template file with the specified 'srcKey' and return it as a [ContentNode.TemplateNode] response
+     * Load a Handlebars template file with the specified 'srcKey' and return it as a [ContentNode.TemplateNode] response
      */
     fun loadHandlebarsSource(request: Request<Unit>): Response<APIResult<ContentNode.TemplateNode>> {
         val handlebarSource = request.pathParameters["srcKey"]
-
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        val domain = request.headers["cantilever-project-domain"]!!
         return if (handlebarSource != null) {
             val decoded = URLDecoder.decode(handlebarSource, Charset.defaultCharset())
             info("Loading handlebar file $decoded")
@@ -34,9 +34,9 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                 val templateObj = s3Service.getObject(decoded, sourceBucket)
                 if (templateObj != null) {
                     val body = s3Service.getObjectAsString(decoded, sourceBucket)
-                    val frontmatter = body.getFrontMatter()
-                    // TODO: this throws exception if a value is missing from the frontmatter, even though it should encode the default
-                    val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
+                    val frontMatter = body.getFrontMatter()
+                    // TODO: this throws exception if a value is missing from the frontMatter, even though it should encode the default
+                    val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontMatter)
                     val templateNode: ContentNode.TemplateNode = ContentNode.TemplateNode(
                         srcKey = decoded,
                         title = metadata.name,
@@ -62,11 +62,11 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
     }
 
     /**
-     * Save a handlebars template file, which contains a key, sections, name and body
+     * Save a Handlebars template file, which contains a key, sections, name and body
      */
     fun saveTemplate(request: Request<ContentNode.TemplateNode>): Response<APIResult<String>> {
         val templateNode = request.body
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        val domain = request.headers["cantilever-project-domain"]!!
         val srcKey = URLDecoder.decode(templateNode.srcKey, Charset.defaultCharset())
 
         // both branches do the same thing
@@ -79,30 +79,22 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                 "text/plain"
             )
             templateNode.body = ""
-            contentTree.updateTemplate(
-                templateNode
-            )
-            saveContentTree(projectKeyHeader)
             Response.ok(
                 body =
                     APIResult.OK("Updated file ${templateNode.srcKey}, $length bytes")
             )
         } else {
-            info("Creating new file '$projectKeyHeader/$srcKey' by copying from '${templateNode.srcKey}'")
-            // we need to update the sourcekey to include the projectHeaderKey, and we need to remove the body before adding into the contentTree
-            val newNode = templateNode.copy(srcKey = "$projectKeyHeader/$srcKey")
+            info("Creating new file '$domain/$srcKey' by copying from '${templateNode.srcKey}'")
+            // we need to update the sourceKey to include the projectHeaderKey, and we need to remove the body before adding into the contentTree
+            val newNode = templateNode.copy(srcKey = "$domain/$srcKey")
             newNode.body = templateNode.body
             val length = s3Service.putObjectAsString(
-                "$projectKeyHeader/$srcKey",
+                "$domain/$srcKey",
                 sourceBucket,
                 convertTemplateToYamlString(newNode),
                 "text/plain"
             )
             newNode.body = ""
-            contentTree.insertTemplate(
-                newNode
-            )
-            saveContentTree(projectKeyHeader)
             Response.ok(
                 body =
                     APIResult.OK("Updated file ${newNode.srcKey}, $length bytes")
@@ -111,54 +103,24 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
     }
 
     /**
-     * Load the handlebars template file and extract its metadata
-     * TODO: return a [TemplateNode] instead of a [TemplateMetadata]
-     */
-    fun getTemplateMetadata(request: Request<Unit>): Response<APIResult<TemplateMetadata>> {
-        val handlebarKey = request.pathParameters["templateKey"]
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        return if (handlebarKey != null) {
-            val srcKey = URLDecoder.decode(handlebarKey, Charset.defaultCharset())
-            return if (s3Service.objectExists(srcKey, sourceBucket)) {
-                try {
-                    info("Loading metadata for template $handlebarKey")
-                    val template = s3Service.getObjectAsString(srcKey, sourceBucket)
-                    val frontmatter = template.getFrontMatter()
-                    val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
-                    Response.ok(body = APIResult.Success(metadata))
-                } catch (se: SerializationException) {
-                    Response.serverError(
-                        body = APIResult.Error("Could not deserialize template $srcKey. Error was ${se.message}")
-                    )
-                }
-            } else {
-                Response.badRequest(body = APIResult.Error("Could not find template $srcKey"))
-            }
-        } else {
-            Response.badRequest(body = APIResult.Error("Invalid template key"))
-        }
-    }
-
-    /**
      * Return the list of templates
      */
     fun getTemplates(request: Request<Unit>): Response<APIResult<TemplateListDTO>> {
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        return if (loadContentTree(projectKeyHeader)) {
-            info("Fetching all templates from $projectKeyHeader/${S3_KEY.metadataKey}")
-            val lastUpdated = s3Service.getUpdatedTime(projectKeyHeader + "/" + S3_KEY.metadataKey, generationBucket)
-            val templates = contentTree.templates.sortedBy { it.title }
-            val templateList = TemplateListDTO(
-                count = templates.size,
-                lastUpdated = lastUpdated,
-                templates = templates
-            )
-            Response.ok(body = APIResult.Success(value = templateList))
+        val projectKeyHeader = request.headers["cantilever-project-domain"]
+
+        return if (projectKeyHeader.isNullOrBlank()) {
+            Response.badRequest(body = APIResult.Error("Invalid project key"))
         } else {
-            error("Cannot find file '$projectKeyHeader/${S3_KEY.metadataKey}' in bucket $generationBucket")
-            Response.serverError(
-                body = APIResult.Error(statusText = "Cannot find file '$projectKeyHeader/${S3_KEY.metadataKey}' in bucket $generationBucket")
-            )
+            val templates = runBlocking {
+                val templates = dynamoDBService.listAllNodesForProject(projectKeyHeader, SOURCE_TYPE.Templates)
+                    .filterIsInstance<ContentNode.TemplateNode>()
+                TemplateListDTO(
+                    count = templates.size,
+                    lastUpdated = Clock.System.now(),
+                    templates = templates
+                )
+            }
+            Response.ok(body = APIResult.Success(value = templates))
         }
     }
 
@@ -168,54 +130,42 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
     fun getTemplateUsage(request: Request<Unit>): Response<APIResult<TemplateUseDTO>> {
         val templateKey = request.pathParameters["srcKey"]
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        if (templateKey != null) {
-            return if (loadContentTree(projectKeyHeader)) {
+        return if (templateKey != null) {
+            runBlocking {
                 val decoded = URLDecoder.decode(templateKey, Charsets.UTF_8)
                 info("Looking for uses of template $decoded")
-                // unfortunately need to strip away projectKeyHeader from the srcKey
                 val srcKey = decoded.removePrefix("$projectKeyHeader/")
-                val pages = contentTree.getPagesForTemplate(srcKey).map { it.srcKey }
-                val posts = contentTree.getPostsForTemplate(srcKey).map { it.srcKey }
+                val posts = dynamoDBService.getKeyListMatchingTemplate(projectKeyHeader, SOURCE_TYPE.Posts, srcKey)
+                val pages = dynamoDBService.getKeyListMatchingTemplate(projectKeyHeader, SOURCE_TYPE.Pages, srcKey)
                 val count = pages.size + posts.size
                 val dto = TemplateUseDTO(count = count, pageKeys = pages, postKeys = posts)
                 info("Found ${dto.count} uses, across ${dto.pageKeys.size} pages and ${dto.postKeys.size} posts")
                 Response.ok(APIResult.Success(dto))
-            } else {
-                error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
-                Response.notFound(
-                    body = APIResult.Error(
-                        statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"
-                    )
-                )
             }
+        } else {
+            Response.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
         }
-        return Response.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
     }
 
     /**
-     * Delete a handlebars template file if there are no pages or posts using it
+     * Delete a Handlebars template file if there are no pages or posts using it
      */
     fun deleteTemplate(request: Request<Unit>): Response<APIResult<String>> {
         val templateKey = request.pathParameters["srcKey"]
         val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         if (templateKey != null) {
-            return if (loadContentTree(projectKeyHeader)) {
+            runBlocking {
                 val decoded = URLDecoder.decode(templateKey, Charsets.UTF_8)
-                info("Deleting template $decoded")
-                val pages = contentTree.getPagesForTemplate(decoded)
-                val posts = contentTree.getPostsForTemplate(decoded)
-                return if (pages.isEmpty() && posts.isEmpty()) {
-                    info("No pages or posts use this template, deleting")
-                    val templateNode = contentTree.getTemplate(decoded)
-                    return if (templateNode == null) {
-                        error("Could not find template $decoded in content tree")
-                        Response.badRequest(APIResult.Error("Could not find template $decoded in content tree"))
-                    } else {
-                        val deleted = s3Service.deleteObject(decoded, sourceBucket)
-                        contentTree.deleteTemplate(templateNode)
-                        saveContentTree(projectKeyHeader)
-                        Response.ok(APIResult.OK("Deleted template $decoded"))
-                    }
+                info("Attempting to deleting template '$decoded'; ensuring no pages or posts use the template")
+                val pages = dynamoDBService.getKeyListMatchingTemplate(projectKeyHeader, SOURCE_TYPE.Pages, decoded)
+                val posts = dynamoDBService.getKeyListMatchingTemplate(projectKeyHeader, SOURCE_TYPE.Posts, decoded)
+                val response = if (pages.isEmpty() && posts.isEmpty()) {
+                    info("No pages or posts use this template, deleting from bucket")
+                    s3Service.deleteObject(
+                        decoded,
+                        sourceBucket
+                    ) // relying on FileUploadController to respond to the delete event and remove the record from DynamoDB
+                    Response.ok(APIResult.OK("Deleted template $decoded"))
                 } else {
                     error("Cannot delete template $decoded, it is used by ${pages.size} pages and ${posts.size} posts")
                     Response.badRequest(
@@ -224,20 +174,16 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
                         )
                     )
                 }
-            } else {
-                error("Cannot find file '$S3_KEY.metadataKey' in bucket $sourceBucket")
-                Response.notFound(
-                    body = APIResult.Error(
-                        statusText = "Cannot find file '${S3_KEY.metadataKey}' in bucket $sourceBucket"
-                    )
-                )
+                return@runBlocking response
             }
+        } else {
+            return Response.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
         }
-        return Response.badRequest(APIResult.Error(statusText = "Invalid request with null templateKey"))
+        return Response.serverError(APIResult.Error("Server error while attempting to delete template; should not have reached here"))
     }
 
     /**
-     * The front end gives us a JSON representation of a handlebars template, which we need to convert to a YAML frontmatter & body
+     * The front end gives us a JSON representation of a Handlebars template, which we need to convert to a YAML front matter and body
      */
     private fun convertTemplateToYamlString(template: ContentNode.TemplateNode): String {
         val sBuilder: StringBuilder = StringBuilder()

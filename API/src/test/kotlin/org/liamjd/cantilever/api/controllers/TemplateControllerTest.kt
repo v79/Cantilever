@@ -99,11 +99,6 @@ internal class TemplateControllerTest : KoinTest {
         declareMock<S3Service> {
             every { mockS3.objectExists("my-template", sourceBucket) } returns true
             every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/plain") } returns 1234
-            every {
-                mockS3.putObjectAsString(
-                    "test/generated/metadata.json", generationBucket, any(), "application/json"
-                )
-            } returns 2345
         }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent().withHeaders(mapOf("cantilever-project-domain" to "test"))
@@ -127,11 +122,6 @@ internal class TemplateControllerTest : KoinTest {
         declareMock<S3Service> {
             every { mockS3.objectExists("my-template", sourceBucket) } returns true
             every { mockS3.putObjectAsString("my-template", sourceBucket, any(), "text/plain") } returns 1234
-            every {
-                mockS3.putObjectAsString(
-                    "test/generated/metadata.json", generationBucket, any(), "application/json"
-                )
-            } returns 2345
         }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent().withHeaders(mapOf("cantilever-project-domain" to "test"))

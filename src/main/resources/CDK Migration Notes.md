@@ -1,3 +1,15 @@
+## If the stack is deleted:
+
+- Get the new cloudfront domain
+- Update CORS domain for Cognito and redeploy
+- Update appUrls for Cognito pools and redeploy
+- Update the editor destination bucket in WebEditor/deploy-staging.bat, and cloudfront distribution invalidation ID
+- Update WebEditor/.env.staging with Cognito callback URL (the domain) and Cognito client ID. Build and deploy to bucket.
+- Update A-Record in Route53 for dev-api.cantilevers.org to API gateway domain
+- Create a user in Cognito
+- Create a project in the app
+- Create or upload a post template
+
 ## 20/07/2025
 
 - [-] Better naming of resources using 'stageName' variable, which is "cantilever-[dev|prod]"
@@ -38,6 +50,30 @@ Content)
 ## 25/07/2025
 
 Lots of research on dynamodb partition keys. Many discussions with LLMs. Trying to understand what is "good" high cardinality and "poor" high cardinality. For my files in S3, it's been suggested that "<domain>#<path>" is a good partition key, with "<type>#<leaf>" as a good sort key. Or "<domain>" and "<type>#<path".
-If I go with "<domain>#<type>" & "<path>" then I get reasonable cardinality, partitioned by project and file type, and the sort key allows me pick the specific file still. It supports queries such as "get all posts for this domain".
+If I go with "<domain>#<type>" & "<path>" then I get reasonable cardinality, partitioned by project and file type, and the sort key allows me to pick the specific file still. It supports queries such as "get all posts for this domain".
 Create a GSI as "<domain>" & "<path>" allows for simpler queries?
 Only thing missing is sorting by "lastUpdated".
+
+## 26/07/2025
+
+- Started work on deprecating the ContentNode class and moving its functionality into the DynamoDB service
+- Starting with FileUploadHandler and Template files
+- The cognito logout error has returned though
+- Successfully saves a template file metadata to the db
+
+## 27/07/2025
+
+- Fetch a list of templates via DynamoDB instead of the metadata.json file.
+- I've added testcontainers to the project, which allows me to write unit tests for DynamoDB etc (via localstack) instead of always having to deploy to the cloud to test. This has required changes to how the DynamoDBService is created and injected.
+- I'm not saving ContentNode.Template quite right though - it's not including the `sections` array.
+- Still getting weird SLF4J errors in the Cloudwatch logs
+
+## 29/07/2025
+
+- A lot of fairly pointless faffing about with logging and version numbers and stuff.
+- Destroyed the dev stack and recreated it.
+
+## 31/07/2025
+
+- Big detour into trying to get the LambdaContext.logger into the API class. This involved changes to the APIViaduct project and to all the controller classes. But it was in vain, the lambda context was never initialised at the right time. It's unfortunate that I can't use the lambda logger in the API. It might be able to recreate the log format through custom log4j2 configuration but I've never been good with log4j2 configuration.
+

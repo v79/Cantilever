@@ -20,12 +20,14 @@ typealias SrcKey = String // an S3 bucket object key
 @OptIn(ExperimentalSerializationApi::class)
 sealed class ContentNode {
     abstract val srcKey: SrcKey
+
     @OptIn(ExperimentalTime::class)
     abstract val lastUpdated: Instant
     abstract val url: String
 
     /**
      * A folder is a node in the tree which contains other nodes
+     * It is not used for the four core 'type' folders (pages, posts, templates, statics)
      */
     @Serializable
     @SerialName("folder")
@@ -39,6 +41,21 @@ sealed class ContentNode {
             get() = children.size
 
         override val url = srcKey.removePrefix(S3_KEY.pagesPrefix)
+
+        override fun equals(other: Any?): Boolean {
+            if (other !is FolderNode) return false
+            return srcKey == other.srcKey
+        }
+
+        override fun hashCode(): Int {
+            var result = srcKey.hashCode()
+            result = 31 * result + lastUpdated.hashCode()
+            result = 31 * result + children.hashCode()
+            result = 31 * result + (indexPage?.hashCode() ?: 0)
+            result = 31 * result + url.hashCode()
+            result = 31 * result + count
+            return result
+        }
     }
 
     /**
@@ -60,14 +77,14 @@ sealed class ContentNode {
 
         @Transient
         val type: String? =
-            null // this is used by the front end to determine if it's a page or a post, but is  not needed here
+            null // this is used by the front end to determine if it's a page or a post, but is not needed here
 
-        // I might actually want to generate both index.html and the slug version of the file but for now let's just do index.html or slug
+        // I might actually want to generate both index.html and the slug version of the file, but for now let's just do index.html or slug
         override val url: String
             get() {
                 // intended url would be www.cantilevers.org/parentFolder/slug
                 // but parent looks like wwww.cantilevers.org/sources/pages/parentFolder
-                val parentFolder = parent.replaceFirst("/sources/pages","")
+                val parentFolder = parent.replaceFirst("/sources/pages", "")
                 return if (isRoot) {
                     "${parentFolder}/index.html"
                 } else {
@@ -105,7 +122,7 @@ sealed class ContentNode {
             }
 
         /**
-         * secondary constructor for when we know the srcKey
+         * Secondary constructor for when we know the srcKey
          */
         constructor(
             srcKey: String,
@@ -113,19 +130,21 @@ sealed class ContentNode {
             templateKey: String,
             date: LocalDate,
             slug: String,
-            attributes: Map<String, String> = emptyMap()
+            attributes: Map<String, String> = emptyMap(),
+            lastUpdated: Instant = Clock.System.now(),
         ) : this(
             title = title,
             templateKey = templateKey,
             date = date,
             slug = slug,
-            attributes = attributes
+            attributes = attributes,
+            lastUpdated = lastUpdated,
         ) {
             this.srcKey = srcKey
         }
 
         /**
-         * secondary constructor to convert a temporary [PostYaml] object into a [PostNode]
+         * Secondary constructor to convert a temporary [PostYaml] object into a [PostNode]
          */
         internal constructor(postYaml: PostYaml) : this(
             title = postYaml.title,
@@ -142,7 +161,7 @@ sealed class ContentNode {
     }
 
     /**
-     * A template is a node in the tree which represents a handlebars template. It is used to generate the final HTML for a page
+     * A template is a node in the tree which represents a Handlebars template. It is used to generate the final HTML for a page
      */
     @Serializable
     @SerialName("template")
@@ -157,7 +176,7 @@ sealed class ContentNode {
     }
 
     /**
-     * A static is a node in the tree which represents a static file, such as a .css file. It is copied to the generated bucket without modification
+     * A Static is a node in the tree which represents a static file, such as a .css file. It is copied to the generated bucket without modification
      */
     @Serializable
     @SerialName("static")
@@ -210,6 +229,7 @@ internal class PostYaml(
  * It is split into items (pages, folders and posts), templates and statics
  */
 @Serializable
+@Deprecated("This class is being replaced with specific dynamodb queries and classes for ContentNode.")
 class ContentTree {
 
     val items: MutableList<ContentNode> = mutableListOf()

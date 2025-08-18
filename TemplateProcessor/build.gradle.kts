@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "org.liamjd.cantilever.lambda"
-version = "0.1.0"
+version = "0.1.2"
 
 repositories {
     mavenCentral()
@@ -24,11 +24,17 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kaml)
 
+    // coroutines
+    implementation(libs.kotlin.coroutines.core)
+    implementation(libs.kotlin.coroutines.jdk)
+
+
     // sdk v2
     implementation(platform(libs.aws.sdk.bom))
     implementation(libs.aws.sdk.s3)
     implementation(libs.aws.sdk.lambda)
     implementation(libs.aws.sdk.sqs)
+    implementation(libs.aws.sdk.dynamodb)
 
     // templating processing with handlebars
     implementation(libs.handlebars)
@@ -38,12 +44,15 @@ dependencies {
     implementation(libs.aws.lambda.events)
     runtimeOnly(libs.aws.lambda.log4j2)
 
+    // DI
+    implementation(libs.koin.core)
+
     // testing
     testImplementation(libs.junit.api)
     testRuntimeOnly(libs.junit.engine)
     testImplementation(libs.aws.lambda.tests)
     testImplementation(libs.mockk)
-    testImplementation(kotlin("test"))
+    testImplementation(libs.bundles.koin.test)
 }
 
 tasks.getByName<Test>("test") {
@@ -61,4 +70,5 @@ tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
     archiveBaseName.set("TemplateProcessorHandler")
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer::class.java)
 }

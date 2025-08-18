@@ -74,8 +74,7 @@ class CognitoJWTAuthorizer(private val configuration: Map<String, String>) : org
                 logError(veriException.message ?: "<No exception message found>")
                 return AuthResult(false, veriException.message.toString())
             }
-            // no 'name' claim currently, but could be added in future
-            // info("Authorized user '${verified.getClaim("name")}', token with claims: ${verified.claims}")
+            // no 'name' claim currently, but could be added in the future
             return AuthResult(true, "")
         }
     }

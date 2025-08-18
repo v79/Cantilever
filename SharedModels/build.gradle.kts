@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "org.liamjd.cantilever"
-version = "0.1.0"
+version = "0.1.2"
 
 repositories {
     mavenCentral()
@@ -22,26 +22,27 @@ dependencies {
     // openAPI dependency scanning
     implementation(project(":OpenAPISchemaAnnotations"))
 //    ksp(project(":OpenAPISchemaGenerator"))
-//    ksp("org.liamjd.apiviaduct:openapi:0.4-SNAPSHOT")
+//    ksp("org.liamjd.apiviaduct:openapi:0.4.1-SNAPSHOT")
 
     // multiplatform datetime library
     implementation(libs.kotlinx.datetime)
     
     // coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.7.3")
+    implementation(libs.kotlin.coroutines.core)
+    implementation(libs.kotlin.coroutines.jdk)
 
     // sdk v2
     implementation(platform(libs.aws.sdk.bom))
-    implementation(libs.aws.sdk.s3)
-    implementation(libs.aws.sdk.lambda)
-    implementation(libs.aws.sdk.sqs)
-    implementation(libs.aws.sdk.dynamodb)
+    implementation(libs.bundles.aws.sdk)
+    implementation(libs.aws.lambda.core)
 
     // testing
     testImplementation(libs.junit.api)
     testRuntimeOnly(libs.junit.engine)
+    testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.mockk)
+
+    testImplementation(libs.bundles.testcontainers) // For AWS services
 
     // routing
     implementation(libs.viaduct.openapi)

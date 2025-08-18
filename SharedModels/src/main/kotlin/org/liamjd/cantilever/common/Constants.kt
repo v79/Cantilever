@@ -27,6 +27,7 @@ object S3_KEY {
     @Deprecated("Use metadataKey instead")
     const val templatesKey = "$generated/templates.json"
     const val defaultPostTemplateKey = "$templatesPrefix/post.hbs"
+    @Deprecated("Use dynamoDB service instead")
     const val metadataKey = "$generated/metadata.json"
 }
 
@@ -44,26 +45,29 @@ object FILES {
 object FILE_TYPE {
     const val MD = "md"
     const val HTML_HBS = "html.hbs"
+    const val HBS = "hbs"
     const val HTML = "html"
     const val YAML = "yaml"
     const val CSS = "css"
 }
 
 /**
- * The core types of object that Cantilever can process
+ * The core types of item that Cantilever can process
  */
-enum class SOURCE_TYPE(val folder: String) {
-    Pages("pages"),
-    Posts("posts"),
-    Templates("templates"),
-    Statics("statics"),
-    Images("images"),
-    Root("");
+enum class SOURCE_TYPE(val folder: String, val dbType: String) {
+    Pages("pages", "page"),
+    Posts("posts", "post"),
+    Templates("templates", "template"),
+    Statics("statics", "static"),
+    Images("images", "image"),
+    Folders("folders", "folder"),
+    // This is a special type that represents the root of the Sources bucket
+    Root("", "root");
 
     object SourceHelper {
         /**
          * Return a [SOURCE_TYPE] for the given folder name
-         * @param folderName should be "posts", "pages", "templates" or "statics"
+         * @param folderName should be "posts", "pages", "templates", "folders" or "statics"
          */
         fun fromFolderName(folderName: String): SOURCE_TYPE =
             if(folderName.isBlank()) {

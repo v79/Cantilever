@@ -17,20 +17,16 @@ import org.liamjd.cantilever.services.impl.SQSServiceImpl
 import software.amazon.awssdk.regions.Region
 
 /**
- * Respond to the SQSEvent which will contain the S3 key of the image file to resize
+ * Respond to the SQSEvent, which will contain the S3 key of the image file to resize
  */
+@Suppress("unused")
 class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
 
-    private val s3Service: S3Service
-    private val sqsService: SQSService
+    private val s3Service: S3Service = S3ServiceImpl(Region.EU_WEST_2)
+    private val sqsService: SQSService = SQSServiceImpl(Region.EU_WEST_2)
 
     private lateinit var logger: LambdaLogger
     private lateinit var processor: ImageProcessor
-
-    init {
-        s3Service = S3ServiceImpl(Region.EU_WEST_2)
-        sqsService = SQSServiceImpl(Region.EU_WEST_2)
-    }
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
         val sourceBucket = System.getenv("source_bucket")
@@ -66,7 +62,7 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
     }
 
     /**
-     * Process the image resize message. For each resolution defined in the project metadata, create a new image based on the original
+     * Process the image resize Message. For each resolution defined in the project metadata, create a new image based on the original
      * @param imageMessage the SQS message containing the image to resize
      * @param sourceBucket the bucket containing the image to resize
      * @param generationBucket the bucket to write the resized images to
@@ -183,8 +179,8 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String> {
     private fun calculateFilename(
         imageMessage: ImageSQSMessage.ResizeImageMsg, resName: String?
     ): String {
-        // original image key is in the format domain/sources/images/my-image.jpg
-        // destination image key should be in format domain/generated/images/my-image/100x100.jpg
+        // The original image key is in the format domain/sources/images/my-image.jpg
+        // The destination image key should be in format domain/generated/images/my-image/100x100.jpg
         val domain = imageMessage.projectDomain
         val sourceLeafName = imageMessage.metadata.srcKey.substringAfterLast("/")
         val origSuffix = imageMessage.metadata.srcKey.substringAfterLast(".")
