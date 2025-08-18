@@ -173,4 +173,19 @@ interface DynamoDBService {
         limit: Int = 100,
         descending: Boolean = true
     ): List<String>
+
+    /**
+     * Get the src key for the first or last item in the specified LSI. Most usually, to get the first or last Post
+     * @param projectDomain The project domain
+     * @param contentType The type of content (most likely Posts)
+     * @param lsiName The name of the Local Secondary Index to query
+     * @param operation "first" or "last", as appropriate
+     * @return the first or last srcKey, if existing, or null
+     */
+    suspend fun getFirstOrLastKeyFromLSI(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        lsiName: String,
+        operation: String
+    ): String?
 }

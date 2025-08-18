@@ -718,6 +718,72 @@ internal class DynamoDBServiceImplTest {
         assertTrue(matchingKeys.contains(post1.srcKey))
     }
 
+    @Test
+    fun `getKeyListFromLSI with no date specified returns the first post`() = runBlocking {
+        // Setup
+        val post1 = ContentNode.PostNode(
+            title = "Matching Post",
+            templateKey = "template1",
+            date = LocalDate(2025, 8, 1),
+            slug = "matching-post",
+            attributes = mapOf("author" to "John Doe", "category" to "News")
+        )
+        post1.srcKey = "posts/2025/08/matching-post.md"
+
+        val post2 = ContentNode.PostNode(
+            title = "Non-Matching Post",
+            templateKey = "template2",
+            date = LocalDate(2025, 8, 2),
+            slug = "non-matching-post",
+            attributes = mapOf("author" to "Jane Doe", "category" to "Science")
+        )
+        post2.srcKey = "posts/2025/08/non-matching-post.md"
+
+        val post3 = ContentNode.PostNode(
+            title = "Another Non-Matching Post",
+            templateKey = "template2",
+            date = LocalDate(2025, 8, 3),
+            slug = "another-non-matching-post",
+            attributes = mapOf("author" to "Jane Doe", "category" to "Science")
+        )
+        post3.srcKey = "posts/2025/08/non-matching-post.md"
+
+        service.upsertContentNode(
+            srcKey = post1.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Posts,
+            node = post1,
+            attributes = post1.attributes
+        )
+        service.upsertContentNode(
+            srcKey = post2.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Posts,
+            node = post2,
+            attributes = post2.attributes
+        )
+        service.upsertContentNode(
+            srcKey = post3.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Posts,
+            node = post3,
+            attributes = post3.attributes
+        )
+
+        // Execute
+        val firstNodeKey = service.getFirstOrLastKeyFromLSI(
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Posts,
+            lsiName = "Type-Date",
+            operation = "first"
+        )
+
+        // Verify
+        assertNotNull(firstNodeKey)
+        assertEquals(post1.srcKey, firstNodeKey, "First post srcKey should be")
+
+    }
+
     /** =============================================================== */
 
     /**

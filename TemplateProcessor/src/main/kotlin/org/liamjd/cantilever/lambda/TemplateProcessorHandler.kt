@@ -143,8 +143,8 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             model["lastModified"] = pageMsg.metadata.lastUpdated
             model.putAll(pageMsg.metadata.attributes)
 
-            model["pages"] = navigationBuilder.filterPages()
-            model["posts"] = navigationBuilder.filterPosts()
+           /* model["pages"] = navigationBuilder.filterPages()
+            model["posts"] = navigationBuilder.filterPosts()*/
 
             pageMsg.metadata.sections.forEach { (name, objectKey) ->
                 val html = s3Service.getObjectAsString(objectKey, generationBucket)

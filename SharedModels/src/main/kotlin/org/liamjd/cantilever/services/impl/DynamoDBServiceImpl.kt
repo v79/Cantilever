@@ -733,6 +733,53 @@ class DynamoDBServiceImpl(
         }
     }
 
+    /**
+     * Get the src key for the first or last item in the specified LSI. Most usually, to get the first or last Post
+     * @param projectDomain The project domain
+     * @param contentType The type of content (most likely Posts)
+     * @param lsiName The name of the Local Secondary Index to query
+     * @param operation "first" or "last", as appropriate
+     * @return the first or last srcKey, if existing, or null
+     */
+    override suspend fun getFirstOrLastKeyFromLSI(
+        projectDomain: String,
+        contentType: SOURCE_TYPE,
+        lsiName: String,
+        operation: String
+    ): String? {
+        log("Getting first or last item from LSI '$lsiName' for domain: $projectDomain of type: ${contentType.dbType}")
+
+        return executeDynamoOperation(
+            operationDescription = "get first or last item from LSI",
+            contextInfo = "domain: $projectDomain, type: ${contentType.dbType}, LSI: $lsiName"
+        ) {
+            val request = QueryRequest.builder()
+                .tableName(tableName)
+                .indexName(lsiName)
+                .keyConditionExpression("#pk = :domainType")
+                .expressionAttributeNames(mapOf("#pk" to "domain#type"))
+                .expressionAttributeValues(
+                    mapOf(":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build())
+                )
+                .limit(1) // Only get the first or last item
+                .scanIndexForward(operation == "first") // true for first, false for last
+                .build()
+
+            log("Executing Query request on LSI '$lsiName' in domain: $projectDomain")
+            val response = dynamoDbClient.query(request).await()
+
+            if (response.count() > 0) {
+                log("Found ${response.count()} items in LSI '$lsiName' for domain: $projectDomain")
+                response.items()[0]["srcKey"]?.s()?.also { srcKey ->
+                    log("Returning srcKey: $srcKey from LSI '$lsiName' for domain: $projectDomain")
+                }
+            } else {
+                log("No items found in LSI '$lsiName' for domain: $projectDomain")
+                null
+            }
+        }
+    }
+
     // ========================================== Node mapping utilities ===========================
 
     /**
