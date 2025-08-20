@@ -1,37 +1,36 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.charleskorn.kaml.Yaml
-import kotlinx.serialization.json.Json
+import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import org.liamjd.apiviaduct.routing.Request
 import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
 import org.liamjd.cantilever.common.S3_KEY
+import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
-import org.liamjd.cantilever.models.ContentTree
 import org.liamjd.cantilever.models.TemplateMetadata
 
 /**
  * Generate metadata across posts, pages, templates etc
  **/
-class MetadataController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
+class MetadataController(sourceBucket: String, generationBucket: String) : KoinComponent,
+    APIController(sourceBucket, generationBucket) {
 
     /**
-     * Perform a complete scan of the sources/ bucket and rebuild the metadata.json file in the generated/ folder
+     * Perform a complete scan of the sources/ bucket and rebuild the dynamoDB records for all nodes
      */
     fun rebuildFromSources(request: Request<Unit>): Response<APIResult<String>> {
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
-        info("Rebuilding $projectKeyHeader metadata from sources")
-        val projectMetadataKey = "$projectKeyHeader/metadata.json"
-        val sourcesFolder = projectKeyHeader + "/" + S3_KEY.sources
-        val postsFolder = projectKeyHeader + "/" + S3_KEY.postsPrefix
-        val pagesFolder = projectKeyHeader + "/" + S3_KEY.pagesPrefix
-        val staticsFolder = projectKeyHeader + "/" + S3_KEY.staticsPrefix
-        val templatesFolder = projectKeyHeader + "/" + S3_KEY.templatesPrefix
-        val imagesFolder = projectKeyHeader + "/" + S3_KEY.imagesPrefix
-        val contentTree = ContentTree()
+        val domain = request.headers["cantilever-project-domain"]!!
+        info("Rebuilding $domain metadata from sources")
+        val sourcesFolder = domain + "/" + S3_KEY.sources + "/"
+        val postsFolder = domain + "/" + S3_KEY.postsPrefix
+        val pagesFolder = domain + "/" + S3_KEY.pagesPrefix
+        val staticsFolder = domain + "/" + S3_KEY.staticsPrefix
+        val templatesFolder = domain + "/" + S3_KEY.templatesPrefix
+        val imagesFolder = domain + "/" + S3_KEY.imagesPrefix
         var filesProcessed = 0
         var postsCount = 0
         var pagesCount = 0
@@ -39,49 +38,61 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
         var templatesCount = 0
         var staticsCount = 0
         var folderCount = 0
+        val posts = mutableListOf<ContentNode.PostNode>()
+        val pages = mutableListOf<ContentNode.PageNode>()
+        val templates = mutableListOf<ContentNode.TemplateNode>()
+        val statics = mutableListOf<ContentNode.StaticNode>()
+        val images = mutableListOf<ContentNode.ImageNode>()
+        val folders = mutableSetOf<ContentNode.FolderNode>()
         // TODO: this only returns 1000 items, need to paginate
         val items = s3Service.listObjects(sourcesFolder, sourceBucket)
         if (items.hasContents()) {
-            // Special cases are 'sources/', 'sources/posts/', 'sources/pages/' - these should be ignored
+            // Special cases are 'sources/', 'sources/posts/',  etc. - these should be ignored. But not 'sources/pages/' as I need that as the parent folder for pages.
             val ignoreList =
-                listOf(sourcesFolder, postsFolder, pagesFolder)
+                listOf(sourcesFolder, postsFolder, templatesFolder, staticsFolder, imagesFolder)
+            info("Folder ignore list: $ignoreList")
             items.contents().forEach {
+                // Folders (items with a name ending in "/" may be real or implied in S3
+                // I.E. not every folder actually exists in s3
                 if (it.key() !in ignoreList) {
                     info("Processing ${it.key()}")
-                    if (it.key().endsWith("/")) {
+                    if (it.key().endsWith("/") && it.key().startsWith(pagesFolder) && !isIgnored(it.key(), ignoreList)) {
                         val folder = ContentNode.FolderNode(it.key())
-                        contentTree.insertFolder(folder)
+                        info("Found page folder ${it.key()} and created node $folder")
+                        folders.add(folder)
                         folderCount++
                         filesProcessed++
                     } else {
                         if (it.key().startsWith(postsFolder) && it.key() != postsFolder) {
                             val post = buildPostNode(it.key())
-                            contentTree.insertPost(post)
+                            posts.add(post)
                             postsCount++
                             filesProcessed++
                         }
                         if (it.key().startsWith(pagesFolder) && it.key() != pagesFolder) {
                             val page = buildPageNode(it.key())
-                            contentTree.insertPage(page)
-                            pagesCount +=
-                                filesProcessed++
+                            pages.add(page)
+                            pagesCount++
+                            filesProcessed++
+                            // ensure folder nodes exist for this page's full parent chain
+                            addFolderChainForPage(page, pagesFolder, ignoreList, folders)
                         }
                         if (it.key().startsWith(templatesFolder) && it.key() != templatesFolder) {
                             val template = buildTemplateNode(it.key())
-                            contentTree.insertTemplate(template)
+                            templates.add(template)
                             templatesCount++
                             filesProcessed++
                         }
                         if (it.key().startsWith(staticsFolder) && it.key() != staticsFolder) {
                             val static = ContentNode.StaticNode(it.key())
                             static.fileType = it.key().substringAfterLast(".")
-                            contentTree.insertStatic(static)
+                            statics.add(static)
                             staticsCount++
                             filesProcessed++
                         }
                         if (it.key().startsWith(imagesFolder) && it.key() != imagesFolder) {
                             val media = ContentNode.ImageNode(it.key())
-                            contentTree.insertImage(media)
+                            images.add(media)
                             imagesCount++
                             filesProcessed++
                         }
@@ -89,34 +100,64 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
                 }
             }
 
-            // now update folder children
-            contentTree.items.forEach {
-                if (it is ContentNode.PageNode) {
-                    val parent =
-                        contentTree.items.find { node -> node.srcKey == it.parent + "/" } as ContentNode.FolderNode?
-                    parent?.children?.add(it.srcKey)
-                    if (it.isRoot) {
-                        parent?.indexPage = it.srcKey
+            // sort posts
+            posts.sortByDescending { it.date }
+
+            runBlocking {
+                // update database entries
+                pages.forEach { page ->
+                    val parent = folders.find { folder -> folder.srcKey == page.parent }
+                    if (parent != null) {
+                        if (!parent.children.contains(page.srcKey)) {
+                            parent.children.add(page.srcKey)
+                        }
+                        if (page.isRoot) {
+                            parent.indexPage = page.srcKey
+                        }
                     }
+                    dynamoDBService.upsertContentNode(page.srcKey, domain, SOURCE_TYPE.Pages, page, page.attributes)
+                }
+                folders.forEach { folder ->
+                    folder.indexPage = pages.find { it.parent == folder.srcKey && it.isRoot }?.srcKey ?: ""
+                    info("Upserting folder ${folder.srcKey} with index page '${folder.indexPage}'")
+                    dynamoDBService.upsertContentNode(folder.srcKey, domain, SOURCE_TYPE.Folders, folder, emptyMap())
+                }
+                statics.forEach { static ->
+                    dynamoDBService.upsertContentNode(static.srcKey, domain, SOURCE_TYPE.Statics, static, emptyMap())
+                }
+                templates.forEach { template ->
+                    dynamoDBService.upsertContentNode(
+                        template.srcKey,
+                        domain,
+                        SOURCE_TYPE.Templates,
+                        template,
+                        emptyMap()
+                    )
+                }
+                // this is our chance to refresh the next/previous links between posts, based on the date
+                posts.forEachIndexed { index, post ->
+                    val nextPost = if (index > 0) posts[index - 1] else null
+                    val previousPost = if (index < posts.size - 1) posts[index + 1] else null
+                    post.next = nextPost?.slug ?: ""
+                    post.prev = previousPost?.slug ?: ""
+                    dynamoDBService.upsertContentNode(post.srcKey, domain, SOURCE_TYPE.Posts, post, post.attributes)
                 }
             }
 
-            info("Found $filesProcessed files in sources/ bucket; writing metadata.json to generated/ bucket")
-            val pretty = Json { prettyPrint = true }
-            val treeJson = pretty.encodeToString(ContentTree.serializer(), contentTree)
-            s3Service.putObjectAsString(projectMetadataKey, generationBucket, treeJson, "application/json")
+            info("Found $filesProcessed files in sources/ bucket")
+
         } else {
-            error("No source files found in 'sources/ which match the requirements to build a project metadata' file.")
+            error("No source files found in 'sources/ which match the requirements to persist in the node database.")
             return Response.serverError(
                 body = APIResult.Error(
-                    statusText = "No source files found in $sourceBucket which match the requirements to build a ${S3_KEY.postsKey} file."
+                    statusText = "No source files found in $sourceBucket which match the requirements to to persist in the node database."
                 )
             )
         }
 
         return Response.ok(
             body = APIResult.Success(
-                "Rebuilt metadata.json file for $projectKeyHeader with $filesProcessed ($postsCount posts, $pagesCount pages, $imagesCount images, $templatesCount templates, $staticsCount statics)"
+                "Rebuild node database for $domain with $filesProcessed ($postsCount posts, $pagesCount pages, $imagesCount images, $templatesCount templates, $staticsCount statics, $folderCount folders)"
             )
         )
     }
@@ -148,13 +189,57 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
      */
     private fun buildTemplateNode(templateKey: String): ContentNode.TemplateNode {
         val templateContents = s3Service.getObjectAsString(templateKey, sourceBucket)
-        val frontmatter = templateContents.getFrontMatter()
-        val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
+        val frontMatter = templateContents.getFrontMatter()
+        val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontMatter)
         return ContentNode.TemplateNode(
             srcKey = templateKey,
             title = metadata.name,
             sections = metadata.sections ?: emptyList()
         )
+    }
+
+    /**
+     * Return true if the key should be ignored based on the ignore list, treating trailing slashes as equivalent
+     */
+    private fun isIgnored(key: String, ignoreList: List<String>): Boolean {
+        val k = key.trimEnd('/')
+        return ignoreList.any { it.trimEnd('/') == k }
+    }
+
+    /**
+     * Ensure FolderNodes are created for the full parent chain of the given page, within the pages folder tree only.
+     * Also add the page as a child of its immediate parent folder.
+     */
+    private fun addFolderChainForPage(
+        page: ContentNode.PageNode,
+        pagesFolder: String,
+        ignoreList: List<String>,
+        folders: MutableSet<ContentNode.FolderNode>
+    ) {
+        val pagesRoot = pagesFolder.trimEnd('/') + "/"
+        val parentPath = page.parent // already ends with "/"
+        if (!parentPath.startsWith(pagesRoot)) return
+        // build relative path under pages root
+        val relative = parentPath.removePrefix(pagesRoot).trimEnd('/')
+        if (relative.isEmpty()) return // page in root pages folder; we don't want to create a folder called sources/pages//
+        val parts = relative.split('/')
+        var current = pagesRoot
+        for ((index, part) in parts.withIndex()) {
+            current += "$part/"
+            if (!isIgnored(current, ignoreList)) {
+                val existing = folders.find { it.srcKey == current }
+                if (existing == null) {
+                    folders.add(ContentNode.FolderNode(current))
+                }
+            }
+            // if this is the last part, it's the immediate parent; add page as child
+            if (index == parts.lastIndex) {
+                val parentFolder = folders.find { it.srcKey == current }
+                if (parentFolder != null && !parentFolder.children.contains(page.srcKey)) {
+                    parentFolder.children.add(page.srcKey)
+                }
+            }
+        }
     }
 
     override fun info(message: String) = println("INFO: MetadataController: $message")

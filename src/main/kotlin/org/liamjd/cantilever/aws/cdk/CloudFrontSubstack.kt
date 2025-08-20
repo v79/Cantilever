@@ -14,7 +14,7 @@ import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.BucketAccessControl
 import software.amazon.awscdk.services.s3.IBucket
 
-class CloudFrontSubstack(private val versionString: String) {
+class CloudFrontSubstack(private val versionString: String, private val stageName: String) {
 
     // taken from https://johntipper.org/a-static-website-with-api-backend-using-aws-cdk-and-java/
 
@@ -27,18 +27,7 @@ class CloudFrontSubstack(private val versionString: String) {
                     .build()
             )*/
 
-    private fun createLambdaEdge(stack: Stack): EdgeFunction {
-        println("Create cloudfront Lambda@edge function")
-        return EdgeFunction.Builder.create(stack, "cantilever-cloudfront-edgelambda-rewrite")
-            .description("Cantilever cloudfront rewrite URI from host")
-            .runtime(Runtime.NODEJS_LATEST)
-            .memorySize(128)
-            .timeout(Duration.seconds(5))
-            .code(Code.fromAsset("./CloudfrontRewriteURI"))
-            .handler("index.handler")
-            .logRetention(RetentionDays.ONE_MONTH)
-            .build()
-    }
+    // 19/07/2025: See https://aws.amazon.com/blogs/devops/a-new-aws-cdk-l2-construct-for-amazon-cloudfront-origin-access-control-oac/ for a new way to do this?
 
     /**
      * This isn't complete, there are extra steps I need to do at the AWS console:
@@ -50,16 +39,16 @@ class CloudFrontSubstack(private val versionString: String) {
         destinationBucket: IBucket
     ): CloudFrontWebDistribution {
 
-        Tags.of(stack).add("Cantilever", versionString)
+        Tags.of(stack).add(stageName, versionString)
 
         val lambdaEdgeFunction = createLambdaEdge(stack)
         // Origin Access Identity is considered legacy, to be replaced by Origin Access Control. But that's not
         // supported in CDK yet. #21771
-        val webOai = OriginAccessIdentity.Builder.create(stack, "cantilever-originAccessIdentity").build()
+        val webOai = OriginAccessIdentity.Builder.create(stack, "$stageName-originAccessIdentity").build()
         destinationBucket.grantRead(webOai)
 
-        return CloudFrontWebDistribution.Builder.create(stack, "cantilever-CloudFrontWebDistribution")
-            .comment(String.format("CloudFront distribution for cantilever"))
+        return CloudFrontWebDistribution.Builder.create(stack, "$stageName-CloudFrontWebDistribution")
+            .comment(String.format("CloudFront distribution for $stageName"))
             .defaultRootObject("index.html")
             .originConfigs(
                 listOf(
@@ -91,7 +80,7 @@ class CloudFrontSubstack(private val versionString: String) {
             .loggingConfig(
                 LoggingConfiguration.builder()
                     .bucket(
-                        Bucket.Builder.create(stack, "cantilever-CloudFrontLogs")
+                        Bucket.Builder.create(stack, "$stageName-CloudFrontLogs")
                             .accessControl(BucketAccessControl.LOG_DELIVERY_WRITE)
                             .versioned(false)
                             .removalPolicy(RemovalPolicy.DESTROY)
@@ -115,7 +104,7 @@ class CloudFrontSubstack(private val versionString: String) {
                         .build()
                 )
             )
-           .viewerCertificate(
+            .viewerCertificate(
                 ViewerCertificate.fromAcmCertificate(
                     Certificate.fromCertificateArn(
                         stack,
@@ -128,6 +117,22 @@ class CloudFrontSubstack(private val versionString: String) {
                         .build()
                 )
             )
+            .build()
+    }
+
+    /**
+     * Create a Lambda@Edge function that rewrites the URI based on the host header.
+     */
+    private fun createLambdaEdge(stack: Stack): EdgeFunction {
+        println("Create cloudfront Lambda@edge function")
+        return EdgeFunction.Builder.create(stack, "cantilever-cloudfront-edgelambda-rewrite-$stageName")
+            .description("Cantilever cloudfront rewrite URI from host")
+            .runtime(Runtime.NODEJS_LATEST)
+            .memorySize(128)
+            .timeout(Duration.seconds(5))
+            .code(Code.fromAsset("./CloudfrontRewriteURI"))
+            .handler("index.handler")
+            .logRetention(RetentionDays.ONE_MONTH)
             .build()
     }
 

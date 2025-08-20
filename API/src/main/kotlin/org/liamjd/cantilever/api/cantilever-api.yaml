@@ -19,7 +19,7 @@ tags:
   - name: Generation
     description: Trigger the regeneration of pages and blog posts
   - name: Metadata
-    description: Manage the metadata.json file for the project
+    description: Manage the metadata database for the project
 paths:
   /warm:
     get:
@@ -579,7 +579,7 @@ paths:
       tags:
         - Metadata
       summary: Rebuild metadata
-      description: Rebuild the metadata.json file from the source pages, posts, templates and images
+      description: Rebuild the metadata database from the source pages, posts, templates and images
       security:
         - cognitojwt-bearer-token-authorizer: []
       requestBody:

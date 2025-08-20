@@ -9,4 +9,5 @@ import org.liamjd.cantilever.openapi.APISchema
  * Front end needs a list of templates, but we don't want to send the entire [ContentTree] over the wire. */
 @APISchema
 @Serializable
+@Deprecated("This can probably be replaced with just a List<ContentNode.TemplateNode>")
 data class TemplateListDTO(val count: Int = 0, val lastUpdated: Instant, val templates: List<ContentNode.TemplateNode>)

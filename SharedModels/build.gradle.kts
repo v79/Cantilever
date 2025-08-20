@@ -1,12 +1,12 @@
 plugins {
-    kotlin("jvm") version "1.9.20"
-    kotlin("plugin.serialization") version "1.9.0"
-    id("com.google.devtools.ksp") version "1.9.20-1.0.14"
-    id("org.jetbrains.kotlinx.kover") version "0.7.4"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 group = "org.liamjd.cantilever"
-version = "0.0.12"
+version = "0.1.2"
 
 repositories {
     mavenCentral()
@@ -16,41 +16,44 @@ repositories {
 
 dependencies {
     // serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
-    implementation("com.charleskorn.kaml:kaml:0.55.0")
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kaml)
 
     // openAPI dependency scanning
     implementation(project(":OpenAPISchemaAnnotations"))
 //    ksp(project(":OpenAPISchemaGenerator"))
-    ksp("org.liamjd.apiviaduct:openapi:0.4-SNAPSHOT")
+//    ksp("org.liamjd.apiviaduct:openapi:0.4.1-SNAPSHOT")
 
     // multiplatform datetime library
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
+    implementation(libs.kotlinx.datetime)
+    
+    // coroutines
+    implementation(libs.kotlin.coroutines.core)
+    implementation(libs.kotlin.coroutines.jdk)
 
     // sdk v2
-    implementation(platform("software.amazon.awssdk:bom:2.20.68"))
-    implementation("software.amazon.awssdk:s3")
-    implementation("software.amazon.awssdk:lambda")
-    implementation("software.amazon.awssdk:sqs")
+    implementation(platform(libs.aws.sdk.bom))
+    implementation(libs.bundles.aws.sdk)
+    implementation(libs.aws.lambda.core)
 
     // testing
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
+    testImplementation(libs.junit.api)
+    testRuntimeOnly(libs.junit.engine)
+    testImplementation(libs.kotlin.test.junit5)
+    testImplementation(libs.mockk)
 
+    testImplementation(libs.bundles.testcontainers) // For AWS services
 
-    implementation("org.liamjd.apiviaduct:openapi:0.4-SNAPSHOT")
+    // routing
+    implementation(libs.viaduct.openapi)
 }
 
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.jvmTarget = "17"
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }

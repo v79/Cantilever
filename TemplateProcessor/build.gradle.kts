@@ -1,15 +1,14 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.9.20"
-    kotlin("plugin.serialization") version "1.9.20"
-    id("com.github.johnrengelman.shadow") version "7.1.2"
-    id("org.jetbrains.kotlinx.kover") version "0.7.4"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 group = "org.liamjd.cantilever.lambda"
-version = "0.0.13"
+version = "0.1.2"
 
 repositories {
     mavenCentral()
@@ -19,55 +18,57 @@ repositories {
 dependencies {
     // shared elements
     implementation(project(":SharedModels"))
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
+    implementation(libs.kotlinx.datetime)
 
     // serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
-    implementation("com.charleskorn.kaml:kaml:0.55.0")
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kaml)
+
+    // coroutines
+    implementation(libs.kotlin.coroutines.core)
+    implementation(libs.kotlin.coroutines.jdk)
+
 
     // sdk v2
-    implementation(platform("software.amazon.awssdk:bom:2.20.68"))
-    implementation("software.amazon.awssdk:s3")
-    implementation("software.amazon.awssdk:lambda")
-    implementation("software.amazon.awssdk:sqs")
+    implementation(platform(libs.aws.sdk.bom))
+    implementation(libs.aws.sdk.s3)
+    implementation(libs.aws.sdk.lambda)
+    implementation(libs.aws.sdk.sqs)
+    implementation(libs.aws.sdk.dynamodb)
 
     // templating processing with handlebars
-    implementation("com.github.jknack:handlebars:4.3.1")
+    implementation(libs.handlebars)
 
     // lambda functions
-    implementation("com.amazonaws:aws-lambda-java-core:1.2.3")
-    implementation("com.amazonaws:aws-lambda-java-events:3.11.3")
+    implementation(libs.aws.lambda.core)
+    implementation(libs.aws.lambda.events)
+    runtimeOnly(libs.aws.lambda.log4j2)
 
-    runtimeOnly("com.amazonaws:aws-lambda-java-log4j2:1.6.0")
+    // DI
+    implementation(libs.koin.core)
 
     // testing
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
-    testImplementation("com.amazonaws:aws-lambda-java-tests:1.1.1")
-    testImplementation("io.mockk:mockk:1.13.4")
-    testImplementation(kotlin("test"))
+    testImplementation(libs.junit.api)
+    testRuntimeOnly(libs.junit.engine)
+    testImplementation(libs.aws.lambda.tests)
+    testImplementation(libs.mockk)
+    testImplementation(libs.bundles.koin.test)
 }
 
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
 }
 
-// Crazy experiment with context receivers!
-tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs += "-Xcontext-receivers"
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
+
 
 tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
     archiveBaseName.set("TemplateProcessorHandler")
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
-    }
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer::class.java)
 }

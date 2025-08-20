@@ -1,11 +1,9 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
-    kotlin("jvm") version "1.9.20"
+    alias(libs.plugins.kotlin.jvm)
 }
 
 group = "org.liamjd.cantilever.openapi"
-version = "0.0.11"
+version = "0.1.2"
 
 repositories {
     mavenCentral()
@@ -13,32 +11,25 @@ repositories {
 
 buildscript {
     dependencies {
-        classpath(kotlin("gradle-plugin", version = "1.9.20"))
+        classpath(kotlin("gradle-plugin", version = "2.2.0"))
     }
 }
 
 dependencies {
     // shared elements
     implementation(project(":OpenAPISchemaAnnotations"))
-    implementation("com.google.devtools.ksp:symbol-processing-api:1.9.20-1.0.14")
+    implementation(libs.kotlin.ksp)
 
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
+    testImplementation(libs.junit.jupiter)
 }
 
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
 }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs += "-Xcontext-receivers"
-    }
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }

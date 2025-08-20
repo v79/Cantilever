@@ -1,15 +1,15 @@
 {
   "name": "kotlin",
-  "image": "mcr.microsoft.com/devcontainers/java:0-17",
+  "image": "mcr.microsoft.com/devcontainers/java:0-21",
   "features": {
     "ghcr.io/devcontainers-contrib/features/gradle-sdkman:2": {
       "version": "latest",
-      "jdkVersion": "17",
+      "jdkVersion": "21",
       "jdkDistro": "ms"
     },
     "ghcr.io/devcontainers-contrib/features/kotlin-sdkman:2": {
       "version": "latest",
-      "jdkVersion": "17",
+      "jdkVersion": "21",
       "jdkDistro": "ms"
     },
     "ghcr.io/devcontainers/features/aws-cli:1": {

@@ -1,14 +1,14 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
-    kotlin("jvm") version "1.9.20"
-    kotlin("plugin.serialization") version "1.9.0"
-    id("com.github.johnrengelman.shadow") version "7.1.2"
-    id("org.jetbrains.kotlinx.kover") version "0.7.4"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 group = "org.liamjd.cantilever.lambda"
-version = "0.0.11"
+version = "0.1.2"
 
 repositories {
     mavenCentral()
@@ -19,50 +19,48 @@ repositories {
 dependencies {
     // shared elements
     implementation(project(":SharedModels"))
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
+    implementation(libs.kotlinx.datetime)
 
     // serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
-    implementation("com.charleskorn.kaml:kaml:0.55.0")
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kaml)
 
     // sdk v2
-    implementation(platform("software.amazon.awssdk:bom:2.20.68"))
-    implementation("software.amazon.awssdk:s3")
-    implementation("software.amazon.awssdk:lambda")
-    implementation("software.amazon.awssdk:sqs")
+    implementation(platform(libs.aws.sdk.bom))
+    implementation(libs.aws.sdk.s3)
+    implementation(libs.aws.sdk.lambda)
+    implementation(libs.aws.sdk.sqs)
+
+    // image processing
+    implementation(libs.imgscalr)
 
     // lambda functions
-    implementation("com.amazonaws:aws-lambda-java-core:1.2.3")
-    implementation("com.amazonaws:aws-lambda-java-events:3.11.3")
-    runtimeOnly("com.amazonaws:aws-lambda-java-log4j2:1.6.0")
-
-    // image scaler
-    implementation("org.imgscalr:imgscalr-lib:4.2")
+    implementation(libs.aws.lambda.core)
+    implementation(libs.aws.lambda.events)
+    runtimeOnly(libs.aws.lambda.log4j2)
 
     // testing
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
-    testImplementation("com.amazonaws:aws-lambda-java-tests:1.1.1")
-    testImplementation("io.mockk:mockk:1.13.4")
+    testImplementation(libs.junit.api)
+    testRuntimeOnly(libs.junit.engine)
+    testImplementation(libs.aws.lambda.tests)
+    testImplementation(libs.mockk)
+    testImplementation(kotlin("test"))
 }
 
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.jvmTarget = "17"
-    kotlinOptions.freeCompilerArgs += "-Xcontext-receivers"
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
 }
+
 
 tasks.withType<ShadowJar> {
     archiveVersion.set("")
     archiveClassifier.set("")
     archiveBaseName.set("ImageProcessorHandler")
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
-    }
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer::class.java)
 }

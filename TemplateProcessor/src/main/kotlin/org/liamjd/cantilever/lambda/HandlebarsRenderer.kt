@@ -1,6 +1,5 @@
 package org.liamjd.cantilever.lambda
 
-import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.github.jknack.handlebars.Handlebars
 import com.github.jknack.handlebars.helper.StringHelpers
 import org.liamjd.cantilever.lambda.handlebars.LocalDateFormatter
@@ -19,7 +18,6 @@ interface TemplateRender {
 /**
  * Configuration for Handlebars, defining the helper functions (such as 'upper' and 'localDate') that may be used in templates.
  */
-context(LambdaLogger)
 class HandlebarsRenderer : TemplateRender {
 
     private val handlebars = Handlebars().prettyPrint(true)
