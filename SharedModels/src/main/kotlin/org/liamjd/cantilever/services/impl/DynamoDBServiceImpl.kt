@@ -279,8 +279,7 @@ class DynamoDBServiceImpl(
                 }
 
                 is ContentNode.StaticNode, is ContentNode.ImageNode -> {
-                    // Static nodes might not have additional properties, but we can add a lastUpdated timestamp
-                    item["type#lastUpdated"] = createLastUpdatedAttribute("static")
+                    // Static nodes might not have additional properties, so for now there is nothing to do
                 }
 
                 is ContentNode.PageNode -> {
@@ -433,6 +432,7 @@ class DynamoDBServiceImpl(
                     SOURCE_TYPE.Posts -> mapToPostNode(response.item())
                     SOURCE_TYPE.Statics -> mapToStaticNode(response.item())
                     SOURCE_TYPE.Folders -> mapToFolderNode(response.item())
+                    SOURCE_TYPE.Pages -> mapToPageNode(response.item())
                     else -> throw IllegalArgumentException("Unsupported content type: ${contentType.dbType}")
                 }
             } else {
@@ -608,7 +608,7 @@ class DynamoDBServiceImpl(
                 )
                 .projectionExpression("srcKey") // Only get the srcKey
                 .limit(limit)
-                .scanIndexForward(descending)
+                .scanIndexForward(!descending)
                 .build()
 
             log("Executing Query request for keys matching attributes in domain: $projectDomain")
@@ -713,7 +713,7 @@ class DynamoDBServiceImpl(
                     mapOf(
                         ":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
                         // Basic case: use a fixed date string as requested; tests currently insert items with this date
-                        ":date" to AttributeValue.builder().s(attribute.second).build()
+                        ":${attribute.first}" to AttributeValue.builder().s(attribute.second).build()
                     )
                 )
                 .limit(limit)
@@ -970,7 +970,7 @@ class DynamoDBServiceImpl(
         return try {
             if (lastUpdatedStr != null && lastUpdatedStr.contains("#")) {
                 val timestamp = lastUpdatedStr.split("#")[1].toLongOrNull() ?: 0L
-                Instant.fromEpochSeconds(timestamp)
+                Instant.fromEpochMilliseconds(timestamp)
             } else {
                 log("WARN", "Invalid type#lastUpdated format in $itemType item: $lastUpdatedStr")
                 Clock.System.now()

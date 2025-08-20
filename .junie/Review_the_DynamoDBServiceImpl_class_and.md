@@ -10,13 +10,13 @@ This makes the class harder to maintain and test. There are also some correctnes
 ---
 
 ### High-impact issues and bugs
-1. Timestamp parsing bug
+1. ~~Timestamp parsing bug~~
    - createLastUpdatedAttribute stores milliseconds: `"$type#${System.currentTimeMillis()}"`.
    - extractLastUpdatedTimestamp parses the second segment and then calls `Instant.fromEpochSeconds(timestamp)`. This interprets milliseconds as seconds.
    - Impact: lastUpdated on nodes will be incorrect by a factor of 1000.
    - Fix: use `Instant.fromEpochMilliseconds(timestamp)`.
 
-2. getKeyListFromLSI builds a dynamic placeholder in the expression but hard-codes a different placeholder in the values
+2. ~~getKeyListFromLSI builds a dynamic placeholder in the expression but hard-codes a different placeholder in the values~~
    - Expression uses `:\${attribute.first}` but values map builds `":date"` regardless of `attribute.first`.
    - Tests pass only because they use `attribute.first == "date"`.
    - Fix: use the same dynamic key for the values map, e.g.:
@@ -30,24 +30,24 @@ This makes the class harder to maintain and test. There are also some correctnes
      )
      ```
 
-3. getContentNode omits Pages
+3. ~~getContentNode omits Pages~~
    - The `when` only covers Templates, Posts, Statics, Folders. Pages are supported elsewhere (upsert, listAllNodesForProject).
    - Fix: add `SOURCE_TYPE.Pages -> mapToPageNode(response.item())` to getContentNode.
 
-4. Possible inverted ordering flag in getKeyListMatchingAttributes
+4. ~~Possible inverted ordering flag in getKeyListMatchingAttributes~~
    - The comment says `descending` default is true. In DynamoDB, `scanIndexForward(true)` = ascending. The code currently passes `scanIndexForward(descending)`, meaning `true` -> ascending, which contradicts the default documentation.
    - Fix: use `.scanIndexForward(!descending)` like you do in getKeyListFromLSI, or clarify naming.
 
-5. Overwriting type#lastUpdated for static/image nodes
+5. ~~Overwriting type#lastUpdated for static/image nodes~~
    - At the start of upsertContentNode you set `type#lastUpdated` using the contentType: `createLastUpdatedAttribute(contentType.dbType)`.
    - In the branch for `is ContentNode.StaticNode, is ContentNode.ImageNode`, you then set it again to `createLastUpdatedAttribute("static")`, overriding the first value, and for images this is likely wrong.
    - Fix: don’t override; the initial line is sufficient and consistent. If you intended a different type prefix, choose it explicitly per content type.
 
-6. Test data bug: duplicate srcKey for post2 and post3 in tests
+6. ~~Test data bug: duplicate srcKey for post2 and post3 in tests~~
    - In tests `post2.srcKey` and `post3.srcKey` are both set to `"posts/2025/08/non-matching-post.md"`. This will overwrite the previous item or cause confusion in expectations.
    - Fix: give post3 a distinct key (e.g., `another-non-matching-post.md`).
 
-7. listAllProjects scan uses `contains(domain#type, "#project")`
+7. listAllProjects scan uses `contains(domain#type, "#project")` - **REJECTED** - `begins_with` fails tests but there may still be a better way of writing this query?
    - This is functional but semantically odd; value is of the form `domain#project`, so contains("#project") matches, but `begins_with` or a GSI designed for projects would be clearer and more efficient.
 
 ---

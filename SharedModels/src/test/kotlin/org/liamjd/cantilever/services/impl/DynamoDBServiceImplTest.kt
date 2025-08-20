@@ -158,6 +158,48 @@ internal class DynamoDBServiceImplTest {
     }
 
     @Test
+    fun `listAllProjects should return all saved projects`() = runBlocking {
+        // Setup
+        val project1 = CantileverProject(
+            domain = "test-domain-1",
+            projectName = "Test Project 1",
+            author = "Author 1",
+            dateFormat = "yyyy-MM-dd",
+            dateTimeFormat = "yyyy-MM-dd HH:mm:ss"
+        )
+
+        val project2 = CantileverProject(
+            domain = "test-domain-2",
+            projectName = "Test Project 2",
+            author = "Author 2",
+            dateFormat = "dd/MM/yyyy",
+            dateTimeFormat = "dd/MM/yyyy HH:mm"
+        )
+
+        service.saveProject(project1)
+        service.saveProject(project2)
+
+        // Execute
+        val allProjects = service.listAllProjects()
+
+        // Verify
+        assertNotNull(allProjects, "The project list should not be null")
+        assertEquals(2, allProjects.size, "Should return two projects")
+        assertTrue(allProjects.any { it.domain == project1.domain && it.projectName == project1.projectName })
+        assertTrue(allProjects.any { it.domain == project2.domain && it.projectName == project2.projectName })
+    }
+
+    @Test
+    fun `listAllProjects with no projects should return empty list`() = runBlocking {
+        // Ensure no projects are present
+        val allProjects = service.listAllProjects()
+
+        // Verify
+        assertNotNull(allProjects, "The project list should not be null")
+        assertTrue(allProjects.isEmpty(), "Should return an empty list when no projects exist")
+    }
+
+    @Test
     fun `saveProject should store project in DynamoDB`() {
         // Setup
         val project = CantileverProject(
@@ -678,7 +720,7 @@ internal class DynamoDBServiceImplTest {
             slug = "another-non-matching-post",
             attributes = mapOf("author" to "Jane Doe", "category" to "Science")
         )
-        post3.srcKey = "posts/2025/08/non-matching-post.md"
+        post3.srcKey = "posts/2025/08/another-non-matching-post.md"
 
         service.upsertContentNode(
             srcKey = post1.srcKey,
