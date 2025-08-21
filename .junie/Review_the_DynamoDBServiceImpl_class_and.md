@@ -53,8 +53,8 @@ This makes the class harder to maintain and test. There are also some correctnes
 ---
 
 ### Inconsistencies and design issues
-- Error handling duplication:
-  - Some methods use the `executeDynamoOperation` wrapper (getProject, getNodeCount, listAllNodesForProject, key-list methods), others re-implement try/catch (saveProject, deleteProject, upsertContentNode, getContentNode).
+- ~~Error handling duplication~~:
+  - Some methods use the `executeDynamoOperation` wrapper (getProject, getNodeCount, listAllNodesForProject, key-list methods), others re-implement try/catch (~~saveProject~~, ~~deleteProject~~, ~~listAllProjects~~ ~~upsertContentNode~~, ~~getContentNode~~).
   - Recommendation: use the wrapper consistently for all Dynamo calls to remove repetition and centralize logging/handling.
 
 - Attribute duplication in upsertContentNode
@@ -77,7 +77,7 @@ This makes the class harder to maintain and test. There are also some correctnes
   - You accept `region: Region` in the constructor but don’t use it. If the client is always injected, remove region from the service to avoid confusion.
 
 - Logging polish
-  - A few log messages indicate copy/paste (e.g., mapToFolderNode catch says StaticNode). Also consider structured logging for repeated patterns.
+  - A few log messages indicate copy/paste (e.g., ~~mapToFolderNode catch says StaticNode~~). Also consider structured logging for repeated patterns.
 
 ---
 
