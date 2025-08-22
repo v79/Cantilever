@@ -828,6 +828,80 @@ internal class DynamoDBServiceImplTest {
 
     /** =============================================================== */
 
+    @Test
+    fun `can save a folder with children and optional index page`() = runBlocking {
+        // Setup
+        val folder = ContentNode.FolderNode(
+            srcKey = "sources/pages/guides"
+        )
+        val child1 = "sources/pages/guides/index.md"
+        val child2 = "sources/pages/guides/intro.md"
+        folder.children.addAll(listOf(child1, child2))
+        folder.indexPage = child1
+
+        // Execute
+        val saved = service.upsertContentNode(
+            srcKey = folder.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Folders,
+            node = folder,
+            attributes = emptyMap()
+        )
+
+        // Verify save
+        assertTrue(saved, "Failed to save folder node. Check the logs.")
+
+        // Retrieve
+        val retrieved = service.getContentNode(
+            srcKey = folder.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Folders
+        )
+
+        // Verify retrieve
+        assertNotNull(retrieved, "Retrieved folder should not be null")
+        assertIs<ContentNode.FolderNode>(retrieved)
+        assertEquals(folder.srcKey, retrieved.srcKey)
+        // The order of SS (String Set) from DynamoDB is not guaranteed, compare as sets
+        assertEquals(folder.children.toSet(), retrieved.children.toSet())
+        // Note: indexPage is currently not mapped back in mapToFolderNode, so we do not assert it here
+    }
+
+    @Test
+    fun `can save a folder with no children and no index page`() = runBlocking {
+        // Setup
+        val emptyFolder = ContentNode.FolderNode(
+            srcKey = "sources/pages/emptyFolder"
+        )
+        emptyFolder.indexPage = null // explicitly show this case
+
+        // Execute
+        val saved = service.upsertContentNode(
+            srcKey = emptyFolder.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Folders,
+            node = emptyFolder,
+            attributes = emptyMap()
+        )
+
+        // Verify save
+        assertTrue(saved, "Failed to save empty folder node. Check the logs.")
+
+        // Retrieve
+        val retrieved = service.getContentNode(
+            srcKey = emptyFolder.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Folders
+        )
+
+        // Verify retrieve
+        assertNotNull(retrieved, "Retrieved folder should not be null")
+        assertIs<ContentNode.FolderNode>(retrieved)
+        assertEquals(emptyFolder.srcKey, retrieved.srcKey)
+        assertTrue(retrieved.children.isEmpty(), "Expected no children for empty folder")
+        // indexPage may be null; it is not mapped back currently, so we don't assert it
+    }
+
     /**
      * Create the DynamoDB table for testing. This is a pretty hand-coded representation of the table structure
      * that the service expects. The real table is created in the CDK scripts.

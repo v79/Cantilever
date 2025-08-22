@@ -57,7 +57,7 @@ This makes the class harder to maintain and test. There are also some correctnes
   - Some methods use the `executeDynamoOperation` wrapper (getProject, getNodeCount, listAllNodesForProject, key-list methods), others re-implement try/catch (~~saveProject~~, ~~deleteProject~~, ~~listAllProjects~~ ~~upsertContentNode~~, ~~getContentNode~~).
   - Recommendation: use the wrapper consistently for all Dynamo calls to remove repetition and centralize logging/handling.
 
-- Attribute duplication in upsertContentNode
+- ~~Attribute duplication in upsertContentNode~~
   - For `PostNode` and `PageNode`, you write both the node’s own attributes (from `node.attributes`) and again the `attributes` param (which your tests often pass equal to `node.attributes`). The second pass will overwrite the same `attr#` keys.
   - Recommendation: adopt a single source of truth. Either:
     - Use only `node.attributes` and remove the separate `attributes` parameter, OR
@@ -76,7 +76,7 @@ This makes the class harder to maintain and test. There are also some correctnes
 - Region parameter not used
   - You accept `region: Region` in the constructor but don’t use it. If the client is always injected, remove region from the service to avoid confusion.
 
-- Logging polish
+- ~~Logging polish~~
   - A few log messages indicate copy/paste (e.g., ~~mapToFolderNode catch says StaticNode~~). Also consider structured logging for repeated patterns.
 
 ---

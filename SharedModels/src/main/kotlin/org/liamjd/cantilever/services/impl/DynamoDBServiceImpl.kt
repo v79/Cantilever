@@ -220,7 +220,7 @@ class DynamoDBServiceImpl(
             val item = mutableMapOf<String, AttributeValue>(
                 "domain#type" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
                 "srcKey" to AttributeValue.builder().s(srcKey).build(),
-                "type#lastUpdated" to createLastUpdatedAttribute(contentType.dbType)
+                "type#lastUpdated" to createLastUpdatedAttribute(contentType.dbType)  // TODO : this should just be "now"
             )
 
             // Add node properties based on its type
@@ -232,11 +232,6 @@ class DynamoDBServiceImpl(
                     item["date"] = AttributeValue.builder().s(node.date.toString()).build()
                     item["next"] = AttributeValue.builder().s(node.next ?: "").build()
                     item["prev"] = AttributeValue.builder().s(node.prev ?: "").build()
-
-                    // Add the node's own custom attributes with attr# prefix
-                    node.attributes.forEach { (key, value) ->
-                        item["attr#$key"] = AttributeValue.builder().s(value).build()
-                    }
                 }
 
                 is ContentNode.TemplateNode -> {
@@ -256,22 +251,20 @@ class DynamoDBServiceImpl(
                     item["templateKey"] = AttributeValue.builder().s(node.templateKey).build()
                     item["sections"] = AttributeValue.builder().ss(node.sections.keys).build()
                     item["parent"] = AttributeValue.builder().s(node.parent).build()
-                    // Add the node's own custom attributes with attr# prefix
-                    node.attributes.forEach { (key, value) ->
-                        item["attr#$key"] = AttributeValue.builder().s(value).build()
-                    }
                 }
 
                 is ContentNode.FolderNode -> {
                     if (node.children.isNotEmpty()) {
                         item["children"] = AttributeValue.builder().ss(node.children).build()
+                    }
+                    if (node.indexPage != null) {
                         item["indexPage"] = AttributeValue.builder().s(node.indexPage).build()
                     }
                 }
             }
 
-            log("Adding additional attributes: $attributes")
             // Add additional attributes to the item with attr# prefix
+            log("Adding additional attributes: $attributes")
             attributes.forEach { (key, value) ->
                 item["attr#$key"] = AttributeValue.builder().s(value).build() // might not always be a string
             }
