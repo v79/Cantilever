@@ -9,6 +9,7 @@ import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.rest.TemplateListDTO
+import org.liamjd.cantilever.services.GetSingleItemOrdering
 import org.testcontainers.containers.localstack.LocalStackContainer
 import org.testcontainers.utility.DockerImageName
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
@@ -817,7 +818,7 @@ internal class DynamoDBServiceImplTest {
             projectDomain = "test-domain",
             contentType = SOURCE_TYPE.Posts,
             lsiName = "Type-Date",
-            operation = "first"
+            operation = GetSingleItemOrdering.FIRST
         )
 
         // Verify

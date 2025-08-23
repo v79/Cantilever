@@ -276,6 +276,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
     }
 
     /**
+     * TODO: Replace with DynamoDB call
      * Return the CantileverProject model
      */
     private fun getProjectModel(domain: String, sourceBucket: String): CantileverProject {

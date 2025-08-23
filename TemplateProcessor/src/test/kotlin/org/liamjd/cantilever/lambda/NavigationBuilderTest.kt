@@ -20,6 +20,7 @@ import org.liamjd.cantilever.common.EnvironmentProvider
 import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.services.DynamoDBService
+import org.liamjd.cantilever.services.GetSingleItemOrdering
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -183,7 +184,7 @@ internal class NavigationBuilderTest : KoinTest {
                     "test-domain",
                     SOURCE_TYPE.Posts,
                     "Type-Date",
-                    "first"
+                    GetSingleItemOrdering.FIRST
                 )
             } returns post1.srcKey
 
@@ -193,7 +194,7 @@ internal class NavigationBuilderTest : KoinTest {
                     "test-domain",
                     SOURCE_TYPE.Posts,
                     "Type-Date",
-                    "last"
+                    GetSingleItemOrdering.LAST
                 )
             } returns post3.srcKey
 
@@ -214,7 +215,7 @@ internal class NavigationBuilderTest : KoinTest {
                 "test-domain",
                 SOURCE_TYPE.Posts,
                 "Type-Date",
-                "first"
+                GetSingleItemOrdering.FIRST
             )
         } returns post1.srcKey
         coEvery {
@@ -222,7 +223,7 @@ internal class NavigationBuilderTest : KoinTest {
                 "test-domain",
                 SOURCE_TYPE.Posts,
                 "Type-Date",
-                "last"
+                GetSingleItemOrdering.LAST
             )
         } returns post3.srcKey
 

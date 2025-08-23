@@ -7,11 +7,13 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.liamjd.cantilever.common.SOURCE_TYPE
+import org.liamjd.cantilever.common.SystemEnvironmentProvider
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.services.AWSLogger
 import org.liamjd.cantilever.services.DynamoDBResult
 import org.liamjd.cantilever.services.DynamoDBService
+import org.liamjd.cantilever.services.GetSingleItemOrdering
 import software.amazon.awssdk.awscore.exception.AwsServiceException
 import software.amazon.awssdk.core.exception.SdkClientException
 import software.amazon.awssdk.regions.Region
@@ -26,7 +28,7 @@ import software.amazon.awssdk.services.dynamodb.model.*
  */
 class DynamoDBServiceImpl(
     private val region: Region,
-    val tableName: String = "cantilever-dev-cantileverdevdatabasecontentnodetable62135F84-44G7850XR76D", // TODO: This should be configurable
+    val tableName: String = SystemEnvironmentProvider().getEnv("dynamodb_table"),
     private val dynamoDbClient: DynamoDbAsyncClient,
     enableLogging: Boolean = true,
 ) : DynamoDBService, AWSLogger(enableLogging, "DynamoDBService") {
@@ -45,6 +47,13 @@ class DynamoDBServiceImpl(
         contextInfo: String,
         operation: suspend () -> T
     ): T {
+        // Ensure the table name has been provided via environment variable; fail fast if missing
+        if (tableName.isBlank()) {
+            val message = "DynamoDB table name is not configured. Set environment variable 'dynamodb_table' before attempting to $operationDescription. Context: $contextInfo"
+            log("ERROR", message)
+            throw IllegalStateException(message)
+        }
+
         log("$operationDescription: $contextInfo")
 
         try {
@@ -680,7 +689,7 @@ class DynamoDBServiceImpl(
         projectDomain: String,
         contentType: SOURCE_TYPE,
         lsiName: String,
-        operation: String
+        operation: GetSingleItemOrdering
     ): String? {
         log("Getting first or last item from LSI '$lsiName' for domain: $projectDomain of type: ${contentType.dbType}")
 
@@ -699,7 +708,7 @@ class DynamoDBServiceImpl(
                     )
                 )
                 .limit(1) // Only get the first or last item
-                .scanIndexForward(operation == "first") // true for first, false for last
+                .scanIndexForward(operation == GetSingleItemOrdering.FIRST) // true for first, false for last
                 .build()
 
             log("Executing Query request on LSI '$lsiName' in domain: $projectDomain")

@@ -186,6 +186,14 @@ interface DynamoDBService {
         projectDomain: String,
         contentType: SOURCE_TYPE,
         lsiName: String,
-        operation: String
+        operation: GetSingleItemOrdering
     ): String?
+}
+
+/**
+ * When querying DynamoDB, we can either get the first or last item in the specified LSI.
+ * This enum is used to specify which one.
+ */
+enum class GetSingleItemOrdering {
+    FIRST, LAST
 }

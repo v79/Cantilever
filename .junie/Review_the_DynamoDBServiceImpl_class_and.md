@@ -70,7 +70,7 @@ This makes the class harder to maintain and test. There are also some correctnes
 - Table/Index alignment
   - `listAllProjects` depends on scanning by a string pattern for `domain#type`. The test’s createTable also defines GSIs/LSIs. Ensure production table/CDK keep these in sync; the test file warns this may drift.
 
-- Hard-coded default table name
+- ~~Hard-coded default table name~~
   - The constructor default table name is a long “dev” table physical ID. It should be injected from config/env, and prod/dev separation enforced by DI or module wiring.
 
 - Region parameter not used
@@ -82,7 +82,7 @@ This makes the class harder to maintain and test. There are also some correctnes
 ---
 
 ### Specific merge/split suggestions
-1. Centralize error handling using executeDynamoOperation
+1. ~~Centralize error handling using executeDynamoOperation~~
    - Update saveProject, deleteProject, upsertContentNode, getContentNode to use the wrapper. This removes repeated try/catch blocks and makes behavior consistent.
 
 2. Split upsertContentNode into type-specific builders
@@ -96,7 +96,7 @@ This makes the class harder to maintain and test. There are also some correctnes
      - Keep `getKeyListMatchingTemplate` as a convenience wrapper that calls `getKeyListMatchingAttributes(projectDomain, contentType, mapOf("templateKey" to templateKey), limit=..., descending=...)`.
      - Or remove the separate method to reduce API surface.
 
-4. Introduce an enum for “first/last”
+4. ~~Introduce an enum for “first/last”~~
    - `getFirstOrLastKeyFromLSI(..., operation: String)` currently checks `operation == "first"`. Using an enum or a boolean `first: Boolean` eliminates stringly-typed errors.
 
 5. Extract common query builders

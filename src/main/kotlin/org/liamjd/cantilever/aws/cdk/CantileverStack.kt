@@ -53,7 +53,7 @@ class CantileverStack(
 ) : Stack(scope, id, props) {
 
     enum class ENV {
-        destination_bucket, source_bucket, generation_bucket, markdown_processing_queue, handlebar_template_queue, image_processing_queue, cors_domain, cognito_region, cognito_user_pools_id, dynamo_table_name
+        destination_bucket, source_bucket, generation_bucket, markdown_processing_queue, handlebar_template_queue, image_processing_queue, cors_domain, cognito_region, cognito_user_pools_id, dynamodb_table
     }
 
     // TODO: I suppose I'm going to need to set up a dev and production environment for this sort of thing. Boo.
@@ -128,6 +128,33 @@ class CantileverStack(
         println("Creating image processing queue")
         val imageProcessingQueue = buildSQSQueue("cantilever-image-processing-queue", 3)
 
+        // Create DynamoDB table before any Lambdas so we can inject the table name into their environment
+        println("Creating DynamoDB database tables - PK domain#type, SK srcKey")
+        println("GSI: Project-NodeType-LastUpdated : Just returns the project definitions")
+        println("LSI: Type-Date : Returns items with the Date attribute, mostly just posts.")
+        val contentNodeTable = TableV2.Builder.create(this, "${stageName}-database-content-node-table")
+            .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
+                Attribute.builder().name("domain#type").type(AttributeType.STRING).build()
+            ).sortKey(Attribute.builder().name("srcKey").type(AttributeType.STRING).build())
+            .globalSecondaryIndexes(
+                listOf(
+                    GlobalSecondaryIndexPropsV2.builder().indexName("Project-NodeType-LastUpdated")
+                        .partitionKey(Attribute.builder().name("domain").type(AttributeType.STRING).build()).sortKey(
+                            Attribute.builder().name("type#lastUpdated").type(
+                                AttributeType.STRING
+                            ).build()
+                        ).projectionType(ProjectionType.ALL).build(),
+                )
+            )
+            .localSecondaryIndexes(
+                listOf(
+                    LocalSecondaryIndexProps.builder().indexName("Type-Date")
+                        .sortKey(Attribute.builder().name("date").type(AttributeType.STRING).build())
+                        .projectionType(ProjectionType.KEYS_ONLY).build()
+                )
+            )
+            .build()
+
         println("Creating FileUploadHandler Lambda function")
         val fileUploadLambda = createLambda(
             stack = this,
@@ -141,7 +168,8 @@ class CantileverStack(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.markdown_processing_queue.name to markdownProcessingQueue.queue.queueUrl,
                 ENV.handlebar_template_queue.name to handlebarProcessingQueue.queue.queueUrl,
-                ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl
+                ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl,
+                ENV.dynamodb_table.name to contentNodeTable.tableName
             )
         )
 
@@ -174,6 +202,7 @@ class CantileverStack(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.generation_bucket.name to generationBucket.bucketName,
                 ENV.destination_bucket.name to destinationBucket.bucketName,
+                ENV.dynamodb_table.name to contentNodeTable.tableName,
             )
         )
 
@@ -215,7 +244,8 @@ class CantileverStack(
                 ENV.image_processing_queue.name to imageProcessingQueue.queue.queueUrl,
                 ENV.cors_domain.name to corsDomain,
                 ENV.cognito_region.name to cr,
-                ENV.cognito_user_pools_id.name to cPool.userPoolId
+                ENV.cognito_user_pools_id.name to cPool.userPoolId,
+                ENV.dynamodb_table.name to contentNodeTable.tableName
             )
         )
 
@@ -375,39 +405,11 @@ class CantileverStack(
                   )
                   .build()
       */
-        println("Creating DynamoDB database tables - PK domain#type, SK srcKey")
-        println("GSI: Project-NodeType-LastUpdated : Just returns the project definitions")
-        println("LSI: Type-Date : Returns items with the Date attribute, mostly just posts.")
-        val contentNodeTable = TableV2.Builder.create(this, "${stageName}-database-content-node-table")
-            .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
-                Attribute.builder().name("domain#type").type(AttributeType.STRING).build()
-            ).sortKey(Attribute.builder().name("srcKey").type(AttributeType.STRING).build())
-            .globalSecondaryIndexes(
-                listOf(
-                    GlobalSecondaryIndexPropsV2.builder().indexName("Project-NodeType-LastUpdated")
-                        .partitionKey(Attribute.builder().name("domain").type(AttributeType.STRING).build()).sortKey(
-                            Attribute.builder().name("type#lastUpdated").type(
-                                AttributeType.STRING
-                            ).build()
-                        ).projectionType(ProjectionType.ALL).build(),
-                )
-            )
-            .localSecondaryIndexes(
-                listOf(
-                    LocalSecondaryIndexProps.builder().indexName("Type-Date")
-                        .sortKey(Attribute.builder().name("date").type(AttributeType.STRING).build())
-                        .projectionType(ProjectionType.KEYS_ONLY).build()
-                )
-            )
-            .build()
-        /*GlobalSecondaryIndexPropsV2.builder().indexName("Type-Date")
-            .partitionKey(Attribute.builder().name("type").type(AttributeType.STRING).build())
-            .sortKey(Attribute.builder().name("date").type(AttributeType.STRING).build())
-            .projectionType(ProjectionType.ALL).build()*/
 
         println("Granting permissions to the lambdas to access the DynamoDB table")
         contentNodeTable.grantReadWriteData(apiRoutingLambda)
         contentNodeTable.grantReadWriteData(fileUploadLambda)
+        contentNodeTable.grantReadData(templateProcessorLambda)
 
 
         println("Creating API Gateway DNS record for $apiDomain")

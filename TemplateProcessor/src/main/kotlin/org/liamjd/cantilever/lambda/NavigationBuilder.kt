@@ -8,6 +8,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.services.DynamoDBService
+import org.liamjd.cantilever.services.GetSingleItemOrdering
 import java.time.format.DateTimeFormatter
 
 /**
@@ -85,7 +86,7 @@ class NavigationBuilder(private val dynamoDBService: DynamoDBService, private va
                 projectDomain = domain,
                 contentType = SOURCE_TYPE.Posts,
                 lsiName = "Type-Date",
-                operation = "first"
+                operation = GetSingleItemOrdering.FIRST
             )
             if (firstPostKey != null) {
                 val firstPost = dynamoDBService.getContentNode(
@@ -112,7 +113,7 @@ class NavigationBuilder(private val dynamoDBService: DynamoDBService, private va
                 projectDomain = domain,
                 contentType = SOURCE_TYPE.Posts,
                 lsiName = "Type-Date",
-                operation = "last"
+                operation = GetSingleItemOrdering.LAST
             )
             if (lastPostKey != null) {
                 val lastPost = dynamoDBService.getContentNode(
