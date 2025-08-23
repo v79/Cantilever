@@ -9,6 +9,7 @@ import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.rest.TemplateListDTO
+import org.liamjd.cantilever.services.GetSingleItemOrdering
 import org.testcontainers.containers.localstack.LocalStackContainer
 import org.testcontainers.utility.DockerImageName
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
@@ -155,6 +156,48 @@ internal class DynamoDBServiceImplTest {
             // Verify
             assertEquals(0, count, "Node count should be 0 when no nodes exist")
         }
+    }
+
+    @Test
+    fun `listAllProjects should return all saved projects`() = runBlocking {
+        // Setup
+        val project1 = CantileverProject(
+            domain = "test-domain-1",
+            projectName = "Test Project 1",
+            author = "Author 1",
+            dateFormat = "yyyy-MM-dd",
+            dateTimeFormat = "yyyy-MM-dd HH:mm:ss"
+        )
+
+        val project2 = CantileverProject(
+            domain = "test-domain-2",
+            projectName = "Test Project 2",
+            author = "Author 2",
+            dateFormat = "dd/MM/yyyy",
+            dateTimeFormat = "dd/MM/yyyy HH:mm"
+        )
+
+        service.saveProject(project1)
+        service.saveProject(project2)
+
+        // Execute
+        val allProjects = service.listAllProjects()
+
+        // Verify
+        assertNotNull(allProjects, "The project list should not be null")
+        assertEquals(2, allProjects.size, "Should return two projects")
+        assertTrue(allProjects.any { it.domain == project1.domain && it.projectName == project1.projectName })
+        assertTrue(allProjects.any { it.domain == project2.domain && it.projectName == project2.projectName })
+    }
+
+    @Test
+    fun `listAllProjects with no projects should return empty list`() = runBlocking {
+        // Ensure no projects are present
+        val allProjects = service.listAllProjects()
+
+        // Verify
+        assertNotNull(allProjects, "The project list should not be null")
+        assertTrue(allProjects.isEmpty(), "Should return an empty list when no projects exist")
     }
 
     @Test
@@ -678,7 +721,7 @@ internal class DynamoDBServiceImplTest {
             slug = "another-non-matching-post",
             attributes = mapOf("author" to "Jane Doe", "category" to "Science")
         )
-        post3.srcKey = "posts/2025/08/non-matching-post.md"
+        post3.srcKey = "posts/2025/08/another-non-matching-post.md"
 
         service.upsertContentNode(
             srcKey = post1.srcKey,
@@ -775,7 +818,7 @@ internal class DynamoDBServiceImplTest {
             projectDomain = "test-domain",
             contentType = SOURCE_TYPE.Posts,
             lsiName = "Type-Date",
-            operation = "first"
+            operation = GetSingleItemOrdering.FIRST
         )
 
         // Verify
@@ -785,6 +828,80 @@ internal class DynamoDBServiceImplTest {
     }
 
     /** =============================================================== */
+
+    @Test
+    fun `can save a folder with children and optional index page`() = runBlocking {
+        // Setup
+        val folder = ContentNode.FolderNode(
+            srcKey = "sources/pages/guides"
+        )
+        val child1 = "sources/pages/guides/index.md"
+        val child2 = "sources/pages/guides/intro.md"
+        folder.children.addAll(listOf(child1, child2))
+        folder.indexPage = child1
+
+        // Execute
+        val saved = service.upsertContentNode(
+            srcKey = folder.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Folders,
+            node = folder,
+            attributes = emptyMap()
+        )
+
+        // Verify save
+        assertTrue(saved, "Failed to save folder node. Check the logs.")
+
+        // Retrieve
+        val retrieved = service.getContentNode(
+            srcKey = folder.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Folders
+        )
+
+        // Verify retrieve
+        assertNotNull(retrieved, "Retrieved folder should not be null")
+        assertIs<ContentNode.FolderNode>(retrieved)
+        assertEquals(folder.srcKey, retrieved.srcKey)
+        // The order of SS (String Set) from DynamoDB is not guaranteed, compare as sets
+        assertEquals(folder.children.toSet(), retrieved.children.toSet())
+        // Note: indexPage is currently not mapped back in mapToFolderNode, so we do not assert it here
+    }
+
+    @Test
+    fun `can save a folder with no children and no index page`() = runBlocking {
+        // Setup
+        val emptyFolder = ContentNode.FolderNode(
+            srcKey = "sources/pages/emptyFolder"
+        )
+        emptyFolder.indexPage = null // explicitly show this case
+
+        // Execute
+        val saved = service.upsertContentNode(
+            srcKey = emptyFolder.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Folders,
+            node = emptyFolder,
+            attributes = emptyMap()
+        )
+
+        // Verify save
+        assertTrue(saved, "Failed to save empty folder node. Check the logs.")
+
+        // Retrieve
+        val retrieved = service.getContentNode(
+            srcKey = emptyFolder.srcKey,
+            projectDomain = "test-domain",
+            contentType = SOURCE_TYPE.Folders
+        )
+
+        // Verify retrieve
+        assertNotNull(retrieved, "Retrieved folder should not be null")
+        assertIs<ContentNode.FolderNode>(retrieved)
+        assertEquals(emptyFolder.srcKey, retrieved.srcKey)
+        assertTrue(retrieved.children.isEmpty(), "Expected no children for empty folder")
+        // indexPage may be null; it is not mapped back currently, so we don't assert it
+    }
 
     /**
      * Create the DynamoDB table for testing. This is a pretty hand-coded representation of the table structure

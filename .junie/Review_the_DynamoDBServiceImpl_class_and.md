@@ -10,13 +10,13 @@ This makes the class harder to maintain and test. There are also some correctnes
 ---
 
 ### High-impact issues and bugs
-1. Timestamp parsing bug
+1. ~~Timestamp parsing bug~~
    - createLastUpdatedAttribute stores milliseconds: `"$type#${System.currentTimeMillis()}"`.
    - extractLastUpdatedTimestamp parses the second segment and then calls `Instant.fromEpochSeconds(timestamp)`. This interprets milliseconds as seconds.
    - Impact: lastUpdated on nodes will be incorrect by a factor of 1000.
    - Fix: use `Instant.fromEpochMilliseconds(timestamp)`.
 
-2. getKeyListFromLSI builds a dynamic placeholder in the expression but hard-codes a different placeholder in the values
+2. ~~getKeyListFromLSI builds a dynamic placeholder in the expression but hard-codes a different placeholder in the values~~
    - Expression uses `:\${attribute.first}` but values map builds `":date"` regardless of `attribute.first`.
    - Tests pass only because they use `attribute.first == "date"`.
    - Fix: use the same dynamic key for the values map, e.g.:
@@ -30,34 +30,34 @@ This makes the class harder to maintain and test. There are also some correctnes
      )
      ```
 
-3. getContentNode omits Pages
+3. ~~getContentNode omits Pages~~
    - The `when` only covers Templates, Posts, Statics, Folders. Pages are supported elsewhere (upsert, listAllNodesForProject).
    - Fix: add `SOURCE_TYPE.Pages -> mapToPageNode(response.item())` to getContentNode.
 
-4. Possible inverted ordering flag in getKeyListMatchingAttributes
+4. ~~Possible inverted ordering flag in getKeyListMatchingAttributes~~
    - The comment says `descending` default is true. In DynamoDB, `scanIndexForward(true)` = ascending. The code currently passes `scanIndexForward(descending)`, meaning `true` -> ascending, which contradicts the default documentation.
    - Fix: use `.scanIndexForward(!descending)` like you do in getKeyListFromLSI, or clarify naming.
 
-5. Overwriting type#lastUpdated for static/image nodes
+5. ~~Overwriting type#lastUpdated for static/image nodes~~
    - At the start of upsertContentNode you set `type#lastUpdated` using the contentType: `createLastUpdatedAttribute(contentType.dbType)`.
    - In the branch for `is ContentNode.StaticNode, is ContentNode.ImageNode`, you then set it again to `createLastUpdatedAttribute("static")`, overriding the first value, and for images this is likely wrong.
    - Fix: don’t override; the initial line is sufficient and consistent. If you intended a different type prefix, choose it explicitly per content type.
 
-6. Test data bug: duplicate srcKey for post2 and post3 in tests
+6. ~~Test data bug: duplicate srcKey for post2 and post3 in tests~~
    - In tests `post2.srcKey` and `post3.srcKey` are both set to `"posts/2025/08/non-matching-post.md"`. This will overwrite the previous item or cause confusion in expectations.
    - Fix: give post3 a distinct key (e.g., `another-non-matching-post.md`).
 
-7. listAllProjects scan uses `contains(domain#type, "#project")`
+7. listAllProjects scan uses `contains(domain#type, "#project")` - **REJECTED** - `begins_with` fails tests but there may still be a better way of writing this query?
    - This is functional but semantically odd; value is of the form `domain#project`, so contains("#project") matches, but `begins_with` or a GSI designed for projects would be clearer and more efficient.
 
 ---
 
 ### Inconsistencies and design issues
-- Error handling duplication:
-  - Some methods use the `executeDynamoOperation` wrapper (getProject, getNodeCount, listAllNodesForProject, key-list methods), others re-implement try/catch (saveProject, deleteProject, upsertContentNode, getContentNode).
+- ~~Error handling duplication~~:
+  - Some methods use the `executeDynamoOperation` wrapper (getProject, getNodeCount, listAllNodesForProject, key-list methods), others re-implement try/catch (~~saveProject~~, ~~deleteProject~~, ~~listAllProjects~~ ~~upsertContentNode~~, ~~getContentNode~~).
   - Recommendation: use the wrapper consistently for all Dynamo calls to remove repetition and centralize logging/handling.
 
-- Attribute duplication in upsertContentNode
+- ~~Attribute duplication in upsertContentNode~~
   - For `PostNode` and `PageNode`, you write both the node’s own attributes (from `node.attributes`) and again the `attributes` param (which your tests often pass equal to `node.attributes`). The second pass will overwrite the same `attr#` keys.
   - Recommendation: adopt a single source of truth. Either:
     - Use only `node.attributes` and remove the separate `attributes` parameter, OR
@@ -70,19 +70,19 @@ This makes the class harder to maintain and test. There are also some correctnes
 - Table/Index alignment
   - `listAllProjects` depends on scanning by a string pattern for `domain#type`. The test’s createTable also defines GSIs/LSIs. Ensure production table/CDK keep these in sync; the test file warns this may drift.
 
-- Hard-coded default table name
+- ~~Hard-coded default table name~~
   - The constructor default table name is a long “dev” table physical ID. It should be injected from config/env, and prod/dev separation enforced by DI or module wiring.
 
 - Region parameter not used
   - You accept `region: Region` in the constructor but don’t use it. If the client is always injected, remove region from the service to avoid confusion.
 
-- Logging polish
-  - A few log messages indicate copy/paste (e.g., mapToFolderNode catch says StaticNode). Also consider structured logging for repeated patterns.
+- ~~Logging polish~~
+  - A few log messages indicate copy/paste (e.g., ~~mapToFolderNode catch says StaticNode~~). Also consider structured logging for repeated patterns.
 
 ---
 
 ### Specific merge/split suggestions
-1. Centralize error handling using executeDynamoOperation
+1. ~~Centralize error handling using executeDynamoOperation~~
    - Update saveProject, deleteProject, upsertContentNode, getContentNode to use the wrapper. This removes repeated try/catch blocks and makes behavior consistent.
 
 2. Split upsertContentNode into type-specific builders
@@ -96,7 +96,7 @@ This makes the class harder to maintain and test. There are also some correctnes
      - Keep `getKeyListMatchingTemplate` as a convenience wrapper that calls `getKeyListMatchingAttributes(projectDomain, contentType, mapOf("templateKey" to templateKey), limit=..., descending=...)`.
      - Or remove the separate method to reduce API surface.
 
-4. Introduce an enum for “first/last”
+4. ~~Introduce an enum for “first/last”~~
    - `getFirstOrLastKeyFromLSI(..., operation: String)` currently checks `operation == "first"`. Using an enum or a boolean `first: Boolean` eliminates stringly-typed errors.
 
 5. Extract common query builders

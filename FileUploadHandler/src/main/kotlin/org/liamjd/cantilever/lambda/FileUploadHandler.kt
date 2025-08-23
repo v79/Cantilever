@@ -494,7 +494,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
     ) {
         log("Upserting '$contentType' node for '$srcKey' in project '$projectDomain'")
         dynamoDBService.upsertContentNode(
-            srcKey = srcKey, projectDomain = projectDomain, contentType = contentType, node = node, emptyMap()
+            srcKey = srcKey, projectDomain = projectDomain, contentType = contentType, node = node, attributes = emptyMap()
         )
     }
 

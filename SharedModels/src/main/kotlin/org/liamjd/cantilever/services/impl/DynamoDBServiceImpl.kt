@@ -7,11 +7,13 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.liamjd.cantilever.common.SOURCE_TYPE
+import org.liamjd.cantilever.common.SystemEnvironmentProvider
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.services.AWSLogger
 import org.liamjd.cantilever.services.DynamoDBResult
 import org.liamjd.cantilever.services.DynamoDBService
+import org.liamjd.cantilever.services.GetSingleItemOrdering
 import software.amazon.awssdk.awscore.exception.AwsServiceException
 import software.amazon.awssdk.core.exception.SdkClientException
 import software.amazon.awssdk.regions.Region
@@ -26,7 +28,7 @@ import software.amazon.awssdk.services.dynamodb.model.*
  */
 class DynamoDBServiceImpl(
     private val region: Region,
-    val tableName: String = "cantilever-dev-cantileverdevdatabasecontentnodetable62135F84-44G7850XR76D", // TODO: This should be configurable
+    val tableName: String = SystemEnvironmentProvider().getEnv("dynamodb_table"),
     private val dynamoDbClient: DynamoDbAsyncClient,
     enableLogging: Boolean = true,
 ) : DynamoDBService, AWSLogger(enableLogging, "DynamoDBService") {
@@ -45,6 +47,13 @@ class DynamoDBServiceImpl(
         contextInfo: String,
         operation: suspend () -> T
     ): T {
+        // Ensure the table name has been provided via environment variable; fail fast if missing
+        if (tableName.isBlank()) {
+            val message = "DynamoDB table name is not configured. Set environment variable 'dynamodb_table' before attempting to $operationDescription. Context: $contextInfo"
+            log("ERROR", message)
+            throw IllegalStateException(message)
+        }
+
         log("$operationDescription: $contextInfo")
 
         try {
@@ -102,7 +111,7 @@ class DynamoDBServiceImpl(
     override suspend fun saveProject(project: CantileverProject): CantileverProject {
         log("Saving project: ${project.projectName} for domain: ${project.domain}")
 
-        try {
+        return executeDynamoOperation("save project", "domain: ${project.domain}, project: ${project.projectName}") {
             val item = mapOf(
                 "domain#type" to AttributeValue.builder().s("${project.domain}#project").build(),
                 "srcKey" to AttributeValue.builder().s(project.projectKey).build(),
@@ -123,19 +132,7 @@ class DynamoDBServiceImpl(
             dynamoDbClient.putItem(request).await()
 
             log("Successfully saved project: ${project.projectName} for domain: ${project.domain}")
-            return project
-        } catch (e: DynamoDbException) {
-            log("ERROR", "Failed to save project: ${project.projectName} for domain: ${project.domain}", e)
-            throw e
-        } catch (e: AwsServiceException) {
-            log("ERROR", "AWS service error while saving project: ${project.projectName}", e)
-            throw e
-        } catch (e: SdkClientException) {
-            log("ERROR", "SDK client error while saving project: ${project.projectName}", e)
-            throw e
-        } catch (e: Exception) {
-            log("ERROR", "Unexpected error while saving project: ${project.projectName}", e)
-            throw e
+            project
         }
     }
 
@@ -148,7 +145,7 @@ class DynamoDBServiceImpl(
     override suspend fun deleteProject(domain: String, projectName: String): Boolean {
         log("Deleting project: $projectName for domain: $domain")
 
-        try {
+        return executeDynamoOperation("delete project", "domain: $domain, project: $projectName") {
             val key = mapOf(
                 "domain#type" to AttributeValue.builder().s("$domain#project").build(),
                 "srcKey" to AttributeValue.builder().s("$domain.yaml").build()
@@ -173,20 +170,7 @@ class DynamoDBServiceImpl(
                     }"
                 )
             }
-
-            return isSuccessful
-        } catch (e: DynamoDbException) {
-            log("ERROR", "Failed to delete project: $projectName for domain: $domain", e)
-            throw e
-        } catch (e: AwsServiceException) {
-            log("ERROR", "AWS service error while deleting project: $projectName", e)
-            throw e
-        } catch (e: SdkClientException) {
-            log("ERROR", "SDK client error while deleting project: $projectName", e)
-            throw e
-        } catch (e: Exception) {
-            log("ERROR", "Unexpected error while deleting project: $projectName", e)
-            throw e
+            isSuccessful
         }
     }
 
@@ -197,7 +181,7 @@ class DynamoDBServiceImpl(
     override suspend fun listAllProjects(): List<CantileverProject> {
         log("Listing all projects")
 
-        try {
+        return executeDynamoOperation("list all projects", "") {
             val request = ScanRequest.builder()
                 .tableName(tableName)
                 .filterExpression("contains(#domainType, :projectType)")
@@ -215,19 +199,7 @@ class DynamoDBServiceImpl(
             val projects = response.items().map { item -> mapToProject(item) }
             log("Found ${projects.size} projects in total")
 
-            return projects
-        } catch (e: DynamoDbException) {
-            log("ERROR", "Failed to list all projects", e)
-            throw e
-        } catch (e: AwsServiceException) {
-            log("ERROR", "AWS service error while listing all projects", e)
-            throw e
-        } catch (e: SdkClientException) {
-            log("ERROR", "SDK client error while listing all projects", e)
-            throw e
-        } catch (e: Exception) {
-            log("ERROR", "Unexpected error while listing all projects", e)
-            throw e
+            projects
         }
     }
 
@@ -250,11 +222,14 @@ class DynamoDBServiceImpl(
     ): Boolean {
         log("Upserting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
 
-        try {
+        return executeDynamoOperation(
+            "upsert content node",
+            "srcKey: $srcKey, domain: $projectDomain, type: ${contentType.dbType}"
+        ) {
             val item = mutableMapOf<String, AttributeValue>(
                 "domain#type" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
                 "srcKey" to AttributeValue.builder().s(srcKey).build(),
-                "type#lastUpdated" to createLastUpdatedAttribute(contentType.dbType)
+                "type#lastUpdated" to createLastUpdatedAttribute(contentType.dbType)  // TODO : this should just be "now"
             )
 
             // Add node properties based on its type
@@ -266,11 +241,6 @@ class DynamoDBServiceImpl(
                     item["date"] = AttributeValue.builder().s(node.date.toString()).build()
                     item["next"] = AttributeValue.builder().s(node.next ?: "").build()
                     item["prev"] = AttributeValue.builder().s(node.prev ?: "").build()
-
-                    // Add the node's own custom attributes with attr# prefix
-                    node.attributes.forEach { (key, value) ->
-                        item["attr#$key"] = AttributeValue.builder().s(value).build()
-                    }
                 }
 
                 is ContentNode.TemplateNode -> {
@@ -279,8 +249,7 @@ class DynamoDBServiceImpl(
                 }
 
                 is ContentNode.StaticNode, is ContentNode.ImageNode -> {
-                    // Static nodes might not have additional properties, but we can add a lastUpdated timestamp
-                    item["type#lastUpdated"] = createLastUpdatedAttribute("static")
+                    // Static nodes might not have additional properties, so for now there is nothing to do
                 }
 
                 is ContentNode.PageNode -> {
@@ -291,22 +260,20 @@ class DynamoDBServiceImpl(
                     item["templateKey"] = AttributeValue.builder().s(node.templateKey).build()
                     item["sections"] = AttributeValue.builder().ss(node.sections.keys).build()
                     item["parent"] = AttributeValue.builder().s(node.parent).build()
-                    // Add the node's own custom attributes with attr# prefix
-                    node.attributes.forEach { (key, value) ->
-                        item["attr#$key"] = AttributeValue.builder().s(value).build()
-                    }
                 }
 
                 is ContentNode.FolderNode -> {
                     if (node.children.isNotEmpty()) {
                         item["children"] = AttributeValue.builder().ss(node.children).build()
+                    }
+                    if (node.indexPage != null) {
                         item["indexPage"] = AttributeValue.builder().s(node.indexPage).build()
                     }
                 }
             }
 
-            log("Adding additional attributes: $attributes")
             // Add additional attributes to the item with attr# prefix
+            log("Adding additional attributes: $attributes")
             attributes.forEach { (key, value) ->
                 item["attr#$key"] = AttributeValue.builder().s(value).build() // might not always be a string
             }
@@ -322,7 +289,7 @@ class DynamoDBServiceImpl(
 
             if (response.sdkHttpResponse().isSuccessful) {
                 log("Successfully upserted content node: $srcKey in domain: $projectDomain")
-                return true
+                true
             } else {
                 log(
                     "WARN",
@@ -330,20 +297,8 @@ class DynamoDBServiceImpl(
                         response.sdkHttpResponse().statusCode()
                     }"
                 )
-                return false
+                false
             }
-        } catch (e: DynamoDbException) {
-            log("ERROR", "Failed to upsert content node: $srcKey in domain: $projectDomain", e)
-            throw e
-        } catch (e: AwsServiceException) {
-            log("ERROR", "AWS service error while upserting content node: $srcKey", e)
-            throw e
-        } catch (e: SdkClientException) {
-            log("ERROR", "SDK client error while upserting content node: $srcKey", e)
-            throw e
-        } catch (e: Exception) {
-            log("ERROR", "Unexpected error while upserting content node: $srcKey", e)
-            throw e
         }
     }
 
@@ -361,7 +316,10 @@ class DynamoDBServiceImpl(
     ): DynamoDBResult {
         log("Deleting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
 
-        try {
+        return executeDynamoOperation(
+            "delete content node",
+            "srcKey: $srcKey, domain: $projectDomain, type: ${contentType.dbType}"
+        ) {
             val key = mapOf(
                 "domain#type" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
                 "srcKey" to AttributeValue.builder().s(srcKey).build()
@@ -375,26 +333,14 @@ class DynamoDBServiceImpl(
             log("Executing DeleteItem request for content node: $srcKey")
             val response = dynamoDbClient.deleteItem(request).await()
             if (response.sdkHttpResponse().isSuccessful) {
-                return DynamoDBResult.OK
+                DynamoDBResult.OK
             } else {
-                return DynamoDBResult.Error(
+                DynamoDBResult.Error(
                     "Error while deleting content node: $srcKey in domain: $projectDomain; status code ${
                         response.sdkHttpResponse().statusCode()
                     } (${response.sdkHttpResponse().statusText()})"
                 )
             }
-        } catch (e: DynamoDbException) {
-            log("ERROR", "Failed to delete content node: $srcKey in domain: $projectDomain", e)
-            throw e
-        } catch (e: AwsServiceException) {
-            log("ERROR", "AWS service error while deleting content node: $srcKey", e)
-            throw e
-        } catch (e: SdkClientException) {
-            log("ERROR", "SDK client error while deleting content node: $srcKey", e)
-            throw e
-        } catch (e: Exception) {
-            log("ERROR", "Unexpected error while deleting content node: $srcKey", e)
-            throw e
         }
     }
 
@@ -412,7 +358,10 @@ class DynamoDBServiceImpl(
     ): ContentNode? {
         log("Getting content node: $srcKey in domain: $projectDomain of type: ${contentType.dbType}")
 
-        try {
+        return executeDynamoOperation(
+            "get content node",
+            "srcKey: $srcKey, domain: $projectDomain, type: ${contentType.dbType}"
+        ) {
             val key = mapOf(
                 "domain#type" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
                 "srcKey" to AttributeValue.builder().s(srcKey).build()
@@ -426,31 +375,20 @@ class DynamoDBServiceImpl(
             log("Executing GetItem request for content node: $srcKey")
             val response = dynamoDbClient.getItem(request).await()
 
-            return if (response.hasItem()) {
+            if (response.hasItem()) {
                 log("Content node found: $srcKey")
                 when (contentType) {
                     SOURCE_TYPE.Templates -> mapToTemplateNode(response.item())
                     SOURCE_TYPE.Posts -> mapToPostNode(response.item())
                     SOURCE_TYPE.Statics -> mapToStaticNode(response.item())
                     SOURCE_TYPE.Folders -> mapToFolderNode(response.item())
+                    SOURCE_TYPE.Pages -> mapToPageNode(response.item())
                     else -> throw IllegalArgumentException("Unsupported content type: ${contentType.dbType}")
                 }
             } else {
                 log("No content node found for srcKey: $srcKey")
                 null
             }
-        } catch (e: DynamoDbException) {
-            log("ERROR", "Failed to get content node: $srcKey in domain: $projectDomain", e)
-            throw e
-        } catch (e: AwsServiceException) {
-            log("ERROR", "AWS service error while getting content node: $srcKey", e)
-            throw e
-        } catch (e: SdkClientException) {
-            log("ERROR", "SDK client error while getting content node: $srcKey", e)
-            throw e
-        } catch (e: Exception) {
-            log("ERROR", "Unexpected error while getting content node: $srcKey", e)
-            throw e
         }
     }
 
@@ -477,7 +415,8 @@ class DynamoDBServiceImpl(
                 .expressionAttributeNames(mapOf("#domainType" to "domain#type"))
                 .expressionAttributeValues(
                     mapOf(
-                        ":domainTypeValue" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build()
+                        ":domainTypeValue" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}")
+                            .build()
                     )
                 )
                 .select(Select.COUNT) // Only get the count
@@ -587,11 +526,14 @@ class DynamoDBServiceImpl(
             contextInfo = "domain: $projectDomain, type: ${contentType.dbType}, attributes: $attributes"
         ) {
             // We add an expression attribute name mapping because the incoming attributes don't match the column name exactly
-            val filterExpression = attributes.entries.joinToString(" AND ") { "#attr_${it.key} = :attrValue_${it.key}" }
+            val filterExpression =
+                attributes.entries.joinToString(" AND ") { "#attr_${it.key} = :attrValue_${it.key}" }
             val expressionAttributeNames = attributes.keys.associateWith { "attr#${it}" }
                 .mapKeys { "#attr_${it.key}" }
             val expressionAttributeValues =
-                attributes.entries.associate { ":attrValue_${it.key}" to AttributeValue.builder().s(it.value).build() }
+                attributes.entries.associate {
+                    ":attrValue_${it.key}" to AttributeValue.builder().s(it.value).build()
+                }
 
             val request = QueryRequest.builder()
                 .tableName(tableName)
@@ -603,12 +545,14 @@ class DynamoDBServiceImpl(
                     ) + expressionAttributeNames
                 )
                 .expressionAttributeValues(
-                    mapOf(":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build()) +
+                    mapOf(
+                        ":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build()
+                    ) +
                             expressionAttributeValues
                 )
                 .projectionExpression("srcKey") // Only get the srcKey
                 .limit(limit)
-                .scanIndexForward(descending)
+                .scanIndexForward(!descending)
                 .build()
 
             log("Executing Query request for keys matching attributes in domain: $projectDomain")
@@ -713,7 +657,7 @@ class DynamoDBServiceImpl(
                     mapOf(
                         ":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build(),
                         // Basic case: use a fixed date string as requested; tests currently insert items with this date
-                        ":date" to AttributeValue.builder().s(attribute.second).build()
+                        ":${attribute.first}" to AttributeValue.builder().s(attribute.second).build()
                     )
                 )
                 .limit(limit)
@@ -745,7 +689,7 @@ class DynamoDBServiceImpl(
         projectDomain: String,
         contentType: SOURCE_TYPE,
         lsiName: String,
-        operation: String
+        operation: GetSingleItemOrdering
     ): String? {
         log("Getting first or last item from LSI '$lsiName' for domain: $projectDomain of type: ${contentType.dbType}")
 
@@ -759,10 +703,12 @@ class DynamoDBServiceImpl(
                 .keyConditionExpression("#pk = :domainType")
                 .expressionAttributeNames(mapOf("#pk" to "domain#type"))
                 .expressionAttributeValues(
-                    mapOf(":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build())
+                    mapOf(
+                        ":domainType" to AttributeValue.builder().s("$projectDomain#${contentType.dbType}").build()
+                    )
                 )
                 .limit(1) // Only get the first or last item
-                .scanIndexForward(operation == "first") // true for first, false for last
+                .scanIndexForward(operation == GetSingleItemOrdering.FIRST) // true for first, false for last
                 .build()
 
             log("Executing Query request on LSI '$lsiName' in domain: $projectDomain")
@@ -954,7 +900,7 @@ class DynamoDBServiceImpl(
             val children = item["children"]?.ss() ?: emptyList()
             return ContentNode.FolderNode(srcKey = srcKey, children = children.toMutableList())
         } catch (e: Exception) {
-            log("ERROR", "Failed to map DynamoDB item to ContentNode.StaticNode: $item", e)
+            log("ERROR", "Failed to map DynamoDB item to ContentNode.FolderNode: $item", e)
             throw e
         }
     }
@@ -970,7 +916,7 @@ class DynamoDBServiceImpl(
         return try {
             if (lastUpdatedStr != null && lastUpdatedStr.contains("#")) {
                 val timestamp = lastUpdatedStr.split("#")[1].toLongOrNull() ?: 0L
-                Instant.fromEpochSeconds(timestamp)
+                Instant.fromEpochMilliseconds(timestamp)
             } else {
                 log("WARN", "Invalid type#lastUpdated format in $itemType item: $lastUpdatedStr")
                 Clock.System.now()
