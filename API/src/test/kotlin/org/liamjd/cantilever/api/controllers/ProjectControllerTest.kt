@@ -1,11 +1,8 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
-import io.mockk.coEvery
-import io.mockk.every
+import io.mockk.*
 import io.mockk.junit5.MockKExtension
-import io.mockk.mockkClass
-import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -108,6 +105,9 @@ internal class ProjectControllerTest : KoinTest {
         declareMock<DynamoDBService> {
             coEvery { mockDynamoDB.saveProject(any()) } returns updatedProject
         }
+        declareMock<S3Service> {
+            every { mockS3.putObjectAsString("example.com.yaml", sourceBucket, any(), "application/x-yaml") } returns 1234
+        }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
 
@@ -167,6 +167,7 @@ internal class ProjectControllerTest : KoinTest {
         }
         declareMock<S3Service> {
             every { mockS3.createFolder(any(), any()) } returns 0
+            every { mockS3.putObjectAsString(any(), any(), any(), any()) } returns 1234
         }
 
         val apiProxyEvent = APIGatewayProxyRequestEvent()
@@ -182,6 +183,7 @@ internal class ProjectControllerTest : KoinTest {
         assertNotNull(response)
         assertEquals(200, response.statusCode)
         verify(atLeast = 5) { mockS3.createFolder(any(), any()) }
+        coVerify(exactly = 0) { mockDynamoDB.saveProject(any()) }
     }
 
     @Test

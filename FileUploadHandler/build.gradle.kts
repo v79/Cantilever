@@ -23,6 +23,7 @@ dependencies {
 
     // serialization
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kaml)
 
     // coroutines
     implementation(libs.kotlin.coroutines.core)

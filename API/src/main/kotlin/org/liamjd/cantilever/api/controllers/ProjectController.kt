@@ -20,6 +20,7 @@ import org.liamjd.cantilever.models.TemplateList
 import org.liamjd.cantilever.models.TemplateMetadata
 
 private const val APP_JSON = "application/json"
+private const val APP_YAML = "application/x-yaml"
 
 /**
  * Manages all the project-wide configuration and json models
@@ -77,10 +78,12 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
     }
 
     /**
-     * Update the project definition in DynamoDB.
+     * Update the project definition YAML file in S3, which will trigger a DynamoDB update
+     * @param request The updated project definition request
+     * @return The updated project definition or an error if the update failed
      */
     fun updateProjectDefinition(request: Request<CantileverProject>): Response<APIResult<CantileverProject>> {
-        info("Updating project definition in DynamoDB")
+        info("Updating project definition in S3 and DynamoDB")
         val updatedDefinition = request.body
         if (updatedDefinition.projectName.isBlank() || updatedDefinition.domain.isBlank()) {
             return Response.badRequest(
@@ -89,17 +92,27 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
         }
         info("Updated project: $updatedDefinition")
 
-        return runBlocking {
-            val savedProject = dynamoDBService.saveProject(updatedDefinition)
-            Response.ok(body = APIResult.Success(value = savedProject))
+        // save the project YAML file
+        try {
+            val projectYaml = Yaml.default.encodeToString(CantileverProject.serializer(), updatedDefinition)
+            s3Service.putObjectAsString("${updatedDefinition.domain}.yaml", sourceBucket, projectYaml, APP_YAML)
+            return Response.ok(body = APIResult.Success(value = updatedDefinition))
+        } catch (e: Exception) {
+            error("Error updating project definition: ${e.message}")
+            return Response.serverError(
+                body = APIResult.Error(statusText = "Error updating project definition: ${e.message}")
+            )
         }
     }
 
     /**
-     * Create a new project in DynamoDB
+     * Create a new project by saving the project definition YAML file in S3, which will trigger a DynamoDB update.
+     * This will also create the default folders in S3.
+     * @param request The new project definition request
+     * @return The new project definition or an error if the creation failed
      */
     fun createProject(request: Request<CantileverProject>): Response<APIResult<String>> {
-        info("Creating new project in DynamoDB")
+        info("Creating new project in S3 and DynamoDB")
         val newProject = request.body
         if (newProject.projectName.isBlank()) {
             return Response.badRequest(
@@ -123,7 +136,9 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
                 )
             }
 
-            dynamoDBService.saveProject(newProject)
+            // save the project YAML file
+            val projectYaml = Yaml.default.encodeToString(CantileverProject.serializer(), newProject)
+            s3Service.putObjectAsString("${newProject.domain}.yaml", sourceBucket, projectYaml, APP_YAML)
             // create the default folders in S3
             s3Service.createFolder(newProject.domain, sourceBucket)
             s3Service.createFolder("${newProject.domain}/$pagesPrefix", sourceBucket)
