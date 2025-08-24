@@ -55,7 +55,7 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                     if (pages.isNotEmpty()) {
                         pages.forEach { page ->
                             val sourceString = s3Service.getObjectAsString(page.srcKey, sourceBucket)
-                            val msgResponse = queuePageRegeneration(domain, page.srcKey, sourceString)
+                            val msgResponse = queuePageRegeneration(pageSrcKey = page.srcKey,sourceString = sourceString, projectDomain = domain)
                             if (msgResponse != null) {
                                 count++
                             } else {

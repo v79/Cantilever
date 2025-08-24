@@ -46,9 +46,9 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String> {
 
         try {
             event.records.forEach { eventRecord ->
-                logger.info("Event record: ${eventRecord.body}")
-
-                when (val sqsMsg = Json.decodeFromString<MarkdownSQSMessage>(eventRecord.body)) {
+                val sqsMsg = Json.decodeFromString<MarkdownSQSMessage>(eventRecord.body)
+                logger.info("Decoded SQS message: $sqsMsg")
+                when (sqsMsg) {
                     is MarkdownSQSMessage.PostUploadMsg -> {
                         processPostUpload(sqsMsg, sourceBucket, generationBucket, handlebarQueueUrl)
                     }
