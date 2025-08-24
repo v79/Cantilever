@@ -4,7 +4,7 @@ import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.SQSEvent
-import com.charleskorn.kaml.Yaml
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
@@ -129,7 +129,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
         try {
             val domain = pageMsg.projectDomain
             val pageTemplateKey = pageMsg.projectDomain + "/" + pageMsg.metadata.templateKey
-            val project = getProjectModel(pageMsg.projectDomain, sourceBucket)
+            val project = getProjectModel(pageMsg.projectDomain) ?: throw Exception("Project model is null")
             val navigationBuilder = NavigationBuilder(dynamoDBService, domain)
             // load the page.html.hbs template
             log("Loading template $pageTemplateKey")
@@ -143,7 +143,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             model["lastModified"] = pageMsg.metadata.lastUpdated
             model.putAll(pageMsg.metadata.attributes)
 
-           /* model["pages"] = navigationBuilder.filterPages()
+            /* model["pages"] = navigationBuilder.filterPages()
             model["posts"] = navigationBuilder.filterPosts()*/
 
             pageMsg.metadata.sections.forEach { (name, objectKey) ->
@@ -186,7 +186,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             log("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
             val sourceString = s3Service.getObjectAsString(template, sourceBucket)
             val templateString = sourceString.stripFrontMatter()
-            val project = getProjectModel(postMsg.projectDomain, sourceBucket)
+            val project = getProjectModel(postMsg.projectDomain) ?: throw Exception("Project model is null")
             // build model from project and from HTML fragment
             val model = mutableMapOf<String, Any?>()
             model["project"] = project
@@ -228,21 +228,23 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
     ) {
         val model = mutableMapOf<String, Any?>()
         try {
-            val project = getProjectModel(staticFileMsg.projectDomain, sourceBucket)
-            model["project"] = project
+            val project = getProjectModel(staticFileMsg.projectDomain)
+            if (project != null) {
+                model["project"] = project
 
-            val cssTemplateString = s3Service.getObjectAsString(staticFileMsg.srcKey, sourceBucket)
-            log("Loaded ${staticFileMsg.srcKey} and rendering via Handlebars to ${staticFileMsg.destinationKey}")
+                val cssTemplateString = s3Service.getObjectAsString(staticFileMsg.srcKey, sourceBucket)
+                log("Loaded ${staticFileMsg.srcKey} and rendering via Handlebars to ${staticFileMsg.destinationKey}")
 
-            val css = with(logger) {
-                val renderer = HandlebarsRenderer()
-                renderer.render(model = model, template = cssTemplateString)
+                val css = with(logger) {
+                    val renderer = HandlebarsRenderer()
+                    renderer.render(model = model, template = cssTemplateString)
+                }
+
+                s3Service.putObjectAsString(
+                    project.domainKey + staticFileMsg.destinationKey, destinationBucket, css, "text/css"
+                )
+                log("Written final CSS file to '${project.domainKey}${staticFileMsg.destinationKey}'")
             }
-
-            s3Service.putObjectAsString(
-                project.domainKey + staticFileMsg.destinationKey, destinationBucket, css, "text/css"
-            )
-            log("Written final CSS file to '${project.domainKey}${staticFileMsg.destinationKey}'")
         } catch (nske: NoSuchKeyException) {
             log("ERROR", "Could not load file from S3, exception: ${nske.message}")
         }
@@ -276,19 +278,20 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
     }
 
     /**
-     * TODO: Replace with DynamoDB call
      * Return the CantileverProject model
+     * @param domain the domain to load the project for
+     * @return the CantileverProject model or null if it could not be loaded
      */
-    private fun getProjectModel(domain: String, sourceBucket: String): CantileverProject {
-        try {
-            val projectYaml = s3Service.getObjectAsString("$domain.yaml", sourceBucket)
-            return Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
-        } catch (nske: NoSuchKeyException) {
-            log("ERROR", "Could not load project model '$domain.yaml' from S3, exception: ${nske.message}")
-            throw nske
+    private fun getProjectModel(domain: String): CantileverProject? {
+        val project = runBlocking {
+            try {
+                dynamoDBService.getProject(domain)
+            } catch (e: Exception) {
+                log("ERROR", "Could not load project model for domain '$domain', exception: ${e.message}")
+            }
         }
+        return project as? CantileverProject?
     }
-
 
 }
 
