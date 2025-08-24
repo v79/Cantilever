@@ -69,7 +69,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
      * This should be the full path.
      */
     fun createFolder(request: Request<Unit>): Response<APIResult<String>> {
-        var folderName = URLDecoder.decode(
+        val folderName = URLDecoder.decode(
             request.pathParameters["folderName"], Charset.defaultCharset()
         )
         return if (folderName != null) {
@@ -97,11 +97,13 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
     fun saveMarkdownPageSource(request: Request<ContentNode.PageNode>): Response<APIResult<String>> {
         info("saveMarkdownPageSource")
         val pageToSave = request.body
+
         pageToSave.also {
             info(
                 "PageToSave: ${it.title} has ${it.attributes.keys.size} attributes and ${it.sections.keys.size} sections"
             )
         }
+
         val srcKey = URLDecoder.decode(pageToSave.srcKey, Charset.defaultCharset())
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             info("Updating existing file '${pageToSave.srcKey}'")

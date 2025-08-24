@@ -99,7 +99,7 @@ sealed class ContentNode {
         override val url: String
             get() {
                 // intended url would be www.cantilevers.org/parentFolder/slug
-                // but parent looks like wwww.cantilevers.org/sources/pages/parentFolder
+                // but parent looks like www.cantilevers.org/sources/pages/parentFolder
                 val parentFolder = parent.replaceFirst("/sources/pages", "")
                 return if (isRoot) {
                     "${parentFolder}/index.html"
