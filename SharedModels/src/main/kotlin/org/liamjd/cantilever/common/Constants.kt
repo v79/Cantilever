@@ -27,6 +27,7 @@ object S3_KEY {
     @Deprecated("Use metadataKey instead")
     const val templatesKey = "$generated/templates.json"
     const val defaultPostTemplateKey = "$templatesPrefix/post.hbs"
+
     @Deprecated("Use dynamoDB service instead")
     const val metadataKey = "$generated/metadata.json"
 }
@@ -61,19 +62,24 @@ enum class SOURCE_TYPE(val folder: String, val dbType: String) {
     Statics("statics", "static"),
     Images("images", "image"),
     Folders("folders", "folder"),
-    // This is a special type that represents the root of the Sources bucket
-    Root("", "root");
+    Project("", "project"),
+    Unknown("", "<<UNKNOWN>>");
 
     object SourceHelper {
         /**
          * Return a [SOURCE_TYPE] for the given folder name
          * @param folderName should be "posts", "pages", "templates", "folders" or "statics"
+         * But in the case of the project yaml file, it will be "domain.yaml"
          */
         fun fromFolderName(folderName: String): SOURCE_TYPE =
-            if(folderName.isBlank()) {
-                Root
+            if (folderName.endsWith(".yaml") && !folderName.contains("/")) {
+                Project
             } else {
-                entries.first { it.folder == folderName.lowercase() }
+                try {
+                    entries.first { it.folder == folderName.lowercase() }
+                } catch (nsee: NoSuchElementException) {
+                    Unknown
+                }
             }
     }
 }

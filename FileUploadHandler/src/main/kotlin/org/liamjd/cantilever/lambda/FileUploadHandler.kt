@@ -4,6 +4,7 @@ import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.LambdaLogger
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.S3Event
+import com.charleskorn.kaml.Yaml
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
@@ -15,6 +16,7 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 import org.liamjd.cantilever.common.*
 import org.liamjd.cantilever.common.SOURCE_TYPE.*
+import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.SrcKey
@@ -98,11 +100,11 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                     val srcBucket = eventRecord.s3.bucket.name
                     val projectDomain = srcKey.substringBefore('/')
                     val size = eventRecord.s3.`object`.sizeAsLong
-                    // the folder determines the type, POST, PAGE, STATICS
+                    // the folder determines the type, POST, PAGE, STATICS, etc
                     val parentFolder = srcKey.removePrefix("$projectDomain/sources/").substringBefore('/')
-                    val sourceType = SourceHelper.fromFolderName(parentFolder)
+                    log("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket' folder '$parentFolder' file type '$fileType' size '$size'")
 
-                    log("EventRecord: '${eventRecord.eventName}' SourceKey='$srcKey' from '$srcBucket'")
+                    val sourceType = SourceHelper.fromFolderName(parentFolder)
 
                     // Check if the event is ObjectCreated (PUT or POST) or ObjectRemoved (DELETE)
                     // TODO: Better to switch/when on this
@@ -140,8 +142,23 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                                 }
                             } else {
                                 when (sourceType) {
-                                    Root -> {
-                                        log("WARN", "No action defined for ROOT upload")
+                                    Unknown -> {
+                                        log("ERROR", "Unknown source type '$parentFolder' for $srcKey")
+                                    }
+                                    Project -> {
+                                        // Confirm that this is a project yaml file
+                                        if (fileType != FILE_TYPE.YAML) {
+                                            log(
+                                                "ERROR",
+                                                "Project files must be written in YAML format with the '.yaml' file extension"
+                                            )
+                                            response = "400 Bad Request"
+                                        } else {
+                                            if (!processProjectUpload(srcKey, srcBucket)) {
+                                                log("ERROR", "Error while processing uploaded project file.")
+                                                response = "500 Internal Server Error"
+                                            }
+                                        }
                                     }
 
                                     Posts -> {
@@ -243,6 +260,21 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
         }
 
         return response
+    }
+
+    /**
+     * Process the uploaded Project YAML file. The database entry is identical to the YAML file (unlike all other nodes)
+     */
+    private suspend fun processProjectUpload(srcKey: String, srcBucket: String): Boolean {
+        try {
+            val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
+            val project = Yaml.default.decodeFromString(CantileverProject.serializer(), sourceString)
+            dynamoDBService.saveProject(project)
+            return true
+        } catch (se: SerializationException) {
+            log("ERROR", "Failed to parse project file; ${se.message}")
+        }
+        return false
     }
 
     /**
@@ -494,7 +526,11 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
     ) {
         log("Upserting '$contentType' node for '$srcKey' in project '$projectDomain'")
         dynamoDBService.upsertContentNode(
-            srcKey = srcKey, projectDomain = projectDomain, contentType = contentType, node = node, attributes = emptyMap()
+            srcKey = srcKey,
+            projectDomain = projectDomain,
+            contentType = contentType,
+            node = node,
+            attributes = emptyMap()
         )
     }
 

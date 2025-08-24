@@ -128,7 +128,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
     ) {
         try {
             val domain = pageMsg.projectDomain
-            val pageTemplateKey = pageMsg.projectDomain + "/" + pageMsg.metadata.templateKey
+            val pageTemplateKey = pageMsg.metadata.templateKey
             val project = getProjectModel(pageMsg.projectDomain) ?: throw Exception("Project model is null")
             val navigationBuilder = NavigationBuilder(dynamoDBService, domain)
             // load the page.html.hbs template
@@ -143,6 +143,8 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             model["lastModified"] = pageMsg.metadata.lastUpdated
             model.putAll(pageMsg.metadata.attributes)
 
+            // TODO: Restore the pages and posts model elements; this is necessary for home page and other navigation elements
+            // TODO: Though I don't want to store everything, so perhaps we can determine the required set elsewhere
             /* model["pages"] = navigationBuilder.filterPages()
             model["posts"] = navigationBuilder.filterPosts()*/
 
@@ -152,7 +154,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
                 model[name] = html
             }
 
-            log("Final page model keys: ${model.keys}")
+            log("Template key: '$pageTemplateKey'. Final page model keys: ${model.keys}")
             val renderer = HandlebarsRenderer()
             val html = renderer.render(model = model, template = templateString)
             log("Calculated URL for page: ${pageMsg.metadata.url} from parentFolder: ${pageMsg.metadata.parent} and srcKey: ${pageMsg.metadata.srcKey}")
