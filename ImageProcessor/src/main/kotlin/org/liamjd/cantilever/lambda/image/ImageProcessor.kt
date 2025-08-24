@@ -6,7 +6,7 @@ import org.liamjd.cantilever.models.ImgRes
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 
-class ImageProcessor(private val logger: LambdaLogger) {
+class ImageProcessor(private val logger: LambdaLogger?) {
 
     /**
      * Use the Scalr library to resize the image
@@ -19,7 +19,7 @@ class ImageProcessor(private val logger: LambdaLogger) {
         val srcImage = ImageIO.read(imageBytes.inputStream())
         val newWidth = res.w ?: srcImage.width
         val newHeight = res.h ?: srcImage.height
-        logger.info("ImageProcessor: resize $formatName image from ${srcImage.width} x ${srcImage.height} to $newWidth x $newHeight")
+        logger?.log("ImageProcessor: resize $formatName image from ${srcImage.width} x ${srcImage.height} to $newWidth x $newHeight")
 
         val scaledImage = Scalr.resize(srcImage, newWidth, newHeight) // Scale image
         val baos = ByteArrayOutputStream(imageBytes.size)

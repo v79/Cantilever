@@ -694,7 +694,7 @@ class DynamoDBServiceImpl(
         log("Getting first or last item from LSI '$lsiName' for domain: $projectDomain of type: ${contentType.dbType}")
 
         return executeDynamoOperation(
-            operationDescription = "get first or last item from LSI",
+            operationDescription = "Get first or last item from LSI",
             contextInfo = "domain: $projectDomain, type: ${contentType.dbType}, LSI: $lsiName"
         ) {
             val request = QueryRequest.builder()
