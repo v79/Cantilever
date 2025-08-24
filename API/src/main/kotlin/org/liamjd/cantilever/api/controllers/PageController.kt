@@ -97,6 +97,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
     fun saveMarkdownPageSource(request: Request<ContentNode.PageNode>): Response<APIResult<String>> {
         info("saveMarkdownPageSource")
         val pageToSave = request.body
+        val domain = request.headers["cantilever-project-domain"]!!
 
         pageToSave.also {
             info(
@@ -108,12 +109,12 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             info("Updating existing file '${pageToSave.srcKey}'")
             val length =
-                s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
+                s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave, domain), "text/markdown")
             Response.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
             val length =
-                s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave), "text/markdown")
+                s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave, domain), "text/markdown")
             Response.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
     }
@@ -206,7 +207,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
      * @param request [ReassignIndexRequestDTO] containing the source and destination pages and the folder
      */
     fun reassignIndex(request: Request<ReassignIndexRequestDTO>): Response<APIResult<String>> {
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        val domain = request.headers["cantilever-project-domain"]!!
         val requestBody = request.body
         val from = requestBody.from
         val to = requestBody.to
@@ -217,7 +218,11 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
             if (s3Service.objectExists(from, sourceBucket) && s3Service.objectExists(to, sourceBucket)) {
                 // confirm that from is the index of the folder
                 runBlocking {
-                    val folderNode = dynamoDBService.getContentNode(folder, projectKeyHeader, SOURCE_TYPE.Folders)
+                    val folderNode = dynamoDBService.getContentNode(
+                        srcKey = folder,
+                        projectDomain = domain,
+                        contentType = SOURCE_TYPE.Folders
+                    )
                     return@runBlocking if (folderNode is ContentNode.FolderNode) {
                         if (folderNode.indexPage == from) {
                             // update the metadata for each of these pages
@@ -236,32 +241,32 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
 
                             println("Writing updated pages '$from' and '$to' to S3 bucket $sourceBucket")
                             s3Service.putObjectAsString(
-                                from, sourceBucket, convertNodeToMarkdown(updatedFrom), "text/markdown"
+                                from, sourceBucket, convertNodeToMarkdown(updatedFrom, domain), "text/markdown"
                             )
                             s3Service.putObjectAsString(
                                 to,
                                 sourceBucket,
-                                convertNodeToMarkdown(updatedTo),
+                                convertNodeToMarkdown(updatedTo, domain),
                                 "text/markdown"
                             )
                             println("Updating records in DynamoDB to reassign index from $from to $to")
                             dynamoDBService.upsertContentNode(
                                 updatedFrom.srcKey,
-                                projectKeyHeader,
+                                domain,
                                 SOURCE_TYPE.Pages,
                                 updatedFrom,
                                 updatedFrom.attributes
                             )
                             dynamoDBService.upsertContentNode(
                                 updatedTo.srcKey,
-                                projectKeyHeader,
+                                domain,
                                 SOURCE_TYPE.Pages,
                                 updatedTo,
                                 updatedTo.attributes
                             )
                             dynamoDBService.upsertContentNode(
                                 folderNode.srcKey,
-                                projectKeyHeader,
+                                domain,
                                 SOURCE_TYPE.Folders,
                                 folderNode.copy(indexPage = to),
                                 emptyMap() // no attributes to update yet
@@ -297,13 +302,15 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
     /**
      * Convert a [ContentNode.PageNode] to a Markdown, with each section string
      */
-    private fun convertNodeToMarkdown(page: ContentNode.PageNode): String {
+    private fun convertNodeToMarkdown(page: ContentNode.PageNode, domain: String): String {
         val separator = "---"
         val sBuilder = StringBuilder()
+        // templateKey must not have the domain prefix; it probably won't but this is a safeguard
+        val templateKey = page.templateKey.removePrefix("${domain}/")
         sBuilder.apply {
             appendLine(separator)
             appendLine("title: ${page.title}")
-            appendLine("templateKey: ${page.templateKey}")
+            appendLine("templateKey: $templateKey")
             if (page.isRoot) {
                 appendLine("isRoot: true")
             }
