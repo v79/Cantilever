@@ -286,11 +286,12 @@
 			return obj;
 		}, {});
 
+		// remove the domain from the template srcKey
 		$markdownStore.metadata = new PageItem(
 			'',
 			//@ts-ignore
 			null,
-			template.srcKey,
+			template.srcKey.replace($project.domain,'').replace('/',''),
 			'',
 			new Date(),
 			new Map<string, string>(),

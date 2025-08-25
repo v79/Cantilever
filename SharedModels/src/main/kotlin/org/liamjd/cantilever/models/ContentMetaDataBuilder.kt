@@ -46,9 +46,9 @@ sealed interface ContentMetaDataBuilder {
         }
 
         /**
-         * Build a [ContentNode.Pagenode] from a markdown file, only containing the metadata elements. It does not return the section bodies.
+         * Build a [ContentNode.PageNode] from a markdown file, only containing the metadata elements. It does not return the section bodies.
          * I can't use the Yaml.decodeFromString() extension function here, as page metadata is not, technically, valid YAML
-         * It's a series of key:value pairs, followed by named sections, each of which is a markdown block
+         * It's a series of key:value pairs, followed by named sections, each of which is a Markdown block
          */
         override fun buildFromSourceString(sourceString: String, srcKey: SrcKey): ContentNode.PageNode {
             val frontmatter = sourceString.getFrontMatter()

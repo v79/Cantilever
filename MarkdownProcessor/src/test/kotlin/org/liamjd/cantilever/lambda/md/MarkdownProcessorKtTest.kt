@@ -2,10 +2,21 @@ package org.liamjd.cantilever.lambda.md
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.koin.test.KoinTest
+import org.koin.test.inject
+import org.koin.test.junit5.KoinTestExtension
 
-class MarkdownProcessorKtTest {
+class MarkdownProcessorKtTest : KoinTest {
 
-    private val converter = FlexmarkMarkdownConverter()
+    @JvmField
+    @RegisterExtension
+    val koinTestExtension = KoinTestExtension.create {
+        modules(markdownProcessorModule)
+    }
+
+    private val converter: MarkdownConverter by inject()
+
     @Test
     fun `test convertMDToHTML`() {
         val mdSource = """

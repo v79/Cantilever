@@ -128,7 +128,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
     ) {
         try {
             val domain = pageMsg.projectDomain
-            val pageTemplateKey = pageMsg.metadata.templateKey
+            val pageTemplateKey = domain + "/" + pageMsg.metadata.templateKey
             val project = getProjectModel(pageMsg.projectDomain) ?: throw Exception("Project model is null")
             val navigationBuilder = NavigationBuilder(dynamoDBService, domain)
             // load the page.html.hbs template
