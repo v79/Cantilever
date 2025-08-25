@@ -36,6 +36,9 @@ dependencies {
     implementation(libs.aws.lambda.events)
     runtimeOnly(libs.aws.lambda.log4j2)
 
+    // DI
+    implementation(libs.koin.core)
+
     // markdown processing
     implementation("com.vladsch.flexmark:flexmark-all:0.64.6")
 //    implementation("com.vladsch.flexmark:flexmark-test-util:0.64.6")
@@ -45,6 +48,7 @@ dependencies {
     testRuntimeOnly(libs.junit.engine)
     testImplementation(libs.aws.lambda.tests)
     testImplementation(libs.mockk)
+    testImplementation(libs.bundles.koin.test)
 }
 
 tasks.getByName<Test>("test") {
