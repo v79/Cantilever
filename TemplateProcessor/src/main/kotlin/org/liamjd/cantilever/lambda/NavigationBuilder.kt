@@ -16,7 +16,7 @@ import java.time.format.DateTimeFormatter
  */
 class NavigationBuilder(private val dynamoDBService: DynamoDBService, private val domain: String) {
 
-    // Sate is stored as a string in the format "yyyy-MM-dd"
+    // Date is stored as a string in the format "yyyy-MM-dd"
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     /**
@@ -40,6 +40,23 @@ class NavigationBuilder(private val dynamoDBService: DynamoDBService, private va
     }
 
     /**
+     * Get a list of the most recent posts, up to the specified limit.
+     * Posts are sorted most-recent first.
+     * @param limit The maximum number of posts to return.
+     * @return A list of [ContentNode.PostNode] objects.
+     */
+    fun getPosts(limit: Int = 999): List<ContentNode.PostNode> {
+        val posts = runBlocking {
+            val posts = dynamoDBService.listAllNodesForProject(domain = domain, type = SOURCE_TYPE.Posts)
+                .filterIsInstance<ContentNode.PostNode>()
+                .sortedByDescending { it.date }
+                .take(limit)
+            return@runBlocking posts
+        }
+        return posts
+    }
+
+    /**
      * Posts are sorted most-recent first, so the previous should be further down the list
      */
     private fun getPrevPost(
@@ -53,7 +70,7 @@ class NavigationBuilder(private val dynamoDBService: DynamoDBService, private va
         )
         println("Looking for previous post before date: $currentPostDateAsString")
         val prevPost = runBlocking {
-            val prevPost = getNodeMatching(domain, currentPostDateAsString, "<")
+            val prevPost = getPostNodeMatching(domain, currentPostDateAsString, NavigationDirection.PREV)
             return@runBlocking prevPost
         }
         return prevPost
@@ -71,7 +88,7 @@ class NavigationBuilder(private val dynamoDBService: DynamoDBService, private va
         )
         println("Looking for next post after date: $currentPostDateAsString")
         val prevPost = runBlocking {
-            val prevPost = getNodeMatching(domain, currentPostDateAsString, ">")
+            val prevPost = getPostNodeMatching(domain, currentPostDateAsString, NavigationDirection.NEXT)
             return@runBlocking prevPost
         }
         return prevPost
@@ -132,20 +149,20 @@ class NavigationBuilder(private val dynamoDBService: DynamoDBService, private va
     }
 
     /**
-     * Helper function to get a post node matching the given date and operation.
+     * Helper function to get a Post node matching the given date and operation.
      * This is used to find the previous or next post based on the current post's date.
      */
-    private suspend fun getNodeMatching(
+    private suspend fun getPostNodeMatching(
         domain: String,
         currentPostDateAsString: String,
-        operation: String
+        direction: NavigationDirection
     ): ContentNode.PostNode? {
         val matchingKeys = dynamoDBService.getKeyListFromLSI(
             projectDomain = domain,
             contentType = SOURCE_TYPE.Posts,
             lsiName = "Type-Date",
-            "date" to currentPostDateAsString,
-            operation = operation,
+            attribute = "date" to currentPostDateAsString,
+            operation = direction.op,
             limit = 1,
             descending = true
         )
@@ -162,10 +179,17 @@ class NavigationBuilder(private val dynamoDBService: DynamoDBService, private va
                 null
             }
         } else {
-            println("No previous post found for date: $currentPostDateAsString")
+            println("No ${direction.name} post found for date: $currentPostDateAsString")
             null
         }
     }
 }
 
-
+/**
+ * Enum to represent the navigation direction for querying posts.
+ * PREV is for previous posts (less than the current date)
+ * NEXT is for next posts (greater than the current date)
+ */
+enum class NavigationDirection(val op: String) {
+    PREV("<"), NEXT(">")
+}

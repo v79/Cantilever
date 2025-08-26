@@ -145,8 +145,8 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
 
             // TODO: Restore the pages and posts model elements; this is necessary for home page and other navigation elements
             // TODO: Though I don't want to store everything, so perhaps we can determine the required set elsewhere
-            /* model["pages"] = navigationBuilder.filterPages()
-            model["posts"] = navigationBuilder.filterPosts()*/
+//            model["pages"] = navigationBuilder.filterPages()
+            model["posts"] = navigationBuilder.getPosts(25)
 
             pageMsg.metadata.sections.forEach { (name, objectKey) ->
                 val html = s3Service.getObjectAsString(objectKey, generationBucket)
@@ -154,8 +154,8 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
                 model[name] = html
             }
 
-            log("Template key: '$pageTemplateKey'. Final page model keys: ${model.keys}")
             val renderer = HandlebarsRenderer()
+            println("Rending template '${pageMsg.metadata.templateKey}' with model keys ${model.keys}")
             val html = renderer.render(model = model, template = templateString)
             log("Calculated URL for page: ${pageMsg.metadata.url} from parentFolder: ${pageMsg.metadata.parent} and srcKey: ${pageMsg.metadata.srcKey}")
             s3Service.putObjectAsString(pageMsg.metadata.url, destinationBucket, html, "text/html")
@@ -204,6 +204,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             }
 
             val renderer = HandlebarsRenderer()
+            println("Rending template '$template' with model keys ${model.keys}")
             val html = renderer.render(model = model, template = templateString)
 
             // save to S3
