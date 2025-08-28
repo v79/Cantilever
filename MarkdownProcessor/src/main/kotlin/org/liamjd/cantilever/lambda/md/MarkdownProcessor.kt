@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.lambda.md
 
 import com.vladsch.flexmark.ast.Image
+import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
 import com.vladsch.flexmark.ext.tables.TablesExtension
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
@@ -35,7 +36,7 @@ interface MarkdownConverter {
 
 class FlexmarkMarkdownConverter : MarkdownConverter {
 
-    private val options = MutableDataSet().set(Parser.EXTENSIONS, listOf(TablesExtension.create()))
+    private val options = MutableDataSet().set(Parser.EXTENSIONS, listOf(TablesExtension.create(), StrikethroughExtension.create()))
     private val parser: Parser = Parser.builder(options).build()
 
     override fun extractImages(mdSource: String): List<Image> {
