@@ -151,7 +151,6 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent
                 } catch (e: Exception) {
                     log("ERROR","${e.message}")
                     responseString = "500 Internal Server Error"
-
                 }
 
                 // [ContentNode.PageNode] isn't quite suitable for sending to the Handlebars queue, so we need to build a new message

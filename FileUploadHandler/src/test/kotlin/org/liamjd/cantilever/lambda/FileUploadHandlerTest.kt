@@ -103,12 +103,12 @@ internal class FileUploadHandlerTest : KoinTest {
         stopKoin()
     }
 
+    // This is a simple test to verify that the Koin initialization fix works
     @Test
     fun `can create a mock of S3Service`() {
         declareMock<S3Service> {
 
         }
-        // This is a simple test to verify that the Koin initialization fix works
         val s3Service = mockS3Service
         assertNotNull(s3Service)
     }
@@ -301,7 +301,7 @@ internal class FileUploadHandlerTest : KoinTest {
                 any<ContentNode.PageNode>(), any()
             )
         }
-        coVerify {
+        coVerify(exactly = 1) {
             mockSQS.sendMarkdownMessage(
                 eq("markdown_processing_queue"),
                 any(),

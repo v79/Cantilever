@@ -112,7 +112,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
                 s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave, domain), "text/markdown")
             Response.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
-            info("Creating new file...")
+            info("Creating new file with srcKey '${pageToSave.srcKey}'")
             val length =
                 s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave, domain), "text/markdown")
             Response.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))

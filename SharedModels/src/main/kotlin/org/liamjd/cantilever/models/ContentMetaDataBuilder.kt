@@ -7,7 +7,7 @@ import kotlinx.datetime.LocalDate
 import org.liamjd.cantilever.common.*
 
 /**
- * Parses the YAML front matter of a markdown file and returns a [ContentNode] object
+ * Parses the YAML front matter of a Markdown file and returns a [ContentNode] object
  */
 sealed interface ContentMetaDataBuilder {
     fun buildFromSourceString(sourceString: String, srcKey: SrcKey): ContentNode
