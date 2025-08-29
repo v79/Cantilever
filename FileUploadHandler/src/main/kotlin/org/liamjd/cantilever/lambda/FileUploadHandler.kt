@@ -146,7 +146,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                                         log("ERROR", "Unknown source type '$parentFolder' for $srcKey")
                                     }
                                     Project -> {
-                                        // Confirm that this is a project yaml file
+                                        // Confirm that this is a project YAML file
                                         if (fileType != FILE_TYPE.YAML) {
                                             log(
                                                 "ERROR",
@@ -314,7 +314,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      */
     private suspend fun processPageUpload(
         srcKey: String, srcBucket: String, queueUrl: String, projectDomain: String
-    ) {
+    ): Boolean {
         try {
             log("Received page file $srcKey and sending it to Markdown processor queue")
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
@@ -351,6 +351,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                 upsertContentNode(
                     srcKey = parentSrcKey, projectDomain = projectDomain, contentType = Folders, parentFolderNode
                 )
+                return true
             } else {
                 // In this case, the page has been uploaded to the root of the pages folder
                 // We need to update the children of the root folder node
@@ -369,6 +370,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                         rootFolderNode
                     )
                     log("Root folder node updated with new child page")
+                    return true
                 } else {
                     log("WARN: Root folder node does not exist; cannot update children")
                 }
@@ -378,6 +380,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
         } catch (se: SerializationException) {
             log("ERROR", "Failed to parse metadata string; ${se.message}")
         }
+        return false
     }
 
     /**
@@ -385,7 +388,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      */
     private suspend fun processCSSUpload(
         srcKey: String, queueUrl: String, projectDomain: String
-    ) {
+    ): Boolean {
         try {
             val destinationKey = "css/" + srcKey.removePrefix(S3_KEY.staticsPrefix)
             val cssMsg = TemplateSQSMessage.StaticRenderMsg(
@@ -401,12 +404,14 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
             )
             if (msgResponse != null) {
                 log("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                return true
             } else {
                 log("WARN", "No response received for message")
             }
         } catch (qdne: QueueDoesNotExistException) {
             log("ERROR", "Queue '$queueUrl' does not exist; ${qdne.message}")
         }
+        return false
     }
 
     /**
@@ -415,7 +420,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      */
     private suspend fun processImageUpload(
         srcKey: String, projectDomain: String, contentType: String?, queueUrl: String
-    ) {
+    ): Boolean {
         try {
             // check if the image is a supported file type
             val validImageTypes = listOf(MimeType.jpg, MimeType.png, MimeType.gif, MimeType.webp)
@@ -440,6 +445,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
             )
             if (msgResponse != null) {
                 log("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
+                return true
             } else {
                 log("WARN", "No response received for message")
             }
@@ -449,6 +455,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
         } catch (qdne: QueueDoesNotExistException) {
             log("ERROR", "Queue '$queueUrl' does not exist; ${qdne.message}")
         }
+        return false
     }
 
     /**
@@ -481,7 +488,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      */
     private suspend fun processTemplateUpload(
         srcKey: String, srcBucket: String, projectDomain: String
-    ) {
+    ): Boolean {
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
             // extract metadata
@@ -490,9 +497,11 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
             attributes["title"] = templateNode.title
             // TODO: add the names of the sections as a set
             dynamoDBService.upsertContentNode(srcKey, projectDomain, Templates, templateNode, attributes)
+            return true
         } catch (e: Exception) {
             log("ERROR", "Failed to process template upload for $srcKey; ${e.message}")
         }
+        return false
     }
 
     /**
@@ -539,7 +548,6 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      * @param srcKey the source key of the content node
      * @param projectDomain the domain of the project
      * @param contentType the type of content (e.g. POST, PAGE, IMAGE, etc.)
-     * @param node the content node to delete
      * @return the result of the DynamoDB delete operation
      */
     private suspend fun deleteContentNode(
