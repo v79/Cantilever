@@ -1,12 +1,10 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
-    kotlin("jvm") version "1.9.20"
-    kotlin("plugin.serialization") version "1.9.0"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 group = "org.liamjd.cantilever.openapi"
-version = "0.0.11"
+version = "0.1.3"
 
 repositories {
     mavenCentral()
@@ -14,22 +12,15 @@ repositories {
 
 dependencies {
     // serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+    implementation(libs.kotlinx.serialization.json)
 }
 
 tasks.test {
     useJUnitPlatform()
 }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs += "-Xcontext-receivers"
-    }
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }

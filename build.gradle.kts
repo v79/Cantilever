@@ -1,16 +1,13 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
-    kotlin("jvm") version "1.9.20"
+    alias(libs.plugins.kotlin.jvm)
     application
     `maven-publish`
-    id("org.sonarqube") version "4.4.1.3373"
-    id("org.jetbrains.kotlinx.kover") version "0.7.4"
+    alias(libs.plugins.kover)
     id("org.barfuin.gradle.taskinfo") version "2.1.0"
 }
 
 group = "org.liamjd"
-version = "0.0.13"
+version = "0.1.3"
 
 repositories {
     mavenCentral()
@@ -20,11 +17,11 @@ repositories {
 
 dependencies {
     // AWS CDK
-    implementation("software.amazon.awscdk:aws-cdk-lib:2.104.0")
-    implementation("software.constructs:constructs:10.3.0")
+    implementation(libs.aws.cdk.lib)
+    implementation(libs.aws.constructs)
 
     // multiplatform datetime library
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
+    implementation(libs.kotlinx.datetime)
 
     testImplementation(kotlin("test"))
 }
@@ -33,10 +30,10 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "17"
-
-    dependsOn("copyAPISchema")
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
 }
 
 application {
@@ -62,16 +59,4 @@ tasks.register("copyAPISchema", Copy::class.java) {
     into(project(":API").layout.buildDirectory.dir("/resources/main/schemas/"))
     doLast {
         println("Copied API schema to build/resources/main/schemas") }
-}
-
-koverReport {
-    defaults {
-
-    }
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17)) // Replace 17 with your desired JDK version
-    }
 }

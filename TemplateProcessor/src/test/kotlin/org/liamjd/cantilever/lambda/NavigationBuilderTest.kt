@@ -1,197 +1,291 @@
 package org.liamjd.cantilever.lambda
 
-import com.amazonaws.services.lambda.runtime.LambdaLogger
-import io.mockk.every
-import io.mockk.just
+import io.mockk.coEvery
+import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
-import io.mockk.runs
-import kotlinx.datetime.Clock
+import io.mockk.mockkClass
 import kotlinx.datetime.LocalDate
-import org.liamjd.cantilever.common.S3_KEY
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.koin.core.context.stopKoin
+import org.koin.dsl.module
+import org.koin.test.KoinTest
+import org.koin.test.junit5.KoinTestExtension
+import org.koin.test.junit5.mock.MockProviderExtension
+import org.koin.test.mock.declareMock
+import org.liamjd.cantilever.common.EnvironmentProvider
+import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.ContentNode
-import org.liamjd.cantilever.services.S3Service
-import kotlin.test.*
+import org.liamjd.cantilever.services.DynamoDBService
+import org.liamjd.cantilever.services.GetSingleItemOrdering
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
-/**
-internal class NavigationBuilderTest {
 
-    private val mockLogger = mockk<LambdaLogger>()
-    private val mockS3 = mockk<S3Service>()
+@ExtendWith(MockKExtension::class)
+internal class NavigationBuilderTest : KoinTest {
 
-    private val sourceBucket = "sourceBucket"
-    private val postListJson: String = buildFullJson()
-    private val onlyTwoPosts: String = buildJsonWithOnlyTwo()
+    private val mockDynamoDB = mockk<DynamoDBService>()
 
-    @BeforeTest
-    fun initTests() {
-        every { mockLogger.log(any<String>()) } just runs
+    val post1 = ContentNode.PostNode(
+        srcKey = "sources/posts/jetpack-compose-theming-woes",
+        title = "Jetpack Compose Theming Woes",
+        templateKey = "sources/templates/post.html.hbs",
+        slug = "jetpack-compose-theming-woes",
+        date = LocalDate(2022, 9, 15)
+    )
+    val post1DateString = "2022-09-15"
+
+    // this is the 'middle' post in our test data
+    val post2 = ContentNode.PostNode(
+        srcKey = "sources/posts/adding-static-file-support",
+        title = "Adding static file support",
+        templateKey = "sources/templates/post.html.hbs",
+        slug = "adding-static-file-support",
+        date = LocalDate(2023, 9, 18)
+    )
+    val post2DateString = "2023-09-18"
+    val post3 = ContentNode.PostNode(
+        srcKey = "sources/posts/migrating-to-kotlin-2.0",
+        title = "Migrating to Kotlin 2.0",
+        templateKey = "sources/templates/post.html.hbs",
+        slug = "migrating-to-kotlin-2.0",
+        date = LocalDate(2023, 10, 4)
+    )
+    val post3DateString = "2023-10-04"
+
+    @JvmField
+    @RegisterExtension
+    val koinTestExtension = KoinTestExtension.create {
+        modules(module {
+        })
+    }
+
+    @JvmField
+    @RegisterExtension
+    val mockProvider = MockProviderExtension.create { clazz ->
+        mockkClass(clazz)
+    }
+
+    @BeforeEach
+    fun setup() {
+        declareMock<EnvironmentProvider> {
+
+        }
+        declareMock<DynamoDBService> {
+            // Get the specific nodes
+            coEvery {
+                mockDynamoDB.getContentNode(
+                    post1.srcKey,
+                    "test-domain",
+                    SOURCE_TYPE.Posts,
+                )
+            } returns post1
+            coEvery {
+                mockDynamoDB.getContentNode(
+                    post2.srcKey,
+                    "test-domain",
+                    SOURCE_TYPE.Posts,
+                )
+            } returns post2
+            coEvery {
+                mockDynamoDB.getContentNode(
+                    post3.srcKey,
+                    "test-domain",
+                    SOURCE_TYPE.Posts,
+                )
+            } returns post3
+
+            // Get the previous post before post2, by date (post1)
+            coEvery {
+                mockDynamoDB.getKeyListFromLSI(
+                    "test-domain",
+                    SOURCE_TYPE.Posts,
+                    "Type-Date",
+                    "date" to post2DateString,
+                    "<",
+                    1,
+                    true
+                )
+            } returns listOf(post1.srcKey)
+
+            // Get the next post after post2, by date (post3)
+            coEvery {
+                mockDynamoDB.getKeyListFromLSI(
+                    "test-domain",
+                    SOURCE_TYPE.Posts,
+                    "Type-Date",
+                    "date" to post2DateString,
+                    ">",
+                    1,
+                    true
+                )
+            } returns listOf(post3.srcKey)
+
+            // Get the previous post before post1, by date (null)
+            coEvery {
+                mockDynamoDB.getKeyListFromLSI(
+                    "test-domain",
+                    SOURCE_TYPE.Posts,
+                    "Type-Date",
+                    "date" to post1DateString,
+                    "<",
+                    1,
+                    true
+                )
+            } returns emptyList()
+
+            // Get the next post after post1, by date (post2)
+            coEvery {
+                mockDynamoDB.getKeyListFromLSI(
+                    "test-domain",
+                    SOURCE_TYPE.Posts,
+                    "Type-Date",
+                    "date" to post1DateString,
+                    ">",
+                    1,
+                    true
+                )
+            } returns listOf(post2.srcKey)
+
+            // Get the prev post after post3, by date (post2)
+            coEvery {
+                mockDynamoDB.getKeyListFromLSI(
+                    "test-domain",
+                    SOURCE_TYPE.Posts,
+                    "Type-Date",
+                    "date" to post3DateString,
+                    "<",
+                    1,
+                    true
+                )
+            } returns listOf(post2.srcKey)
+
+            // Get the next post after post3, by date (null)
+            coEvery {
+                mockDynamoDB.getKeyListFromLSI(
+                    "test-domain",
+                    SOURCE_TYPE.Posts,
+                    "Type-Date",
+                    "date" to post3DateString,
+                    ">",
+                    1,
+                    true
+                )
+            } returns emptyList()
+
+            // Get the first post in the list (post1)
+            coEvery {
+                mockDynamoDB.getFirstOrLastKeyFromLSI(
+                    "test-domain",
+                    SOURCE_TYPE.Posts,
+                    "Type-Date",
+                    GetSingleItemOrdering.FIRST
+                )
+            } returns post1.srcKey
+
+            // Get the last post in the list (post3)
+            coEvery {
+                mockDynamoDB.getFirstOrLastKeyFromLSI(
+                    "test-domain",
+                    SOURCE_TYPE.Posts,
+                    "Type-Date",
+                    GetSingleItemOrdering.LAST
+                )
+            } returns post3.srcKey
+
+
+        }
+    }
+
+    @AfterEach
+    fun tearDown() {
+        stopKoin()
     }
 
     @Test
     fun `build complete navigation map when given the middle post in the list`() {
-        every { mockS3.objectExists(S3_KEY.postsKey, sourceBucket) } returns true
-        every { mockS3.getObjectAsString(S3_KEY.postsKey, sourceBucket) } returns postListJson
+        // Setup
+        coEvery {
+            mockDynamoDB.getFirstOrLastKeyFromLSI(
+                "test-domain",
+                SOURCE_TYPE.Posts,
+                "Type-Date",
+                GetSingleItemOrdering.FIRST
+            )
+        } returns post1.srcKey
+        coEvery {
+            mockDynamoDB.getFirstOrLastKeyFromLSI(
+                "test-domain",
+                SOURCE_TYPE.Posts,
+                "Type-Date",
+                GetSingleItemOrdering.LAST
+            )
+        } returns post3.srcKey
 
-        // this is the 'middle' post in our test data
-        val currentPost = ContentNode.PostNode(
-            srcKey = "sources/posts/adding-static-file-support",
-            title = "Adding static file support",
-            templateKey = "sources/templates/post.html.hbs",
-            slug = "adding-static-file-support",
-            date = LocalDate(2023, 9, 18)
-        )
-        with(mockLogger) {
-            val builder = NavigationBuilder(mockS3)
-            val nav = builder.getPostNavigationObjects(currentPost, sourceBucket)
-            assertNotNull(nav) {
-                assertNotNull(nav["@prev"]) {
-                    assertEquals("Jetpack Compose Theming Woes", it.title)
-                }
-                assertNotNull(nav["@next"]) {
-                    assertEquals("DELETE-ME", it.title)
-                }
-                assertNotNull(nav["@first"])
-                assertNotNull(nav["@last"])
+        // Execute
+        val builder = NavigationBuilder(mockDynamoDB, "test-domain")
+        val nav = builder.getPostNavigationObjects(post2)
+
+        // Verify
+        assertNotNull(nav) {
+            assertNotNull(nav["@prev"]) {
+                assertEquals("Jetpack Compose Theming Woes", it.title)
             }
+            assertNotNull(nav["@next"]) {
+                assertEquals("Migrating to Kotlin 2.0", it.title)
+            }
+            assertNotNull(nav["@first"])
+            assertNotNull(nav["@last"])
         }
     }
 
     @Test
     fun `should return null for previous post when already at the first`() {
-        every { mockS3.objectExists(S3_KEY.postsKey, sourceBucket) } returns true
-        every { mockS3.getObjectAsString(S3_KEY.postsKey, sourceBucket) } returns onlyTwoPosts
+        // Setup
 
-        // this is the 'first' post in our test data
-        val currentPost = ContentNode.PostNode(
-            srcKey = "sources/posts/adding-static-file-support",
-            title = "Adding static file support",
-            templateKey = "sources/templates/post.html.hbs",
-            slug = "adding-static-file-support",
-            date = LocalDate(2023, 9, 18)
-        )
-        with(mockLogger) {
-            val builder = NavigationBuilder(mockS3)
-            val nav = builder.getPostNavigationObjects(currentPost, sourceBucket)
-            assertNotNull(nav) {
-                assertNull(nav["@prev"])
-                assertNotNull(nav["@last"])
-                assertNotNull(nav["@first"]) {
-                    assertEquals("Adding static file support", it.title)
-                }
-                assertNotNull(nav["@next"]) {
-                    assertEquals("DELETE-ME", it.title)
-                }
+        // Execute
+        val builder = NavigationBuilder(mockDynamoDB, "test-domain")
+        val nav = builder.getPostNavigationObjects(post1)
+
+        // Verify
+        assertNotNull(nav) {
+            assertNull(nav["@prev"])
+            assertNotNull(nav["@last"])
+            assertNotNull(nav["@first"]) {
+                assertEquals(post1.srcKey, nav["@first"]?.srcKey)
+                assertEquals(post1.title, it.title)
+            }
+            assertNotNull(nav["@next"]) {
+                assertEquals(post2.title, it.title)
             }
         }
     }
 
     @Test
     fun `should return null for previous post when already at the last`() {
-        every { mockS3.objectExists(S3_KEY.postsKey, sourceBucket) } returns true
-        every { mockS3.getObjectAsString(S3_KEY.postsKey, sourceBucket) } returns onlyTwoPosts
+        // Setup
 
-        // this is the 'last' post in our test data
-        val currentPost = ContentNode.PostNode(
-            srcKey = "sources/posts/adding-static-file-support",
-            title = "Adding static file support",
-            templateKey = "sources/templates/post.html.hbs",
-            slug = "adding-static-file-support",
-            date = LocalDate(2023, 9, 18)
-        )
-        with(mockLogger) {
-            val builder = NavigationBuilder(mockS3)
-            val nav = builder.getPostNavigationObjects(currentPost, sourceBucket)
-            assertNotNull(nav) {
-                assertNotNull(nav["@prev"]) {
-                    assertEquals("Adding static file support", it.title)
-                }
-                assertNotNull(nav["@last"])
-                assertNotNull(nav["@first"]) {
-                    assertEquals("Adding static file support", it.title)
-                }
-                assertNull(nav["@next"])
+        // Execute
+        val builder = NavigationBuilder(mockDynamoDB, "test-domain")
+        val nav = builder.getPostNavigationObjects(post3)
+
+        // Verify
+        assertNotNull(nav) {
+            assertNotNull(nav["@prev"]) {
+                assertEquals(post2.title, it.title)
             }
+            assertNotNull(nav["@last"])
+            assertNotNull(nav["@first"]) {
+                assertEquals(post1.title, it.title)
+            }
+            assertNull(nav["@next"])
         }
     }
 
-    @Test
-    fun `returns empty map if posts json not found`() {
-        every { mockS3.objectExists(S3_KEY.postsKey, sourceBucket) } returns false
-
-        // this is the 'first' post in our test data
-        val currentPost = ContentNode.PostNode(
-            srcKey = "sources/posts/adding-static-file-support",
-            title = "Adding static file support",
-            templateKey = "sources/templates/post.html.hbs",
-            slug = "adding-static-file-support",
-            date = LocalDate(2023, 9, 18)
-        )
-        with(mockLogger) {
-            val builder = NavigationBuilder(mockS3)
-            val nav = builder.getPostNavigationObjects(currentPost, sourceBucket)
-            assertNotNull(nav) {
-                assertEquals(0, it.size)
-            }
-        }
-    }
-
-    private fun buildFullJson(): String = """
-        {
-  "count": 3,
-  "lastUpdated": "2023-09-22T17:48:58.939673107Z",
-  "posts": [
-    {
-      "title": "DELETE-ME",
-      "srcKey": "sources/posts/DELETE-ME.md",
-      "url": "-posts-delete-me",
-      "date": "2023-09-22",
-      "lastUpdated": "2023-09-22T17:48:58.219960338Z",
-      "templateKey": "sources/templates/post.html.hbs"
-    },
-    {
-      "title": "Adding static file support",
-      "srcKey": "sources/posts/adding-static-file-support.md",
-      "url": "adding-static-file-support",
-      "date": "2023-09-18",
-      "lastUpdated": "2023-09-22T17:48:58.266828217Z",
-      "templateKey": "sources/templates/post.html.hbs"
-    },
-    {
-      "title": "Jetpack Compose Theming Woes",
-      "srcKey": "sources/posts/corbel-authentication-and-ui.md",
-      "url": "corbel-authentication-and-ui",
-      "date": "2023-09-10",
-      "lastUpdated": "2023-09-22T17:48:58.354528956Z",
-      "templateKey": "sources/templates/post.html.hbs"
-    }
-    ]
-    }
-    """.trimIndent()
-
-    private fun buildJsonWithOnlyTwo(): String = """
-        {
-  "count": 2,
-  "lastUpdated": "2023-09-22T17:48:58.939673107Z",
-  "posts": [
-    {
-      "title": "DELETE-ME",
-      "srcKey": "sources/posts/DELETE-ME.md",
-      "url": "-posts-delete-me",
-      "date": "2023-09-22",
-      "lastUpdated": "2023-09-22T17:48:58.219960338Z",
-      "templateKey": "sources/templates/post.html.hbs"
-    },
-    {
-      "title": "Adding static file support",
-      "srcKey": "sources/posts/adding-static-file-support.md",
-      "url": "adding-static-file-support",
-      "date": "2023-09-18",
-      "lastUpdated": "2023-09-22T17:48:58.266828217Z",
-      "templateKey": "sources/templates/post.html.hbs"
-    }
-    ]
-    }
-    """.trimIndent()
 }
 
- */

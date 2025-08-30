@@ -13,7 +13,7 @@ class ContentNodeTest {
         val post = ContentNode.PostNode(
             srcKey = "sources/posts/2023/11/11/latest.md",
             title = "Latest Post",
-            templateKey = "post",
+            templateKey = "sources/templates/post.html.hbs",
             slug = "latest",
             date = LocalDate.parse("2023-11-11"),
             attributes = mapOf("author" to "Liam", "tags" to "test"),
@@ -27,7 +27,7 @@ class ContentNodeTest {
         val page = ContentNode.PageNode(
             srcKey = "www.test.com/sources/pages/bio.md",
             title = "Biography",
-            templateKey = "page",
+            templateKey = "sources/templates/page.html.hbs",
             slug = "biography",
             isRoot = false,
             attributes = mapOf("author" to "Liam", "tags" to "test"),
@@ -43,7 +43,7 @@ class ContentNodeTest {
         val page = ContentNode.PageNode(
             srcKey = "www.test.com/sources/pages/bio.md",
             title = "Biography",
-            templateKey = "page",
+            templateKey = "sources/templates/page.html.hbs",
             slug = "biography",
             isRoot = true,
             attributes = mapOf("author" to "Liam", "tags" to "test"),
@@ -59,7 +59,7 @@ class ContentNodeTest {
         val page = ContentNode.PageNode(
             srcKey = "www.test.com/sources/pages/books/favourite-books.md",
             title = "Books",
-            templateKey = "page",
+            templateKey = "sources/templates/page.html.hbs",
             slug = "favourite-books",
             isRoot = false,
             attributes = mapOf("author" to "Liam", "tags" to "test"),

@@ -7,7 +7,7 @@ import kotlinx.datetime.LocalDate
 import org.liamjd.cantilever.common.*
 
 /**
- * Parses the YAML front matter of a markdown file and returns a [ContentNode] object
+ * Parses the YAML front matter of a Markdown file and returns a [ContentNode] object
  */
 sealed interface ContentMetaDataBuilder {
     fun buildFromSourceString(sourceString: String, srcKey: SrcKey): ContentNode
@@ -46,9 +46,9 @@ sealed interface ContentMetaDataBuilder {
         }
 
         /**
-         * Build a [ContentNode.Pagenode] from a markdown file, only containing the metadata elements. It does not return the section bodies.
+         * Build a [ContentNode.PageNode] from a markdown file, only containing the metadata elements. It does not return the section bodies.
          * I can't use the Yaml.decodeFromString() extension function here, as page metadata is not, technically, valid YAML
-         * It's a series of key:value pairs, followed by named sections, each of which is a markdown block
+         * It's a series of key:value pairs, followed by named sections, each of which is a Markdown block
          */
         override fun buildFromSourceString(sourceString: String, srcKey: SrcKey): ContentNode.PageNode {
             val frontmatter = sourceString.getFrontMatter()
@@ -103,6 +103,11 @@ sealed interface ContentMetaDataBuilder {
             )
         }
 
+        /**
+         * Extracts custom sections from the source string, which is expected to be a markdown file with custom sections
+         * Each section starts with "--- #" and ends with a newline
+         * If includeSectionBodies is false, the section bodies will not be included in the returned map
+         */
         fun extractSectionsFromSource(
             sourceString: String,
             includeSectionBodies: Boolean = true
@@ -127,10 +132,34 @@ sealed interface ContentMetaDataBuilder {
         }
     }
 
+    /**
+     * Builds a [ContentNode.ImageNode] from an image file.
+     */
     object ImageBuilder : ContentMetaDataBuilder {
         override fun buildFromSourceString(sourceString: String, srcKey: SrcKey): ContentNode.ImageNode {
             return ContentNode.ImageNode(
                 srcKey = srcKey
+            )
+        }
+    }
+
+    /**
+     * Builds a [ContentNode.TemplateNode] from a template file.
+     * The source string is expected to be the contents of the template file. The front matter is in the format:
+     * ---
+     * name: General Content
+     * sections:
+     *   - body
+     * ---
+     */
+    object TemplateBuilder : ContentMetaDataBuilder {
+        override fun buildFromSourceString(sourceString: String, srcKey: SrcKey): ContentNode.TemplateNode {
+            val frontmatter = sourceString.getFrontMatter()
+            val templateYaml = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontmatter)
+            return ContentNode.TemplateNode(
+                srcKey = srcKey,
+                title = templateYaml.name,
+                sections = templateYaml.sections?.map { it.trim() } ?: emptyList(),
             )
         }
     }

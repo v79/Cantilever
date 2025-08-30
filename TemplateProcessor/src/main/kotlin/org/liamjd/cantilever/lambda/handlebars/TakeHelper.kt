@@ -80,6 +80,6 @@ class TakeHelper : Helper<Any> {
         } else {
             return options?.inverse() as Any
         }
-        return "" // end case, should never happen!
+        return "" // End case, which should never happen!
     }
 }

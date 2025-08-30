@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.charleskorn.kaml.Yaml
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.SerializationException
@@ -9,25 +10,27 @@ import org.koin.core.component.KoinComponent
 import org.liamjd.apiviaduct.routing.Request
 import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
-import org.liamjd.cantilever.common.MimeType
-import org.liamjd.cantilever.common.S3_KEY.pagesKey
 import org.liamjd.cantilever.common.S3_KEY.pagesPrefix
-import org.liamjd.cantilever.common.S3_KEY.postsKey
 import org.liamjd.cantilever.common.S3_KEY.templatesKey
 import org.liamjd.cantilever.common.S3_KEY.templatesPrefix
 import org.liamjd.cantilever.common.getFrontMatter
-import org.liamjd.cantilever.models.*
+import org.liamjd.cantilever.models.CantileverProject
+import org.liamjd.cantilever.models.Template
+import org.liamjd.cantilever.models.TemplateList
+import org.liamjd.cantilever.models.TemplateMetadata
 
 private const val APP_JSON = "application/json"
+private const val APP_YAML = "application/x-yaml"
 
 /**
  * Manages all the project-wide configuration and json models
  * TODO: there is a lot of duplication in this class
  */
-class ProjectController(sourceBucket: String, generationBucket: String) : KoinComponent, APIController(sourceBucket, generationBucket) {
+class ProjectController(sourceBucket: String, generationBucket: String) : KoinComponent,
+    APIController(sourceBucket, generationBucket) {
 
     /**
-     * Return the 'cantilever.yaml' project definition file, in yaml format.
+     * Return the project definition from DynamoDB.
      */
     fun getProject(request: Request<Unit>): Response<APIResult<CantileverProject>> {
         val projectKey = request.pathParameters["projectKey"]
@@ -37,56 +40,50 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
                 APIResult.Error(statusText = "Unable to retrieve project definition where 'project key' is blank")
             )
         }
-        info("Retrieving '$projectKey' file")
-        return if (s3Service.objectExists(projectKey, sourceBucket)) {
-            val projectYaml = s3Service.getObjectAsString(projectKey, sourceBucket)
-            try {
-                val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
-                Response.ok(body = APIResult.Success(value = project))
-            } catch (se: SerializationException) {
-                error(se.message ?: "Error deserializing '$projectKey'. Project is broken.")
-                Response.serverError(
+
+        val domain = projectKey.substringBefore(".yaml")
+
+        info("Retrieving project for domain '$domain'")
+
+        return runBlocking {
+            val dbProject = dynamoDBService.getProject(domain)
+
+            if (dbProject != null) {
+                Response.ok(body = APIResult.Success(value = dbProject))
+            } else {
+                error("Cannot find project for domain '$domain'")
+                Response.notFound(
                     body = APIResult.Error(
-                        statusText = se.message ?: "Error deserializing '$projectKey'. Project is broken."
+                        statusText = "Cannot find project for domain '$domain'"
                     )
                 )
             }
-        } else {
-            error("Cannot find file '$projectKey' in bucket '$sourceBucket'. Project is broken.")
-            Response.notFound(
-                body = APIResult.Error(
-                    statusText = "Cannot find file '$projectKey' in bucket '$sourceBucket'."
-                )
-            )
         }
     }
 
     /**
-     * Return a list of all the projects
+     * Return a list of all the projects from DynamoDB
      */
     fun getProjectList(request: Request<Unit>): Response<APIResult<List<Pair<String, String>>>> {
-        info("Retrieving list of projects")
-        val projects = s3Service.listObjectsDelim("", "/", sourceBucket)
-        val projectList = mutableListOf<Pair<String, String>>()
-        projects.contents().forEach { obj ->
-            if (obj.key().endsWith(".yaml")) {
-                val projectYaml = s3Service.getObjectAsString(obj.key(), sourceBucket)
-                try {
-                    val project = Yaml.default.decodeFromString(CantileverProject.serializer(), projectYaml)
-                    projectList.add(Pair(obj.key(), project.projectName))
-                } catch (se: SerializationException) {
-                    error(se.message ?: "Error deserializing ${obj.key()}. Project is broken.")
-                }
+        info("Retrieving list of projects from DynamoDB")
+
+        return runBlocking {
+            val projects = dynamoDBService.listAllProjects()
+            val projectList = projects.map { project ->
+                Pair("${project.domain}.yaml", project.projectName)
             }
+
+            Response.ok(body = APIResult.Success(value = projectList))
         }
-        return Response.ok(body = APIResult.Success(value = projectList))
     }
 
     /**
-     * Update the 'cantilever.yaml' project definition file. This will come to us as yaml document, not json, but it will return as json.
+     * Update the project definition YAML file in S3, which will trigger a DynamoDB update
+     * @param request The updated project definition request
+     * @return The updated project definition or an error if the update failed
      */
     fun updateProjectDefinition(request: Request<CantileverProject>): Response<APIResult<CantileverProject>> {
-        info("Updating '<project>.yaml' file")
+        info("Updating project definition in S3 and DynamoDB")
         val updatedDefinition = request.body
         if (updatedDefinition.projectName.isBlank() || updatedDefinition.domain.isBlank()) {
             return Response.badRequest(
@@ -95,24 +92,27 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
         }
         info("Updated project: $updatedDefinition")
 
-        val yamlToSave = Yaml.default.encodeToString(CantileverProject.serializer(), request.body)
-        val jsonResponse = Json.encodeToString(CantileverProject.serializer(), request.body)
-        s3Service.putObjectAsString(
-            updatedDefinition.projectKey,
-            sourceBucket,
-            yamlToSave,
-            MimeType.yaml.toString()
-        )
-        return Response.ok(body = APIResult.Success(value = updatedDefinition))
+        // save the project YAML file
+        try {
+            val projectYaml = Yaml.default.encodeToString(CantileverProject.serializer(), updatedDefinition)
+            s3Service.putObjectAsString("${updatedDefinition.domain}.yaml", sourceBucket, projectYaml, APP_YAML)
+            return Response.ok(body = APIResult.Success(value = updatedDefinition))
+        } catch (e: Exception) {
+            error("Error updating project definition: ${e.message}")
+            return Response.serverError(
+                body = APIResult.Error(statusText = "Error updating project definition: ${e.message}")
+            )
+        }
     }
 
     /**
-     * Create a new project
-     * This will come to us as yaml document, not json
-     * The yaml file will be based on the domain name, e.g. www.example.com.yaml
+     * Create a new project by saving the project definition YAML file in S3, which will trigger a DynamoDB update.
+     * This will also create the default folders in S3.
+     * @param request The new project definition request
+     * @return The new project definition or an error if the creation failed
      */
     fun createProject(request: Request<CantileverProject>): Response<APIResult<String>> {
-        info("Creating new project")
+        info("Creating new project in S3 and DynamoDB")
         val newProject = request.body
         if (newProject.projectName.isBlank()) {
             return Response.badRequest(
@@ -125,98 +125,34 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
             )
         }
         info("New project: $newProject")
-        val projectKey = newProject.projectKey
-        // TODO: check if the project already exists
-        if (s3Service.objectExists(projectKey, sourceBucket)) {
-            error("Project ${newProject.domain} already exists")
-            return Response.conflict(
-                APIResult.Error(statusText = "Project ${newProject.domain} already exists")
-            )
-        }
-        val yamlToSave = Yaml.default.encodeToString(CantileverProject.serializer(), request.body)
-        s3Service.putObjectAsString(
-            projectKey,
-            sourceBucket,
-            yamlToSave,
-            MimeType.yaml.toString()
-        )
-        return Response.ok(
-            body = APIResult.Success(value = "Successfully created project ${newProject.projectName}")
-        )
-    }
 
-    /**
-     * Return a list of all the [PostMeta]s
-     */
-    @Deprecated("Replaced with [PostController.getPosts]")
-    fun getPosts(request: Request<Unit>): Response<APIResult<PostList>> {
-        info("ProjectController: Retrieving all posts")
-        return if (s3Service.objectExists(postsKey, sourceBucket)) {
-            val postListJson = s3Service.getObjectAsString(postsKey, sourceBucket)
-            val postList = Json.decodeFromString(PostList.serializer(), postListJson)
-            val sorted = postList.posts.sortedBy { it.date }
+        return runBlocking {
+            // Check if the project already exists
+            val existingProject = dynamoDBService.getProject(newProject.domain)
+            if (existingProject != null) {
+                error("Project ${newProject.domain} already exists")
+                return@runBlocking Response.conflict(
+                    APIResult.Error(statusText = "Project ${newProject.domain} already exists")
+                )
+            }
+
+            // save the project YAML file
+            val projectYaml = Yaml.default.encodeToString(CantileverProject.serializer(), newProject)
+            s3Service.putObjectAsString("${newProject.domain}.yaml", sourceBucket, projectYaml, APP_YAML)
+            // create the default folders in S3
+            s3Service.createFolder(newProject.domain, sourceBucket)
+            s3Service.createFolder("${newProject.domain}/$pagesPrefix", sourceBucket)
+            s3Service.createFolder("${newProject.domain}/$templatesPrefix", sourceBucket)
+            s3Service.createFolder("${newProject.domain}/sources/pages", sourceBucket)
+            s3Service.createFolder("${newProject.domain}/sources/images", sourceBucket)
+            s3Service.createFolder("${newProject.domain}/sources/statics", sourceBucket)
+
+
             Response.ok(
-                body = APIResult.Success(
-                    value = PostList(
-                        count = sorted.size,
-                        posts = sorted,
-                        lastUpdated = postList.lastUpdated
-                    )
-                )
-            )
-        } else {
-            Response.notFound(
-                body = APIResult.Error(
-                    statusText = "Cannot find file '$postsKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/posts/rebuild"
-                )
+                body = APIResult.Success(value = "Successfully created project ${newProject.projectName}")
             )
         }
     }
-
-    /**
-     * Return a list of all the [PageMeta]s
-     */
-    @Deprecated("Replaced with [PageController.getPages]")
-    fun getPages(request: Request<Unit>): Response<APIResult<PageTree>> {
-        info("Retrieving all pages")
-        return if (s3Service.objectExists(pagesKey, sourceBucket)) {
-            val pageListJson = s3Service.getObjectAsString(pagesKey, sourceBucket)
-            val pageTree = Json.decodeFromString(PageTree.serializer(), pageListJson)
-            Response.ok(body = APIResult.Success(value = pageTree))
-        } else {
-            error(
-                "Cannot find file '$pagesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/pages/rebuild"
-            )
-            Response.notFound(
-                body = APIResult.Error(
-                    statusText = "Cannot find file '$pagesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/pages/rebuild"
-                )
-            )
-        }
-    }
-
-    /**
-     * Return a list of all the [Template]s
-     */
-    @Deprecated("Replaced with [TemplateController.getTemplates]")
-    fun getTemplates(request: Request<Unit>): Response<APIResult<TemplateList>> {
-        info("Retrieving templates pages")
-        return if (s3Service.objectExists(templatesKey, sourceBucket)) {
-            val templateListJson = s3Service.getObjectAsString(templatesKey, sourceBucket)
-            val templateList = Json.decodeFromString(TemplateList.serializer(), templateListJson)
-            Response.ok(body = APIResult.Success(value = templateList))
-        } else {
-            error(
-                "Cannot find file '$templatesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/templates/rebuild"
-            )
-            Response.notFound(
-                body = APIResult.Error(
-                    statusText = "Cannot find file '$templatesKey' in bucket '$sourceBucket'. To regenerate from sources, call PUT /project/templates/rebuild"
-                )
-            )
-        }
-    }
-
 
     /**
      * Rebuild the generated/templates.json file which contains the metadata for all the Templates in the project.

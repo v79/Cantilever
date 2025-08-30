@@ -1,4 +1,5 @@
 <script context="module" lang="ts">
+	import { PUBLIC_CANTILEVER_API_URL } from '$env/static/public';
 	import { MarkdownContent, PostItem } from '$lib/models/markdown';
 	import type { PostList } from '$lib/models/posts.svelte';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
@@ -23,7 +24,7 @@
 	export async function fetchPosts(token: string, projectDomain: string): Promise<number | Error> {
 		console.log('postStore: Fetching posts for project ' + projectDomain);
 		try {
-			const response = await fetch('https://api.cantilevers.org/posts', {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/posts', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -38,7 +39,7 @@
 				posts.set(data.data);
 				return data.data.count as number;
 			} else {
-				throw new Error("Failed to fetch posts");
+				throw new Error('Failed to fetch posts');
 			}
 		} catch (error) {
 			console.error(error);
@@ -55,7 +56,7 @@
 		console.log('postStore: Fetching post', srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch(`https://api.cantilevers.org/posts/${encodedKey}`, {
+			const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/posts/${encodedKey}`, {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -116,7 +117,7 @@
 				};
 
 				let postJson = JSON.stringify(postToSave);
-				const response = await fetch(`https://api.cantilevers.org/posts/save`, {
+				const response = await fetch(`${PUBLIC_CANTILEVER_API_URL}/posts/save`, {
 					method: 'POST',
 					headers: {
 						Accept: 'text/plain',
@@ -154,7 +155,7 @@
 		console.log('pageStore: Deleting post ' + srcKey);
 		try {
 			const encodedKey = encodeURIComponent(srcKey);
-			const response = await fetch('https://api.cantilevers.org/posts/' + encodedKey, {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/posts/' + encodedKey, {
 				method: 'DELETE',
 				headers: {
 					Accept: 'text/plain',

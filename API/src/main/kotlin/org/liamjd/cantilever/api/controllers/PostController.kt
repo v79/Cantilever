@@ -1,9 +1,13 @@
 package org.liamjd.cantilever.api.controllers
 
+import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import org.koin.core.component.KoinComponent
 import org.liamjd.apiviaduct.routing.Request
 import org.liamjd.apiviaduct.routing.Response
 import org.liamjd.cantilever.api.models.APIResult
+import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.common.getFrontMatter
 import org.liamjd.cantilever.models.ContentMetaDataBuilder
 import org.liamjd.cantilever.models.ContentNode
@@ -13,17 +17,16 @@ import java.net.URLDecoder
 import java.nio.charset.Charset
 
 /**
- * Load, save and delete Posts from the S3 bucket. Operations will update the content tree.
+ * Load, save and delete Posts from the S3 bucket.
  */
 class PostController(sourceBucket: String, generationBucket: String) : KoinComponent,
     APIController(sourceBucket, generationBucket) {
 
     /**
-     * Load a markdown file with the specified `srcKey` from the project folder `cantilever-project-domain` and return it as [ContentNode.PostNode] response
+     * Load a Markdown file with the specified `srcKey` from the project folder `cantilever-project-domain` and return it as [ContentNode.PostNode] response
      */
     fun loadMarkdownSource(request: Request<Unit>): Response<APIResult<ContentNode.PostNode>> {
         val markdownSource = request.pathParameters["srcKey"]
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (markdownSource != null) {
             val srcKey = URLDecoder.decode(markdownSource, Charset.defaultCharset())
             info("Loading Markdown file $srcKey")
@@ -43,47 +46,30 @@ class PostController(sourceBucket: String, generationBucket: String) : KoinCompo
      * Receive a [PostNodeRestDTO] and convert it to a [ContentNode.PostNode] and save it to the S3 bucket
      */
     fun saveMarkdownPost(request: Request<PostNodeRestDTO>): Response<APIResult<String>> {
-        info("saveMarkdownPost")
         val postToSave = request.body
         val srcKey = postToSave.srcKey
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
-            loadContentTree(projectKeyHeader)
             info("Updating existing file '${srcKey}'")
             val length = s3Service.putObjectAsString(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
-            contentTree.updatePost(postToSave.toPostNode())
-            saveContentTree(projectKeyHeader)
             Response.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file...")
             val length = s3Service.putObjectAsString(srcKey, sourceBucket, postToSave.toString(), "text/markdown")
-            contentTree.insertPost(postToSave.toPostNode())
-            saveContentTree(projectKeyHeader)
             Response.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
     }
 
     /**
-     * Delete the markdown post... and it's corresponding html? Um....
+     * Delete the Markdown post... and it's corresponding HTML?
      */
     fun deleteMarkdownPost(request: Request<Unit>): Response<APIResult<String>> {
         val markdownSource = request.pathParameters["srcKey"]
-        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
         return if (markdownSource != null) {
-            loadContentTree(projectKeyHeader)
             val decoded = URLDecoder.decode(markdownSource, Charset.defaultCharset())
             return if (s3Service.objectExists(decoded, sourceBucket)) {
-                val postNode = contentTree.getNode(decoded)
-                if (postNode != null && postNode is ContentNode.PostNode) {
-                    info("Deleting markdown file $decoded")
-                    s3Service.deleteObject(decoded, sourceBucket)
-                    contentTree.deletePost(postNode)
-                    saveContentTree(projectKeyHeader)
-                    Response.ok(body = APIResult.OK("Source $decoded deleted"))
-                } else {
-                    error("Could not delete $decoded; object not found or was not a PostNode")
-                    Response.ok(body = APIResult.Error("Could not delete $decoded; object not found or was not a Post"))
-                }
+                info("Deleting markdown file $decoded")
+                s3Service.deleteObject(decoded, sourceBucket)
+                Response.ok(body = APIResult.OK("Source $decoded deleted"))
             } else {
                 error("Could not delete $decoded; object not found")
                 Response.ok(body = APIResult.Error("Could not delete $decoded; object not found"))
@@ -95,37 +81,31 @@ class PostController(sourceBucket: String, generationBucket: String) : KoinCompo
     }
 
     /**
-     * Return a list of all the posts in the content tree
+     * Return a list of all the posts from the DynamoDB
      * [Request.headers] must contain a "cantilever-project-domain" header
      * @return [PostListDTO] object containing the list of posts, a count and the last updated date/time
      */
     fun getPosts(request: Request<Unit>): Response<APIResult<PostListDTO>> {
-        try {
-            val domain = request.headers["cantilever-project-domain"]!!
-            return if (loadContentTree(domain)) {
-                info("Fetching all posts ")
-                val lastUpdated = s3Service.getUpdatedTime("$domain/metadata.json", generationBucket)
-                val posts = contentTree.items.filterIsInstance<ContentNode.PostNode>()
-                val sorted = posts.sortedByDescending { it.date }
-                val postList = PostListDTO(
-                    count = sorted.size, lastUpdated = lastUpdated, posts = sorted
+        val projectKeyHeader = request.headers["cantilever-project-domain"]!!
+        info("Retrieving posts for project $projectKeyHeader")
+        return runBlocking {
+            val list = dynamoDBService.listAllNodesForProject(projectKeyHeader, SOURCE_TYPE.Posts)
+            val postList = list.filterIsInstance<ContentNode.PostNode>()
+            if (postList.isEmpty()) {
+                error("No posts found in DynamoDB for project $projectKeyHeader")
+                return@runBlocking Response.notFound(
+                    body = APIResult.Error("No posts found in DynamoDB for project $projectKeyHeader")
                 )
-                if (postList.posts.isEmpty()) {
-                    error("No posts found in content tree")
-                    Response.serverError(body = APIResult.Error("No posts found in content tree for project $domain; create some?"))
-                } else {
-                    Response.ok(body = APIResult.Success(value = postList))
-                }
-            } else {
-                error("Cannot find metadata.json for project $domain")
-                Response.notFound(body = APIResult.Error(statusText = "Cannot find file '${domain}/metadata.json' in bucket $generationBucket. Please regenerate the metadata."))
             }
-        } catch (nsk: NoSuchElementException) {
-            error("No project metadata found")
-            return Response.notFound(body = APIResult.Error(statusText = "No project metadata found"))
-        } catch (e: Exception) {
-            error("Error getting posts: ${e.message}")
-            return Response.serverError(body = APIResult.Error(statusText = "Error getting posts: ${e.message}"))
+            val sorted = postList.sortedByDescending { it.date }
+            val lastUpdated = sorted.last().date
+            val dateTime = lastUpdated.atStartOfDayIn(TimeZone.currentSystemDefault())
+            val postListDTO = PostListDTO(
+                lastUpdated = dateTime,
+                posts = sorted,
+                count = sorted.size,
+            )
+            return@runBlocking Response.ok(body = APIResult.Success(value = postListDTO))
         }
     }
 

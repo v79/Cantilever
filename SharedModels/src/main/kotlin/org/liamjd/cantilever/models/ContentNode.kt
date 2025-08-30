@@ -5,6 +5,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.*
 import org.liamjd.cantilever.common.S3_KEY
+import kotlin.time.ExperimentalTime
 
 /**
  * A SrcKey is a String representation of the S3 bucket object key
@@ -17,17 +18,29 @@ typealias SrcKey = String // an S3 bucket object key
  */
 @Serializable
 @OptIn(ExperimentalSerializationApi::class)
+/**
+ * Sealed class representing different types of content nodes in a content management system.
+ * Each subclass represents a specific type of content node with its own properties and behaviors.
+ * @property srcKey The source key of the content node. This will be fully qualified for S3 access, e.g. "<domain.com>/sources/pages/folder/page.md"
+ * @property lastUpdated The timestamp of the last update to the content node, persisted as milliseconds since epoch.
+ * @property url The URL where the content node can be accessed, relative to the site root
+ */
 sealed class ContentNode {
     abstract val srcKey: SrcKey
+
+    @OptIn(ExperimentalTime::class)
     abstract val lastUpdated: Instant
     abstract val url: String
 
     /**
      * A folder is a node in the tree which contains other nodes
+     * It is not used for the four core 'type' folders (pages, posts, templates, statics)
+     * @property children A list of SrcKeys representing the children of the folder
+     * @property indexPage The SrcKey of the index page for the folder, if any
      */
     @Serializable
     @SerialName("folder")
-    data class FolderNode(
+    data class FolderNode @OptIn(ExperimentalTime::class) constructor(
         override val srcKey: SrcKey,
         override val lastUpdated: Instant = Clock.System.now(),
         val children: MutableList<SrcKey> = mutableListOf(),
@@ -37,10 +50,32 @@ sealed class ContentNode {
             get() = children.size
 
         override val url = srcKey.removePrefix(S3_KEY.pagesPrefix)
+
+        override fun equals(other: Any?): Boolean {
+            if (other !is FolderNode) return false
+            return srcKey == other.srcKey
+        }
+
+        override fun hashCode(): Int {
+            var result = srcKey.hashCode()
+            result = 31 * result + lastUpdated.hashCode()
+            result = 31 * result + children.hashCode()
+            result = 31 * result + (indexPage?.hashCode() ?: 0)
+            result = 31 * result + url.hashCode()
+            result = 31 * result + count
+            return result
+        }
     }
 
     /**
-     * A page is a node in the tree which represents a page on the site. A page belongs to a folder, and may be the index page for that folder
+     * A page is a node in the tree which represents a page on the site. A page belongs to a Folder and may be the index page for that folder
+     * @property title The title of the page, used in the HTML title tag and in navigation
+     * @property templateKey The SrcKey of the template used to render the page, e.g. "sources/templates/page.html.hbs" (no domain)
+     * @property slug The slug of the page, used in the URL
+     * @property isRoot Whether the page is the index page for its parent folder
+     * @property attributes A map of additional attributes for the page, from the frontmatter
+     * @property sections A map of section names to content, from the frontmatter
+     * @property parent The SrcKey of the parent folder
      */
     @Serializable
     @SerialName("page")
@@ -58,14 +93,14 @@ sealed class ContentNode {
 
         @Transient
         val type: String? =
-            null // this is used by the front end to determine if it's a page or a post, but is  not needed here
+            null // this is used by the front end to determine if it's a page or a post, but is not needed here
 
-        // I might actually want to generate both index.html and the slug version of the file but for now let's just do index.html or slug
+        // I might actually want to generate both index.html and the slug version of the file, but for now let's just do index.html or slug
         override val url: String
             get() {
                 // intended url would be www.cantilevers.org/parentFolder/slug
-                // but parent looks like wwww.cantilevers.org/sources/pages/parentFolder
-                val parentFolder = parent.replaceFirst("/sources/pages","")
+                // but parent looks like www.cantilevers.org/sources/pages/parentFolder
+                val parentFolder = parent.replaceFirst("/sources/pages", "")
                 return if (isRoot) {
                     "${parentFolder}/index.html"
                 } else {
@@ -75,12 +110,15 @@ sealed class ContentNode {
     }
 
     /**
-     * ---
-     * title: Exploring authentication of routes
-     * templateKey: sources/templates/post.html.hbs
-     * date: 2023-01-31
-     * slug: exploring-route-authentication
-     * ---
+     * A post is a node in the tree which represents a blog post on the site. Posts are not in folders but are linked together in a sequence
+     * @property title The title of the post, used in the HTML title tag and in navigation
+     * @property templateKey The SrcKey of the template used to render the post, e.g. "sources/templates/post.html.hbs" (no domain)
+     * @property date The date of the post, used to order posts and in the URL
+     * @property slug The slug of the post, used in the URL
+     * @property attributes A map of additional attributes for the post, from the frontmatter
+     * @property body The body content of the post, in Markdown format
+     * @property next The SrcKey of the next post in the sequence, if any
+     * @property prev The SrcKey of the previous post in the sequence, if any
      */
     @Serializable
     @SerialName("post")
@@ -103,7 +141,7 @@ sealed class ContentNode {
             }
 
         /**
-         * secondary constructor for when we know the srcKey
+         * Secondary constructor for when we know the srcKey
          */
         constructor(
             srcKey: String,
@@ -111,19 +149,21 @@ sealed class ContentNode {
             templateKey: String,
             date: LocalDate,
             slug: String,
-            attributes: Map<String, String> = emptyMap()
+            attributes: Map<String, String> = emptyMap(),
+            lastUpdated: Instant = Clock.System.now(),
         ) : this(
             title = title,
             templateKey = templateKey,
             date = date,
             slug = slug,
-            attributes = attributes
+            attributes = attributes,
+            lastUpdated = lastUpdated,
         ) {
             this.srcKey = srcKey
         }
 
         /**
-         * secondary constructor to convert a temporary [PostYaml] object into a [PostNode]
+         * Secondary constructor to convert a temporary [PostYaml] object into a [PostNode]
          */
         internal constructor(postYaml: PostYaml) : this(
             title = postYaml.title,
@@ -140,7 +180,10 @@ sealed class ContentNode {
     }
 
     /**
-     * A template is a node in the tree which represents a handlebars template. It is used to generate the final HTML for a page
+     * A template is a node in the tree which represents a Handlebars template. It is used to generate the final HTML for a page
+     * @property title The title of the template, used in the editing interface
+     * @property sections A list of section names which the template defines
+     * @property body The body content of the template, in Handlebars format
      */
     @Serializable
     @SerialName("template")
@@ -155,7 +198,8 @@ sealed class ContentNode {
     }
 
     /**
-     * A static is a node in the tree which represents a static file, such as a .css file. It is copied to the generated bucket without modification
+     * A Static is a node in the tree which represents a static file, such as a .css file. It is copied to the generated bucket without modification
+     * @property fileType The MIME type of the static file, e.g. "text/css"
      */
     @Serializable
     @SerialName("static")
@@ -170,6 +214,7 @@ sealed class ContentNode {
 
     /**
      * An image is a node in the tree which represents an image file. It is copied to the generated bucket without modification
+     * @property contentType The MIME type of the image file, e.g. "image/png"
      */
     @Serializable
     @SerialName("image")
@@ -191,7 +236,7 @@ sealed class ContentNode {
 class FolderNotEmptyException(message: String) : Exception(message)
 
 /**
- * This is a utility class because [ContentNode.PostNode] requires the `srcKey` property, which will not exist in the yaml frontmatter for a post.
+ * This is a utility class because [ContentNode.PostNode] requires the `srcKey` property, which will not exist in the YAML frontmatter for a post.
  * I had hoped to avoid this duplication of classes, but I can't see a way around it because making `srcKey` abstract in [ContentNode] does not work.
  */
 @Serializable
@@ -202,297 +247,3 @@ internal class PostYaml(
     val slug: String,
     val attributes: Map<String, String> = emptyMap()
 )
-
-/**
- * A ContentTree is a representation of the entire site, as a tree of ContentNodes
- * It is split into items (pages, folders and posts), templates and statics
- */
-@Serializable
-class ContentTree {
-
-    val items: MutableList<ContentNode> = mutableListOf()
-    val templates: MutableList<ContentNode.TemplateNode> = mutableListOf()
-    val statics: MutableList<ContentNode.StaticNode> = mutableListOf()
-    val images: MutableList<ContentNode.ImageNode> = mutableListOf()
-
-    val postCount = items.filterIsInstance<ContentNode.PostNode>().size // FIXME: not working as I expected
-    val pageCount = items.filterIsInstance<ContentNode.PageNode>().size // FIXME: not working as I expected
-
-    /**
-     * Insert a node into the tree. It performs the appropriate insert based on the type of node.
-     */
-    fun insert(node: ContentNode) {
-        when (node) {
-            is ContentNode.FolderNode -> insertFolder(node)
-            is ContentNode.PageNode -> insertPage(node)
-            is ContentNode.PostNode -> insertPost(node)
-            is ContentNode.TemplateNode -> insertTemplate(node)
-            is ContentNode.StaticNode -> insertStatic(node)
-            is ContentNode.ImageNode -> insertImage(node)
-        }
-    }
-
-    /**
-     * Insert a list of nodes into the tree.
-     */
-    fun insertAll(nodes: List<ContentNode>) {
-        nodes.forEach { insert(it) }
-    }
-
-    /**
-     * Insert a Template into the tree
-     */
-    fun insertTemplate(templateNode: ContentNode.TemplateNode) {
-        if (templates.contains(templateNode)) {
-            templates.remove(templateNode)
-        }
-        templates.add(templateNode)
-    }
-
-    /**
-     * Insert a static file, such as a .css file or image, into the tree
-     */
-    fun insertStatic(staticNode: ContentNode.StaticNode) {
-        if (statics.contains(staticNode)) {
-            statics.remove(staticNode)
-        }
-        statics.add(staticNode)
-    }
-
-    /**
-     * Insert an image into the tree
-     */
-    fun insertImage(imageNode: ContentNode.ImageNode) {
-        if (images.contains(imageNode)) {
-            images.remove(imageNode)
-        }
-        images.add(imageNode)
-    }
-
-    /**
-     * Delete a template from the tree.
-     */
-    fun deleteTemplate(templateNode: ContentNode.TemplateNode) {
-        println("Removing template ${templateNode.srcKey} from ContentTree")
-        templates.removeIf { it.srcKey == templateNode.srcKey }
-    }
-
-    /**
-     * Delete an image from the tree
-     */
-    fun deleteImage(imageNode: ContentNode.ImageNode) {
-        println("Removing image ${imageNode.srcKey} from ContentTree")
-        images.removeIf { it.srcKey == imageNode.srcKey }
-    }
-
-    /**
-     * Insert a folder into the tree.
-     */
-    fun insertFolder(folderNode: ContentNode.FolderNode) {
-        // not sure I want to delete first, but I don't want duplicates either
-        items.add(folderNode)
-    }
-
-    /**
-     * Delete a folder from the tree. Throws an exception if the folder contains children.
-     */
-    fun deleteFolder(folderNode: ContentNode.FolderNode) {
-        if (folderNode.children.isNotEmpty()) {
-            throw FolderNotEmptyException("Cannot delete a folder that contains children")
-        }
-        items.remove(folderNode)
-    }
-
-    /**
-     * Update a folder from the tree
-     */
-    fun updateFolder(folderNode: ContentNode.FolderNode) {
-        val existing = items.find { it.srcKey == folderNode.srcKey } as ContentNode.FolderNode?
-        if (existing != null) {
-            items.remove(existing)
-            items.add(folderNode)
-        }
-    }
-
-    /**
-     * Insert a page into the tree. It also attempts to associate the page with its parent folder.
-     */
-    fun insertPage(page: ContentNode.PageNode) {
-        // check if page exists first??
-        items.add(page)
-        val parent = items.find { it.srcKey == page.parent } as ContentNode.FolderNode?
-        parent?.children?.add(page.srcKey).also {
-            if (page.isRoot) {
-                parent?.indexPage = page.srcKey
-            }
-        }
-    }
-
-    /**
-     *  Insert a page into the tree, and associate it with the specified parent folder.
-     */
-    fun insertPage(page: ContentNode.PageNode, folder: ContentNode.FolderNode) {
-        // check if page exists first??
-        items.add(page)
-        folder.children.add(page.srcKey)
-        page.parent = folder.srcKey
-        if (page.isRoot) {
-            folder.indexPage = page.srcKey
-        }
-    }
-
-    /**
-     * Update a page in the tree. This is used when a page is edited and saved.
-     * This does NOT update the parent folder, so if the page has been moved, the parent folder must be updated separately, or call reparentPage()
-     */
-    fun updatePage(page: ContentNode.PageNode) {
-        val existing = items.find { it.srcKey == page.srcKey } as ContentNode.PageNode?
-        if (existing != null) {
-            val existingParent = existing.parent
-            page.parent = existingParent
-            items.remove(existing)
-            items.add(page)
-        }
-    }
-
-    /**
-     * Update a post in the tree. This does a delete then insert, so the prev and next links are updated.
-     */
-    fun updatePost(post: ContentNode.PostNode) {
-        val existing = items.find { it.srcKey == post.srcKey } as ContentNode.PostNode?
-        if (existing != null) {
-            deletePost(existing)
-            insertPost(post)
-        }
-    }
-
-    /**
-     * Update a template in the tree. This does a delete then insert
-     */
-    fun updateTemplate(template: ContentNode.TemplateNode) {
-        val existing = templates.find { it.srcKey == template.srcKey }
-        if (existing != null) {
-            deleteTemplate(existing)
-            insertTemplate(template)
-        }
-    }
-
-    /**
-     * Delete a page from the tree. This also updates the parent folder.
-     */
-    fun deletePage(page: ContentNode.PageNode) {
-        items.remove(page)
-        val parent = items.find { it.srcKey == page.parent } as ContentNode.FolderNode?
-        parent?.children?.remove(page.srcKey)
-    }
-
-    /**
-     * Move a page from one folder to another
-     */
-    fun reparentPage(pageNode: ContentNode.PageNode, newParent: ContentNode.FolderNode) {
-        val existing = items.find { it.srcKey == pageNode.srcKey } as ContentNode.PageNode?
-        if (existing != null) {
-            existing.parent.let { existingParent ->
-                val existingParentNode = getNode(existingParent) as ContentNode.FolderNode?
-                existingParentNode?.children?.remove(pageNode.srcKey)
-                existingParentNode?.indexPage = null
-            }
-            pageNode.parent = newParent.srcKey
-            if (pageNode.isRoot) {
-                newParent.indexPage = pageNode.srcKey
-            }
-            newParent.children.add(pageNode.srcKey)
-        }
-    }
-
-    /**
-     * Insert a post into the tree. This also updates the prev and next links for all sibling posts.
-     */
-    fun insertPost(post: ContentNode.PostNode) {
-        items.add(post)
-        val previous =
-            items.filterIsInstance<ContentNode.PostNode>().filter { it.date < post.date }.maxByOrNull { it.date }
-        val next =
-            items.filterIsInstance<ContentNode.PostNode>().filter { it.date > post.date }.minByOrNull { it.date }
-        post.prev = previous?.srcKey
-        post.next = next?.srcKey
-        previous?.next = post.srcKey
-        next?.prev = post.srcKey
-    }
-
-    /**
-     * Delete a post from the tree. This also updates the prev and next links for all sibling posts.
-     */
-    fun deletePost(post: ContentNode.PostNode) {
-        items.remove(post)
-        val previous =
-            items.filterIsInstance<ContentNode.PostNode>().filter { it.date < post.date }.maxByOrNull { it.date }
-        val next =
-            items.filterIsInstance<ContentNode.PostNode>().filter { it.date > post.date }.minByOrNull { it.date }
-        previous?.next = next?.srcKey
-        next?.prev = previous?.srcKey
-    }
-
-    /**
-     * Delete a post from the tree. This also updates the prev and next links for all sibling posts.
-     */
-    fun deletePost(srcKey: SrcKey) {
-        val post = getNode(srcKey) as ContentNode.PostNode?
-        post?.let { deletePost(it) }
-    }
-
-    /**
-     * Get the next post in the tree, based on the current post's srcKey
-     */
-    fun getNextPost(postKey: SrcKey): ContentNode.PostNode? {
-        val post = items.find { it.srcKey == postKey } as ContentNode.PostNode?
-        return post?.next?.let { nextKey ->
-            items.find { it.srcKey == nextKey } as ContentNode.PostNode?
-        }
-    }
-
-    /**
-     * Get the previous post in the tree, based on the current post's srcKey
-     */
-    fun getPrevPost(postKey: SrcKey): ContentNode.PostNode? {
-        val post = items.find { it.srcKey == postKey } as ContentNode.PostNode?
-        return post?.prev?.let { prevKey ->
-            items.find { it.srcKey == prevKey } as ContentNode.PostNode?
-        }
-    }
-
-    /**
-     * Find a node in the tree, based on its srcKey.
-     */
-    fun getNode(srcKey: SrcKey): ContentNode? {
-        return items.find { it.srcKey == srcKey }
-    }
-
-    fun getTemplate(srcKey: SrcKey): ContentNode.TemplateNode? {
-        return templates.find { it.srcKey == srcKey }
-    }
-
-    /**
-     * Find all posts which have the specified templateKey
-     */
-    fun getPagesForTemplate(templateKey: String): List<ContentNode.PageNode> {
-        return items.filterIsInstance<ContentNode.PageNode>().filter { it.templateKey == templateKey }
-    }
-
-    /**
-     * Find all posts which have the specified templateKey
-     */
-    fun getPostsForTemplate(templateKey: String): List<ContentNode.PostNode> {
-        return items.filterIsInstance<ContentNode.PostNode>().filter { it.templateKey == templateKey }
-    }
-
-    /**
-     * Clear the tree in advance of re-loading all the data from the S3 bucket
-     */
-    fun clear() {
-        items.clear()
-        templates.clear()
-        statics.clear()
-        images.clear()
-    }
-}
