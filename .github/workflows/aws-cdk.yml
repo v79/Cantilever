@@ -1,4 +1,4 @@
-# This workflow attempts to run cdk deploy --context env=prod to deploy Cantilever to AWS.
+# This workflow attempts to run cdk deploy Cantilever-Prod-Stack to deploy Cantilever to AWS.
 
 name: Deploy to Amazon CDK
 
@@ -8,7 +8,7 @@ on:
     branches: [ "master" ]
 
 env:
-  AWS_REGION: eu-west-2                   # set this to your preferred AWS region, e.g. us-west-1
+  AWS_REGION: eu-west-2
 
 permissions:
   contents: read
@@ -51,5 +51,4 @@ jobs:
       - name: CDK Synth to test run
         run: |
           gradle wrapper
-          cdk deploy --context env=prod
-      
+          cdk deploy Cantilever-Prod-Stack
