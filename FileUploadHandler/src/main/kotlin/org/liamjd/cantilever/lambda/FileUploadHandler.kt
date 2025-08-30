@@ -145,6 +145,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                                     Unknown -> {
                                         log("ERROR", "Unknown source type '$parentFolder' for $srcKey")
                                     }
+
                                     Project -> {
                                         // Confirm that this is a project YAML file
                                         if (fileType != FILE_TYPE.YAML) {

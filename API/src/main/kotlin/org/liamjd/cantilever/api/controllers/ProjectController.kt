@@ -141,11 +141,11 @@ class ProjectController(sourceBucket: String, generationBucket: String) : KoinCo
             s3Service.putObjectAsString("${newProject.domain}.yaml", sourceBucket, projectYaml, APP_YAML)
             // create the default folders in S3
             s3Service.createFolder(newProject.domain, sourceBucket)
-            s3Service.createFolder("${newProject.domain}/$pagesPrefix", sourceBucket)
-            s3Service.createFolder("${newProject.domain}/$templatesPrefix", sourceBucket)
             s3Service.createFolder("${newProject.domain}/sources/pages", sourceBucket)
             s3Service.createFolder("${newProject.domain}/sources/images", sourceBucket)
             s3Service.createFolder("${newProject.domain}/sources/statics", sourceBucket)
+            s3Service.createFolder("${newProject.domain}/sources/templates", sourceBucket)
+
 
 
             Response.ok(
