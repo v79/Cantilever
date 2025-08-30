@@ -182,7 +182,7 @@ internal class ProjectControllerTest : KoinTest {
 
         assertNotNull(response)
         assertEquals(200, response.statusCode)
-        verify(atLeast = 5) { mockS3.createFolder(any(), any()) }
+        verify(exactly = 5) { mockS3.createFolder(any(), any()) }
         coVerify(exactly = 0) { mockDynamoDB.saveProject(any()) }
     }
 
