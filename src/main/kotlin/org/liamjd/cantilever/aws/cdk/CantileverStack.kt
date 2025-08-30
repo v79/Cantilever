@@ -423,9 +423,9 @@ class CantileverStack(
 
 
         // I want to put the domain name of the editor cloudfront distribution here, but it isn't available until after the stack is deployed
-        // Gemini suggested writing a custom resource and a lambda function to execute post-deployment
-        // The alternative may be have two separate stacks, one for the distribution and one for the rest of the resources
-        // or I just hardcode the URL for the editor bucket distribution
+        // Gemini suggested writing a custom resource and a lambda function to execute post-deployment.
+        // The alternative may be have two separate stacks, one for the distribution and one for the rest of the resources.
+        // Or I just hardcode the URL for the editor bucket distribution.
         val appUrls = listOf(deploymentDomain, "https://dco7fhfjo6vkm.cloudfront.net")
         val corbelAppUrls = listOf(
             "http://localhost:44817/callback", "corbelApp://auth"
