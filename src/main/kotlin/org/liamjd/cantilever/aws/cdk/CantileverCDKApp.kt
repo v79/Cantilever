@@ -14,7 +14,7 @@ fun main() {
     println("Creating Cantilever stacks for $versionString in ${euWest.region} (${euWest.account})")
     val prodStack = CantileverStack(
         scope = app,
-        id = "CantileverStack",
+        id = "Cantilever-Prod-Stack",
         props = buildStack("prod", euWest),
         versionString = versionString,
         deploymentDomain = "https://app.cantilevers.org",
