@@ -158,6 +158,8 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             log("Written final HTML file to '${pageMsg.metadata.url}'")
         } catch (nske: NoSuchKeyException) {
             log("ERROR", "Could not load file from S3, exception: ${nske.message}")
+        } catch (e: Exception) {
+            log("ERROR", "Exception rendering page: ${e.message}")
         }
     }
 
@@ -177,7 +179,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
         try {
             val domain = postMsg.projectDomain
             val body = s3Service.getObjectAsString(postMsg.fragmentSrcKey, generationBucket)
-            log("Loaded body fragment from '${postMsg.fragmentSrcKey}: ${body.take(100)}'")
+            log("Loaded body fragment from '${postMsg.fragmentSrcKey}: ${body.length} characters'")
 
             val project = getProjectModel(postMsg.projectDomain) ?: throw Exception("Project model is null")
             val postTemplateKey = domain + "/" + postMsg.metadata.templateKey
@@ -204,6 +206,8 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             log("Written final HTML file to '${project.domainKey}${postMsg.metadata.url}'")
         } catch (nske: NoSuchKeyException) {
             log("ERROR", "Could not load file from S3, exception: ${nske.message}")
+        } catch (e: Exception) {
+            log("ERROR", "Exception rendering post: ${e.message}")
         }
     }
 

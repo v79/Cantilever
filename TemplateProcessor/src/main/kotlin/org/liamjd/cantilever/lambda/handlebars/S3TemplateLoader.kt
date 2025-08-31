@@ -21,10 +21,13 @@ class S3TemplateLoader(val s3Service: S3Service, val bucket: String) : TemplateL
 
     override fun sourceAt(srcKey: String): TemplateSource {
         val resolved = resolve(srcKey)
-        println("Loading template '$srcKey' resolved to '${resolved}' from S3")
+        println("S3TemplateLoader: Loading template '$srcKey' resolved to '${resolved}' from S3")
+        if (!s3Service.objectExists(resolved, bucket)) {
+            throw IllegalArgumentException("Template '$srcKey' resolved to '$resolved' not found in bucket '$bucket'")
+        }
         val templateString = s3Service.getObjectAsString(resolved, bucket)
 
-        return StringTemplateSource(srcKey, templateString)
+        return StringTemplateSource(resolved, templateString)
     }
 
     /**
@@ -39,7 +42,7 @@ class S3TemplateLoader(val s3Service: S3Service, val bucket: String) : TemplateL
         } else {
             "$prefix/sources/templates/$templateKey$suffix"
         }
-        println("Resolving template '$templateKey' to '$resolved'")
+        println("S3TemplateLoader: Resolving template '$templateKey' to '$resolved'")
         return resolved
     }
 
