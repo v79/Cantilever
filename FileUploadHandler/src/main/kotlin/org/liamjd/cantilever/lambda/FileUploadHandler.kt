@@ -201,7 +201,9 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                                         }
                                     }
 
-                                    Templates -> {
+                                    // Templates and partials are uploaded to the same folder
+                                    // The difference is that partials do not contain any YAML front matter
+                                    Templates, Partials -> {
                                         if (fileType == FILE_TYPE.HBS) {
                                             processTemplateUpload(
                                                 srcKey = srcKey, srcBucket = srcBucket, projectDomain = projectDomain
@@ -483,6 +485,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
     /**
      * Process the uploaded template file. In the future, this will send a message to the template processor queue.
      * Currently, it does nothing as the template processing is handled by the Markdown processor.
+     * This function responds to both templates and partials.
      * @param srcKey the source key of the uploaded template file
      * @param srcBucket the S3 bucket where the template file is stored
      * @param projectDomain the domain of the project to which the template belongs
@@ -492,13 +495,23 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
     ): Boolean {
         try {
             val sourceString = s3Service.getObjectAsString(srcKey, srcBucket)
-            // extract metadata
-            val templateNode = ContentMetaDataBuilder.TemplateBuilder.buildFromSourceString(sourceString, srcKey)
-            val attributes: MutableMap<String, String> = mutableMapOf()
-            attributes["title"] = templateNode.title
-            // TODO: add the names of the sections as a set
-            dynamoDBService.upsertContentNode(srcKey, projectDomain, Templates, templateNode, attributes)
-            return true
+            if (sourceString.hasFrontMatter()) {
+                // extract metadata
+                val templateNode = ContentMetaDataBuilder.TemplateBuilder.buildFromSourceString(sourceString, srcKey)
+                val attributes: MutableMap<String, String> = mutableMapOf()
+                attributes["title"] = templateNode.title
+                // TODO: add the names of the sections as a set
+                dynamoDBService.upsertContentNode(srcKey, projectDomain, Templates, templateNode, attributes)
+                return true
+            } else {
+                // This is a partial, which has no front matter
+                val partialNode = ContentNode.TemplatePartialNode(
+                    srcKey = srcKey,
+                    lastUpdated = Clock.System.now()
+                )
+                dynamoDBService.upsertContentNode(srcKey, projectDomain, Partials, partialNode, emptyMap())
+                return true
+            }
         } catch (e: Exception) {
             log("ERROR", "Failed to process template upload for $srcKey; ${e.message}")
         }

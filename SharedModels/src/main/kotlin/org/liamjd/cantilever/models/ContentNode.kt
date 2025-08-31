@@ -198,6 +198,20 @@ sealed class ContentNode {
     }
 
     /**
+     * A template partial is a node in the tree which represents a Handlebars partial template. They are useful for breaking up large templates into smaller, reusable components
+     * Partials do not have any YAML frontmatter.
+     * They have no custom properties or attributes
+     */
+    @Serializable
+    @SerialName("templatePartial")
+    data class TemplatePartialNode(
+        override val srcKey: SrcKey,
+        override val lastUpdated: Instant = Clock.System.now(),
+    ) : ContentNode() {
+        override val url = "" // irrelevant for templates
+    }
+
+    /**
      * A Static is a node in the tree which represents a static file, such as a .css file. It is copied to the generated bucket without modification
      * @property fileType The MIME type of the static file, e.g. "text/css"
      */

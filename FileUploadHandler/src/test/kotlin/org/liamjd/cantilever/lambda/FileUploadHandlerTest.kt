@@ -201,6 +201,48 @@ internal class FileUploadHandlerTest : KoinTest {
     }
 
     @Test
+    fun `process partial upload`(): Unit = runBlocking {
+        // setup
+        declareMock<S3Service> {
+            every {
+                mockS3Service.getContentType(
+                    "domain.com/sources/templates/partials/header.hbs",
+                    "test-bucket"
+                )
+            } returns "text/x-handlebars-template"
+            every {
+                mockS3Service.getObjectAsString("domain.com/sources/templates/partials/header.hbs", "test-bucket")
+            } returns "<header>Header content</header>"
+        }
+        declareMock<DynamoDBService> {
+            every { mockDynamoDBService.logger = any() } just runs
+            every { mockDynamoDBService.logger } returns mockLogger
+            coEvery {
+                mockDynamoDBService.upsertContentNode(
+                    "domain.com/sources/templates/partials/header.hbs", "domain.com",
+                    SOURCE_TYPE.Partials, any<ContentNode.TemplatePartialNode>(), any()
+                )
+            } returns true
+        }
+
+        val event = createS3Event("test-bucket", "domain.com/sources/templates/partials/header.hbs", 123L)
+        val handler = FileUploadHandler(mockEnv)
+
+        // execute
+        val response = handler.handleRequest(event, mockContext)
+
+        // verify
+        assertEquals("200 OK", response)
+        coVerify {
+            mockDynamoDBService.upsertContentNode(
+                eq("domain.com/sources/templates/partials/header.hbs"), eq("domain.com"),
+                eq(SOURCE_TYPE.Partials),
+                any<ContentNode.TemplatePartialNode>(), any()
+            )
+        }
+    }
+
+    @Test
     fun `process css upload`(): Unit = runBlocking {
         // setup
         declareMock<S3Service> {

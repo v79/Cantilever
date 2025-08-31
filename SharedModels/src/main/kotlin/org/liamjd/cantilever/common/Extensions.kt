@@ -50,3 +50,10 @@ fun String.stripFrontMatter(): String {
 fun String.getFrontMatter(): String {
     return this.substringAfter("---").substringBefore("---")
 }
+
+/**
+ * Check if a string has a front matter block
+ */
+fun String.hasFrontMatter(): Boolean {
+    return this.trim().startsWith("---")
+}
