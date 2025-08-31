@@ -131,10 +131,6 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             val pageTemplateKey = domain + "/" + pageMsg.metadata.templateKey
             val project = getProjectModel(pageMsg.projectDomain) ?: throw Exception("Project model is null")
             val navigationBuilder = NavigationBuilder(dynamoDBService, domain)
-            // load the page.html.hbs template
-            log("Loading template $pageTemplateKey")
-            val sourceString = s3Service.getObjectAsString(pageTemplateKey, sourceBucket)
-            val templateString = sourceString.stripFrontMatter()
             val model = mutableMapOf<String, Any?>()
             model["key"] = pageMsg.metadata.srcKey
             model["url"] = pageMsg.metadata.url
@@ -154,9 +150,9 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
                 model[name] = html
             }
 
-            val renderer = HandlebarsRenderer()
-            println("Rending template '${pageMsg.metadata.templateKey}' with model keys ${model.keys}")
-            val html = renderer.render(model = model, template = templateString)
+            val renderer = HandlebarsRenderer(s3Service, sourceBucket)
+            println("Rending template '${pageMsg.metadata.templateKey}' for '${pageMsg.metadata.srcKey}' with model keys ${model.keys}")
+            val html = renderer.render(model = model, srcKey = pageTemplateKey)
             log("Calculated URL for page: ${pageMsg.metadata.url} from parentFolder: ${pageMsg.metadata.parent} and srcKey: ${pageMsg.metadata.srcKey}")
             s3Service.putObjectAsString(pageMsg.metadata.url, destinationBucket, html, "text/html")
             log("Written final HTML file to '${pageMsg.metadata.url}'")
@@ -185,9 +181,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
 
             // load the template file as specified by metadata
             val template = postMsg.projectDomain + "/" + postMsg.metadata.templateKey
-            log("Attempting to load '$template' from bucket '${sourceBucket}' to a string")
-            val sourceString = s3Service.getObjectAsString(template, sourceBucket)
-            val templateString = sourceString.stripFrontMatter()
+
             val project = getProjectModel(postMsg.projectDomain) ?: throw Exception("Project model is null")
             // build model from project and from HTML fragment
             val model = mutableMapOf<String, Any?>()
@@ -203,9 +197,9 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
                 model[it.key] = it.value
             }
 
-            val renderer = HandlebarsRenderer()
-            println("Rending template '$template' with model keys ${model.keys}")
-            val html = renderer.render(model = model, template = templateString)
+            val renderer = HandlebarsRenderer(s3Service, sourceBucket)
+            println("Rending template '$template' for '${postMsg.metadata.srcKey}' with model keys ${model.keys}")
+            val html = renderer.render(model = model, srcKey = postMsg.metadata.templateKey)
 
             // save to S3
             s3Service.putObjectAsString(project.domainKey + postMsg.metadata.url, destinationBucket, html, "text/html")
@@ -216,7 +210,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
     }
 
     /**
-     * Parse and render the given CSS file to the destination bucket. This is most likely to be a straight pass-through with no processing
+     * Parse and renderInline the given CSS file to the destination bucket. This is most likely to be a straight pass-through with no processing
      * @param staticFileMsg
      * @param sourceBucket the source of the original CSS file TODO: move this to an environment variable for the processor
      * @param generationBucket the intermediate bucket for the generated files
@@ -238,10 +232,8 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
                 val cssTemplateString = s3Service.getObjectAsString(staticFileMsg.srcKey, sourceBucket)
                 log("Loaded ${staticFileMsg.srcKey} and rendering via Handlebars to ${staticFileMsg.destinationKey}")
 
-                val css = with(logger) {
-                    val renderer = HandlebarsRenderer()
-                    renderer.render(model = model, template = cssTemplateString)
-                }
+                val renderer = HandlebarsRenderer(s3Service, sourceBucket)
+                val css = renderer.renderInline(model = model, templateString = cssTemplateString)
 
                 s3Service.putObjectAsString(
                     project.domainKey + staticFileMsg.destinationKey, destinationBucket, css, "text/css"
@@ -252,6 +244,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             log("ERROR", "Could not load file from S3, exception: ${nske.message}")
         }
     }
+
 
 
     /**

@@ -39,7 +39,7 @@ api-viaduct = "0.4.1-SNAPSHOT"
 
 # Other libraries
 kaml = "0.55.0"
-handlebars = "4.3.1"
+handlebars = "4.5.0"
 java-jwt = "4.3.0"
 jwks-rsa = "0.22.0"
 imgscalr = "4.2"
