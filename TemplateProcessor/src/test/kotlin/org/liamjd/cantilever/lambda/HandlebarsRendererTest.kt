@@ -40,6 +40,7 @@ internal class HandlebarsRendererTest : KoinTest {
     private val mockContext: Context = mockk(relaxed = true)
     private val mockLogger = mockk<LambdaLogger>(relaxed = true)
     private val mockEnv = mockk<EnvironmentProvider>()
+    private val domain = "domain"
 
     @JvmField
     @RegisterExtension
@@ -62,6 +63,9 @@ internal class HandlebarsRendererTest : KoinTest {
         declareMock<EnvironmentProvider> {
 
         }
+        declareMock<S3Service> {
+
+        }
     }
 
     @AfterEach
@@ -77,7 +81,7 @@ internal class HandlebarsRendererTest : KoinTest {
         val expectedResult = "<html><title>Handlebars</title></html>"
         val model = mapOf<String, Any?>("title" to title)
 
-        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket")
+        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket", domain)
 
         // execute
         val result = renderer.renderInline(model, templateString)
@@ -94,7 +98,7 @@ internal class HandlebarsRendererTest : KoinTest {
         val expectedResult = "<html><title>Test</title><body><p>Handlebars</p></html>"
         val model = mapOf<String, Any?>("body" to body)
 
-        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket")
+        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket", domain)
 
         // execute
         val result = renderer.renderInline(model, templateString)
@@ -110,7 +114,7 @@ internal class HandlebarsRendererTest : KoinTest {
         val posts = listOf(TestPost("First"), TestPost("Second"))
         val model = mapOf<String, Any?>("posts" to posts)
 
-        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket")
+        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket", domain)
         // execute
         val result = renderer.renderInline(model, templateString)
 
@@ -126,7 +130,7 @@ internal class HandlebarsRendererTest : KoinTest {
         val model = mapOf<String, TestLink?>("@next" to TestLink("NEXT"))
         val expectedResult = "next: NEXT"
 
-        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket")
+        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket", domain)
         // execute
         val result = renderer.renderInline(model, templateString)
         // verify
@@ -141,7 +145,7 @@ internal class HandlebarsRendererTest : KoinTest {
         val date = LocalDate(2023, 9, 24)
         val model = mapOf<String, Any?>("date" to date, "dateFormat" to "dd/MM/yyyy")
 
-        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket")
+        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket", domain)
         // execute
         val result = renderer.renderInline(model, templateString)
         // verify
@@ -156,7 +160,7 @@ internal class HandlebarsRendererTest : KoinTest {
         val dateTime = LocalDateTime(year = 2023, month = Month.OCTOBER, dayOfMonth = 21, hour = 20, minute = 14)
         val model = mapOf<String, Any?>("date" to dateTime)
 
-        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket")
+        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket", domain)
         // execute
         val result = renderer.renderInline(model, templateString)
         // verify
@@ -171,7 +175,7 @@ internal class HandlebarsRendererTest : KoinTest {
         val dateTime = LocalDateTime(year = 2023, month = Month.OCTOBER, dayOfMonth = 21, hour = 20, minute = 14)
         val model = mapOf<String, Any?>("date" to dateTime)
 
-        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket")
+        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket", domain)
         // execute
         val result = renderer.renderInline(model, templateString)
         // verify
@@ -187,7 +191,7 @@ internal class HandlebarsRendererTest : KoinTest {
         val model = mapOf<String, Any?>("title" to title)
         println("model=$model")
 
-        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket")
+        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket", domain)
 
         // execute
         val result = renderer.renderInline(model, templateString)
@@ -212,7 +216,7 @@ internal class HandlebarsRendererTest : KoinTest {
         val expectedResult = "<html><title>Handlebars</title></html>"
         val model = mapOf<String, Any?>("title" to title)
 
-        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket")
+        val renderer = HandlebarsRenderer(mockS3Service, "srcBucket", domain)
 
         // execute
         val result = renderer.renderInline(model, templateString)

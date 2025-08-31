@@ -57,26 +57,40 @@ class TemplateProcessorHandlerTest : KoinTest {
     }
 
     @AfterEach
-    fun tearDown() { stopKoin() }
+    fun tearDown() {
+        stopKoin()
+    }
 
     @Test
     fun `happy path - page render`() {
         val project = CantileverProject(domain = "example.com", projectName = "Example", author = "Alice")
         coEvery { mockDynamo.getProject("example.com") } returns project
 
-        every { mockS3.getObjectAsString("example.com/templates/page.hbs", "source-bkt") } returns "<html><title>{{title}}</title><body>{{{body}}}</body></html>"
+        every {
+            mockS3.getObjectAsString(
+                "example.com/sources/templates/page.hbs",
+                "source-bkt"
+            )
+        } returns "<html><title>{{title}}</title><body>{{{body}}}</body></html>"
         every { mockS3.getObjectAsString("example.com/gen/body.html", "gen-bkt") } returns "<p>Hello</p>"
 
         val keySlot: CapturingSlot<String> = slot()
         val bucketSlot: CapturingSlot<String> = slot()
         val bodySlot: CapturingSlot<String> = slot()
         val typeSlot: CapturingSlot<String> = slot()
-        every { mockS3.putObjectAsString(capture(keySlot), capture(bucketSlot), capture(bodySlot), capture(typeSlot)) } returns 123
+        every {
+            mockS3.putObjectAsString(
+                capture(keySlot),
+                capture(bucketSlot),
+                capture(bodySlot),
+                capture(typeSlot)
+            )
+        } returns 123
 
         val pageMeta = ContentNode.PageNode(
             srcKey = "example.com/sources/pages/index.md",
             title = "Home",
-            templateKey = "templates/page.hbs",
+            templateKey = "sources/templates/page.hbs",
             slug = "index",
             isRoot = true,
             attributes = emptyMap(),
@@ -107,19 +121,31 @@ class TemplateProcessorHandlerTest : KoinTest {
         val project = CantileverProject(domain = "example.com", projectName = "Example", author = "Alice")
         coEvery { mockDynamo.getProject("example.com") } returns project
 
-        every { mockS3.getObjectAsString("example.com/templates/page.hbs", "source-bkt") } returns "--- name: post --- <html><title>{{title}}</title><body>{{{body}}}</body></html>"
+        every {
+            mockS3.getObjectAsString(
+                "example.com/sources/templates/page.hbs",
+                "source-bkt"
+            )
+        } returns "--- name: post --- <html><title>{{title}}</title><body>{{{body}}}</body></html>"
         every { mockS3.getObjectAsString("example.com/gen/body.html", "gen-bkt") } returns "<p>Hello</p>"
 
         val keySlot: CapturingSlot<String> = slot()
         val bucketSlot: CapturingSlot<String> = slot()
         val bodySlot: CapturingSlot<String> = slot()
         val typeSlot: CapturingSlot<String> = slot()
-        every { mockS3.putObjectAsString(capture(keySlot), capture(bucketSlot), capture(bodySlot), capture(typeSlot)) } returns 123
+        every {
+            mockS3.putObjectAsString(
+                capture(keySlot),
+                capture(bucketSlot),
+                capture(bodySlot),
+                capture(typeSlot)
+            )
+        } returns 123
 
         val pageMeta = ContentNode.PageNode(
             srcKey = "example.com/sources/pages/index.md",
             title = "Home",
-            templateKey = "templates/page.hbs",
+            templateKey = "sources/templates/page.hbs",
             slug = "index",
             isRoot = true,
             attributes = emptyMap(),
@@ -146,23 +172,97 @@ class TemplateProcessorHandlerTest : KoinTest {
     }
 
     @Test
-    fun `happy path - post render`() {
+    fun `render a page where the template contains a partial template`() {
         val project = CantileverProject(domain = "example.com", projectName = "Example", author = "Alice")
         coEvery { mockDynamo.getProject("example.com") } returns project
 
-        every { mockS3.getObjectAsString("example.com/gen/post-body.html", "gen-bkt") } returns "<p>Post</p>"
-        every { mockS3.getObjectAsString("example.com/templates/post.hbs", "source-bkt") } returns "<html><title>{{title}}</title><body>{{{body}}}</body></html>"
+        every {
+            mockS3.getObjectAsString(
+                "example.com/sources/templates/page.hbs",
+                "source-bkt"
+            )
+        } returns "--- name: post --- <html><title>{{title}}</title><body>{{{body}}}</body>{{> include/footer }}</html>"
+        every { mockS3.getObjectAsString("example.com/gen/body.html", "gen-bkt") } returns "<p>Hello</p>"
+        every {
+            mockS3.getObjectAsString(
+                "example.com/sources/templates/include/footer.hbs",
+                "source-bkt"
+            )
+        } returns "<footer>Footer</footer>"
 
         val keySlot: CapturingSlot<String> = slot()
         val bucketSlot: CapturingSlot<String> = slot()
         val bodySlot: CapturingSlot<String> = slot()
         val typeSlot: CapturingSlot<String> = slot()
-        every { mockS3.putObjectAsString(capture(keySlot), capture(bucketSlot), capture(bodySlot), capture(typeSlot)) } returns 456
+        every {
+            mockS3.putObjectAsString(
+                capture(keySlot),
+                capture(bucketSlot),
+                capture(bodySlot),
+                capture(typeSlot)
+            )
+        } returns 123
+
+        val pageMeta = ContentNode.PageNode(
+            srcKey = "example.com/sources/pages/index.md",
+            title = "Home",
+            templateKey = "sources/templates/page.hbs",
+            slug = "index",
+            isRoot = true,
+            attributes = emptyMap(),
+            sections = mapOf("body" to "example.com/gen/body.html"),
+            parent = "example.com/sources/pages"
+        )
+        val msg = TemplateSQSMessage.RenderPageMsg(
+            projectDomain = "example.com",
+            fragmentSrcKey = "example.com/generated/htmlFragments/pages/index.body.html",
+            metadata = pageMeta
+        )
+
+        val sqsEvent = SQSEvent().apply {
+            records = listOf(SQSEvent.SQSMessage().apply { body = Json.encodeToString<TemplateSQSMessage>(msg) })
+        }
+
+        val handler = TemplateProcessorHandler(env)
+        val result = handler.handleRequest(sqsEvent, mockContext)
+
+        assertEquals("200 OK", result)
+        verify(exactly = 1) { mockS3.putObjectAsString("example.com/index.html", "dest-bkt", any(), "text/html") }
+        assertTrue(bodySlot.captured.contains("<p>Hello</p>"))
+        assertTrue(bodySlot.captured.contains("<title>Home</title>"))
+        assertTrue(bodySlot.captured.contains("<footer>Footer</footer>"))
+    }
+
+    @Test
+    fun `happy path - post render`() {
+        val project = CantileverProject(domain = "example.com", projectName = "Example", author = "Alice")
+        coEvery { mockDynamo.getProject("example.com") } returns project
+
+        every { mockS3.getObjectAsString("example.com/gen/post-body.html", "gen-bkt") } returns "<p>Post</p>"
+        every {
+            mockS3.getObjectAsString(
+                "example.com/sources/templates/post.hbs",
+                "source-bkt"
+            )
+        } returns "<html><title>{{title}}</title><body>{{{body}}}</body></html>"
+
+        val keySlot: CapturingSlot<String> = slot()
+        val bucketSlot: CapturingSlot<String> = slot()
+        val bodySlot: CapturingSlot<String> = slot()
+        val typeSlot: CapturingSlot<String> = slot()
+        every {
+            mockS3.putObjectAsString(
+                capture(keySlot),
+                capture(bucketSlot),
+                capture(bodySlot),
+                capture(typeSlot)
+            )
+        } returns 456
 
         val postMeta = ContentNode.PostNode(
             srcKey = "example.com/sources/posts/hello.md",
             title = "Hello",
-            templateKey = "templates/post.hbs",
+            templateKey = "sources/templates/post.hbs",
             date = LocalDate(2024, 1, 2),
             slug = "hello"
         )
@@ -190,10 +290,22 @@ class TemplateProcessorHandlerTest : KoinTest {
         val project = CantileverProject(domain = "example.com", projectName = "Example", author = "Alice")
         coEvery { mockDynamo.getProject("example.com") } returns project
 
-        every { mockS3.getObjectAsString("example.com/assets/site.css.hbs", "source-bkt") } returns "body{color:{{project.projectName}};}"
+        every {
+            mockS3.getObjectAsString(
+                "example.com/assets/site.css.hbs",
+                "source-bkt"
+            )
+        } returns "body{color:{{project.projectName}};}"
 
         val cssSlot: CapturingSlot<String> = slot()
-        every { mockS3.putObjectAsString("example.com/assets/site.css", "dest-bkt", capture(cssSlot), "text/css") } returns 789
+        every {
+            mockS3.putObjectAsString(
+                "example.com/assets/site.css",
+                "dest-bkt",
+                capture(cssSlot),
+                "text/css"
+            )
+        } returns 789
 
         val msg = TemplateSQSMessage.StaticRenderMsg(
             projectDomain = "example.com",

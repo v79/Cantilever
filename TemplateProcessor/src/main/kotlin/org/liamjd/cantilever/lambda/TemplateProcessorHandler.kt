@@ -150,7 +150,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
                 model[name] = html
             }
 
-            val renderer = HandlebarsRenderer(s3Service, sourceBucket)
+            val renderer = HandlebarsRenderer(s3Service = s3Service, srcBucket = sourceBucket, domain = domain)
             println("Rending template '${pageMsg.metadata.templateKey}' for '${pageMsg.metadata.srcKey}' with model keys ${model.keys}")
             val html = renderer.render(model = model, srcKey = pageTemplateKey)
             log("Calculated URL for page: ${pageMsg.metadata.url} from parentFolder: ${pageMsg.metadata.parent} and srcKey: ${pageMsg.metadata.srcKey}")
@@ -179,10 +179,8 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             val body = s3Service.getObjectAsString(postMsg.fragmentSrcKey, generationBucket)
             log("Loaded body fragment from '${postMsg.fragmentSrcKey}: ${body.take(100)}'")
 
-            // load the template file as specified by metadata
-            val template = postMsg.projectDomain + "/" + postMsg.metadata.templateKey
-
             val project = getProjectModel(postMsg.projectDomain) ?: throw Exception("Project model is null")
+            val postTemplateKey = domain + "/" + postMsg.metadata.templateKey
             // build model from project and from HTML fragment
             val model = mutableMapOf<String, Any?>()
             model["project"] = project
@@ -197,9 +195,9 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
                 model[it.key] = it.value
             }
 
-            val renderer = HandlebarsRenderer(s3Service, sourceBucket)
-            println("Rending template '$template' for '${postMsg.metadata.srcKey}' with model keys ${model.keys}")
-            val html = renderer.render(model = model, srcKey = postMsg.metadata.templateKey)
+            val renderer = HandlebarsRenderer(s3Service = s3Service, srcBucket = sourceBucket, domain = domain)
+            println("Rending template '${postMsg.metadata.templateKey}' for '${postMsg.metadata.srcKey}' with model keys ${model.keys}")
+            val html = renderer.render(model = model, srcKey = postTemplateKey)
 
             // save to S3
             s3Service.putObjectAsString(project.domainKey + postMsg.metadata.url, destinationBucket, html, "text/html")
@@ -225,6 +223,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
     ) {
         val model = mutableMapOf<String, Any?>()
         try {
+            val domain = staticFileMsg.projectDomain
             val project = getProjectModel(staticFileMsg.projectDomain)
             if (project != null) {
                 model["project"] = project
@@ -232,7 +231,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
                 val cssTemplateString = s3Service.getObjectAsString(staticFileMsg.srcKey, sourceBucket)
                 log("Loaded ${staticFileMsg.srcKey} and rendering via Handlebars to ${staticFileMsg.destinationKey}")
 
-                val renderer = HandlebarsRenderer(s3Service, sourceBucket)
+                val renderer = HandlebarsRenderer(s3Service, sourceBucket, domain)
                 val css = renderer.renderInline(model = model, templateString = cssTemplateString)
 
                 s3Service.putObjectAsString(
@@ -244,7 +243,6 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             log("ERROR", "Could not load file from S3, exception: ${nske.message}")
         }
     }
-
 
 
     /**

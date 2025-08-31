@@ -28,9 +28,9 @@ interface TemplateRender {
 
 
 /**
- * Configuration for Handlebars, defining the helper functions (such as 'upper' and 'localDate') that may be used in templates.
+ * Configuration for Handlebars, defining the helper functions (such as 'upper' and 'localDate') that may be used in templates, and setting up template loading and (fake) caching for S3 objects.
  */
-class HandlebarsRenderer(s3Service: S3Service, srcBucket: String) : TemplateRender {
+class HandlebarsRenderer(s3Service: S3Service, srcBucket: String, domain: String) : TemplateRender {
 
     private val loader = S3TemplateLoader(s3Service, srcBucket)
     private val cache = YamlStrippingCache()
@@ -41,6 +41,8 @@ class HandlebarsRenderer(s3Service: S3Service, srcBucket: String) : TemplateRend
         handlebars.registerHelper("localDate", LocalDateFormatter("dd/MM/yyyy"))
         handlebars.registerHelper("take", TakeHelper())
         handlebars.registerHelper("slugify", StringHelpers.slugify)
+        loader.prefix = domain
+        loader.suffix = ".hbs"
     }
 
     override fun renderInline(model: Map<String, Any?>, templateString: String): String {

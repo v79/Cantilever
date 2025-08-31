@@ -7,38 +7,52 @@ import org.liamjd.cantilever.services.S3Service
 import java.nio.charset.Charset
 
 /**
- * A custom template loader that loads templates from S3
+ * A custom template loader that loads templates from S3.
+ * Set the prefix to the be project domain.
  * @param s3Service the S3 service to use for loading templates
  * @param bucket the S3 bucket to load templates from
  * @see TemplateLoader
- * Note, I have not fully implemented the TemplateLoader interface yet, as I haven't needed to use it yet.
+ * When resolving template file names, if the name starts with the prefix (e.g. the domain), then it is assumed to be a full S3 key.
+ * Otherwise, the name is assumed to be relative and is prefixed with "<prefix>/sources/templates/" and sufficed with the suffix.
  */
-class S3TemplateLoader(val s3Service: S3Service, val bucket: String) : TemplateLoader
-{
+class S3TemplateLoader(val s3Service: S3Service, val bucket: String) : TemplateLoader {
+    private var prefix = ""
+    private var suffix = ""
+
     override fun sourceAt(srcKey: String): TemplateSource {
-        val templateString = s3Service.getObjectAsString(srcKey, bucket)
+        val resolved = resolve(srcKey)
+        println("Loading template '$srcKey' resolved to '${resolved}' from S3")
+        val templateString = s3Service.getObjectAsString(resolved, bucket)
 
         return StringTemplateSource(srcKey, templateString)
     }
 
-    override fun resolve(p0: String?): String {
-        TODO("Not yet implemented")
+    /**
+     * Resolves the template key to an S3 key. If the key starts with the prefix, then it is assumed to be a full S3 key.
+     * Otherwise, the key is assumed to be relative and is prefixed with "<prefix>/sources/templates/" and sufficed with the suffix.
+     * @param templateKey the template key to resolve
+     * @return the resolved S3 key
+     */
+    override fun resolve(templateKey: String): String {
+        val resolved = if (templateKey.startsWith(prefix)) {
+            templateKey
+        } else {
+            "$prefix/sources/templates/$templateKey$suffix"
+        }
+        println("Resolving template '$templateKey' to '$resolved'")
+        return resolved
     }
 
-    override fun getPrefix(): String {
-        TODO("Not yet implemented")
+    override fun getPrefix(): String = prefix
+
+    override fun getSuffix(): String = suffix
+
+    override fun setPrefix(newPrefix: String) {
+        this.prefix = newPrefix
     }
 
-    override fun getSuffix(): String {
-        TODO("Not yet implemented")
-    }
-
-    override fun setPrefix(prefix: String) {
-        TODO("Not yet implemented")
-    }
-
-    override fun setSuffix(p0: String) {
-        TODO("Not yet implemented")
+    override fun setSuffix(newSuffix: String) {
+        this.suffix = newSuffix
     }
 
     override fun setCharset(p0: Charset) {
