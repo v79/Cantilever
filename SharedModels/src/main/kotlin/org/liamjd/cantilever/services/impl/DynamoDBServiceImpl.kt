@@ -587,7 +587,7 @@ class DynamoDBServiceImpl(
         contentType: SOURCE_TYPE,
         templateKey: String
     ): List<String> {
-        log("Getting nodes matching template: $templateKey in domain: $projectDomain of type: ${contentType.dbType}")
+        log("Getting ${contentType.dbType}s matching template: $templateKey in domain: $projectDomain")
 
         return executeDynamoOperation(
             operationDescription = "get nodes matching template",
