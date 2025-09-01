@@ -31,7 +31,10 @@ import software.amazon.awscdk.services.s3.BlockPublicAccess
 import software.amazon.awscdk.services.s3.Bucket
 import software.amazon.awscdk.services.s3.EventType
 import software.amazon.awscdk.services.s3.ObjectOwnership
+import software.amazon.awscdk.services.sqs.IQueue
 import software.amazon.awscdk.services.sqs.Queue
+import software.amazon.awscdk.services.sqs.RedriveAllowPolicy
+import software.amazon.awscdk.services.sqs.RedrivePermission
 import software.constructs.Construct
 
 /**
@@ -110,33 +113,62 @@ class CantileverStack(
             editorBucketDistribution = Distribution(
                 this,
                 "${stageName}-editor-bucket-distribution",
-                DistributionProps.builder().comment("${stageName}-editor-bucket-distribution")
-                    .defaultBehavior(
-                        BehaviorOptions.builder().origin(S3BucketOrigin.withOriginAccessControl(editorBucket))
-                            .cachePolicy(CachePolicy.CACHING_DISABLED).build()
-                    ).defaultRootObject("index.html").enableLogging(true).build()
+                DistributionProps.builder().comment("${stageName}-editor-bucket-distribution").defaultBehavior(
+                    BehaviorOptions.builder().origin(S3BucketOrigin.withOriginAccessControl(editorBucket))
+                        .cachePolicy(CachePolicy.CACHING_DISABLED).build()
+                ).defaultRootObject("index.html").enableLogging(true).build()
             )
         }
 
         // SQS for inter-lambda communication. The visibility timeout should be > the max processing time of the lambdas, so setting to 3
+
+        println("Creating Dead Letter Queue for failed messages")
+        val deadletterQueue = Queue.Builder.create(this, "cantilever-dead-letter-queue").visibilityTimeout(
+            Duration.minutes(7)
+        ).retentionPeriod(Duration.days(7)).build()
+
         println("Creating markdown processing queue")
-        val markdownProcessingQueue = buildSQSQueue("cantilever-markdown-to-html-queue", 3)
+        val markdownProcessingQueue = buildSQSQueue("cantilever-markdown-to-html-queue", 3, deadletterQueue)
 
         println("Creating handlebar templating processing queue")
-        val handlebarProcessingQueue = buildSQSQueue("cantilever-html-handlebar-queue", 3)
+        val handlebarProcessingQueue = buildSQSQueue("cantilever-html-handlebar-queue", 3, deadletterQueue)
 
         println("Creating image processing queue")
-        val imageProcessingQueue = buildSQSQueue("cantilever-image-processing-queue", 3)
+        val imageProcessingQueue = buildSQSQueue("cantilever-image-processing-queue", 3, deadletterQueue)
 
-        // Create DynamoDB table before any Lambdas so we can inject the table name into their environment
+        val dlqRedrivePolicy = RedriveAllowPolicy.builder()
+            .sourceQueues(
+                listOf(
+                    markdownProcessingQueue.queue,
+                    handlebarProcessingQueue.queue,
+                    imageProcessingQueue.queue
+                )
+            )
+            .redrivePermission(
+                RedrivePermission.BY_QUEUE
+            ).build()
+
+        println("Setting RedriveAllowPolicy on dead letter queue")
+        val cfnDlq = deadletterQueue.node.defaultChild as CfnResource
+        cfnDlq.addPropertyOverride(
+            "RedriveAllowPolicy", mapOf(
+                "redrivePermission" to "byQueue",
+                "sourceQueueArns" to listOf(
+                    markdownProcessingQueue.queue.queueArn,
+                    handlebarProcessingQueue.queue.queueArn,
+                    imageProcessingQueue.queue.queueArn
+                )
+            )
+        )
+
+        // Create a DynamoDB table before any Lambdas so we can inject the table name into their environment
         println("Creating DynamoDB database tables - PK domain#type, SK srcKey")
         println("GSI: Project-NodeType-LastUpdated : Just returns the project definitions")
         println("LSI: Type-Date : Returns items with the Date attribute, mostly just posts.")
         val contentNodeTable = TableV2.Builder.create(this, "${stageName}-database-content-node-table")
             .removalPolicy(if (isProd) RemovalPolicy.RETAIN else RemovalPolicy.DESTROY).partitionKey(
                 Attribute.builder().name("domain#type").type(AttributeType.STRING).build()
-            ).sortKey(Attribute.builder().name("srcKey").type(AttributeType.STRING).build())
-            .globalSecondaryIndexes(
+            ).sortKey(Attribute.builder().name("srcKey").type(AttributeType.STRING).build()).globalSecondaryIndexes(
                 listOf(
                     GlobalSecondaryIndexPropsV2.builder().indexName("Project-NodeType-LastUpdated")
                         .partitionKey(Attribute.builder().name("domain").type(AttributeType.STRING).build()).sortKey(
@@ -145,15 +177,13 @@ class CantileverStack(
                             ).build()
                         ).projectionType(ProjectionType.ALL).build(),
                 )
-            )
-            .localSecondaryIndexes(
+            ).localSecondaryIndexes(
                 listOf(
                     LocalSecondaryIndexProps.builder().indexName("Type-Date")
                         .sortKey(Attribute.builder().name("date").type(AttributeType.STRING).build())
                         .projectionType(ProjectionType.KEYS_ONLY).build()
                 )
-            )
-            .build()
+            ).build()
 
         println("Creating FileUploadHandler Lambda function")
         val fileUploadLambda = createLambda(
@@ -301,14 +331,11 @@ class CantileverStack(
 
         println("Add S3 PUT/PUSH event source to fileUpload lambda")
         fileUploadLambda.addEventSource(
-            S3EventSource.Builder.create(sourceBucket)
-                .events(
-                    mutableListOf(
-                        EventType.OBJECT_CREATED_PUT,
-                        EventType.OBJECT_CREATED_POST,
-                        EventType.OBJECT_REMOVED
-                    )
-                ).build()
+            S3EventSource.Builder.create(sourceBucket).events(
+                mutableListOf(
+                    EventType.OBJECT_CREATED_PUT, EventType.OBJECT_CREATED_POST, EventType.OBJECT_REMOVED
+                )
+            ).build()
         )
 
         println("Add markdown processor SQS event source to markdown processor lambda")
@@ -358,33 +385,30 @@ class CantileverStack(
         // The API Gateway
         // I don't like how much I have to hardcode the allowed headers here. I would like this to be configurable by the router.
         println("Creating API Gateway with Lambda integration for $stageName to domain $apiDomain")
-        val lambdaRestAPI = LambdaRestApi.Builder.create(this, "${stageName}-rest-api")
-            .restApiName("Cantilever $stageName REST API")
-            .description("Gateway function to Cantilever services, handling routing").disableExecuteApiEndpoint(true)
-            .domainName(
-                DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName(apiDomain)
-                    .certificate(certificate).build()
-            ).defaultCorsPreflightOptions(
-                CorsOptions.builder().allowHeaders(
-                    listOf(
-                        "Content-Type",
-                        "Content-Length",
-                        "X-Amz-Date",
-                        "Authorization",
-                        "X-Api-Key",
-                        "X-Amz-Security-Token",
-                        "X-Content-Length",
-                        "Cantilever-Project-Domain",
-                    )
-                ).allowMethods(listOf("GET", "PUT", "POST", "OPTIONS", "DELETE")).allowOrigins(
-                    listOf(
-                        deploymentDomain,
-                        "https://www.cantilevers.org",
-                        "https://dco7fhfjo6vkm.cloudfront.net"
-                    )
-                )
-                    .build()
-            ).handler(apiRoutingLambda).proxy(true).build()
+        val lambdaRestAPI =
+            LambdaRestApi.Builder.create(this, "${stageName}-rest-api").restApiName("Cantilever $stageName REST API")
+                .description("Gateway function to Cantilever services, handling routing")
+                .disableExecuteApiEndpoint(true).domainName(
+                    DomainNameOptions.Builder().endpointType(EndpointType.EDGE).domainName(apiDomain)
+                        .certificate(certificate).build()
+                ).defaultCorsPreflightOptions(
+                    CorsOptions.builder().allowHeaders(
+                        listOf(
+                            "Content-Type",
+                            "Content-Length",
+                            "X-Amz-Date",
+                            "Authorization",
+                            "X-Api-Key",
+                            "X-Amz-Security-Token",
+                            "X-Content-Length",
+                            "Cantilever-Project-Domain",
+                        )
+                    ).allowMethods(listOf("GET", "PUT", "POST", "OPTIONS", "DELETE")).allowOrigins(
+                        listOf(
+                            deploymentDomain, "https://www.cantilevers.org", "https://dco7fhfjo6vkm.cloudfront.net"
+                        )
+                    ).build()
+                ).handler(apiRoutingLambda).proxy(true).build()
 
 
         /*      println("Create DynamoDB database tables: project")
@@ -456,20 +480,21 @@ class CantileverStack(
      * Build an SQS queue with a visibility timeout.
      * @param queueId The ID of the queue
      * @param timeout The visibility timeout in minutes
+     * @param dlq The dead letter queue to use if messages fail repeatedly
      */
-    private fun buildSQSQueue(queueId: String, timeout: Int): SqsQueue = SqsQueue.Builder.create(
+    private fun buildSQSQueue(queueId: String, timeout: Int, dlq: IQueue): SqsQueue = SqsQueue.Builder.create(
         Queue.Builder.create(this, queueId).visibilityTimeout(
             Duration.minutes(timeout)
         ).build()
-    ).build()
+    ).deadLetterQueue(dlq).maxEventAge(Duration.days(7)).build()
 
     /**
      * Create a destination bucket for the website content
      * This bucket has a fixed name, and access is controlled by the CloudFront distribution.
      */
     private fun createDestinationBucket(): Bucket =
-        Bucket.Builder.create(this, "${stageName}-website}").versioned(false)
-            .removalPolicy(RemovalPolicy.DESTROY).autoDeleteObjects(true).blockPublicAccess(
+        Bucket.Builder.create(this, "${stageName}-website}").versioned(false).removalPolicy(RemovalPolicy.DESTROY)
+            .autoDeleteObjects(true).blockPublicAccess(
                 BlockPublicAccess.BLOCK_ALL
             ).build()
 
@@ -479,16 +504,15 @@ class CantileverStack(
      * @param public Whether the bucket should be publicly readable
      */
     private fun createBucket(name: String, public: Boolean = false): Bucket =
-        Bucket.Builder.create(this, "${stageName}-${name}").versioned(false)
-            .removalPolicy(RemovalPolicy.DESTROY).autoDeleteObjects(true).publicReadAccess(public).versioned(true)
-            .build()
+        Bucket.Builder.create(this, "${stageName}-${name}").versioned(false).removalPolicy(RemovalPolicy.DESTROY)
+            .autoDeleteObjects(true).publicReadAccess(public).versioned(true).build()
 
     /**
      * Create a bucket for the editor to store its static files.
      */
     private fun createEditorBucket(): Bucket =
-        Bucket.Builder.create(this, "${stageName}-editor").versioned(false)
-            .removalPolicy(RemovalPolicy.DESTROY).autoDeleteObjects(true).objectOwnership(ObjectOwnership.OBJECT_WRITER)
+        Bucket.Builder.create(this, "${stageName}-editor").versioned(false).removalPolicy(RemovalPolicy.DESTROY)
+            .autoDeleteObjects(true).objectOwnership(ObjectOwnership.OBJECT_WRITER)
             .blockPublicAccess(BlockPublicAccess.BLOCK_ALL).websiteIndexDocument("index.html").build()
 
     /**
@@ -521,12 +545,10 @@ class CantileverStack(
                             RetentionDays.ONE_WEEK
                         }
                     ).build()
-            )
-            .environment(
+            ).environment(
                 environment ?: emptyMap()
             )  // TODO: should this should be a CloudFormation parameter CfnParameter
             .build()
 
-    fun info(message: String) =
-        println("\t" + green + message + reset)
+    fun info(message: String) = println("\t" + green + message + reset)
 }

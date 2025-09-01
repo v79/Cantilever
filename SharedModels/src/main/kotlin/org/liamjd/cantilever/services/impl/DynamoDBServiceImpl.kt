@@ -248,6 +248,10 @@ class DynamoDBServiceImpl(
                     item["sections"] = AttributeValue.builder().s(node.sections.joinToString(",")).build()
                 }
 
+                is ContentNode.TemplatePartialNode -> {
+                    // Partials won't have additional properties, so for now there is nothing to do
+                }
+
                 is ContentNode.StaticNode, is ContentNode.ImageNode -> {
                     // Static nodes might not have additional properties, so for now there is nothing to do
                 }
@@ -379,6 +383,7 @@ class DynamoDBServiceImpl(
                 log("Content node found: $srcKey")
                 when (contentType) {
                     SOURCE_TYPE.Templates -> mapToTemplateNode(response.item())
+                    SOURCE_TYPE.Partials -> mapToTemplatePartialNode(response.item())
                     SOURCE_TYPE.Posts -> mapToPostNode(response.item())
                     SOURCE_TYPE.Statics -> mapToStaticNode(response.item())
                     SOURCE_TYPE.Folders -> mapToFolderNode(response.item())
@@ -465,6 +470,7 @@ class DynamoDBServiceImpl(
                     when (type) {
                         SOURCE_TYPE.Posts -> mapToPostNode(item)
                         SOURCE_TYPE.Templates -> mapToTemplateNode(item)
+                        SOURCE_TYPE.Partials -> mapToTemplatePartialNode(item)
                         SOURCE_TYPE.Statics -> mapToStaticNode(item)
                         SOURCE_TYPE.Pages -> mapToPageNode(item)
                         SOURCE_TYPE.Folders -> mapToFolderNode(item)
@@ -496,7 +502,7 @@ class DynamoDBServiceImpl(
             contentType = contentType,
             attributes = attributes,
             limit = 9999, // Default limit, can be overridden
-            descending = true // Default order, can be overridden
+            descending = true // Default order; can be overridden
         )
     }
 
@@ -581,7 +587,7 @@ class DynamoDBServiceImpl(
         contentType: SOURCE_TYPE,
         templateKey: String
     ): List<String> {
-        log("Getting nodes matching template: $templateKey in domain: $projectDomain of type: ${contentType.dbType}")
+        log("Getting ${contentType.dbType}s matching template: $templateKey in domain: $projectDomain")
 
         return executeDynamoOperation(
             operationDescription = "get nodes matching template",
@@ -858,6 +864,30 @@ class DynamoDBServiceImpl(
             )
         } catch (e: Exception) {
             log("ERROR", "Failed to map DynamoDB item to ContentNode.TemplateNode: $item", e)
+            throw e
+        }
+    }
+
+    /**
+     * Map a DynamoDB item to a ContentNode.TemplatePartialNode
+     * @param item The DynamoDB item
+     * @return The ContentNode.TemplatePartialNode
+     */
+    private fun mapToTemplatePartialNode(item: Map<String, AttributeValue>): ContentNode.TemplatePartialNode {
+        try {
+            val srcKey = item["srcKey"]?.s() ?: ""
+            if (srcKey.isEmpty()) {
+                log("WARN", "Missing srcKey in partial item: $item")
+            }
+
+            val lastUpdated = extractLastUpdatedTimestamp(item, "partial")
+
+            return ContentNode.TemplatePartialNode(
+                srcKey = srcKey,
+                lastUpdated = lastUpdated
+            )
+        } catch (e: Exception) {
+            log("ERROR", "Failed to map DynamoDB item to ContentNode.TemplatePartialNode: $item", e)
             throw e
         }
     }

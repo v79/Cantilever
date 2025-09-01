@@ -59,6 +59,7 @@ enum class SOURCE_TYPE(val folder: String, val dbType: String) {
     Pages("pages", "page"),
     Posts("posts", "post"),
     Templates("templates", "template"),
+    Partials("templates","partial"),
     Statics("statics", "static"),
     Images("images", "image"),
     Folders("folders", "folder"),
@@ -69,7 +70,7 @@ enum class SOURCE_TYPE(val folder: String, val dbType: String) {
         /**
          * Return a [SOURCE_TYPE] for the given folder name
          * @param folderName should be "posts", "pages", "templates", "folders" or "statics"
-         * But in the case of the project yaml file, it will be "domain.yaml"
+         * But in the case of the project YAML file, it will be "domain.yaml"
          */
         fun fromFolderName(folderName: String): SOURCE_TYPE =
             if (folderName.endsWith(".yaml") && !folderName.contains("/")) {

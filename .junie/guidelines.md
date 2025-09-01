@@ -17,7 +17,7 @@ The project follows a modular architecture with the following main components:
 - **Root Project**: Contains AWS CDK code for infrastructure deployment. The code is written in Kotlin but using the Java CDK libraries.
 - **API**: REST API implementation for the web editor. This uses a custom API routing library, written in Kotlin and running on AWS Lambda. This custom library is available in maven local and on Github at https://github.com/v79/APIViaduct
 - **FileUploadHandler**: Lambda function for handling file uploads. This lambda analyses the uploaded files and determines how they should be processed. Events are placed on an SQS queue for further processing by other lambdas.
-- **MarkdownProcessor**: Lambda function for converting markdown to HTML
+- **MarkdownProcessor**: Lambda function for converting Markdown to HTML
 - **TemplateProcessor**: Lambda function for applying Handlebars templates
 - **ImageProcessor**: Lambda function for processing images
 - **SharedModels**: Common data models shared across modules
@@ -55,7 +55,7 @@ To build the project:
 
 To deploy to AWS:
 ```
-cdk deploy <CantileverStack|Cantilever-Dev-Stack>
+cdk deploy <Cantilever-Prod-Stack|Cantilever-Dev-Stack>
 ```
 
 ## Testing Guidelines
@@ -67,6 +67,7 @@ The project uses JUnit 5 as the primary testing framework with the following sup
 - **MockK**: For mocking dependencies in tests
 - **Koin Test**: For dependency injection in tests
 - **AWS Lambda Java Tests**: For testing Lambda functions
+- **TestContainers**: For running Docker containers in tests, such as DynamoDB database calls.
 
 ### Test Structure
 
@@ -196,6 +197,7 @@ The project uses GitHub Actions for CI/CD with two main workflows:
 ## Troubleshooting
 
 - Check CloudWatch logs for Lambda function errors
+- Some integration tests make use of the testContainers package to run Docker containers.
 - Use the test events in the `testEvents` directory for local testing
 - Verify S3 bucket permissions when encountering access issues
 - Check API Gateway configuration for API-related issues
