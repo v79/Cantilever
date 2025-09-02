@@ -617,7 +617,7 @@ class DynamoDBServiceImpl(
                 log("Found ${response.count()} nodes matching template '$templateKey' in domain: $projectDomain")
                 response.items().mapNotNull { it["srcKey"]?.s() }
             } else {
-                log("No nodes found matching template '$templateKey' in domain: $projectDomain")
+                log("No ${contentType.dbType}s nodes found matching template '$templateKey' in domain: $projectDomain")
                 emptyList()
             }
         }
