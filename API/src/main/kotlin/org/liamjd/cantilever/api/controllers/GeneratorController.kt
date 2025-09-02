@@ -175,44 +175,40 @@ class GeneratorController(sourceBucket: String, generationBucket: String) : Koin
                 // We don't know if the template is for a Page or a Post. This is less than ideal as I have to check both. But I could short-circuit the second check if the first one succeeds?
                 val postSrcKeys = dynamoDBService.getKeyListMatchingTemplate(domain, SOURCE_TYPE.Posts, templateKey)
                 var count = 0
-                if (postSrcKeys.isEmpty()) {
-                    warn("No posts found using template $templateKey")
-                    return@runBlocking Response.noContent(APIResult.Error("No posts found using template $templateKey"))
-                } else {
-                    postSrcKeys.forEach { srcKey ->
-                        val node = dynamoDBService.getContentNode(srcKey, domain, SOURCE_TYPE.Posts)
-                        if (node is ContentNode.PostNode) {
-                            info("Regenerating post ${node.srcKey} because it has template ${node.templateKey}")
-                            val pageSource = s3Service.getObjectAsString(node.srcKey, sourceBucket)
-                            val response = queuePostRegeneration(
-                                postSrcKey = node.srcKey,
-                                sourceString = pageSource,
-                                projectDomain = domain
-                            )
-                            if (response != null) {
-                                count++
-                            } else {
-                                error(error_NO_RESPONSE)
-                            }
+                postSrcKeys.forEach { srcKey ->
+                    val node = dynamoDBService.getContentNode(srcKey, domain, SOURCE_TYPE.Posts)
+                    if (node is ContentNode.PostNode) {
+                        info("Regenerating post ${node.srcKey} because it has template ${node.templateKey}")
+                        val pageSource = s3Service.getObjectAsString(node.srcKey, sourceBucket)
+                        val response = queuePostRegeneration(
+                            postSrcKey = node.srcKey,
+                            sourceString = pageSource,
+                            projectDomain = domain
+                        )
+                        if (response != null) {
+                            count++
+                        } else {
+                            error(error_NO_RESPONSE)
                         }
                     }
-                    val pageSourceKeys =
-                        dynamoDBService.getKeyListMatchingTemplate(domain, SOURCE_TYPE.Pages, templateKey)
-                    pageSourceKeys.forEach { srcKey ->
-                        val node = dynamoDBService.getContentNode(srcKey, domain, SOURCE_TYPE.Pages)
-                        if (node is ContentNode.PageNode) {
-                            info("Regenerating page ${node.srcKey} because it has template ${node.templateKey}")
-                            val pageSource = s3Service.getObjectAsString(node.srcKey, sourceBucket)
-                            val response = queuePageRegeneration(
-                                pageSrcKey = node.srcKey,
-                                sourceString = pageSource,
-                                projectDomain = domain
-                            )
-                            if (response != null) {
-                                count++
-                            } else {
-                                error(error_NO_RESPONSE)
-                            }
+                }
+                val pageSourceKeys =
+                    dynamoDBService.getKeyListMatchingTemplate(domain, SOURCE_TYPE.Pages, templateKey)
+
+                pageSourceKeys.forEach { srcKey ->
+                    val node = dynamoDBService.getContentNode(srcKey, domain, SOURCE_TYPE.Pages)
+                    if (node is ContentNode.PageNode) {
+                        info("Regenerating page ${node.srcKey} because it has template ${node.templateKey}")
+                        val pageSource = s3Service.getObjectAsString(node.srcKey, sourceBucket)
+                        val response = queuePageRegeneration(
+                            pageSrcKey = node.srcKey,
+                            sourceString = pageSource,
+                            projectDomain = domain
+                        )
+                        if (response != null) {
+                            count++
+                        } else {
+                            error(error_NO_RESPONSE)
                         }
                     }
                 }
