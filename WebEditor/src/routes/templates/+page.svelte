@@ -267,6 +267,7 @@
 			new Array<string>(),
 			rawHTML
 		);
+		newTemplate.sections = ['body'];
 		handlebars.set(newTemplate);
 		isNewTemplate = true;
 	}
@@ -417,6 +418,15 @@
 							label="Used by"
 							name="TemplateUsage"
 							value={usageCount.toString()}
+							readonly />
+					{/if}
+				</div>
+				<div class="col-span-1 sm:col-span-1 lg:col-span-2">
+					{#if !isNewTemplate}
+						<TextInput
+							label="Template key"
+							name="Template key"
+							value={$handlebars.srcKey}
 							readonly />
 					{/if}
 				</div>
