@@ -30,25 +30,17 @@ class TemplateController(sourceBucket: String, generationBucket: String) : KoinC
             val decoded = URLDecoder.decode(handlebarSource, Charset.defaultCharset())
             info("Loading handlebar file $decoded")
             return if (s3Service.objectExists(decoded, sourceBucket)) {
-                // TODO: replace with s3service.objectExists
                 val templateObj = s3Service.getObject(decoded, sourceBucket)
-                if (templateObj != null) {
-                    val body = s3Service.getObjectAsString(decoded, sourceBucket)
-                    val frontMatter = body.getFrontMatter()
-                    // TODO: this throws exception if a value is missing from the frontMatter, even though it should encode the default
-                    val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontMatter)
-                    val templateNode: ContentNode.TemplateNode = ContentNode.TemplateNode(
-                        srcKey = decoded,
-                        title = metadata.name,
-                        sections = metadata.sections?.toMutableList() ?: mutableListOf()
-                    ).also { it.body = body.stripFrontMatter() }
-                    Response.ok(body = APIResult.Success(templateNode))
-                } else {
-                    error("Handlebars file $decoded not found in bucket $sourceBucket")
-                    Response.notFound(
-                        body = APIResult.Error("Handlebars file $decoded not found in bucket $sourceBucket")
-                    )
-                }
+                val body = s3Service.getObjectAsString(decoded, sourceBucket)
+                val frontMatter = body.getFrontMatter()
+                // TODO: this throws exception if a value is missing from the frontMatter, even though it should encode the default
+                val metadata = Yaml.default.decodeFromString(TemplateMetadata.serializer(), frontMatter)
+                val templateNode: ContentNode.TemplateNode = ContentNode.TemplateNode(
+                    srcKey = decoded,
+                    title = metadata.name,
+                    sections = metadata.sections?.toMutableList() ?: mutableListOf()
+                ).also { it.body = body.stripFrontMatter() }
+                Response.ok(body = APIResult.Success(templateNode))
             } else {
                 error("Handlebars file $decoded not found in bucket $sourceBucket")
                 Response.notFound(

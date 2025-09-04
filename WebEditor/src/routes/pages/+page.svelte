@@ -481,6 +481,7 @@
 					{#if isNewPage}
 						<p><em>Slug will be set on first save</em></p>
 					{:else}
+						<!-- TODO: this should be metadata.slug not srcKey but slug is coming up undefined -->
 						<TextInput
 							label="Slug"
 							name="slug"
