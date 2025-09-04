@@ -48,7 +48,10 @@ jobs:
         run: |
           npm install -g aws-cdk
 
+      - name: Build with Gradle
+        run: |
+          ./gradlew build -x test
+
       - name: CDK Synth to test run
         run: |
-          gradle wrapper
-          cdk deploy Cantilever-Prod-Stack
+          cdk synth

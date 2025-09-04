@@ -75,9 +75,7 @@ dependencies {
 
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
-    dependsOn(
-        parent?.project?.tasks?.named("copyAPISchema")
-    )
+    dependsOn(rootProject.tasks.named("copyAPISchema"))
 }
 
 kotlin {
@@ -87,9 +85,7 @@ kotlin {
 }
 
 tasks.getByName<Jar>("jar") {
-    dependsOn(
-        parent?.project?.tasks?.named("copyAPISchema")
-    )
+    dependsOn(rootProject.tasks.named("copyAPISchema"))
 }
 
 tasks.withType<ShadowJar> {
@@ -97,7 +93,5 @@ tasks.withType<ShadowJar> {
     archiveClassifier.set("")
     archiveBaseName.set("APIRouter")
     transform(com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer::class.java)
-    dependsOn(
-        parent?.project?.tasks?.named("copyAPISchema")
-    )
+    dependsOn(rootProject.tasks.named("copyAPISchema"))
 }
