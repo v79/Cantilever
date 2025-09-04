@@ -257,6 +257,7 @@
     <link rel="stylesheet" href="/css/pico.min.css">
 </head>
 <body>
+{{{ body}}}
 </body>
 </html>
 `;
