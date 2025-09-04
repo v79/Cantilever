@@ -19,8 +19,8 @@ repositories {
     maven {
         url = uri("https://maven.pkg.github.com/v79/APIViaduct")
         credentials {
-            username = (project.findProperty("gpr.user") ?: System.getenv("USERNAME")) as String?
-            password = (project.findProperty("gpr.key") ?: System.getenv("TOKEN")) as String?
+            username = System.getenv("GITHUB_ACTOR")
+            password = System.getenv("GITHUB_TOKEN")
         }
     }
 }
