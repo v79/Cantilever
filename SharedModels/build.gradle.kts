@@ -12,6 +12,13 @@ repositories {
     mavenCentral()
     google()
     mavenLocal()
+    maven {
+        url = uri("https://maven.pkg.github.com/v79/APIViaduct")
+        credentials {
+            username = System.getenv("GITHUB_ACTOR")
+            password = System.getenv("GITHUB_TOKEN")
+        }
+    }
 }
 
 dependencies {
