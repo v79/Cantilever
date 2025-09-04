@@ -42,18 +42,15 @@ jobs:
       - name: Set up nodeJS
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: "24"
 
       - name: Install aws-cdk
         run: |
           npm install -g aws-cdk
 
-      - name: Build with Gradle
+      - name: Build with Gradle and then CDK synth
         run: |
           ./gradlew build -x test
+          cdk deploy Cantilever-Prod-Stack
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: CDK Synth to test run
-        run: |
-          cdk synth
