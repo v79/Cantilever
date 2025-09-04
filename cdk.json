@@ -1,5 +1,5 @@
 {
-  "app": "gradlew run",
+  "app": "java -Dorg.gradle.appname=gradlew -classpath gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain run",
   "context": {
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
     "@aws-cdk/core:stackRelativeExports": true,
@@ -14,15 +14,14 @@
     "@aws-cdk/core:validateSnapshotRemovalPolicy": true,
     "@aws-cdk/aws-codepipeline:crossAccountKeyAliasStackSafeResourceName": true,
     "@aws-cdk/aws-s3:createDefaultLoggingPolicy": true,
-
     "dev": {
-      "domainName" : "http://localhost:5173",
-      "cognito_region" : "eu-west-2",
+      "domainName": "http://localhost:5173",
+      "cognito_region": "eu-west-2",
       "cognito_user_pools_id": "eu-west-2_aSdFDvU0j"
     },
     "prod": {
-      "domainName" : "https://app.cantilevers.org",
-      "cognito_region" : "eu-west-2",
+      "domainName": "https://app.cantilevers.org",
+      "cognito_region": "eu-west-2",
       "cognito_user_pools_id": "eu-west-2_aSdFDvU0j"
     }
   }
