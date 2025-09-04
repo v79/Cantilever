@@ -51,6 +51,8 @@ jobs:
       - name: Build with Gradle
         run: |
           ./gradlew build -x test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: CDK Synth to test run
         run: |
