@@ -4,7 +4,7 @@
 kotlin = "2.2.0"
 kotlin-serialization = "2.1.21"
 ksp = "2.2.0-2.0.2"
-shadow = "7.1.2"
+shadow = "9.1.0"
 kover = "0.9.1"
 coroutines = "1.10.2"
 
@@ -139,5 +139,5 @@ testcontainers = [
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin-serialization" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
