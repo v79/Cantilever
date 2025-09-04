@@ -80,6 +80,18 @@ class PartialTemplateTest : KoinTest {
         every { mockS3.getObjectAsString("example.com/templates/page.hbs", "source-bkt") } returns pageHbs
         every { mockS3.getObjectAsString("example.com/gen/body.html", "gen-bkt") } returns "<p>Hello</p>"
         every {
+            mockS3.objectExists(
+                "example.com/templates/page.hbs",
+                "source-bkt"
+            )
+        } returns true
+        every {
+            mockS3.objectExists(
+                "example.com/sources/templates/include/footer.hbs",
+                "source-bkt"
+            )
+        } returns true
+        every {
             mockS3.getObjectAsString(
                 "example.com/sources/templates/include/footer.hbs",
                 "source-bkt"

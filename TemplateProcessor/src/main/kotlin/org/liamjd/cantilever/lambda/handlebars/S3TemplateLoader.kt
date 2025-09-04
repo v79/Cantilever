@@ -23,6 +23,7 @@ class S3TemplateLoader(val s3Service: S3Service, val bucket: String) : TemplateL
         val resolved = resolve(srcKey)
         println("S3TemplateLoader: Loading template '$srcKey' resolved to '${resolved}' from S3")
         if (!s3Service.objectExists(resolved, bucket)) {
+            println("ERROR: Template '$srcKey' resolved to '$resolved' not found in bucket '$bucket'")
             throw IllegalArgumentException("Template '$srcKey' resolved to '$resolved' not found in bucket '$bucket'")
         }
         val templateString = s3Service.getObjectAsString(resolved, bucket)

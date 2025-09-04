@@ -68,11 +68,15 @@ class TemplateProcessorHandlerTest : KoinTest {
 
         every {
             mockS3.getObjectAsString(
-                "example.com/sources/templates/page.hbs",
-                "source-bkt"
+                "example.com/sources/templates/page.hbs", "source-bkt"
             )
         } returns "<html><title>{{title}}</title><body>{{{body}}}</body></html>"
         every { mockS3.getObjectAsString("example.com/gen/body.html", "gen-bkt") } returns "<p>Hello</p>"
+        every {
+            mockS3.objectExists(
+                "example.com/sources/templates/page.hbs", "source-bkt"
+            )
+        } returns true
 
         val keySlot: CapturingSlot<String> = slot()
         val bucketSlot: CapturingSlot<String> = slot()
@@ -80,10 +84,7 @@ class TemplateProcessorHandlerTest : KoinTest {
         val typeSlot: CapturingSlot<String> = slot()
         every {
             mockS3.putObjectAsString(
-                capture(keySlot),
-                capture(bucketSlot),
-                capture(bodySlot),
-                capture(typeSlot)
+                capture(keySlot), capture(bucketSlot), capture(bodySlot), capture(typeSlot)
             )
         } returns 123
 
@@ -123,11 +124,15 @@ class TemplateProcessorHandlerTest : KoinTest {
 
         every {
             mockS3.getObjectAsString(
-                "example.com/sources/templates/page.hbs",
-                "source-bkt"
+                "example.com/sources/templates/page.hbs", "source-bkt"
             )
         } returns "--- name: post --- <html><title>{{title}}</title><body>{{{body}}}</body></html>"
         every { mockS3.getObjectAsString("example.com/gen/body.html", "gen-bkt") } returns "<p>Hello</p>"
+        every {
+            mockS3.objectExists(
+                "example.com/sources/templates/page.hbs", "source-bkt"
+            )
+        } returns true
 
         val keySlot: CapturingSlot<String> = slot()
         val bucketSlot: CapturingSlot<String> = slot()
@@ -135,10 +140,7 @@ class TemplateProcessorHandlerTest : KoinTest {
         val typeSlot: CapturingSlot<String> = slot()
         every {
             mockS3.putObjectAsString(
-                capture(keySlot),
-                capture(bucketSlot),
-                capture(bodySlot),
-                capture(typeSlot)
+                capture(keySlot), capture(bucketSlot), capture(bodySlot), capture(typeSlot)
             )
         } returns 123
 
@@ -178,15 +180,23 @@ class TemplateProcessorHandlerTest : KoinTest {
 
         every {
             mockS3.getObjectAsString(
-                "example.com/sources/templates/page.hbs",
-                "source-bkt"
+                "example.com/sources/templates/page.hbs", "source-bkt"
             )
         } returns "--- name: post --- <html><title>{{title}}</title><body>{{{body}}}</body>{{> include/footer }}</html>"
+        every {
+            mockS3.objectExists(
+                "example.com/sources/templates/page.hbs", "source-bkt"
+            )
+        } returns true
+        every {
+            mockS3.objectExists(
+                "example.com/sources/templates/include/footer.hbs", "source-bkt"
+            )
+        } returns true
         every { mockS3.getObjectAsString("example.com/gen/body.html", "gen-bkt") } returns "<p>Hello</p>"
         every {
             mockS3.getObjectAsString(
-                "example.com/sources/templates/include/footer.hbs",
-                "source-bkt"
+                "example.com/sources/templates/include/footer.hbs", "source-bkt"
             )
         } returns "<footer>Footer</footer>"
 
@@ -196,10 +206,7 @@ class TemplateProcessorHandlerTest : KoinTest {
         val typeSlot: CapturingSlot<String> = slot()
         every {
             mockS3.putObjectAsString(
-                capture(keySlot),
-                capture(bucketSlot),
-                capture(bodySlot),
-                capture(typeSlot)
+                capture(keySlot), capture(bucketSlot), capture(bodySlot), capture(typeSlot)
             )
         } returns 123
 
@@ -241,10 +248,10 @@ class TemplateProcessorHandlerTest : KoinTest {
         every { mockS3.getObjectAsString("example.com/gen/post-body.html", "gen-bkt") } returns "<p>Post</p>"
         every {
             mockS3.getObjectAsString(
-                "example.com/sources/templates/post.hbs",
-                "source-bkt"
+                "example.com/sources/templates/post.hbs", "source-bkt"
             )
         } returns "<html><title>{{title}}</title><body>{{{body}}}</body></html>"
+        every { mockS3.objectExists("example.com/sources/templates/post.hbs", "source-bkt") } returns true
 
         val keySlot: CapturingSlot<String> = slot()
         val bucketSlot: CapturingSlot<String> = slot()
@@ -252,10 +259,7 @@ class TemplateProcessorHandlerTest : KoinTest {
         val typeSlot: CapturingSlot<String> = slot()
         every {
             mockS3.putObjectAsString(
-                capture(keySlot),
-                capture(bucketSlot),
-                capture(bodySlot),
-                capture(typeSlot)
+                capture(keySlot), capture(bucketSlot), capture(bodySlot), capture(typeSlot)
             )
         } returns 456
 
@@ -267,9 +271,7 @@ class TemplateProcessorHandlerTest : KoinTest {
             slug = "hello"
         )
         val msg = TemplateSQSMessage.RenderPostMsg(
-            projectDomain = "example.com",
-            fragmentSrcKey = "example.com/gen/post-body.html",
-            metadata = postMeta
+            projectDomain = "example.com", fragmentSrcKey = "example.com/gen/post-body.html", metadata = postMeta
         )
 
         val sqsEvent = SQSEvent().apply {
@@ -292,18 +294,14 @@ class TemplateProcessorHandlerTest : KoinTest {
 
         every {
             mockS3.getObjectAsString(
-                "example.com/assets/site.css.hbs",
-                "source-bkt"
+                "example.com/assets/site.css.hbs", "source-bkt"
             )
         } returns "body{color:{{project.projectName}};}"
 
         val cssSlot: CapturingSlot<String> = slot()
         every {
             mockS3.putObjectAsString(
-                "example.com/assets/site.css",
-                "dest-bkt",
-                capture(cssSlot),
-                "text/css"
+                "example.com/assets/site.css", "dest-bkt", capture(cssSlot), "text/css"
             )
         } returns 789
 
