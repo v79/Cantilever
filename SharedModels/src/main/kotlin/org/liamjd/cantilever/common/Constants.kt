@@ -50,6 +50,7 @@ object FILE_TYPE {
     const val HTML = "html"
     const val YAML = "yaml"
     const val CSS = "css"
+    const val JS = "js"
 }
 
 /**

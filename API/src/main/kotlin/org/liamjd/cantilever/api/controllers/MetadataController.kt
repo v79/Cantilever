@@ -84,7 +84,7 @@ class MetadataController(sourceBucket: String, generationBucket: String) : KoinC
                             filesProcessed++
                         }
                         if (it.key().startsWith(staticsFolder) && it.key() != staticsFolder) {
-                            val static = ContentNode.StaticNode(it.key())
+                            val static = ContentNode.StaticNode(srcKey = it.key(),url = "<unknown>")
                             static.fileType = it.key().substringAfterLast(".")
                             statics.add(static)
                             staticsCount++

@@ -221,10 +221,27 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                                         // What other static files do we support?
                                         when (fileType) {
                                             FILE_TYPE.CSS -> {
-                                                processCSSUpload(
+                                                processStaticTextUpload(
                                                     srcKey = srcKey,
                                                     queueUrl = handlebarQueueURL,
-                                                    projectDomain = projectDomain
+                                                    domain = projectDomain,
+                                                    type = fileType
+                                                )
+                                            }
+
+                                            FILE_TYPE.JS -> {
+                                                processStaticTextUpload(
+                                                    srcKey = srcKey,
+                                                    queueUrl = handlebarQueueURL,
+                                                    domain = projectDomain,
+                                                    type = fileType
+                                                )
+                                            }
+
+                                            else -> {
+                                                log(
+                                                    "ERROR",
+                                                    "Static files of type '$fileType' are not currently supported"
                                                 )
                                             }
                                         }
@@ -387,23 +404,27 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
     }
 
     /**
-     * Process the uploaded CSS file and send a message to the Handlebars template processor queue
+     * Process the uploaded static text file and send a message to the Handlebars template processor queue
      */
-    private suspend fun processCSSUpload(
-        srcKey: String, queueUrl: String, projectDomain: String
+    private suspend fun processStaticTextUpload(
+        srcKey: String, queueUrl: String, domain: String, type: String = "css"
     ): Boolean {
         try {
-            val destinationKey = "css/" + srcKey.removePrefix(S3_KEY.staticsPrefix)
-            val cssMsg = TemplateSQSMessage.StaticRenderMsg(
-                projectDomain = projectDomain, srcKey = srcKey, destinationKey = destinationKey
+            val destinationKey = "$type/" + srcKey.removePrefix("${domain}/").removePrefix(S3_KEY.staticsPrefix)
+            val mimeType = MimeType.fromExtension(type)
+            val msg = TemplateSQSMessage.StaticRenderMsg(
+                projectDomain = domain, srcKey = srcKey, destinationKey = destinationKey, mimeType = mimeType
             )
-            log("Sending message to Handlebars queue for $cssMsg")
-            val cssNode = ContentNode.StaticNode(
-                srcKey = srcKey, lastUpdated = Clock.System.now()
-            )
-            upsertContentNode(srcKey = srcKey, projectDomain = projectDomain, contentType = Statics, node = cssNode)
+            log("Sending message to Handlebars queue for $msg")
+            val staticNode = ContentNode.StaticNode(
+                srcKey = srcKey, lastUpdated = Clock.System.now(), url = destinationKey
+            ).also {
+                it.fileType = mimeType.toString()
+            }
+
+            upsertContentNode(srcKey = srcKey, projectDomain = domain, contentType = Statics, node = staticNode)
             val msgResponse = sqsService.sendTemplateMessage(
-                toQueue = queueUrl, body = cssMsg
+                toQueue = queueUrl, body = msg
             )
             if (msgResponse != null) {
                 log("Message '$srcKey' sent, message ID is ${msgResponse.messageId()}'")
@@ -416,6 +437,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
         }
         return false
     }
+
 
     /**
      * Process the uploaded image file and send a message to the image processor queue.

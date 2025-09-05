@@ -220,10 +220,10 @@ sealed class ContentNode {
     data class StaticNode(
         override val srcKey: SrcKey,
         override val lastUpdated: Instant = Clock.System.now(),
+        override val url: String
     ) : ContentNode(
     ) {
         var fileType: String? = null
-        override val url = srcKey.removePrefix(S3_KEY.sources) + "/"
     }
 
     /**

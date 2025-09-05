@@ -291,6 +291,54 @@ internal class FileUploadHandlerTest : KoinTest {
     }
 
     @Test
+    fun `process js upload`(): Unit = runBlocking {
+        // setup
+        declareMock<S3Service> {
+            every {
+                mockS3Service.getContentType(
+                    "domain.com/sources/statics/script.js",
+                    "test-bucket"
+                )
+            } returns "application/javascript"
+        }
+        declareMock<DynamoDBService> {
+            every { mockDynamoDBService.logger = any() } just runs
+            every { mockDynamoDBService.logger } returns mockLogger
+            coEvery {
+                mockDynamoDBService.upsertContentNode(
+                    "domain.com/sources/statics/script.js", "domain.com",
+                    SOURCE_TYPE.Statics, any<ContentNode.StaticNode>(), emptyMap()
+                )
+            } returns true
+        }
+        declareMock<SQSService> {
+            coEvery { mockSQS.sendTemplateMessage("handlebar_template_queue", any()) } returns mockSQSResponse
+        }
+
+        val event = createS3Event("test-bucket", "domain.com/sources/statics/script.js", 123L)
+        val handler = FileUploadHandler(mockEnv)
+
+        // execute
+        val response = handler.handleRequest(event, mockContext)
+
+        // verify
+        assertEquals("200 OK", response)
+        coVerify {
+            mockDynamoDBService.upsertContentNode(
+                eq("domain.com/sources/statics/script.js"), eq("domain.com"),
+                eq(SOURCE_TYPE.Statics),
+                any<ContentNode.StaticNode>(), any()
+            )
+        }
+        coVerify {
+            mockSQS.sendTemplateMessage(
+                eq("handlebar_template_queue"),
+                any()
+            )
+        }
+    }
+
+    @Test
     fun `process page upload`(): Unit = runBlocking {
         // setup
         val pageString = """

@@ -1,6 +1,7 @@
 package org.liamjd.cantilever.models.sqs
 
 import kotlinx.serialization.Serializable
+import org.liamjd.cantilever.common.MimeType
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.SrcKey
 
@@ -11,20 +12,20 @@ import org.liamjd.cantilever.models.SrcKey
 sealed class TemplateSQSMessage {
 
     /**
-     * Message to send to trigger the handlebars renderer for the Post
+     * Message to send to trigger the Handlebars renderer for the Post
      */
     @Serializable
     data class RenderPostMsg(val projectDomain: String, val fragmentSrcKey: SrcKey, val metadata: ContentNode.PostNode) : TemplateSQSMessage()
 
     /**
-     * Message to send to trigger the handlebars renderer for the Page
+     * Message to send to trigger the Handlebars renderer for the Page
      */
     @Serializable
     data class RenderPageMsg(val projectDomain: String, val fragmentSrcKey: SrcKey, val metadata: ContentNode.PageNode) : TemplateSQSMessage()
 
     /**
-     * Message to send to trigger the handlebars renderer for any other (text) file
+     * Message to send to trigger the Handlebars renderer for any other (text) file
      */
     @Serializable
-    data class StaticRenderMsg(val projectDomain: String, val srcKey: SrcKey, val destinationKey: SrcKey) : TemplateSQSMessage()
+    data class StaticRenderMsg(val projectDomain: String, val srcKey: SrcKey, val destinationKey: SrcKey, val mimeType: MimeType) : TemplateSQSMessage()
 }
