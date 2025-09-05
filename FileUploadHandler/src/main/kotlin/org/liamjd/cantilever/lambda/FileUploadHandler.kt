@@ -224,7 +224,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
                                                 processCSSUpload(
                                                     srcKey = srcKey,
                                                     queueUrl = handlebarQueueURL,
-                                                    projectDomain = projectDomain
+                                                    domain = projectDomain
                                                 )
                                             }
                                         }
@@ -390,18 +390,21 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      * Process the uploaded CSS file and send a message to the Handlebars template processor queue
      */
     private suspend fun processCSSUpload(
-        srcKey: String, queueUrl: String, projectDomain: String
+        srcKey: String, queueUrl: String, domain: String
     ): Boolean {
         try {
-            val destinationKey = "css/" + srcKey.removePrefix(S3_KEY.staticsPrefix)
+            val destinationKey = "css/" + srcKey.removePrefix("${domain}/").removePrefix(S3_KEY.staticsPrefix)
             val cssMsg = TemplateSQSMessage.StaticRenderMsg(
-                projectDomain = projectDomain, srcKey = srcKey, destinationKey = destinationKey
+                projectDomain = domain, srcKey = srcKey, destinationKey = destinationKey
             )
             log("Sending message to Handlebars queue for $cssMsg")
             val cssNode = ContentNode.StaticNode(
-                srcKey = srcKey, lastUpdated = Clock.System.now()
-            )
-            upsertContentNode(srcKey = srcKey, projectDomain = projectDomain, contentType = Statics, node = cssNode)
+                srcKey = srcKey, lastUpdated = Clock.System.now(), url = destinationKey
+            ).also {
+                it.fileType = MimeType.css.toString()
+            }
+
+            upsertContentNode(srcKey = srcKey, projectDomain = domain, contentType = Statics, node = cssNode)
             val msgResponse = sqsService.sendTemplateMessage(
                 toQueue = queueUrl, body = cssMsg
             )

@@ -49,7 +49,8 @@ class DynamoDBServiceImpl(
     ): T {
         // Ensure the table name has been provided via environment variable; fail fast if missing
         if (tableName.isBlank()) {
-            val message = "DynamoDB table name is not configured. Set environment variable 'dynamodb_table' before attempting to $operationDescription. Context: $contextInfo"
+            val message =
+                "DynamoDB table name is not configured. Set environment variable 'dynamodb_table' before attempting to $operationDescription. Context: $contextInfo"
             log("ERROR", message)
             throw IllegalStateException(message)
         }
@@ -252,8 +253,15 @@ class DynamoDBServiceImpl(
                     // Partials won't have additional properties, so for now there is nothing to do
                 }
 
-                is ContentNode.StaticNode, is ContentNode.ImageNode -> {
-                    // Static nodes might not have additional properties, so for now there is nothing to do
+                is ContentNode.StaticNode -> {
+                    if (node.fileType != null) {
+                        item["mimeType"] = AttributeValue.builder().s(node.fileType).build()
+                    }
+                    item["url"] = AttributeValue.builder().s(node.url).build()
+                }
+
+                is ContentNode.ImageNode -> {
+                    // nothing additional for now
                 }
 
                 is ContentNode.PageNode -> {
@@ -905,11 +913,17 @@ class DynamoDBServiceImpl(
             }
 
             val lastUpdated = extractLastUpdatedTimestamp(item, "static")
-
-            return ContentNode.StaticNode(
+            val fileType = item["mimeType"]?.s()
+            val url = item["url"]?.s()
+            val node = ContentNode.StaticNode(
                 srcKey = srcKey,
-                lastUpdated = lastUpdated
+                lastUpdated = lastUpdated,
+                url = url ?: ""
             )
+            if (fileType != null) {
+                node.fileType = fileType
+            }
+            return node
         } catch (e: Exception) {
             log("ERROR", "Failed to map DynamoDB item to ContentNode.StaticNode: $item", e)
             throw e

@@ -212,11 +212,11 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
     }
 
     /**
-     * Parse and renderInline the given CSS file to the destination bucket. This is most likely to be a straight pass-through with no processing
+     * Parse and renderInline the given CSS file to the destination bucket. This is most likely to be a straight pass-through with no processing. For now, we are assuming it is CSS only.
      * @param staticFileMsg
-     * @param sourceBucket the source of the original CSS file TODO: move this to an environment variable for the processor
+     * @param sourceBucket the source of the original CSS file
      * @param generationBucket the intermediate bucket for the generated files
-     * @param destinationBucket destination S3 bucket TODO: move this to an environment variable
+     * @param destinationBucket destination S3 bucket
      *
      */
     private fun renderStatic(

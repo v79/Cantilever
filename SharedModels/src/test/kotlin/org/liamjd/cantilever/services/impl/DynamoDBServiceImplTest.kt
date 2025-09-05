@@ -409,8 +409,9 @@ internal class DynamoDBServiceImplTest {
         // Setup
         val staticNode = ContentNode.StaticNode(
             srcKey = "sources/static/styles.css",
-            lastUpdated = Instant.fromEpochSeconds(100000L)
-        )
+            lastUpdated = Instant.fromEpochSeconds(100000L),
+            url = "css/styles.css"
+        ).also { it.fileType = "text/css" }
 
         runBlocking {
             // Execute
@@ -539,8 +540,10 @@ internal class DynamoDBServiceImplTest {
         val staticKey = "sources/static/sample-style.css"
         val staticNode = ContentNode.StaticNode(
             srcKey = staticKey,
-            lastUpdated = Instant.fromEpochSeconds(100000L)
-        )
+            lastUpdated = Instant.fromEpochSeconds(100000L),
+            url = "css/sample-style.css"
+        ).also { it.fileType = "text/css" }
+
         runBlocking {
             service.upsertContentNode(
                 srcKey = staticNode.srcKey,
