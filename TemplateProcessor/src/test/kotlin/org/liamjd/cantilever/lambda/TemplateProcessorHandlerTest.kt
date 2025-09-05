@@ -308,7 +308,8 @@ class TemplateProcessorHandlerTest : KoinTest {
         val msg = TemplateSQSMessage.StaticRenderMsg(
             projectDomain = "example.com",
             srcKey = "example.com/assets/site.css.hbs",
-            destinationKey = "assets/site.css"
+            destinationKey = "assets/site.css",
+            mimeType = org.liamjd.cantilever.common.MimeType.css
         )
 
         val sqsEvent = SQSEvent().apply {

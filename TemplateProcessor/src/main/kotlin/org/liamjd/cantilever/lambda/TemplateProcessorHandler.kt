@@ -212,9 +212,9 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
     }
 
     /**
-     * Parse and renderInline the given CSS file to the destination bucket. This is most likely to be a straight pass-through with no processing. For now, we are assuming it is CSS only.
+     * Parse and renderInline the given static text file to the destination bucket. This is most likely to be a straight pass-through with no processing.
      * @param staticFileMsg
-     * @param sourceBucket the source of the original CSS file
+     * @param sourceBucket the source of the original static text file
      * @param generationBucket the intermediate bucket for the generated files
      * @param destinationBucket destination S3 bucket
      *
@@ -239,9 +239,9 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
                 val css = renderer.renderInline(model = model, templateString = cssTemplateString)
 
                 s3Service.putObjectAsString(
-                    project.domainKey + staticFileMsg.destinationKey, destinationBucket, css, "text/css"
+                    project.domainKey + staticFileMsg.destinationKey, destinationBucket, css, staticFileMsg.mimeType.toString()
                 )
-                log("Written final CSS file to '${project.domainKey}${staticFileMsg.destinationKey}'")
+                log("Written final text file to '${project.domainKey}${staticFileMsg.destinationKey}'")
             }
         } catch (nske: NoSuchKeyException) {
             log("ERROR", "Could not load file from S3, exception: ${nske.message}")

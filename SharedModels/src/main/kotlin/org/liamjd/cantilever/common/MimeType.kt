@@ -1,14 +1,17 @@
 package org.liamjd.cantilever.common
 
+import kotlinx.serialization.Serializable
+
 /**
  * Basic representation of a mime type like "text/html" or "application/json"
  */
+@Serializable
 data class MimeType(val type: String, val subType: String) {
 
     /**
      * Check if the given Accept header matches this mime type
      * @param acceptHeader the Accept header to check
-     * @return true if the accept header matches this mime type
+     * @return true if the Accept header matches this mime type
      */
     fun matches(acceptHeader: String?): Boolean {
         return acceptHeader?.let { parse(it).type == type && parse(acceptHeader).subType == subType } ?: false
@@ -53,6 +56,29 @@ data class MimeType(val type: String, val subType: String) {
         fun parse(string: String): MimeType {
             val parts = string.split('/')
             return MimeType(parts[0].lowercase(), parts[1].lowercase())
+        }
+
+        /**
+         * Get a MimeType from a file extension
+         * @param extension the file extension, e.g. "html"
+         * @return a MimeType object, or application/octet-stream if the extension is not recognized
+         */
+        fun fromExtension(extension: String): MimeType = when (extension.lowercase()) {
+            "html", "htm" -> html
+            "md", "markdown" -> markdown
+            "txt", "text" -> plainText
+            "json" -> json
+            "yaml", "yml" -> yaml
+            "js" -> javascript
+            "css" -> css
+            "jpg", "jpeg" -> jpg
+            "png" -> png
+            "gif" -> gif
+            "svg" -> svg
+            "webp" -> webp
+            "pdf" -> pdf
+            "xml" -> xml
+            else -> MimeType("application", "octet-stream")
         }
     }
 }
