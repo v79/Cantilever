@@ -11,7 +11,9 @@ import org.koin.core.component.inject
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
+import org.liamjd.cantilever.common.EnvironmentProvider
 import org.liamjd.cantilever.common.S3_KEY
+import org.liamjd.cantilever.common.SystemEnvironmentProvider
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ImgRes
 import org.liamjd.cantilever.models.sqs.ImageSQSMessage
@@ -56,7 +58,7 @@ object KoinSetup {
  * Respond to the SQSEvent, which will contain the S3 key of the image file to resize
  */
 @Suppress("unused")
-class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
+class ImageProcessorHandler(private val environmentProvider: EnvironmentProvider = SystemEnvironmentProvider()) : RequestHandler<SQSEvent, String>, KoinComponent,
     AWSLogger(enableLogging = true, msgSource = "ImageProcessorHandler") {
 
     init {
@@ -70,9 +72,9 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
     override var logger: LambdaLogger? = null
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
-        val sourceBucket = System.getenv("source_bucket")
-        val destinationBucket = System.getenv("destination_bucket")
-        val generationBucket = System.getenv("generation_bucket")
+        val sourceBucket = environmentProvider.getEnv("source_bucket")
+        val destinationBucket = environmentProvider.getEnv("destination_bucket")
+        val generationBucket = environmentProvider.getEnv("generation_bucket")
         logger = context.logger
         processor = ImageProcessor(logger)
 
@@ -146,10 +148,10 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
                         val copyToKey =
                             "$domain/generated/images/${imageMessage.metadata.srcKey.substringAfterLast("/")}"
                         s3Service.copyObject(
-                            imageMessage.metadata.srcKey,
-                            copyToKey,
-                            sourceBucket,
-                            generationBucket
+                            srcKey = imageMessage.metadata.srcKey,
+                            destKey = copyToKey,
+                            srcBucket = sourceBucket,
+                            destBucket = generationBucket
                         )
                         log("Creating internal thumbnail 100x100")
                         val thumbNailRes = ImgRes(100, 100)
@@ -168,9 +170,11 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
             } else {
                 log(
                     "WARN",
-                    "No  image resolutions defined in project metadata. Copying image to destination bucket without resizing"
+                    "No image resolutions defined in project metadata. Copying image to destination bucket without resizing"
                 )
-                // TODO: copy image to destination bucket
+                val copyMsg =
+                    ImageSQSMessage.CopyImagesMsg(imageMessage.projectDomain, listOf(imageMessage.metadata.srcKey))
+                processImageCopy(copyMsg, sourceBucket, generationBucket)
                 return "202 Accepted"
             }
 
@@ -204,7 +208,7 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
             log("Project: $project")
             imageMessage.imageList.forEach { imageKey ->
                 // imageKey will be as requested by the markdown file, e.g. /images/my-image.jpg
-                // sourceKey will be the full path in the source bucket, e.g. generated/images/my-image.jpg
+                // sourceKey will be the full path in the source bucket, e.g. domain.com/generated/images/my-image.jpg
                 // and destination key will be the full path in the destination bucket, e.g. images/my-image.jpg (no leading slash)
                 // TODO: this requires the user to always request images in a folder called images.
                 val sourceKey = "${S3_KEY.generated}${imageKey}"

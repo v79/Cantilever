@@ -41,7 +41,7 @@ import software.constructs.Construct
  * This class builds the Cantilever stack.
  * @param scope The AWS application scope.
  * @param id The ID of the stack
- * @param props Stack properties, can be null but should be set when calling
+ * @param props Stack properties. May be null but should be set when calling
  * @param versionString The version of Cantilever being deployed
  * @param isProd Whether this is a production deployment or not
  */
@@ -292,6 +292,7 @@ class CantileverStack(
                 ENV.source_bucket.name to sourceBucket.bucketName,
                 ENV.generation_bucket.name to generationBucket.bucketName,
                 ENV.destination_bucket.name to destinationBucket.bucketName,
+                ENV.dynamodb_table.name to contentNodeTable.tableName
             )
         )
 
@@ -434,6 +435,7 @@ class CantileverStack(
         contentNodeTable.grantReadWriteData(apiRoutingLambda)
         contentNodeTable.grantReadWriteData(fileUploadLambda)
         contentNodeTable.grantReadData(templateProcessorLambda)
+        contentNodeTable.grantReadWriteData(imageProcessorLambda)
 
 
         println("Creating API Gateway DNS record for $apiDomain")
