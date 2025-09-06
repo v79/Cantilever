@@ -15,7 +15,6 @@ import org.koin.test.KoinTest
 import org.koin.test.inject
 import org.koin.test.junit5.KoinTestExtension
 import org.koin.test.junit5.mock.MockProviderExtension
-import org.liamjd.cantilever.common.S3_KEY
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.ImgRes
@@ -37,11 +36,13 @@ class ImageProcessorHandlerTest : KoinTest {
 
     @JvmField
     @RegisterExtension
-    val koinTestExtension = KoinTestExtension.create { modules(module {
+    val koinTestExtension = KoinTestExtension.create {
+        modules(module {
             single<S3Service> { mockk(relaxed = true) }
             single<DynamoDBService> { mockk(relaxed = true) }
             single<SQSService> { mockk(relaxed = true) }
-        }) }
+        })
+    }
 
     @JvmField
     @RegisterExtension
@@ -121,12 +122,77 @@ class ImageProcessorHandlerTest : KoinTest {
         // plus example.com/generated/images/photo.png for the original
         // plus example.com/generated/images/photo.png/__thumb.png for the thumbnail
         // One of the keys should be the thumbnail
-        val expectedThumbKey = "example.com/generated/images/${imageKey.substringAfterLast('/')}" + "/${S3_KEY.thumbnail}." + imageKey.substringAfterLast('.')
+        val expectedThumbKey = "example.com/generated/images/photo/__thumb.png"
         assertEquals(
-            putKey.captured,
             expectedThumbKey,
+            putKey.captured,
             "At least one resized write should occur; thumbnail key computed for reference: $expectedThumbKey"
         )
+    }
+
+    @Test
+    fun `copy original image when no image resolutions defined`() {
+        // Arrange project with no image resolutions
+        val project = CantileverProject(
+            domain = "example.com",
+            projectName = "Example",
+            author = "Alice",
+            imageResolutions = emptyMap()
+        )
+        coEvery { mockDynamo.getProject("example.com") } returns project
+
+        val imageKey = "example.com/sources/images/assets/photo.png"
+
+        // Create a tiny in-memory PNG
+        val originalBytes = createPngBytes(20, 20)
+
+        every { mockS3.objectExists(imageKey, any()) } returns true
+        every { mockS3.getObjectAsBytes(imageKey, any()) } returns originalBytes
+        every { mockS3.getContentType(imageKey, any()) } returns "image/png"
+
+        // Capture writes
+        val putKey: CapturingSlot<String> = slot()
+        val putBucket: CapturingSlot<String> = slot()
+        val putBytes: CapturingSlot<ByteArray> = slot()
+        val putType: CapturingSlot<String> = slot()
+        every {
+            mockS3.putObjectAsBytes(capture(putKey), capture(putBucket), capture(putBytes), capture(putType))
+        } returns 123
+
+        // Copy original
+        val copiedSrcKey: CapturingSlot<String> = slot()
+        val copiedDestKey: CapturingSlot<String> = slot()
+        every { mockS3.copyObject(capture(copiedSrcKey), capture(copiedDestKey), any(), any()) } returns 123
+
+        val msg = ImageSQSMessage.ResizeImageMsg(
+            projectDomain = "example.com",
+            metadata = ContentNode.ImageNode(srcKey = "/sources/images/assets/photo.png").apply { contentType = "image/png" }
+        )
+
+        val sqsEvent = SQSEvent().apply {
+            records = listOf(SQSEvent.SQSMessage().apply { body = Json.encodeToString<ImageSQSMessage>(msg) })
+        }
+
+        // Act
+        val handler = ImageProcessorHandler()
+        val result = handler.handleRequest(sqsEvent, mockContext)
+
+        // Assert
+        assertEquals("202 Accepted", result)
+        println(copiedSrcKey.captured)
+        val expectedSrcKey = project.domain + "/sources/images/assets/photo.png"
+        val expectedDest = project.domain + "/generated" + "/assets/photo.png"
+        assertEquals(
+            expectedSrcKey,
+            copiedSrcKey.captured,
+            "Expected original image to be copied from $expectedSrcKey but got ${copiedSrcKey.captured}"
+        )
+        assertEquals(
+            expectedDest,
+            copiedDestKey.captured,
+            "Expected original image to be written to $expectedDest but got ${copiedDestKey.captured}"
+        )
+        verify(exactly = 1) { mockS3.copyObject(expectedSrcKey, expectedDest, any(), any()) }
     }
 
     @Test
@@ -134,9 +200,11 @@ class ImageProcessorHandlerTest : KoinTest {
         // Arrange
         val project = CantileverProject(domain = "example.com", projectName = "Example", author = "Alice")
         coEvery { mockDynamo.getProject("example.com") } returns project
-        every { mockS3.copyObject(any(), any(), any(), any()) } returns 123
+        val putKey: CapturingSlot<String> = slot()
+        val putDestKey: CapturingSlot<String> = slot()
+        every { mockS3.copyObject(capture(putKey), capture(putDestKey), any(), any()) } returns 123
 
-        val imageReq = "/images/pic.jpg"
+        val imageReq = "/sources/images/pic.jpg"
         val msg = ImageSQSMessage.CopyImagesMsg(
             projectDomain = "example.com",
             imageList = listOf(imageReq)
@@ -152,9 +220,19 @@ class ImageProcessorHandlerTest : KoinTest {
 
         // Assert
         assertEquals("200 OK", result)
-        val expectedSource = "${S3_KEY.generated}${imageReq}"
-        val expectedDest = project.domainKey + imageReq.removePrefix("/")
-        verify(exactly = 1) { mockS3.copyObject(expectedSource, expectedDest, any(), any()) }
+        val expectedSrcKey = project.domain + imageReq
+        val expectedDest = project.domain + "/generated/pic.jpg"
+        assertEquals(
+            expectedSrcKey,
+            putKey.captured,
+            "Expected original image to be copied from $expectedSrcKey but got ${putKey.captured}"
+        )
+        assertEquals(
+            expectedDest,
+            putDestKey.captured,
+            "Expected original image to be written to $expectedDest but got ${putDestKey.captured}"
+        )
+        verify(exactly = 1) { mockS3.copyObject(expectedSrcKey, expectedDest, any(), any()) }
     }
 
     // Helpers
@@ -188,12 +266,14 @@ class ImageProcessorHandlerTest : KoinTest {
                         val field = cl.getDeclaredField("m")
                         field.isAccessible = true
                         val obj = field.get(env)
+
                         @Suppress("UNCHECKED_CAST")
                         val map = obj as MutableMap<String, String>
                         map.putAll(newenv)
                     }
                 }
-            } catch (_: Exception) { }
+            } catch (_: Exception) {
+            }
         }
     }
 }
