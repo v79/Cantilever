@@ -410,17 +410,14 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
         srcKey: String, queueUrl: String, domain: String, type: String = "css"
     ): Boolean {
         try {
-            val destinationKey = "$type/" + srcKey.removePrefix("${domain}/").removePrefix(S3_KEY.staticsPrefix)
             val mimeType = MimeType.fromExtension(type)
+            val url = "${type}/${srcKey.removePrefix("$domain/sources/statics/")})"
+            val staticNode = ContentNode.StaticNode(srcKey = srcKey, lastUpdated = Clock.System.now(), url = url)
+                .also { it.fileType = mimeType.toString() }
             val msg = TemplateSQSMessage.StaticRenderMsg(
-                projectDomain = domain, srcKey = srcKey, destinationKey = destinationKey, mimeType = mimeType
+                projectDomain = domain, srcKey = srcKey, metadata = staticNode, mimeType = mimeType
             )
             log("Sending message to Handlebars queue for $msg")
-            val staticNode = ContentNode.StaticNode(
-                srcKey = srcKey, lastUpdated = Clock.System.now(), url = destinationKey
-            ).also {
-                it.fileType = mimeType.toString()
-            }
 
             upsertContentNode(srcKey = srcKey, projectDomain = domain, contentType = Statics, node = staticNode)
             val msgResponse = sqsService.sendTemplateMessage(

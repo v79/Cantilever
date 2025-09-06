@@ -3,6 +3,7 @@ package org.liamjd.cantilever.lambda
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.events.SQSEvent
 import io.mockk.*
+import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -174,6 +175,62 @@ class TemplateProcessorHandlerTest : KoinTest {
     }
 
     @Test
+    fun `render a page with a nested folder structure`() {
+        val project = CantileverProject(domain = "example.com", projectName = "Example", author = "Alice")
+        coEvery { mockDynamo.getProject("example.com") } returns project
+
+        every {
+            mockS3.getObjectAsString(
+                "example.com/sources/templates/page.hbs", "source-bkt"
+            )
+        } returns "--- name: post --- <html><title>{{title}}</title><body>{{{body}}}</body></html>"
+        every { mockS3.getObjectAsString("example.com/gen/body.html", "gen-bkt") } returns "<p>Hello</p>"
+        every {
+            mockS3.objectExists(
+                "example.com/sources/templates/page.hbs", "source-bkt"
+            )
+        } returns true
+
+        val keySlot: CapturingSlot<String> = slot()
+        val bucketSlot: CapturingSlot<String> = slot()
+        val bodySlot: CapturingSlot<String> = slot()
+        val typeSlot: CapturingSlot<String> = slot()
+        every {
+            mockS3.putObjectAsString(
+                capture(keySlot), capture(bucketSlot), capture(bodySlot), capture(typeSlot)
+            )
+        } returns 123
+
+        val pageMeta = ContentNode.PageNode(
+            srcKey = "example.com/sources/pages/biography/about-me.md",
+            title = "Home",
+            templateKey = "sources/templates/page.hbs",
+            slug = "about-me",
+            isRoot = false,
+            attributes = emptyMap(),
+            sections = mapOf("body" to "example.com/gen/body.html"),
+            parent = "example.com/sources/pages/biography"
+        )
+        val msg = TemplateSQSMessage.RenderPageMsg(
+            projectDomain = "example.com",
+            fragmentSrcKey = "example.com/generated/htmlFragments/pages/about-me.body.html",
+            metadata = pageMeta
+        )
+
+        val sqsEvent = SQSEvent().apply {
+            records = listOf(SQSEvent.SQSMessage().apply { body = Json.encodeToString<TemplateSQSMessage>(msg) })
+        }
+
+        val handler = TemplateProcessorHandler(env)
+        val result = handler.handleRequest(sqsEvent, mockContext)
+
+        assertEquals("200 OK", result)
+        verify(exactly = 1) { mockS3.putObjectAsString("example.com/biography/about-me", "dest-bkt", any(), "text/html") }
+        assertTrue(bodySlot.captured.contains("<p>Hello</p>"))
+        assertTrue(bodySlot.captured.contains("<title>Home</title>"))
+    }
+
+    @Test
     fun `render a page where the template contains a partial template`() {
         val project = CantileverProject(domain = "example.com", projectName = "Example", author = "Alice")
         coEvery { mockDynamo.getProject("example.com") } returns project
@@ -301,14 +358,19 @@ class TemplateProcessorHandlerTest : KoinTest {
         val cssSlot: CapturingSlot<String> = slot()
         every {
             mockS3.putObjectAsString(
-                "example.com/assets/site.css", "dest-bkt", capture(cssSlot), "text/css"
+                "example.com/css/assets/site.css", "dest-bkt", capture(cssSlot), "text/css"
             )
         } returns 789
 
+        val node = ContentNode.StaticNode(
+            srcKey = "example.com/assets/site.css.hbs",
+            lastUpdated = Clock.System.now(),
+            url = "assets/site.css"
+        ).also { it.fileType = "css" }
         val msg = TemplateSQSMessage.StaticRenderMsg(
             projectDomain = "example.com",
             srcKey = "example.com/assets/site.css.hbs",
-            destinationKey = "assets/site.css",
+            metadata = node,
             mimeType = org.liamjd.cantilever.common.MimeType.css
         )
 
@@ -320,7 +382,7 @@ class TemplateProcessorHandlerTest : KoinTest {
         val result = handler.handleRequest(sqsEvent, mockContext)
 
         assertEquals("200 OK", result)
-        verify { mockS3.putObjectAsString("example.com/assets/site.css", "dest-bkt", any(), "text/css") }
+        verify { mockS3.putObjectAsString("example.com/css/assets/site.css", "dest-bkt", any(), "text/css") }
         assertEquals("body{color:Example;}", cssSlot.captured)
     }
 }
