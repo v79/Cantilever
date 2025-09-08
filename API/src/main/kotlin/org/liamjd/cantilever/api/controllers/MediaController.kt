@@ -44,6 +44,9 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
 
     /**
      * Load an image file with the specified `srcKey` and specified `resolution` and return it as a byte array [ImageDTO] response
+     * The request URL will not match the actual S3 key, so we need to convert it
+     * Example request URL: www.cantilevers.org%2Fsources%2Fimages%2Finchinnan-bascule-bridge.jpg/__thumb
+     * Actual S3 key: www.cantilevers.org/generated/images/inchinnan-bascule-bridge/__thumb.jpg
      * If resolution is not specified, return the original image
      */
     @OptIn(ExperimentalEncodingApi::class)
@@ -51,17 +54,14 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
         val srcKey =
             request.pathParameters["srcKey"] ?: return Response.badRequest(APIResult.Error("No srcKey provided"))
         val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
-        val resolution = request.pathParameters["resolution"]
-        info("Fetching image $decodedKey at resolution $resolution")
-        // srcKey will be /sources/images/<image-name>.<ext>, so we need to strip off the /sources/images/ prefix and add the /generated/images/ prefix
-        // I also need to move the <ext> to the end of the generated key
-        val ext = decodedKey.substringAfterLast(".")
-        val generatedKey = decodedKey
-            .replace("sources/images/", "generated/images/") + if (resolution != null) {
-            "/${resolution}.$ext"
-        } else {
-            ".${ext}"
+        var resolution = request.pathParameters["resolution"]
+        // Resolution might be provided as "__thumb" in the path; normalise to just "thumb"
+        if (resolution != null && resolution.startsWith("__")) {
+            resolution = resolution.removePrefix("__")
         }
+        info("Fetching image $decodedKey at resolution $resolution")
+        val ext = decodedKey.substringAfterLast(".").lowercase()
+        val generatedKey = calculateGeneratedKey(decodedKey, ext, resolution)
         if (s3Service.objectExists(generatedKey, generationBucket)) {
             val image = s3Service.getObjectAsBytes(generatedKey, generationBucket)
             val encoded = Base64.encode(image)
@@ -134,6 +134,32 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
                 .removeSuffix(".$ext") + "/${S3_KEY.thumbnail}.$ext", sourceBucket
         )
         return Response.ok(APIResult.Success(value = "Image'${srcKey}' deleted successfully"))
+    }
+
+    /**
+     * Converts a source image key into a generated image key based on specified parameters.
+     *
+     * The method modifies the input `srcKey` to replace the base path "sources/images/"
+     * with "generated/images/". If a valid `resolution` is provided, it appends the
+     * resolution to the file name before the extension. If `resolution` is not provided,
+     * the generated key remains unchanged except for the base path replacement.
+     *
+     * @param srcKey the original source image key, typically including its path and filename
+     * @param ext the file extension of the image (e.g., "jpg", "png")
+     * @param resolution an optional parameter specifying the desired resolution; can be null or blank
+     * @return the generated key derived from the source key and resolution
+     */
+    internal fun calculateGeneratedKey(srcKey: String, ext: String, resolution: String?): String {
+        // Convert sources path to generated path
+        val generatedBase = srcKey.replace("sources/images/", "generated/images/")
+        return if (resolution.isNullOrBlank()) {
+            // No resolution: just return the base generated path with original filename
+            generatedBase
+        } else {
+            // Insert /__<resolution> before the file extension and keep folders
+            val withoutExt = generatedBase.removeSuffix(".$ext")
+            "$withoutExt/__${resolution}.$ext"
+        }
     }
 
 

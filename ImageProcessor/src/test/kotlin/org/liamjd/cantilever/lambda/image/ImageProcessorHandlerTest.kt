@@ -166,7 +166,7 @@ class ImageProcessorHandlerTest : KoinTest {
 
         val msg = ImageSQSMessage.ResizeImageMsg(
             projectDomain = "example.com",
-            metadata = ContentNode.ImageNode(srcKey = "/sources/images/assets/photo.png").apply { contentType = "image/png" }
+            metadata = ContentNode.ImageNode(srcKey = imageKey).apply { contentType = "image/png" }
         )
 
         val sqsEvent = SQSEvent().apply {
