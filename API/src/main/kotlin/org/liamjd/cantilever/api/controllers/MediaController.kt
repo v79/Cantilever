@@ -116,17 +116,21 @@ class MediaController(sourceBucket: String, generationBucket: String) : KoinComp
         val srcKey =
             request.pathParameters["srcKey"] ?: return Response.badRequest(APIResult.Error("No srcKey provided"))
         val decodedKey = URLDecoder.decode(srcKey, Charsets.UTF_8)
+        val domain = request.headers["cantilever-project-domain"]!!
 
         info("Deleting image $decodedKey and all its generated versions")
         s3Service.deleteObject(decodedKey, sourceBucket)
         val ext = decodedKey.substringAfterLast(".")
 
         // TODO: Do I really want to delete all the generated images? What if the user has used them in a blog post?
-        project.imageResolutions.forEach { resolution ->
-            val resolutionKey = decodedKey.replace(S3_KEY.imagesPrefix, S3_KEY.generatedImagesPrefix)
-                .removeSuffix(".$ext") + "/${resolution.key}.$ext"
-            info("Deleting generated image $resolutionKey")
-            s3Service.deleteObject(resolutionKey, sourceBucket)
+        runBlocking {
+            val project = dynamoDBService.getProject(domain)
+            project?.imageResolutions?.forEach { resolution ->
+                val resolutionKey = decodedKey.replace(S3_KEY.imagesPrefix, S3_KEY.generatedImagesPrefix)
+                    .removeSuffix(".$ext") + "/${resolution.key}.$ext"
+                info("Deleting generated image $resolutionKey")
+                s3Service.deleteObject(resolutionKey, sourceBucket)
+            }
         }
         s3Service.deleteObject(decodedKey.replaceFirst("sources", "generated"), sourceBucket)
         s3Service.deleteObject(

@@ -1,9 +1,9 @@
 package org.liamjd.cantilever.api.controllers
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.junit5.MockKExtension
-import io.mockk.coEvery
 import io.mockk.mockkClass
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -17,8 +17,10 @@ import org.koin.test.junit5.KoinTestExtension
 import org.koin.test.junit5.mock.MockProviderExtension
 import org.koin.test.mock.declareMock
 import org.liamjd.cantilever.common.SOURCE_TYPE
+import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.ImageDTO
+import org.liamjd.cantilever.models.ImgRes
 import org.liamjd.cantilever.services.DynamoDBService
 import org.liamjd.cantilever.services.S3Service
 import kotlin.io.encoding.Base64
@@ -53,8 +55,14 @@ internal class MediaControllerTest : KoinTest {
     @Test
     fun `getImageList returns ImageListDTO with images from dynamo`() {
         val images = listOf(
-            ContentNode.ImageNode(srcKey = "test/sources/images/a.jpg", lastUpdated = kotlinx.datetime.Clock.System.now()),
-            ContentNode.ImageNode(srcKey = "test/sources/images/b.jpg", lastUpdated = kotlinx.datetime.Clock.System.now())
+            ContentNode.ImageNode(
+                srcKey = "test/sources/images/a.jpg",
+                lastUpdated = kotlinx.datetime.Clock.System.now()
+            ),
+            ContentNode.ImageNode(
+                srcKey = "test/sources/images/b.jpg",
+                lastUpdated = kotlinx.datetime.Clock.System.now()
+            )
         )
         declareMock<DynamoDBService> {
             coEvery { mockDynamo.listAllNodesForProject("test", SOURCE_TYPE.Images) } returns images
@@ -75,15 +83,16 @@ internal class MediaControllerTest : KoinTest {
 
     @Test
     fun `getImage returns base64 image bytes when object exists with resolution`() {
-        val encodedBytes = Base64.encode(byteArrayOf(1,2,3,4))
+        val encodedBytes = Base64.encode(byteArrayOf(1, 2, 3, 4))
         val srcKey = "test.com%2Fsources%2Fimages%2Fpic.jpg"
         val generatedKey = "test.com/generated/images/pic/__thumb.jpg"
         declareMock<S3Service> {
             every { mockS3.objectExists(generatedKey, generationBucket) } returns true
-            every { mockS3.getObjectAsBytes(generatedKey, generationBucket) } returns byteArrayOf(1,2,3,4)
+            every { mockS3.getObjectAsBytes(generatedKey, generationBucket) } returns byteArrayOf(1, 2, 3, 4)
         }
         val controller = MediaController(sourceBucket, generationBucket)
-        val request = buildRequest(path = "/media/image/$srcKey/__thumb", pathPattern = "/media/image/{srcKey}/{resolution}")
+        val request =
+            buildRequest(path = "/media/image/$srcKey/__thumb", pathPattern = "/media/image/{srcKey}/{resolution}")
 
         val response = controller.getImage(request)
 
@@ -97,12 +106,19 @@ internal class MediaControllerTest : KoinTest {
 
     @Test
     fun `uploadImage succeeds and returns ok`() {
-        val imageBytes = Base64.encode(byteArrayOf(9,8,7))
+        val imageBytes = Base64.encode(byteArrayOf(9, 8, 7))
         val dataUrl = "data:image/png;base64,$imageBytes"
         val srcKey = "sources/images/folder/file.png"
         val dto = ImageDTO(srcKey = "folder/file.png", contentType = "image/png", bytes = dataUrl)
         declareMock<S3Service> {
-            every { mockS3.putObjectAsBytes(key = "test/${srcKey}", bucket = sourceBucket, contents = any(), contentType = "image/png") } returns 3
+            every {
+                mockS3.putObjectAsBytes(
+                    key = "test/${srcKey}",
+                    bucket = sourceBucket,
+                    contents = any(),
+                    contentType = "image/png"
+                )
+            } returns 3
         }
         val controller = MediaController(sourceBucket, generationBucket)
         val request = org.liamjd.apiviaduct.routing.Request(
@@ -122,17 +138,19 @@ internal class MediaControllerTest : KoinTest {
 
     @Test
     fun `deleteImage deletes original and generated variants and returns ok`() {
-        val srcKeyEncoded = "test.com%2Fsources%2Fimages%2Fphoto.webp"
+        val srcKeyEncoded = "test%2Fsources%2Fimages%2Fphoto.webp"
         val controller = MediaController(sourceBucket, generationBucket)
-        // initialise project to avoid lateinit crash in deleteImage
-        controller.project = org.liamjd.cantilever.models.CantileverProject(
-            domain = "test",
+        val project = CantileverProject(
+            domain = "com",
             projectName = "Test",
             author = "Author",
-            imageResolutions = mapOf("small" to org.liamjd.cantilever.models.ImgRes(100,100))
+            imageResolutions = mapOf("small" to ImgRes(100, 100))
         )
         declareMock<S3Service> {
             every { mockS3.deleteObject(any(), any()) } returns io.mockk.mockk()
+        }
+        declareMock<DynamoDBService> {
+            coEvery { mockDynamo.getProject("test") } returns project
         }
         val request = buildRequest(path = "/media/image/$srcKeyEncoded", pathPattern = "/media/image/{srcKey}")
 
@@ -151,7 +169,8 @@ internal class MediaControllerTest : KoinTest {
         assertEquals("example.com/generated/images/pic/__thumb.jpg", key2)
         val key3 = controller.calculateGeneratedKey("example.com/sources/images/folder/pic.png", "png", "small")
         assertEquals("example.com/generated/images/folder/pic/__small.png", key3)
-        val key4 = controller.calculateGeneratedKey("example.com/sources/images/folder/subfolder/pic.gif", "gif", "medium")
+        val key4 =
+            controller.calculateGeneratedKey("example.com/sources/images/folder/subfolder/pic.gif", "gif", "medium")
         assertEquals("example.com/generated/images/folder/subfolder/pic/__medium.gif", key4)
     }
 

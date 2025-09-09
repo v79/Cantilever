@@ -114,7 +114,7 @@ class ImageProcessorHandlerTest : KoinTest {
         val result = handler.handleRequest(sqsEvent, mockContext)
 
         // Assert
-        assertEquals("200 OK", result)
+        assertEquals("202 Accepted", result)
         // Expect at least 3 puts: 2 resolutions + 1 thumbnail
         verify(atLeast = 3) { mockS3.putObjectAsBytes(any(), any(), any(), any()) }
 

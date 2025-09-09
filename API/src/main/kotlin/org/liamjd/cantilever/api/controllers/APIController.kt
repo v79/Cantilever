@@ -10,7 +10,6 @@ abstract class APIController(val sourceBucket: String, val generationBucket: Str
 
     val s3Service: S3Service by inject()
     val dynamoDBService: DynamoDBService by inject()
-    lateinit var project: CantileverProject
 
     /**
      * A slightly nicer logging mechanism than println?

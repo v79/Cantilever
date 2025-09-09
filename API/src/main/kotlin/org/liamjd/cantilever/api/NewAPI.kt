@@ -128,7 +128,7 @@ class NewLambdaRouter : LambdaRouter() {
                 get("/images", mediaController::getImageList)
                 get("/images/{srcKey}/{resolution}", mediaController::getImage)
                 post("/images/", mediaController::uploadImage)
-                delete("/delete/{srcKey}", mediaController::deleteImage)
+                delete("/images/{srcKey}", mediaController::deleteImage).supplies(MimeType.plainText)
             }
         }
 
