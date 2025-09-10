@@ -35,7 +35,7 @@ class ContentNodeTest {
             parent = "www.test.com/sources/pages"
         )
         val url = page.url
-        assertEquals("www.test.com/biography", url)
+        assertEquals("/biography", url)
     }
 
     @Test
@@ -51,7 +51,7 @@ class ContentNodeTest {
             parent = "www.test.com/sources/pages"
         )
         val url = page.url
-        assertEquals("www.test.com/index.html", url)
+        assertEquals("/index.html", url)
     }
 
     @Test
@@ -67,7 +67,7 @@ class ContentNodeTest {
             parent = "www.test.com/sources/pages/books"
         )
         val url = page.url
-        assertEquals("www.test.com/books/favourite-books", url)
+        assertEquals("/books/favourite-books", url)
     }
 
     @Test
@@ -83,7 +83,7 @@ class ContentNodeTest {
             parent = "www.test.com/sources/pages/bio"
         )
         val url = page.url
-        assertEquals("www.test.com/bio/index.html", url)
+        assertEquals("/bio/index.html", url)
     }
 
     @Test
@@ -100,6 +100,6 @@ class ContentNodeTest {
         val indexNode =
             ContentMetaDataBuilder.PageBuilder.buildCompletePageFromSourceString(source, "sources/pages/index.md")
         indexNode.parent = "www.test.com/sources/pages"
-        assertEquals("www.test.com/index.html", indexNode.url)
+        assertEquals("/index.html", indexNode.url)
     }
 }

@@ -11,7 +11,9 @@ import org.koin.core.component.inject
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
+import org.liamjd.cantilever.common.EnvironmentProvider
 import org.liamjd.cantilever.common.S3_KEY
+import org.liamjd.cantilever.common.SystemEnvironmentProvider
 import org.liamjd.cantilever.models.CantileverProject
 import org.liamjd.cantilever.models.ImgRes
 import org.liamjd.cantilever.models.sqs.ImageSQSMessage
@@ -56,7 +58,8 @@ object KoinSetup {
  * Respond to the SQSEvent, which will contain the S3 key of the image file to resize
  */
 @Suppress("unused")
-class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
+class ImageProcessorHandler(private val environmentProvider: EnvironmentProvider = SystemEnvironmentProvider()) :
+    RequestHandler<SQSEvent, String>, KoinComponent,
     AWSLogger(enableLogging = true, msgSource = "ImageProcessorHandler") {
 
     init {
@@ -70,9 +73,9 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
     override var logger: LambdaLogger? = null
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
-        val sourceBucket = System.getenv("source_bucket")
-        val destinationBucket = System.getenv("destination_bucket")
-        val generationBucket = System.getenv("generation_bucket")
+        val sourceBucket = environmentProvider.getEnv("source_bucket")
+        val destinationBucket = environmentProvider.getEnv("destination_bucket")
+        val generationBucket = environmentProvider.getEnv("generation_bucket")
         logger = context.logger
         processor = ImageProcessor(logger)
 
@@ -86,11 +89,12 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
 
                 when (val sqsMsg = Json.decodeFromString<ImageSQSMessage>(eventRecord.body)) {
                     is ImageSQSMessage.ResizeImageMsg -> {
+                        log("Received request to resize image ${sqsMsg.metadata.srcKey} in $sourceBucket and write to $generationBucket bucket")
                         response = processImageResize(sqsMsg, sourceBucket, generationBucket)
                     }
 
                     is ImageSQSMessage.CopyImagesMsg -> {
-                        log("Received request to copy images from generation to destination bucket")
+                        log("Received request to copy images from $generationBucket to $destinationBucket bucket")
                         response = processImageCopy(sqsMsg, generationBucket, destinationBucket)
                     }
                 }
@@ -117,15 +121,14 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
         try {
             val domain = imageMessage.projectDomain
             val project = getProjectModel(domain) ?: throw Exception("Project model is null")
-            log("Project: $project")
 
-            // loop through all the image resolutions and create resized images for each uploaded file
-            if (project.imageResolutions.isNotEmpty()) {
-                log("Checking if image exists in $sourceBucket/${imageMessage.metadata.srcKey}")
-                if (s3Service.objectExists(imageMessage.metadata.srcKey, sourceBucket)) {
-                    val imageBytes = s3Service.getObjectAsBytes(imageMessage.metadata.srcKey, sourceBucket)
-                    val contentType = s3Service.getContentType(imageMessage.metadata.srcKey, sourceBucket)
-                    if (imageBytes.isNotEmpty()) {
+            log("Checking if image exists in $sourceBucket/${imageMessage.metadata.srcKey}")
+            if (s3Service.objectExists(imageMessage.metadata.srcKey, sourceBucket)) {
+                // loop through all the image resolutions and create resized images for each uploaded file
+                val imageBytes = s3Service.getObjectAsBytes(imageMessage.metadata.srcKey, sourceBucket)
+                val contentType = s3Service.getContentType(imageMessage.metadata.srcKey, sourceBucket)
+                if (imageBytes.isNotEmpty()) {
+                    if (project.imageResolutions.isNotEmpty()) {
                         log("Resize image: ${imageBytes.size} bytes")
                         project.imageResolutions.forEach { (name, imgRes) ->
                             log("Resize image: $name (${imgRes.w}x${imgRes.h})")
@@ -134,7 +137,7 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
                             } else {
                                 val resizedBytes =
                                     processor.resizeImage(imgRes, imageBytes, getFormatNameFromContentType(contentType))
-                                val destKey = calculateFilename(imageMessage, name)
+                                val destKey = imageMessage.metadata.calculateDestinationKey(domain)
                                 log("Resize image: writing $destKey (${resizedBytes.size} bytes) to $sourceBucket")
                                 s3Service.putObjectAsBytes(
                                     destKey, generationBucket, resizedBytes, contentType ?: "image/jpeg"
@@ -146,40 +149,71 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
                         val copyToKey =
                             "$domain/generated/images/${imageMessage.metadata.srcKey.substringAfterLast("/")}"
                         s3Service.copyObject(
-                            imageMessage.metadata.srcKey,
-                            copyToKey,
-                            sourceBucket,
-                            generationBucket
-                        )
-                        log("Creating internal thumbnail 100x100")
-                        val thumbNailRes = ImgRes(100, 100)
-                        val resizedBytes =
-                            processor.resizeImage(thumbNailRes, imageBytes, getFormatNameFromContentType(contentType))
-                        val destKey = calculateFilename(imageMessage, S3_KEY.thumbnail)
-                        log("Resize image: writing $destKey (${resizedBytes.size} bytes) to $sourceBucket")
-                        s3Service.putObjectAsBytes(
-                            destKey, generationBucket, resizedBytes, contentType ?: "image/jpeg"
+                            srcKey = imageMessage.metadata.srcKey,
+                            destKey = copyToKey,
+                            srcBucket = sourceBucket,
+                            destBucket = generationBucket
                         )
                     } else {
-                        log("ERROR", "Resize image: ${imageMessage.metadata.srcKey} is empty")
-                        return "500 Internal Server Error"
+                        log(
+                            "WARN",
+                            "No image resolutions defined in project metadata. Copying image to destination bucket without resizing"
+                        )
+                        // CopyImagesMsg has a unique requirement for the src key, in that it matches that which would be specified in the Markdown
+                        // For example, Markdown would specify /assets/my-image.jpg which is very different from metadata.srcKey
+                        val copyMsg = ImageSQSMessage.CopyImagesMsg(
+                            imageMessage.projectDomain,
+                            listOf(imageMessage.metadata.srcKey.removePrefix(domain).removePrefix("sources/images"))
+                        )
+                        processImageCopy(copyMsg, sourceBucket, generationBucket)
                     }
+                    createThumbnailFromImage(imageBytes, contentType, imageMessage, domain, generationBucket)
+                    return "202 Accepted"
+                } else {
+                    log("ERROR", "Resize image: ${imageMessage.metadata.srcKey} is empty")
+                    return "500 Internal Server Error"
                 }
             } else {
-                log(
-                    "WARN",
-                    "No  image resolutions defined in project metadata. Copying image to destination bucket without resizing"
-                )
-                // TODO: copy image to destination bucket
-                return "202 Accepted"
+                log("ERROR", "Image ${imageMessage.metadata.srcKey} does not exist in bucket $sourceBucket")
+                return "404 Not Found"
             }
-
         } catch (e: Exception) {
             log("ERROR", "Failed to process image file; ${e.message}")
             responseString = "500 Internal Server Error"
         }
 
         return responseString
+    }
+
+    /**
+     * Create a 100x100 thumbnail from the original image and store it in a __thumb.jpg file in the image folder
+     * e.g. domain/generated/images/my-image/__thumb.jpg
+     * @param imageBytes the original image bytes
+     * @param contentType the content type of the original image
+     * @param imageMessage the SQS message containing the image metadata
+     * @param domain the project domain
+     * @param generationBucket the bucket to write the thumbnail to
+     */
+    private fun createThumbnailFromImage(
+        imageBytes: ByteArray,
+        contentType: String?,
+        imageMessage: ImageSQSMessage.ResizeImageMsg,
+        domain: String,
+        generationBucket: String
+    ) {
+        log("Creating internal thumbnail 100x100")
+        val thumbNailRes = ImgRes(100, 100)
+        val resizedBytes = processor.resizeImage(thumbNailRes, imageBytes, getFormatNameFromContentType(contentType))
+        // destKey will be in the format domain/generated/images/my-image.jpg
+        // I need domain/generated/images/my-image/__thumb.jpg
+        var destKey = imageMessage.metadata.calculateDestinationKey(domain)
+        val suffix = destKey.substringAfterLast(".")
+        destKey = destKey.removeSuffix(".${suffix}")
+        destKey = destKey + "/" + S3_KEY.thumbnail + "." + suffix
+        log("Resize image: writing $destKey (${resizedBytes.size} bytes) to $generationBucket")
+        s3Service.putObjectAsBytes(
+            destKey, generationBucket, resizedBytes, contentType ?: "image/jpeg"
+        )
     }
 
     // TODO: Need stronger error handling here; there's a good chance that the source image won't exist
@@ -191,9 +225,7 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
      * @return a String response to the SQS message
      */
     private fun processImageCopy(
-        imageMessage: ImageSQSMessage.CopyImagesMsg,
-        sourceBucket: String,
-        destinationBucket: String
+        imageMessage: ImageSQSMessage.CopyImagesMsg, sourceBucket: String, destinationBucket: String
     ): String {
         var responseString = "200 OK"
 
@@ -201,20 +233,17 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
             // load the project
             val domain = imageMessage.projectDomain
             val project = getProjectModel(domain) ?: throw Exception("Project model is null")
-            log("Project: $project")
             imageMessage.imageList.forEach { imageKey ->
-                // imageKey will be as requested by the markdown file, e.g. /images/my-image.jpg
-                // sourceKey will be the full path in the source bucket, e.g. generated/images/my-image.jpg
-                // and destination key will be the full path in the destination bucket, e.g. images/my-image.jpg (no leading slash)
+                // imageKey will be /sources/images/my-image.jpg
+                val srcKey = "$domain$imageKey"
+                // and destination key will be the full path in the destination bucket, e.g. domain.com/generated/images/my-image.jpg (no leading slash)
                 // TODO: this requires the user to always request images in a folder called images.
-                val sourceKey = "${S3_KEY.generated}${imageKey}"
-                val destinationKey = project.domainKey + imageKey.removePrefix("/")
-                log("Copying $sourceKey to $destinationKey, from $sourceBucket to $destinationBucket")
-                val copyResult = s3Service.copyObject(sourceKey, destinationKey, sourceBucket, destinationBucket)
+                val destinationKey = project.domainKey + "generated" + imageKey.removePrefix("/sources/images")
+                println("Copying $srcKey to $destinationKey, from $sourceBucket to $destinationBucket")
+                val copyResult = s3Service.copyObject(srcKey, destinationKey, sourceBucket, destinationBucket)
                 if (copyResult == -1) {
                     log(
-                        "ERROR",
-                        "Failed to copy $sourceKey to $destinationKey, from $sourceBucket to $destinationBucket"
+                        "ERROR", "Failed to copy $imageKey to $destinationKey, from $sourceBucket to $destinationBucket"
                     )
                     responseString = "500 Internal Server Error"
                 }
@@ -233,21 +262,22 @@ class ImageProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent,
      * Will be in the format domain/generated/images/my-image.100x100.jpg
      * @param imageMessage the SQS message containing details of the image to resize
      * @param resName the name of the resolution to append to the filename
-     */
-    private fun calculateFilename(
-        imageMessage: ImageSQSMessage.ResizeImageMsg, resName: String?
-    ): String {
-        // The original image key is in the format domain/sources/images/my-image.jpg
-        // The destination image key should be in format domain/generated/images/my-image/100x100.jpg
-        val domain = imageMessage.projectDomain
-        val sourceLeafName = imageMessage.metadata.srcKey.substringAfterLast("/")
-        val origSuffix = imageMessage.metadata.srcKey.substringAfterLast(".")
-        val newPrefix = "$domain/generated/images/"
-        val finalResName = if (resName != null) {
-            "/$resName."
-        } else "."
-        return "$newPrefix$sourceLeafName${finalResName}${origSuffix}"
-    }
+     *//*
+        private fun calculateFilename(
+            imageMessage: ImageSQSMessage.ResizeImageMsg, resName: String?
+        ): String {
+            // The original image key is in the format domain/sources/images/my-image.jpg
+            // The destination image key should be in format domain/generated/images/my-image/100x100.jpg
+            val domain = imageMessage.projectDomain
+            val sourceLeafName = imageMessage.metadata.srcKey.substringAfterLast("/")
+            val origSuffix = imageMessage.metadata.srcKey.substringAfterLast(".")
+            val newPrefix = "$domain/generated/images/"
+            val finalResName = if (resName != null) {
+                "/$resName."
+            } else "."
+            return "$newPrefix$sourceLeafName${finalResName}${origSuffix}"
+        }
+    */
 
     /**
      * Get the format name from the content type

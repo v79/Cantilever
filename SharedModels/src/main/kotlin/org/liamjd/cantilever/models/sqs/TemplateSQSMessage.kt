@@ -15,17 +15,30 @@ sealed class TemplateSQSMessage {
      * Message to send to trigger the Handlebars renderer for the Post
      */
     @Serializable
-    data class RenderPostMsg(val projectDomain: String, val fragmentSrcKey: SrcKey, val metadata: ContentNode.PostNode) : TemplateSQSMessage()
+    data class RenderPostMsg(
+        val projectDomain: String,
+        val fragmentSrcKey: SrcKey,
+        val metadata: ContentNode.PostNode
+    ) : TemplateSQSMessage()
 
     /**
      * Message to send to trigger the Handlebars renderer for the Page
      */
     @Serializable
-    data class RenderPageMsg(val projectDomain: String, val fragmentSrcKey: SrcKey, val metadata: ContentNode.PageNode) : TemplateSQSMessage()
+    data class RenderPageMsg(
+        val projectDomain: String,
+        val fragmentSrcKey: SrcKey,
+        val metadata: ContentNode.PageNode
+    ) : TemplateSQSMessage()
 
     /**
      * Message to send to trigger the Handlebars renderer for any other (text) file
      */
     @Serializable
-    data class StaticRenderMsg(val projectDomain: String, val srcKey: SrcKey, val destinationKey: SrcKey, val mimeType: MimeType) : TemplateSQSMessage()
+    data class StaticRenderMsg(
+        val projectDomain: String,
+        val srcKey: SrcKey,
+        val metadata: ContentNode.StaticNode,
+        val mimeType: MimeType
+    ) : TemplateSQSMessage()
 }

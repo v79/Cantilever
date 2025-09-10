@@ -1,0 +1,2768 @@
+{
+  "Description": "Cantilever is cloud-native static site generator",
+  "Resources": {
+    "cantileversources123976CA": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "aws-cdk:auto-delete-objects",
+            "Value": "true"
+          },
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ],
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-sources/Resource"
+      }
+    },
+    "cantileversourcesPolicy4C2F5BCD": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "cantileversources123976CA"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:DeleteObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:PutBucketPolicy"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+                    "Arn"
+                  ]
+                }
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantileversources123976CA",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantileversources123976CA",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-sources/Policy/Resource"
+      }
+    },
+    "cantileversourcesAutoDeleteObjectsCustomResource17515782": {
+      "Type": "Custom::S3AutoDeleteObjects",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+            "Arn"
+          ]
+        },
+        "BucketName": {
+          "Ref": "cantileversources123976CA"
+        }
+      },
+      "DependsOn": [
+        "cantileversourcesPolicy4C2F5BCD"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-sources/AutoDeleteObjectsCustomResource/Default"
+      }
+    },
+    "cantileversourcesNotificationsE69D0B6E": {
+      "Type": "Custom::S3BucketNotifications",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "BucketNotificationsHandler050a0587b7544547bf325f094a3db8347ECC3691",
+            "Arn"
+          ]
+        },
+        "BucketName": {
+          "Ref": "cantileversources123976CA"
+        },
+        "NotificationConfiguration": {
+          "LambdaFunctionConfigurations": [
+            {
+              "Events": [
+                "s3:ObjectCreated:Put"
+              ],
+              "LambdaFunctionArn": {
+                "Fn::GetAtt": [
+                  "cantileverfileuploadlambda54E3EA9D",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Events": [
+                "s3:ObjectCreated:Post"
+              ],
+              "LambdaFunctionArn": {
+                "Fn::GetAtt": [
+                  "cantileverfileuploadlambda54E3EA9D",
+                  "Arn"
+                ]
+              }
+            }
+          ]
+        },
+        "Managed": true,
+        "SkipDestinationValidation": false
+      },
+      "DependsOn": [
+        "cantileversourcesAllowBucketNotificationsToCantileverStackcantileverfileuploadlambdaA17131B0FA97F8AF",
+        "cantileversourcesPolicy4C2F5BCD"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-sources/Notifications/Resource"
+      }
+    },
+    "cantileversourcesAllowBucketNotificationsToCantileverStackcantileverfileuploadlambdaA17131B0FA97F8AF": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "cantileverfileuploadlambda54E3EA9D",
+            "Arn"
+          ]
+        },
+        "Principal": "s3.amazonaws.com",
+        "SourceAccount": "086949310404",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "cantileversources123976CA",
+            "Arn"
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-sources/AllowBucketNotificationsToCantileverStackcantileverfileuploadlambdaA17131B0"
+      }
+    },
+    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role"
+      }
+    },
+    "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-086949310404-eu-west-2",
+          "S3Key": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip"
+        },
+        "Timeout": 900,
+        "MemorySize": 128,
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs22.x",
+        "Description": {
+          "Fn::Join": [
+            "",
+            [
+              "Lambda function for auto-deleting objects in ",
+              {
+                "Ref": "cantileversources123976CA"
+              },
+              " S3 bucket."
+            ]
+          ]
+        }
+      },
+      "DependsOn": [
+        "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler",
+        "aws:asset:path": "asset.faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6",
+        "aws:asset:property": "Code"
+      }
+    },
+    "cantilevergenerated2F211775": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "aws-cdk:auto-delete-objects",
+            "Value": "true"
+          },
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ],
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-generated/Resource"
+      }
+    },
+    "cantilevergeneratedPolicy9DF9A503": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "cantilevergenerated2F211775"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:DeleteObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:PutBucketPolicy"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+                    "Arn"
+                  ]
+                }
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantilevergenerated2F211775",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantilevergenerated2F211775",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-generated/Policy/Resource"
+      }
+    },
+    "cantilevergeneratedAutoDeleteObjectsCustomResource413F0487": {
+      "Type": "Custom::S3AutoDeleteObjects",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+            "Arn"
+          ]
+        },
+        "BucketName": {
+          "Ref": "cantilevergenerated2F211775"
+        }
+      },
+      "DependsOn": [
+        "cantilevergeneratedPolicy9DF9A503"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-generated/AutoDeleteObjectsCustomResource/Default"
+      }
+    },
+    "cantileverwebsiteA46551A2": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "Tags": [
+          {
+            "Key": "aws-cdk:auto-delete-objects",
+            "Value": "true"
+          },
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-website/Resource"
+      }
+    },
+    "cantileverwebsitePolicy1700F44C": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "cantileverwebsiteA46551A2"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:DeleteObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:PutBucketPolicy"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+                    "Arn"
+                  ]
+                }
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantileverwebsiteA46551A2",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantileverwebsiteA46551A2",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:GetBucket*",
+                "s3:GetObject*",
+                "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "CanonicalUser": {
+                  "Fn::GetAtt": [
+                    "cantileveroriginAccessIdentityD12D4BF7",
+                    "S3CanonicalUserId"
+                  ]
+                }
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantileverwebsiteA46551A2",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantileverwebsiteA46551A2",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "s3:GetObject",
+              "Effect": "Allow",
+              "Principal": {
+                "CanonicalUser": {
+                  "Fn::GetAtt": [
+                    "cantileveroriginAccessIdentityD12D4BF7",
+                    "S3CanonicalUserId"
+                  ]
+                }
+              },
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "cantileverwebsiteA46551A2",
+                        "Arn"
+                      ]
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-website/Policy/Resource"
+      }
+    },
+    "cantileverwebsiteAutoDeleteObjectsCustomResource7330E7A1": {
+      "Type": "Custom::S3AutoDeleteObjects",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+            "Arn"
+          ]
+        },
+        "BucketName": {
+          "Ref": "cantileverwebsiteA46551A2"
+        }
+      },
+      "DependsOn": [
+        "cantileverwebsitePolicy1700F44C"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-website/AutoDeleteObjectsCustomResource/Default"
+      }
+    },
+    "cantilevereditor7FE8443C": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": false,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": false
+        },
+        "Tags": [
+          {
+            "Key": "aws-cdk:auto-delete-objects",
+            "Value": "true"
+          },
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ],
+        "WebsiteConfiguration": {
+          "IndexDocument": "index.html"
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-editor/Resource"
+      }
+    },
+    "cantilevereditorPolicy0DC97B2F": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "cantilevereditor7FE8443C"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:GetObject",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "cantilevereditor7FE8443C",
+                        "Arn"
+                      ]
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "s3:DeleteObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:PutBucketPolicy"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+                    "Arn"
+                  ]
+                }
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantilevereditor7FE8443C",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantilevereditor7FE8443C",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-editor/Policy/Resource"
+      }
+    },
+    "cantilevereditorAutoDeleteObjectsCustomResourceA67F2A3C": {
+      "Type": "Custom::S3AutoDeleteObjects",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+            "Arn"
+          ]
+        },
+        "BucketName": {
+          "Ref": "cantilevereditor7FE8443C"
+        }
+      },
+      "DependsOn": [
+        "cantilevereditorPolicy0DC97B2F"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-editor/AutoDeleteObjectsCustomResource/Default"
+      }
+    },
+    "cantilevermarkdowntohtmlqueueD48EE89D": {
+      "Type": "AWS::SQS::Queue",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ],
+        "VisibilityTimeout": 180
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-markdown-to-html-queue/Resource"
+      }
+    },
+    "cantileverhtmlhandlebarqueue7CEC45FA": {
+      "Type": "AWS::SQS::Queue",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ],
+        "VisibilityTimeout": 180
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-html-handlebar-queue/Resource"
+      }
+    },
+    "cantileverimageprocessingqueueA6B143A1": {
+      "Type": "AWS::SQS::Queue",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ],
+        "VisibilityTimeout": 180
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-image-processing-queue/Resource"
+      }
+    },
+    "cantileverfileuploadlambdaServiceRole3D276D12": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-file-upload-lambda/ServiceRole/Resource"
+      }
+    },
+    "cantileverfileuploadlambdaServiceRoleDefaultPolicyA5F52DA2": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetBucket*",
+                "s3:GetObject*",
+                "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantileversources123976CA",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantileversources123976CA",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "sqs:GetQueueAttributes",
+                "sqs:GetQueueUrl",
+                "sqs:SendMessage"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantileverhtmlhandlebarqueue7CEC45FA",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "cantileverimageprocessingqueueA6B143A1",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "cantilevermarkdowntohtmlqueueD48EE89D",
+                    "Arn"
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "cantileverfileuploadlambdaServiceRoleDefaultPolicyA5F52DA2",
+        "Roles": [
+          {
+            "Ref": "cantileverfileuploadlambdaServiceRole3D276D12"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-file-upload-lambda/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "cantileverfileuploadlambda54E3EA9D": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-086949310404-eu-west-2",
+          "S3Key": "36cb1bc031e8eb45a9dee04f983aaae3b40651058fff898ae9cf8abad1a6b82d.jar"
+        },
+        "Description": "Lambda function which responds to file upload events",
+        "Environment": {
+          "Variables": {
+            "source_bucket": {
+              "Ref": "cantileversources123976CA"
+            },
+            "markdown_processing_queue": {
+              "Ref": "cantilevermarkdowntohtmlqueueD48EE89D"
+            },
+            "handlebar_template_queue": {
+              "Ref": "cantileverhtmlhandlebarqueue7CEC45FA"
+            },
+            "image_processing_queue": {
+              "Ref": "cantileverimageprocessingqueueA6B143A1"
+            }
+          }
+        },
+        "Handler": "org.liamjd.cantilever.lambda.FileUploadHandler",
+        "MemorySize": 256,
+        "Role": {
+          "Fn::GetAtt": [
+            "cantileverfileuploadlambdaServiceRole3D276D12",
+            "Arn"
+          ]
+        },
+        "Runtime": "java21",
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ],
+        "Timeout": 120
+      },
+      "DependsOn": [
+        "cantileverfileuploadlambdaServiceRoleDefaultPolicyA5F52DA2",
+        "cantileverfileuploadlambdaServiceRole3D276D12"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-file-upload-lambda/Resource",
+        "aws:asset:path": "asset.36cb1bc031e8eb45a9dee04f983aaae3b40651058fff898ae9cf8abad1a6b82d.jar",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "cantilevermarkdownprocessorlambdaServiceRole2EF85823": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-markdown-processor-lambda/ServiceRole/Resource"
+      }
+    },
+    "cantilevermarkdownprocessorlambdaServiceRoleDefaultPolicy0473AE6F": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetBucket*",
+                "s3:GetObject*",
+                "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantileversources123976CA",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantileversources123976CA",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:Abort*",
+                "s3:DeleteObject*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantilevergenerated2F211775",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantilevergenerated2F211775",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "sqs:ChangeMessageVisibility",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueAttributes",
+                "sqs:GetQueueUrl",
+                "sqs:ReceiveMessage"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "cantilevermarkdowntohtmlqueueD48EE89D",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "sqs:GetQueueAttributes",
+                "sqs:GetQueueUrl",
+                "sqs:SendMessage"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantileverhtmlhandlebarqueue7CEC45FA",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "cantileverimageprocessingqueueA6B143A1",
+                    "Arn"
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "cantilevermarkdownprocessorlambdaServiceRoleDefaultPolicy0473AE6F",
+        "Roles": [
+          {
+            "Ref": "cantilevermarkdownprocessorlambdaServiceRole2EF85823"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-markdown-processor-lambda/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "cantilevermarkdownprocessorlambda0411F890": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-086949310404-eu-west-2",
+          "S3Key": "cd27ab8826c9a15ea4eaa837596d871c556b541a23f968ec1e90b466ab49ef38.jar"
+        },
+        "Description": "Lambda function which converts a markdown file to an HTML file or fragment",
+        "Environment": {
+          "Variables": {
+            "source_bucket": {
+              "Ref": "cantileversources123976CA"
+            },
+            "generation_bucket": {
+              "Ref": "cantilevergenerated2F211775"
+            },
+            "handlebar_template_queue": {
+              "Ref": "cantileverhtmlhandlebarqueue7CEC45FA"
+            },
+            "image_processing_queue": {
+              "Ref": "cantileverimageprocessingqueueA6B143A1"
+            }
+          }
+        },
+        "Handler": "org.liamjd.cantilever.lambda.md.MarkdownProcessorHandler",
+        "MemorySize": 320,
+        "Role": {
+          "Fn::GetAtt": [
+            "cantilevermarkdownprocessorlambdaServiceRole2EF85823",
+            "Arn"
+          ]
+        },
+        "Runtime": "java21",
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ],
+        "Timeout": 120
+      },
+      "DependsOn": [
+        "cantilevermarkdownprocessorlambdaServiceRoleDefaultPolicy0473AE6F",
+        "cantilevermarkdownprocessorlambdaServiceRole2EF85823"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-markdown-processor-lambda/Resource",
+        "aws:asset:path": "asset.cd27ab8826c9a15ea4eaa837596d871c556b541a23f968ec1e90b466ab49ef38.jar",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "cantilevermarkdownprocessorlambdaSqsEventSourceCantileverStackcantilevermarkdowntohtmlqueue20E31103D23CDFB9": {
+      "Type": "AWS::Lambda::EventSourceMapping",
+      "Properties": {
+        "EventSourceArn": {
+          "Fn::GetAtt": [
+            "cantilevermarkdowntohtmlqueueD48EE89D",
+            "Arn"
+          ]
+        },
+        "FunctionName": {
+          "Ref": "cantilevermarkdownprocessorlambda0411F890"
+        },
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-markdown-processor-lambda/SqsEventSource:CantileverStackcantilevermarkdowntohtmlqueue20E31103/Resource"
+      }
+    },
+    "cantileverhandlebarprocessorlambdaServiceRole757D7E6D": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-handlebar-processor-lambda/ServiceRole/Resource"
+      }
+    },
+    "cantileverhandlebarprocessorlambdaServiceRoleDefaultPolicyEB7F7DB2": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetBucket*",
+                "s3:GetObject*",
+                "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantilevergenerated2F211775",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "cantileversources123976CA",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantilevergenerated2F211775",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantileversources123976CA",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:Abort*",
+                "s3:DeleteObject*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantileverwebsiteA46551A2",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantileverwebsiteA46551A2",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "sqs:ChangeMessageVisibility",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueAttributes",
+                "sqs:GetQueueUrl",
+                "sqs:ReceiveMessage"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "cantileverhtmlhandlebarqueue7CEC45FA",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "cantileverhandlebarprocessorlambdaServiceRoleDefaultPolicyEB7F7DB2",
+        "Roles": [
+          {
+            "Ref": "cantileverhandlebarprocessorlambdaServiceRole757D7E6D"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-handlebar-processor-lambda/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "cantileverhandlebarprocessorlambda57BEC134": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-086949310404-eu-west-2",
+          "S3Key": "3be005feee39c01ec33f8fc9d27c59b47df497a73d03418950d1e88ad5477a6e.jar"
+        },
+        "Description": "Lambda function which renders a handlebars template with the given HTML fragment after markdown processing",
+        "Environment": {
+          "Variables": {
+            "source_bucket": {
+              "Ref": "cantileversources123976CA"
+            },
+            "generation_bucket": {
+              "Ref": "cantilevergenerated2F211775"
+            },
+            "destination_bucket": {
+              "Ref": "cantileverwebsiteA46551A2"
+            }
+          }
+        },
+        "Handler": "org.liamjd.cantilever.lambda.TemplateProcessorHandler",
+        "MemorySize": 320,
+        "Role": {
+          "Fn::GetAtt": [
+            "cantileverhandlebarprocessorlambdaServiceRole757D7E6D",
+            "Arn"
+          ]
+        },
+        "Runtime": "java21",
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ],
+        "Timeout": 120
+      },
+      "DependsOn": [
+        "cantileverhandlebarprocessorlambdaServiceRoleDefaultPolicyEB7F7DB2",
+        "cantileverhandlebarprocessorlambdaServiceRole757D7E6D"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-handlebar-processor-lambda/Resource",
+        "aws:asset:path": "asset.3be005feee39c01ec33f8fc9d27c59b47df497a73d03418950d1e88ad5477a6e.jar",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "cantileverhandlebarprocessorlambdaSqsEventSourceCantileverStackcantileverhtmlhandlebarqueue0C5CD3379D13409C": {
+      "Type": "AWS::Lambda::EventSourceMapping",
+      "Properties": {
+        "EventSourceArn": {
+          "Fn::GetAtt": [
+            "cantileverhtmlhandlebarqueue7CEC45FA",
+            "Arn"
+          ]
+        },
+        "FunctionName": {
+          "Ref": "cantileverhandlebarprocessorlambda57BEC134"
+        },
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-handlebar-processor-lambda/SqsEventSource:CantileverStackcantileverhtmlhandlebarqueue0C5CD337/Resource"
+      }
+    },
+    "cantileverapirouterlambdaServiceRoleE6F7F3FF": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-api-router-lambda/ServiceRole/Resource"
+      }
+    },
+    "cantileverapirouterlambdaServiceRoleDefaultPolicy5D0FDC84": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:Abort*",
+                "s3:DeleteObject*",
+                "s3:GetBucket*",
+                "s3:GetObject*",
+                "s3:List*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantilevergenerated2F211775",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "cantileversources123976CA",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantilevergenerated2F211775",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantileversources123976CA",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "sqs:GetQueueAttributes",
+                "sqs:GetQueueUrl",
+                "sqs:SendMessage"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantileverhtmlhandlebarqueue7CEC45FA",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "cantilevermarkdowntohtmlqueueD48EE89D",
+                    "Arn"
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "cantileverapirouterlambdaServiceRoleDefaultPolicy5D0FDC84",
+        "Roles": [
+          {
+            "Ref": "cantileverapirouterlambdaServiceRoleE6F7F3FF"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-api-router-lambda/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "cantileverapirouterlambda0DE1F527": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-086949310404-eu-west-2",
+          "S3Key": "4a0c5653268c7a51e4b1c4251a1aa2e6446afff199131453d2b95a9ecd701a03.jar"
+        },
+        "Description": "Lambda function which handles API routing, for API Gateway",
+        "Environment": {
+          "Variables": {
+            "source_bucket": {
+              "Ref": "cantileversources123976CA"
+            },
+            "generation_bucket": {
+              "Ref": "cantilevergenerated2F211775"
+            },
+            "markdown_processing_queue": {
+              "Ref": "cantilevermarkdowntohtmlqueueD48EE89D"
+            },
+            "handlebar_template_queue": {
+              "Ref": "cantileverhtmlhandlebarqueue7CEC45FA"
+            },
+            "image_processing_queue": {
+              "Ref": "cantileverimageprocessingqueueA6B143A1"
+            },
+            "cors_domain": "https://app.cantilevers.org",
+            "cognito_region": "eu-west-2",
+            "cognito_user_pools_id": "eu-west-2_aSdFDvU0j"
+          }
+        },
+        "Handler": "org.liamjd.cantilever.api.NewLambdaRouter",
+        "MemorySize": 360,
+        "Role": {
+          "Fn::GetAtt": [
+            "cantileverapirouterlambdaServiceRoleE6F7F3FF",
+            "Arn"
+          ]
+        },
+        "Runtime": "java21",
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ],
+        "Timeout": 120
+      },
+      "DependsOn": [
+        "cantileverapirouterlambdaServiceRoleDefaultPolicy5D0FDC84",
+        "cantileverapirouterlambdaServiceRoleE6F7F3FF"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-api-router-lambda/Resource",
+        "aws:asset:path": "asset.4a0c5653268c7a51e4b1c4251a1aa2e6446afff199131453d2b95a9ecd701a03.jar",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "cantileverimageprocessorlambdaServiceRoleFE04B19B": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-image-processor-lambda/ServiceRole/Resource"
+      }
+    },
+    "cantileverimageprocessorlambdaServiceRoleDefaultPolicyA0DFDC91": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetBucket*",
+                "s3:GetObject*",
+                "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantileversources123976CA",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantileversources123976CA",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:Abort*",
+                "s3:DeleteObject*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "cantilevergenerated2F211775",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "cantileverwebsiteA46551A2",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantilevergenerated2F211775",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "cantileverwebsiteA46551A2",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "sqs:ChangeMessageVisibility",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueAttributes",
+                "sqs:GetQueueUrl",
+                "sqs:ReceiveMessage"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "cantileverimageprocessingqueueA6B143A1",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "cantileverimageprocessorlambdaServiceRoleDefaultPolicyA0DFDC91",
+        "Roles": [
+          {
+            "Ref": "cantileverimageprocessorlambdaServiceRoleFE04B19B"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-image-processor-lambda/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "cantileverimageprocessorlambdaB0824B31": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-086949310404-eu-west-2",
+          "S3Key": "4c3bb100765b1c231780d09d40a3f02faf673ad282b913a415804f6352bb155c.jar"
+        },
+        "Description": "Lambda function which processes images",
+        "Environment": {
+          "Variables": {
+            "source_bucket": {
+              "Ref": "cantileversources123976CA"
+            },
+            "generation_bucket": {
+              "Ref": "cantilevergenerated2F211775"
+            },
+            "destination_bucket": {
+              "Ref": "cantileverwebsiteA46551A2"
+            }
+          }
+        },
+        "Handler": "org.liamjd.cantilever.lambda.image.ImageProcessorHandler",
+        "MemorySize": 256,
+        "Role": {
+          "Fn::GetAtt": [
+            "cantileverimageprocessorlambdaServiceRoleFE04B19B",
+            "Arn"
+          ]
+        },
+        "Runtime": "java21",
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ],
+        "Timeout": 120
+      },
+      "DependsOn": [
+        "cantileverimageprocessorlambdaServiceRoleDefaultPolicyA0DFDC91",
+        "cantileverimageprocessorlambdaServiceRoleFE04B19B"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-image-processor-lambda/Resource",
+        "aws:asset:path": "asset.4c3bb100765b1c231780d09d40a3f02faf673ad282b913a415804f6352bb155c.jar",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "cantileverimageprocessorlambdaSqsEventSourceCantileverStackcantileverimageprocessingqueueE9F7987BC78ABC77": {
+      "Type": "AWS::Lambda::EventSourceMapping",
+      "Properties": {
+        "EventSourceArn": {
+          "Fn::GetAtt": [
+            "cantileverimageprocessingqueueA6B143A1",
+            "Arn"
+          ]
+        },
+        "FunctionName": {
+          "Ref": "cantileverimageprocessorlambdaB0824B31"
+        },
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-image-processor-lambda/SqsEventSource:CantileverStackcantileverimageprocessingqueueE9F7987B/Resource"
+      }
+    },
+    "cantilevercloudfrontedgelambdarewriteArnReader929197F4": {
+      "Type": "Custom::CrossRegionStringParameterReader",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomCrossRegionStringParameterReaderCustomResourceProviderHandler65B5F33A",
+            "Arn"
+          ]
+        },
+        "Region": "us-east-1",
+        "ParameterName": "/cdk/EdgeFunctionArn/eu-west-2/CantileverStack/cantilever-cloudfront-edgelambda-rewrite",
+        "RefreshToken": "cantilevercloudfrontedgelambdarewriteCurrentVersion6E7E5036c1040eaec3f36ed24a719ce9f1aad146"
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-cloudfront-edgelambda-rewrite/ArnReader/Default"
+      }
+    },
+    "CustomCrossRegionStringParameterReaderCustomResourceProviderRole71CD6825": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyName": "Inline",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:",
+                        {
+                          "Ref": "AWS::Partition"
+                        },
+                        ":ssm:us-east-1:086949310404:parameter/cdk/EdgeFunctionArn/*"
+                      ]
+                    ]
+                  },
+                  "Action": [
+                    "ssm:GetParameter"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/Custom::CrossRegionStringParameterReaderCustomResourceProvider/Role"
+      }
+    },
+    "CustomCrossRegionStringParameterReaderCustomResourceProviderHandler65B5F33A": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-086949310404-eu-west-2",
+          "S3Key": "89513ff7cb9da08c2dfddb9501220715c8ad35c718dec5002cebfcc09e06fe02.zip"
+        },
+        "Timeout": 900,
+        "MemorySize": 128,
+        "Handler": "__entrypoint__.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "CustomCrossRegionStringParameterReaderCustomResourceProviderRole71CD6825",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs22.x"
+      },
+      "DependsOn": [
+        "CustomCrossRegionStringParameterReaderCustomResourceProviderRole71CD6825"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/Custom::CrossRegionStringParameterReaderCustomResourceProvider/Handler",
+        "aws:asset:path": "asset.89513ff7cb9da08c2dfddb9501220715c8ad35c718dec5002cebfcc09e06fe02",
+        "aws:asset:property": "Code"
+      }
+    },
+    "cantileveroriginAccessIdentityD12D4BF7": {
+      "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+      "Properties": {
+        "CloudFrontOriginAccessIdentityConfig": {
+          "Comment": "Allows CloudFront to reach the bucket"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-originAccessIdentity/Resource"
+      }
+    },
+    "cantileverCloudFrontLogsD1C1FD73": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "AccessControl": "LogDeliveryWrite",
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "ObjectWriter"
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-CloudFrontLogs/Resource"
+      }
+    },
+    "cantileverCloudFrontWebDistributionCFDistributionD87D7FD0": {
+      "Type": "AWS::CloudFront::Distribution",
+      "Properties": {
+        "DistributionConfig": {
+          "Aliases": [
+            "www.cantilevers.org"
+          ],
+          "Comment": "CloudFront distribution for cantilever",
+          "CustomErrorResponses": [
+            {
+              "ErrorCode": 403,
+              "ResponseCode": 200,
+              "ResponsePagePath": "/index.html"
+            },
+            {
+              "ErrorCode": 404,
+              "ResponseCode": 200,
+              "ResponsePagePath": "/index.html"
+            }
+          ],
+          "DefaultCacheBehavior": {
+            "AllowedMethods": [
+              "GET",
+              "HEAD"
+            ],
+            "CachedMethods": [
+              "GET",
+              "HEAD"
+            ],
+            "Compress": true,
+            "ForwardedValues": {
+              "Cookies": {
+                "Forward": "none"
+              },
+              "QueryString": false
+            },
+            "LambdaFunctionAssociations": [
+              {
+                "EventType": "viewer-request",
+                "LambdaFunctionARN": {
+                  "Fn::GetAtt": [
+                    "cantilevercloudfrontedgelambdarewriteArnReader929197F4",
+                    "FunctionArn"
+                  ]
+                }
+              }
+            ],
+            "TargetOriginId": "origin1",
+            "ViewerProtocolPolicy": "redirect-to-https"
+          },
+          "DefaultRootObject": "index.html",
+          "Enabled": true,
+          "HttpVersion": "http2",
+          "IPV6Enabled": true,
+          "Logging": {
+            "Bucket": {
+              "Fn::GetAtt": [
+                "cantileverCloudFrontLogsD1C1FD73",
+                "RegionalDomainName"
+              ]
+            },
+            "IncludeCookies": true
+          },
+          "Origins": [
+            {
+              "ConnectionAttempts": 3,
+              "ConnectionTimeout": 10,
+              "DomainName": {
+                "Fn::GetAtt": [
+                  "cantileverwebsiteA46551A2",
+                  "RegionalDomainName"
+                ]
+              },
+              "Id": "origin1",
+              "S3OriginConfig": {
+                "OriginAccessIdentity": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "origin-access-identity/cloudfront/",
+                      {
+                        "Ref": "cantileveroriginAccessIdentityD12D4BF7"
+                      }
+                    ]
+                  ]
+                }
+              }
+            }
+          ],
+          "PriceClass": "PriceClass_100",
+          "ViewerCertificate": {
+            "AcmCertificateArn": "arn:aws:acm:us-east-1:086949310404:certificate/9b8f27c6-87be-4c14-a368-e6ad3ac4fb68",
+            "MinimumProtocolVersion": "TLSv1.2_2021",
+            "SslSupportMethod": "sni-only"
+          }
+        },
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-CloudFrontWebDistribution/CFDistribution"
+      }
+    },
+    "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/BucketNotificationsHandler050a0587b7544547bf325f094a3db834/Role/Resource"
+      }
+    },
+    "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:PutBucketNotification",
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36",
+        "Roles": [
+          {
+            "Ref": "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/BucketNotificationsHandler050a0587b7544547bf325f094a3db834/Role/DefaultPolicy/Resource"
+      }
+    },
+    "BucketNotificationsHandler050a0587b7544547bf325f094a3db8347ECC3691": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Description": "AWS CloudFormation handler for \"Custom::S3BucketNotifications\" resources (@aws-cdk/aws-s3)",
+        "Code": {
+          "ZipFile": "import boto3  # type: ignore\nimport json\nimport logging\nimport urllib.request\n\ns3 = boto3.client(\"s3\")\n\nEVENTBRIDGE_CONFIGURATION = 'EventBridgeConfiguration'\nCONFIGURATION_TYPES = [\"TopicConfigurations\", \"QueueConfigurations\", \"LambdaFunctionConfigurations\"]\n\ndef handler(event: dict, context):\n  response_status = \"SUCCESS\"\n  error_message = \"\"\n  try:\n    props = event[\"ResourceProperties\"]\n    notification_configuration = props[\"NotificationConfiguration\"]\n    managed = props.get('Managed', 'true').lower() == 'true'\n    skipDestinationValidation = props.get('SkipDestinationValidation', 'false').lower() == 'true'\n    stack_id = event['StackId']\n    old = event.get(\"OldResourceProperties\", {}).get(\"NotificationConfiguration\", {})\n    if managed:\n      config = handle_managed(event[\"RequestType\"], notification_configuration)\n    else:\n      config = handle_unmanaged(props[\"BucketName\"], stack_id, event[\"RequestType\"], notification_configuration, old)\n    s3.put_bucket_notification_configuration(Bucket=props[\"BucketName\"], NotificationConfiguration=config, SkipDestinationValidation=skipDestinationValidation)\n  except Exception as e:\n    logging.exception(\"Failed to put bucket notification configuration\")\n    response_status = \"FAILED\"\n    error_message = f\"Error: {str(e)}. \"\n  finally:\n    submit_response(event, context, response_status, error_message)\n\ndef handle_managed(request_type, notification_configuration):\n  if request_type == 'Delete':\n    return {}\n  return notification_configuration\n\ndef handle_unmanaged(bucket, stack_id, request_type, notification_configuration, old):\n  def get_id(n):\n    n['Id'] = ''\n    sorted_notifications = sort_filter_rules(n)\n    strToHash=json.dumps(sorted_notifications, sort_keys=True).replace('\"Name\": \"prefix\"', '\"Name\": \"Prefix\"').replace('\"Name\": \"suffix\"', '\"Name\": \"Suffix\"')\n    return f\"{stack_id}-{hash(strToHash)}\"\n  def with_id(n):\n    n['Id'] = get_id(n)\n    return n\n\n  external_notifications = {}\n  existing_notifications = s3.get_bucket_notification_configuration(Bucket=bucket)\n  for t in CONFIGURATION_TYPES:\n    if request_type == 'Update':\n        old_incoming_ids = [get_id(n) for n in old.get(t, [])]\n        external_notifications[t] = [n for n in existing_notifications.get(t, []) if not get_id(n) in old_incoming_ids]      \n    elif request_type == 'Delete':\n        external_notifications[t] = [n for n in existing_notifications.get(t, []) if not n['Id'].startswith(f\"{stack_id}-\")]\n    elif request_type == 'Create':\n        external_notifications[t] = [n for n in existing_notifications.get(t, [])]\n  if EVENTBRIDGE_CONFIGURATION in existing_notifications:\n    external_notifications[EVENTBRIDGE_CONFIGURATION] = existing_notifications[EVENTBRIDGE_CONFIGURATION]\n\n  if request_type == 'Delete':\n    return external_notifications\n\n  notifications = {}\n  for t in CONFIGURATION_TYPES:\n    external = external_notifications.get(t, [])\n    incoming = [with_id(n) for n in notification_configuration.get(t, [])]\n    notifications[t] = external + incoming\n\n  if EVENTBRIDGE_CONFIGURATION in notification_configuration:\n    notifications[EVENTBRIDGE_CONFIGURATION] = notification_configuration[EVENTBRIDGE_CONFIGURATION]\n  elif EVENTBRIDGE_CONFIGURATION in external_notifications:\n    notifications[EVENTBRIDGE_CONFIGURATION] = external_notifications[EVENTBRIDGE_CONFIGURATION]\n\n  return notifications\n\ndef submit_response(event: dict, context, response_status: str, error_message: str):\n  response_body = json.dumps(\n    {\n      \"Status\": response_status,\n      \"Reason\": f\"{error_message}See the details in CloudWatch Log Stream: {context.log_stream_name}\",\n      \"PhysicalResourceId\": event.get(\"PhysicalResourceId\") or event[\"LogicalResourceId\"],\n      \"StackId\": event[\"StackId\"],\n      \"RequestId\": event[\"RequestId\"],\n      \"LogicalResourceId\": event[\"LogicalResourceId\"],\n      \"NoEcho\": False,\n    }\n  ).encode(\"utf-8\")\n  headers = {\"content-type\": \"\", \"content-length\": str(len(response_body))}\n  try:\n    req = urllib.request.Request(url=event[\"ResponseURL\"], headers=headers, data=response_body, method=\"PUT\")\n    with urllib.request.urlopen(req) as response:\n      print(response.read().decode(\"utf-8\"))\n    print(\"Status code: \" + response.reason)\n  except Exception as e:\n      print(\"send(..) failed executing request.urlopen(..): \" + str(e))\n\ndef sort_filter_rules(json_obj):\n  if not isinstance(json_obj, dict):\n      return json_obj\n  for key, value in json_obj.items():\n      if isinstance(value, dict):\n          json_obj[key] = sort_filter_rules(value)\n      elif isinstance(value, list):\n          json_obj[key] = [sort_filter_rules(item) for item in value]\n  if \"Filter\" in json_obj and \"Key\" in json_obj[\"Filter\"] and \"FilterRules\" in json_obj[\"Filter\"][\"Key\"]:\n      filter_rules = json_obj[\"Filter\"][\"Key\"][\"FilterRules\"]\n      sorted_filter_rules = sorted(filter_rules, key=lambda x: x[\"Name\"])\n      json_obj[\"Filter\"][\"Key\"][\"FilterRules\"] = sorted_filter_rules\n  return json_obj"
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 300,
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "DependsOn": [
+        "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36",
+        "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/BucketNotificationsHandler050a0587b7544547bf325f094a3db834/Resource"
+      }
+    },
+    "cantileverrestapi4D4D239E": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "Properties": {
+        "Description": "Gateway function to Cantilever services, handling routing",
+        "DisableExecuteApiEndpoint": true,
+        "Name": "Cantilever REST API",
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/Resource"
+      }
+    },
+    "cantileverrestapiCloudWatchRoleC1E9190F": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "apigateway.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+              ]
+            ]
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/CloudWatchRole/Resource"
+      }
+    },
+    "cantileverrestapiAccount8ACE090A": {
+      "Type": "AWS::ApiGateway::Account",
+      "Properties": {
+        "CloudWatchRoleArn": {
+          "Fn::GetAtt": [
+            "cantileverrestapiCloudWatchRoleC1E9190F",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "cantileverrestapi4D4D239E"
+      ],
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/Account"
+      }
+    },
+    "cantileverrestapiDeploymentE9BE071Cfec5f25882927ace7e784c3e5e22a2e5": {
+      "Type": "AWS::ApiGateway::Deployment",
+      "Properties": {
+        "Description": "Gateway function to Cantilever services, handling routing",
+        "RestApiId": {
+          "Ref": "cantileverrestapi4D4D239E"
+        }
+      },
+      "DependsOn": [
+        "cantileverrestapiproxyANY5CE4F10F",
+        "cantileverrestapiproxyOPTIONS7163EA6B",
+        "cantileverrestapiproxy747FB1DB",
+        "cantileverrestapiANY48C8CFBE",
+        "cantileverrestapiOPTIONS33FFABDF"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/Deployment/Resource",
+        "aws:cdk:do-not-refactor": true
+      }
+    },
+    "cantileverrestapiDeploymentStageprod485B8CD9": {
+      "Type": "AWS::ApiGateway::Stage",
+      "Properties": {
+        "DeploymentId": {
+          "Ref": "cantileverrestapiDeploymentE9BE071Cfec5f25882927ace7e784c3e5e22a2e5"
+        },
+        "RestApiId": {
+          "Ref": "cantileverrestapi4D4D239E"
+        },
+        "StageName": "prod",
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "DependsOn": [
+        "cantileverrestapiAccount8ACE090A"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/DeploymentStage.prod/Resource"
+      }
+    },
+    "cantileverrestapiCustomDomain2C565DFE": {
+      "Type": "AWS::ApiGateway::DomainName",
+      "Properties": {
+        "CertificateArn": "arn:aws:acm:us-east-1:086949310404:certificate/9b8f27c6-87be-4c14-a368-e6ad3ac4fb68",
+        "DomainName": "api.cantilevers.org",
+        "EndpointConfiguration": {
+          "Types": [
+            "EDGE"
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Cantilever",
+            "Value": "v0.1.0"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/CustomDomain/Resource"
+      }
+    },
+    "cantileverrestapiCustomDomainMapCantileverStackcantileverrestapiCF3F1D9C160676BA": {
+      "Type": "AWS::ApiGateway::BasePathMapping",
+      "Properties": {
+        "DomainName": {
+          "Ref": "cantileverrestapiCustomDomain2C565DFE"
+        },
+        "RestApiId": {
+          "Ref": "cantileverrestapi4D4D239E"
+        },
+        "Stage": {
+          "Ref": "cantileverrestapiDeploymentStageprod485B8CD9"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/CustomDomain/Map:--=>CantileverStackcantileverrestapiCF3F1D9C/Resource"
+      }
+    },
+    "cantileverrestapiOPTIONS33FFABDF": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Content-Length,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Content-Length,Cantilever-Project-Domain'",
+                "method.response.header.Access-Control-Allow-Origin": "'https://app.cantilevers.org'",
+                "method.response.header.Vary": "'Origin'",
+                "method.response.header.Access-Control-Allow-Methods": "'GET,PUT,POST,OPTIONS,DELETE'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Vary": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Fn::GetAtt": [
+            "cantileverrestapi4D4D239E",
+            "RootResourceId"
+          ]
+        },
+        "RestApiId": {
+          "Ref": "cantileverrestapi4D4D239E"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/Default/OPTIONS/Resource"
+      }
+    },
+    "cantileverrestapiproxy747FB1DB": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::GetAtt": [
+            "cantileverrestapi4D4D239E",
+            "RootResourceId"
+          ]
+        },
+        "PathPart": "{proxy+}",
+        "RestApiId": {
+          "Ref": "cantileverrestapi4D4D239E"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/Default/{proxy+}/Resource"
+      }
+    },
+    "cantileverrestapiproxyOPTIONS7163EA6B": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Content-Length,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Content-Length,Cantilever-Project-Domain'",
+                "method.response.header.Access-Control-Allow-Origin": "'https://app.cantilevers.org'",
+                "method.response.header.Vary": "'Origin'",
+                "method.response.header.Access-Control-Allow-Methods": "'GET,PUT,POST,OPTIONS,DELETE'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Vary": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "cantileverrestapiproxy747FB1DB"
+        },
+        "RestApiId": {
+          "Ref": "cantileverrestapi4D4D239E"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/Default/{proxy+}/OPTIONS/Resource"
+      }
+    },
+    "cantileverrestapiproxyANYApiPermissionCantileverStackcantileverrestapiCF3F1D9CANYproxyA820BDCF": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "cantileverapirouterlambda0DE1F527",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:eu-west-2:086949310404:",
+              {
+                "Ref": "cantileverrestapi4D4D239E"
+              },
+              "/",
+              {
+                "Ref": "cantileverrestapiDeploymentStageprod485B8CD9"
+              },
+              "/*/*"
+            ]
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/Default/{proxy+}/ANY/ApiPermission.CantileverStackcantileverrestapiCF3F1D9C.ANY..{proxy+}"
+      }
+    },
+    "cantileverrestapiproxyANYApiPermissionTestCantileverStackcantileverrestapiCF3F1D9CANYproxy5C7C7035": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "cantileverapirouterlambda0DE1F527",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:eu-west-2:086949310404:",
+              {
+                "Ref": "cantileverrestapi4D4D239E"
+              },
+              "/test-invoke-stage/*/*"
+            ]
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/Default/{proxy+}/ANY/ApiPermission.Test.CantileverStackcantileverrestapiCF3F1D9C.ANY..{proxy+}"
+      }
+    },
+    "cantileverrestapiproxyANY5CE4F10F": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "ANY",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:eu-west-2:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "cantileverapirouterlambda0DE1F527",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "cantileverrestapiproxy747FB1DB"
+        },
+        "RestApiId": {
+          "Ref": "cantileverrestapi4D4D239E"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/Default/{proxy+}/ANY/Resource"
+      }
+    },
+    "cantileverrestapiANYApiPermissionCantileverStackcantileverrestapiCF3F1D9CANY9416BF3D": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "cantileverapirouterlambda0DE1F527",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:eu-west-2:086949310404:",
+              {
+                "Ref": "cantileverrestapi4D4D239E"
+              },
+              "/",
+              {
+                "Ref": "cantileverrestapiDeploymentStageprod485B8CD9"
+              },
+              "/*/"
+            ]
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/Default/ANY/ApiPermission.CantileverStackcantileverrestapiCF3F1D9C.ANY.."
+      }
+    },
+    "cantileverrestapiANYApiPermissionTestCantileverStackcantileverrestapiCF3F1D9CANYF00CB00F": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "cantileverapirouterlambda0DE1F527",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:eu-west-2:086949310404:",
+              {
+                "Ref": "cantileverrestapi4D4D239E"
+              },
+              "/test-invoke-stage/*/"
+            ]
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/Default/ANY/ApiPermission.Test.CantileverStackcantileverrestapiCF3F1D9C.ANY.."
+      }
+    },
+    "cantileverrestapiANY48C8CFBE": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "ANY",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:eu-west-2:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "cantileverapirouterlambda0DE1F527",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Fn::GetAtt": [
+            "cantileverrestapi4D4D239E",
+            "RootResourceId"
+          ]
+        },
+        "RestApiId": {
+          "Ref": "cantileverrestapi4D4D239E"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-rest-api/Default/ANY/Resource"
+      }
+    },
+    "cantileveruserpoolE95C1B1E": {
+      "Type": "AWS::Cognito::UserPool",
+      "Properties": {
+        "AccountRecoverySetting": {
+          "RecoveryMechanisms": [
+            {
+              "Name": "verified_email",
+              "Priority": 1
+            }
+          ]
+        },
+        "AdminCreateUserConfig": {
+          "AllowAdminCreateUserOnly": true
+        },
+        "AutoVerifiedAttributes": [
+          "email"
+        ],
+        "EmailConfiguration": {
+          "EmailSendingAccount": "COGNITO_DEFAULT"
+        },
+        "EmailVerificationMessage": "The verification code to your new account is {####}",
+        "EmailVerificationSubject": "Verify your new account",
+        "MfaConfiguration": "OFF",
+        "Policies": {
+          "PasswordPolicy": {
+            "MinimumLength": 12
+          }
+        },
+        "SmsVerificationMessage": "The verification code to your new account is {####}",
+        "UserPoolName": "cantilever-user-pool",
+        "UserPoolTags": {
+          "Cantilever": "v0.1.0"
+        },
+        "UsernameAttributes": [
+          "email"
+        ],
+        "UsernameConfiguration": {
+          "CaseSensitive": true
+        },
+        "VerificationMessageTemplate": {
+          "DefaultEmailOption": "CONFIRM_WITH_CODE",
+          "EmailMessage": "The verification code to your new account is {####}",
+          "EmailSubject": "Verify your new account",
+          "SmsMessage": "The verification code to your new account is {####}"
+        }
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain",
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-user-pool/Resource"
+      }
+    },
+    "cantileveruserpoolcantileverapi8BED4B47": {
+      "Type": "AWS::Cognito::UserPoolDomain",
+      "Properties": {
+        "Domain": "cantilever",
+        "UserPoolId": {
+          "Ref": "cantileveruserpoolE95C1B1E"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-user-pool/cantilever-api/Resource"
+      }
+    },
+    "cantileveruserpoolcantileverappC13F60DA": {
+      "Type": "AWS::Cognito::UserPoolClient",
+      "Properties": {
+        "AllowedOAuthFlows": [
+          "implicit"
+        ],
+        "AllowedOAuthFlowsUserPoolClient": true,
+        "AllowedOAuthScopes": [
+          "profile",
+          "phone",
+          "email",
+          "openid",
+          "aws.cognito.signin.user.admin"
+        ],
+        "CallbackURLs": [
+          "https://app.cantilevers.org/",
+          "http://localhost:5173/"
+        ],
+        "LogoutURLs": [
+          "https://app.cantilevers.org/",
+          "http://localhost:5173/"
+        ],
+        "SupportedIdentityProviders": [
+          "COGNITO"
+        ],
+        "UserPoolId": {
+          "Ref": "cantileveruserpoolE95C1B1E"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-user-pool/cantilever-app/Resource"
+      }
+    },
+    "cantileveruserpoolcorbelapp1B294226": {
+      "Type": "AWS::Cognito::UserPoolClient",
+      "Properties": {
+        "AllowedOAuthFlows": [
+          "code"
+        ],
+        "AllowedOAuthFlowsUserPoolClient": true,
+        "AllowedOAuthScopes": [
+          "email",
+          "openid",
+          "aws.cognito.signin.user.admin"
+        ],
+        "CallbackURLs": [
+          "http://localhost:44817/callback",
+          "corbelApp://auth"
+        ],
+        "LogoutURLs": [
+          "http://localhost:44817/callback",
+          "corbelApp://auth"
+        ],
+        "SupportedIdentityProviders": [
+          "COGNITO"
+        ],
+        "UserPoolId": {
+          "Ref": "cantileveruserpoolE95C1B1E"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/cantilever-user-pool/corbel-app/Resource"
+      }
+    },
+    "CDKMetadata": {
+      "Type": "AWS::CDK::Metadata",
+      "Properties": {
+        "Analytics": "v2:deflate64:H4sIAAAAAAAA/22RwW7bMAyGn6V3RctSoPfUaYEN6+olGHYsGJlxudiSJ1JJA8HvPkh2Eq/rid//k5JIaqEX8zs9v4Ejz0y1nzW01XEjYPYKjvwS+VbH+2D2KKrY2ZGGULqGzOlqj3oQ98DYqwbabQU6Fjtbom+JmZxVj8EaSVDs7IUfDmhl44I3+ARdR7ZO6f/dXvEf1vFHwICpIkOvCFod167JXo7X9gbqFd++ADMK62UKyjQuVDvvrOiIbx16atEKNPqhqvHS2LOnmuzSGGT+UqEVknxrkU4/ptMfV1zSv3C7IhZP23Ceeqp7BR3VIHiEk47f8sbWyLLsKM9yxaUxLlhRK+wad0q95ruuaiNQ5wUMsHItkP0ObfYmKn1OCfI6WfR7a42ct5589YTy6qpUNlLp3dvpXDJ2mblXxtWWxOn4k9GXzjUpfeEzDM1MU6NzlkVD43z/On2visDi2o9ef5cqvTtQhT7PkL887WU6XTr8HKQL0quvcIBPi896ru9ufjPRzAcr1KJeD/EvvIyvCioDAAA="
+      },
+      "Metadata": {
+        "aws:cdk:path": "CantileverStack/CDKMetadata/Default"
+      }
+    }
+  },
+  "Outputs": {
+    "cantileverrestapiEndpoint40914D4B": {
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "https://",
+            {
+              "Ref": "cantileverrestapi4D4D239E"
+            },
+            ".execute-api.eu-west-2.",
+            {
+              "Ref": "AWS::URLSuffix"
+            },
+            "/",
+            {
+              "Ref": "cantileverrestapiDeploymentStageprod485B8CD9"
+            },
+            "/"
+          ]
+        ]
+      }
+    }
+  },
+  "Parameters": {
+    "BootstrapVersion": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+    }
+  },
+  "Rules": {
+    "CheckBootstrapVersion": {
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Not": [
+              {
+                "Fn::Contains": [
+                  [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5"
+                  ],
+                  {
+                    "Ref": "BootstrapVersion"
+                  }
+                ]
+              }
+            ]
+          },
+          "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+        }
+      ]
+    }
+  }
+}

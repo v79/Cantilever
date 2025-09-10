@@ -396,6 +396,7 @@ class DynamoDBServiceImpl(
                     SOURCE_TYPE.Statics -> mapToStaticNode(response.item())
                     SOURCE_TYPE.Folders -> mapToFolderNode(response.item())
                     SOURCE_TYPE.Pages -> mapToPageNode(response.item())
+                    SOURCE_TYPE.Images -> mapToImageNode(response.item())
                     else -> throw IllegalArgumentException("Unsupported content type: ${contentType.dbType}")
                 }
             } else {
@@ -482,6 +483,7 @@ class DynamoDBServiceImpl(
                         SOURCE_TYPE.Statics -> mapToStaticNode(item)
                         SOURCE_TYPE.Pages -> mapToPageNode(item)
                         SOURCE_TYPE.Folders -> mapToFolderNode(item)
+                        SOURCE_TYPE.Images -> mapToImageNode(item)
                         else -> throw IllegalArgumentException("Unsupported content type: ${type.dbType}")
                     }
                 }
@@ -926,6 +928,35 @@ class DynamoDBServiceImpl(
             return node
         } catch (e: Exception) {
             log("ERROR", "Failed to map DynamoDB item to ContentNode.StaticNode: $item", e)
+            throw e
+        }
+    }
+
+    /**
+     * Map a DynamoDB item to a ContentNode.ImageNode
+     * @param item The DynamoDB item
+     * @return The ContentNode.ImageNode
+     */
+    private fun mapToImageNode(item: Map<String, AttributeValue>): ContentNode.ImageNode {
+        try {
+            val srcKey = item["srcKey"]?.s() ?: ""
+            if (srcKey.isEmpty()) {
+                log("WARN", "Missing srcKey in image item: $item")
+            }
+
+            val lastUpdated = extractLastUpdatedTimestamp(item, "image")
+            val node = ContentNode.ImageNode(
+                srcKey = srcKey,
+                lastUpdated = lastUpdated
+            )
+            // Optional fields if present
+            val contentType = item["mimeType"]?.s() ?: item["contentType"]?.s()
+            if (contentType != null) node.contentType = contentType
+            val resolutionName = item["resolutionName"]?.s()
+            if (resolutionName != null) node.resolutionName = resolutionName
+            return node
+        } catch (e: Exception) {
+            log("ERROR", "Failed to map DynamoDB item to ContentNode.ImageNode: $item", e)
             throw e
         }
     }

@@ -65,7 +65,7 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent
     private val s3Service: S3Service by inject()
     private val sqsService: SQSService by inject()
     private val converter: MarkdownConverter by inject()
-    
+
     override var logger: LambdaLogger? = null
 
     override fun handleRequest(event: SQSEvent, context: Context): String {
@@ -92,16 +92,16 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent
                 }
             }
         } catch (se: SerializationException) {
-            log("ERROR","Failed to parse project definition string; ${se.message}")
+            log("ERROR", "Failed to parse project definition string; ${se.message}")
             return "500 Internal Server Error"
         } catch (iae: IllegalArgumentException) {
-            log("ERROR","Failed to parse project definition string; ${iae.message}")
+            log("ERROR", "Failed to parse project definition string; ${iae.message}")
             return "500 Internal Server Error"
         } catch (e: Exception) {
-            log("ERROR","Error processing markdown: ${e.message}")
+            log("ERROR", "Error processing markdown: ${e.message}")
             return "500 Internal Server Error"
         } catch (e: Exception) {
-            log("ERROR","Error processing markdown: ${e.message}")
+            log("ERROR", "Error processing markdown: ${e.message}")
             return "500 Internal Server Error"
         }
         return response
@@ -143,13 +143,13 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent
                     // copy any images referenced in the Markdown to the destination bucket
                     copyImages("${sqsMsgBody.metadata.srcKey}§${section.key}", section.value, domain)
                 } catch (qdne: QueueDoesNotExistException) {
-                    log("ERROR","queue '$handlebarQueueUrl' does not exist; ${qdne.message}")
+                    log("ERROR", "queue '$handlebarQueueUrl' does not exist; ${qdne.message}")
                     responseString = "500 Internal Server Error"
                 } catch (se: SerializationException) {
-                    log("ERROR","Failed to parse metadata string; ${se.message}")
+                    log("ERROR", "Failed to parse metadata string; ${se.message}")
                     responseString = "500 Internal Server Error"
                 } catch (e: Exception) {
-                    log("ERROR","${e.message}")
+                    log("ERROR", "${e.message}")
                     responseString = "500 Internal Server Error"
                 }
 
@@ -173,12 +173,12 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent
                 )
                 log("Message '${Json.encodeToString(message)}' sent, message ID is ${msgResponse?.messageId()}")
                 if (msgResponse == null) {
-                    log("WARN","No response received for message")
+                    log("WARN", "No response received for message")
                     responseString = "500 Internal Server Error"
                 }
             }
         } catch (e: Exception) {
-            log("ERROR","Error processing page: ${e.message}")
+            log("ERROR", "Error processing page: ${e.message}")
             responseString = "500 Internal Server Error"
         }
         return responseString
@@ -217,16 +217,16 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent
             copyImages(sqsMsgBody.metadata.srcKey, sqsMsgBody.markdownText, domain)
 
         } catch (qdne: QueueDoesNotExistException) {
-            log("ERROR","queue '$handlebarQueueUrl' does not exist; ${qdne.message}")
+            log("ERROR", "queue '$handlebarQueueUrl' does not exist; ${qdne.message}")
             responseString = "500 Internal Server Error"
         } catch (se: SerializationException) {
-            log("ERROR","Failed to parse metadata string; ${se.message}")
+            log("ERROR", "Failed to parse metadata string; ${se.message}")
             responseString = "500 Internal Server Error"
         } catch (nske: NoSuchKeyException) {
-            log("ERROR","Project definition file not found; ${nske.message}")
+            log("ERROR", "Project definition file not found; ${nske.message}")
             responseString = "500 Internal Server Error"
         } catch (e: Exception) {
-            log("ERROR","${e.message}")
+            log("ERROR", "${e.message}")
             responseString = "500 Internal Server Error"
         }
         return responseString
@@ -242,20 +242,22 @@ class MarkdownProcessorHandler : RequestHandler<SQSEvent, String>, KoinComponent
 
         if (images.isNotEmpty()) {
             try {
-                val message = ImageSQSMessage.CopyImagesMsg(domain, images.map { it.url.toString() })
+                // This is the Markdown relative path for an image, i.e. /assets/my-image.jpg
+                // But elsewhere we expect to be /sources/images/assets/my-image.jpg
+                val message = ImageSQSMessage.CopyImagesMsg(domain, images.map { "/sources/images${it.url}" })
                 log("Prepared message: $message")
                 val msgResponse = sqsService.sendImageMessage(toQueue = System.getenv(QUEUE.IMAGES), body = message)
                 if (msgResponse == null) {
-                    log("WARN","No response received for message")
+                    log("WARN", "No response received for message")
                 } else {
                     log(
                         "Message '${Json.encodeToString(message)}' sent, message ID is ${msgResponse.messageId()}"
                     )
                 }
             } catch (qdne: QueueDoesNotExistException) {
-                log("ERROR","queue '${QUEUE.IMAGES}' does not exist; ${qdne.message}")
+                log("ERROR", "queue '${QUEUE.IMAGES}' does not exist; ${qdne.message}")
             } catch (e: Exception) {
-                log("ERROR","${e.message}")
+                log("ERROR", "${e.message}")
             }
         }
     }

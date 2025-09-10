@@ -23,7 +23,7 @@ typealias SrcKey = String // an S3 bucket object key
  * Each subclass represents a specific type of content node with its own properties and behaviors.
  * @property srcKey The source key of the content node. This will be fully qualified for S3 access, e.g. "<domain.com>/sources/pages/folder/page.md"
  * @property lastUpdated The timestamp of the last update to the content node, persisted as milliseconds since epoch.
- * @property url The URL where the content node can be accessed, relative to the site root
+ * @property url The URL where the content node can be accessed, relative to the site root (does not contain the domain)
  */
 sealed class ContentNode {
     abstract val srcKey: SrcKey
@@ -31,6 +31,14 @@ sealed class ContentNode {
     @OptIn(ExperimentalTime::class)
     abstract val lastUpdated: Instant
     abstract val url: String
+
+    /**
+     * Calculate the destination key for the content node.
+     * Not all node types will have a destination key, in which case it should return an empty string
+     * @param domain The domain of the website, e.g. "www.cantilevers.org"
+     * @return The destination key for the content node, or an empty string if not applicable
+     */
+    abstract fun calculateDestinationKey(domain: String): SrcKey
 
     /**
      * A folder is a node in the tree which contains other nodes
@@ -65,6 +73,11 @@ sealed class ContentNode {
             result = 31 * result + count
             return result
         }
+
+        /**
+         * Folders are not directly copied to the destination bucket
+         */
+        override fun calculateDestinationKey(domain: String): SrcKey = srcKey
     }
 
     /**
@@ -98,15 +111,18 @@ sealed class ContentNode {
         // I might actually want to generate both index.html and the slug version of the file, but for now let's just do index.html or slug
         override val url: String
             get() {
-                // intended url would be www.cantilevers.org/parentFolder/slug
-                // but parent looks like www.cantilevers.org/sources/pages/parentFolder
-                val parentFolder = parent.replaceFirst("/sources/pages", "")
+                // Intended url would be www.cantilevers.org/parentFolder/slug
+                // But parent looks like www.cantilevers.org/sources/pages/parentFolder
+                // And I need to remove the domain as well
+                val parentFolder = parent.substringAfter("/").replaceFirst("sources/pages", "")
                 return if (isRoot) {
                     "${parentFolder}/index.html"
                 } else {
                     "$parentFolder/$slug"
                 }
             }
+
+        override fun calculateDestinationKey(domain: String): SrcKey = "${domain}$url"
     }
 
     /**
@@ -115,7 +131,7 @@ sealed class ContentNode {
      * @property templateKey The SrcKey of the template used to render the post, e.g. "sources/templates/post.html.hbs" (no domain)
      * @property date The date of the post, used to order posts and in the URL
      * @property slug The slug of the post, used in the URL
-     * @property attributes A map of additional attributes for the post, from the frontmatter
+     * @property attributes A map of additional attributes for the post, from the front matter
      * @property body The body content of the post, in Markdown format
      * @property next The SrcKey of the next post in the sequence, if any
      * @property prev The SrcKey of the previous post in the sequence, if any
@@ -177,6 +193,8 @@ sealed class ContentNode {
         var body: String = ""
         var next: SrcKey? = null
         var prev: SrcKey? = null
+
+        override fun calculateDestinationKey(domain: String): SrcKey = "${domain}/$url"
     }
 
     /**
@@ -195,6 +213,11 @@ sealed class ContentNode {
     ) : ContentNode() {
         override val url = "" // irrelevant for templates
         var body: String = ""
+
+        /**
+         * Template nodes are not copied to the destination bucket
+         */
+        override fun calculateDestinationKey(domain: String): SrcKey = ""
     }
 
     /**
@@ -209,6 +232,11 @@ sealed class ContentNode {
         override val lastUpdated: Instant = Clock.System.now(),
     ) : ContentNode() {
         override val url = "" // irrelevant for templates
+
+        /**
+         * Template partials are not copied to the destination bucket
+         */
+        override fun calculateDestinationKey(domain: String): SrcKey = ""
     }
 
     /**
@@ -224,6 +252,11 @@ sealed class ContentNode {
     ) : ContentNode(
     ) {
         var fileType: String? = null
+
+        override fun calculateDestinationKey(domain: String): SrcKey {
+            if (fileType == null) return "${domain}/url"
+            return "${domain}/${fileType}/${url}"
+        }
     }
 
     /**
@@ -239,8 +272,20 @@ sealed class ContentNode {
     ) {
         var contentType: String? = null
         override val url = "" // irrelevant for images, or rather, handled differently because of the image resolutions
+        var resolutionName: String? = null
 
-        // should I be recording image resolutions here?
+        /**
+         * Image nodes have complicated destination keys, which are calculated based on the [resolutionName] property
+         * @param domain The domain of the website, e.g. "www.cantilevers.org"
+         * @return The destination key for the image node, or an empty string if not applicable
+         */
+        override fun calculateDestinationKey(domain: String): SrcKey {
+            val fileName: String =
+                srcKey.substringAfter(domain).removePrefix("/sources/images/").substringBeforeLast(".")
+            val suffix = srcKey.substringAfterLast(".")
+            if (resolutionName == null) return "${domain}/generated/images/$fileName.$suffix"
+            return "${domain}/generated/images/$fileName/${resolutionName}.$suffix"
+        }
     }
 }
 

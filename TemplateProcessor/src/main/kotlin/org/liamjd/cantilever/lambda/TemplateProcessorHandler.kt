@@ -14,9 +14,6 @@ import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import org.liamjd.cantilever.common.EnvironmentProvider
-import org.liamjd.cantilever.common.FILES.INDEX_HTML
-import org.liamjd.cantilever.common.FILES.INDEX_MD
-import org.liamjd.cantilever.common.FILE_TYPE.MD
 import org.liamjd.cantilever.common.SystemEnvironmentProvider
 import org.liamjd.cantilever.common.stripFrontMatter
 import org.liamjd.cantilever.models.CantileverProject
@@ -153,9 +150,10 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             val renderer = HandlebarsRenderer(s3Service = s3Service, srcBucket = sourceBucket, domain = domain)
             println("Rending template '${pageMsg.metadata.templateKey}' for '${pageMsg.metadata.srcKey}' with model keys ${model.keys}")
             val html = renderer.render(model = model, srcKey = pageTemplateKey)
-            log("Calculated URL for page: ${pageMsg.metadata.url} from parentFolder: ${pageMsg.metadata.parent} and srcKey: ${pageMsg.metadata.srcKey}")
-            s3Service.putObjectAsString(pageMsg.metadata.url, destinationBucket, html, "text/html")
-            log("Written final HTML file to '${pageMsg.metadata.url}'")
+            val destKey = pageMsg.metadata.calculateDestinationKey(domain)
+            log("Calculated URL for page: ${pageMsg.metadata.url} from parentFolder: ${pageMsg.metadata.parent} and srcKey: ${pageMsg.metadata.srcKey}; destKey: $destKey")
+            s3Service.putObjectAsString(destKey, destinationBucket, html, "text/html")
+            log("Written final HTML file to '$destKey'")
         } catch (nske: NoSuchKeyException) {
             log("ERROR", "Could not load file from S3, exception: ${nske.message}")
         } catch (e: Exception) {
@@ -202,7 +200,7 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
             val html = renderer.render(model = model, srcKey = postTemplateKey)
 
             // save to S3
-            s3Service.putObjectAsString(project.domainKey + postMsg.metadata.url, destinationBucket, html, "text/html")
+            s3Service.putObjectAsString(postMsg.metadata.calculateDestinationKey(domain), destinationBucket, html, "text/html")
             log("Written final HTML file to '${project.domainKey}${postMsg.metadata.url}'")
         } catch (nske: NoSuchKeyException) {
             log("ERROR", "Could not load file from S3, exception: ${nske.message}")
@@ -233,45 +231,18 @@ class TemplateProcessorHandler(private val environmentProvider: EnvironmentProvi
                 model["project"] = project
 
                 val cssTemplateString = s3Service.getObjectAsString(staticFileMsg.srcKey, sourceBucket)
-                log("Loaded ${staticFileMsg.srcKey} and rendering via Handlebars to ${staticFileMsg.destinationKey}")
+                val destinationKey = staticFileMsg.metadata.calculateDestinationKey(domain)
+                log("Loaded ${staticFileMsg.srcKey} and rendering via Handlebars to $destinationKey")
 
                 val renderer = HandlebarsRenderer(s3Service, sourceBucket, domain)
                 val css = renderer.renderInline(model = model, templateString = cssTemplateString)
 
-                s3Service.putObjectAsString(
-                    project.domainKey + staticFileMsg.destinationKey, destinationBucket, css, staticFileMsg.mimeType.toString()
+                s3Service.putObjectAsString(destinationKey, destinationBucket, css, staticFileMsg.mimeType.toString()
                 )
-                log("Written final text file to '${project.domainKey}${staticFileMsg.destinationKey}'")
+                log("Written final text file to '${project.domainKey}${destinationKey}'")
             }
         } catch (nske: NoSuchKeyException) {
             log("ERROR", "Could not load file from S3, exception: ${nske.message}")
-        }
-    }
-
-
-    /**
-     * Calculate the final output file name
-     * For posts:
-     * - this is the `metadata.slug` object if it exists, or the source file name minus extensions if no slug exists
-     * For pages:
-     * - For the home page (i.e. for page index.md) this needs to be index.html
-     * - For all other pages, this should be the source file name minus the extension
-     */
-    @Deprecated("Now URL is a calculated property of the ContentNode")
-    private fun calculateFilename(message: TemplateSQSMessage): String {
-        log("Calculating final file name for $message")
-        return when (message) {
-            is TemplateSQSMessage.RenderPageMsg -> if (message.metadata.srcKey.endsWith(INDEX_MD)) INDEX_HTML else message.metadata.srcKey.substringBefore(
-                ".$MD"
-            ).substringAfterLast("pages/")
-
-            is TemplateSQSMessage.RenderPostMsg -> {
-                message.metadata.slug
-            }
-
-            is TemplateSQSMessage.StaticRenderMsg -> {
-                message.destinationKey
-            }
         }
     }
 
