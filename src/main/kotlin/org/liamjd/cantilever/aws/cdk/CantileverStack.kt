@@ -454,7 +454,7 @@ class CantileverStack(
         // Or I just hardcode the URL for the editor bucket distribution.
         val appUrls = listOf(deploymentDomain, "https://dco7fhfjo6vkm.cloudfront.net")
         val corbelAppUrls = listOf(
-            "http://localhost:44817/callback", "corbelApp://auth"
+            "http://localhost:44817/callback", "corbelapp://auth"
         ) // port randomly chosen here, needs to match that in the Corbel application
         println("Registering app clients with Cognito identity pool for domains $appUrls")
         cPool.addClient(
