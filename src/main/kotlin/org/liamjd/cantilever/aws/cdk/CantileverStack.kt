@@ -471,7 +471,7 @@ class CantileverStack(
                 .authFlows(AuthFlow.builder().build()).oAuth(
                     OAuthSettings.builder().flows(
                         OAuthFlows.builder().implicitCodeGrant(false).authorizationCodeGrant(true).build()
-                    ).scopes(listOf(OAuthScope.EMAIL, OAuthScope.OPENID, OAuthScope.COGNITO_ADMIN))
+                    ).scopes(listOf(OAuthScope.EMAIL, OAuthScope.OPENID, OAuthScope.PROFILE, OAuthScope.COGNITO_ADMIN))
                         .callbackUrls(corbelAppUrls).logoutUrls(corbelAppUrls).build()
                 ).build()
         )
