@@ -23,9 +23,10 @@ sealed interface ContentMetaDataBuilder {
 
         fun buildWithoutYaml(srcKey: SrcKey): ContentNode.PostNode {
             val post = ContentNode.PostNode(
-                title = srcKey.removeSuffix(FILE_TYPE.MD).removeSuffix("."),
+                title = srcKey.substringAfterLast("/").removeSuffix(FILE_TYPE.MD).removeSuffix("."),
                 templateKey = S3_KEY.defaultPostTemplateKey,
-                slug = srcKey.removeSuffix(FILE_TYPE.MD).removeSuffix(".").removePrefix(S3_KEY.sources).toSlug(),
+                slug = srcKey.substringAfterLast("sources/posts/").removeSuffix(FILE_TYPE.MD).removeSuffix(".")
+                    .toSlug(),
                 date = LocalDate.now()
             )
             post.srcKey = srcKey
@@ -54,7 +55,7 @@ sealed interface ContentMetaDataBuilder {
             val frontmatter = sourceString.getFrontMatter()
 
             val customSections = extractSectionsFromSource(sourceString, false)
-
+println("sections: $customSections")
             val customAttributes = frontmatter.lines().associate {
                 val key = it.substringBefore(":").trim()
                 val value = it.substringAfter(":").trim()
@@ -68,12 +69,13 @@ sealed interface ContentMetaDataBuilder {
                 "~~~templateKey wasn't found for ${srcKey}???~~~"
             }
 
-            val pageFile = srcKey.substringAfter(S3_KEY.pagesPrefix) // strip /sources/pages from the filename
+           // srcKey is something like "sources/pages/about/me.md", and we want "about/me"
+            val folder = srcKey.substringAfter("sources/pages/").substringBeforeLast("/")
 
             val slug = if (frontmatter.contains("slug:")) {
-                pageFile + frontmatter.substringAfter("slug:").substringBefore("\n").trim()
+                folder + "/" + frontmatter.substringAfter("slug:").substringBefore("\n").trim()
             } else {
-                pageFile.substringBefore(".${FILE_TYPE.MD}")
+                srcKey.substringAfter("sources/pages/").substringBefore(".${FILE_TYPE.MD}")
             }
 
             val title = if (frontmatter.contains("title:")) {
