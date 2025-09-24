@@ -317,7 +317,8 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
             )
             // upsert the content node in the DynamoDB table
             upsertContentNode(
-                srcKey = srcKey, projectDomain = projectDomain, contentType = Posts, node = metadata
+                srcKey = srcKey, projectDomain = projectDomain, contentType = Posts, node = metadata,
+                customAttributes = metadata.attributes
             )
             sendMarkdownMessage(queueUrl, postModelMsg, srcKey)
             return true
@@ -346,7 +347,8 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
             )
             log("Built page model for: ${pageModelMsg.metadata.srcKey}")
             upsertContentNode(
-                srcKey = srcKey, projectDomain = projectDomain, contentType = Pages, node = pageNode
+                srcKey = srcKey, projectDomain = projectDomain, contentType = Pages, node = pageNode,
+                customAttributes = pageNode.attributes
             )
             sendMarkdownMessage(queueUrl, pageModelMsg, srcKey)
             val pageKeyOnly = srcKey.removePrefix("$projectDomain/sources/pages/")
@@ -561,10 +563,11 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
      * @param srcKey the source key of the content node
      * @param projectDomain the domain of the project
      * @param contentType the type of content (e.g. POST, PAGE, IMAGE, etc.)
+     * @param customAttributes any additional attributes to store with the content node (prefixed with # in the front matter)
      * @param node the content node to upsert
      */
     private suspend fun upsertContentNode(
-        srcKey: SrcKey, projectDomain: String, contentType: SOURCE_TYPE, node: ContentNode
+        srcKey: SrcKey, projectDomain: String, contentType: SOURCE_TYPE, node: ContentNode, customAttributes: Map<String, String> = emptyMap()
     ) {
         log("Upserting '$contentType' node for '$srcKey' in project '$projectDomain'")
         dynamoDBService.upsertContentNode(
@@ -572,7 +575,7 @@ class FileUploadHandler(private val environmentProvider: EnvironmentProvider = S
             projectDomain = projectDomain,
             contentType = contentType,
             node = node,
-            attributes = emptyMap()
+            attributes = customAttributes
         )
     }
 

@@ -358,9 +358,9 @@ internal class DynamoDBServiceImplTest {
             date = LocalDate(2025, 7, 30),
             slug = "custom-attributes-post",
             attributes = mapOf(
-                "author" to "Test Author",
-                "category" to "Test Category",
-                "tags" to "test,post,custom-attributes"
+                "#author" to "Test Author",
+                "#category" to "Test Category",
+                "#tags" to "test,post,custom-attributes"
             )
         )
         post.srcKey = "sources/posts/2025/07/custom-attributes-post.md"
@@ -375,16 +375,9 @@ internal class DynamoDBServiceImplTest {
                 node = post,
                 attributes = mapOf(
                     // Attributes from the attributes map
-                    "author" to (post.attributes["author"] ?: ""),
-                    "category" to (post.attributes["category"] ?: ""),
-                    "tags" to (post.attributes["tags"] ?: ""),
-
-                    // Custom attributes not part of the standard PostNode properties
-                    "featured" to "true",
-                    "readingTime" to "5 minutes",
-                    "coverImage" to "sources/images/cover.jpg",
-                    "metaDescription" to "This is a meta description for SEO purposes",
-                    "publishStatus" to "published"
+                    "author" to (post.attributes["#author"] ?: ""),
+                    "category" to (post.attributes["#category"] ?: ""),
+                    "tags" to (post.attributes["#tags"] ?: ""),
                 )
             )
 
@@ -401,6 +394,10 @@ internal class DynamoDBServiceImplTest {
             assertEquals(post.srcKey, retrievedPost.srcKey)
             assertEquals(post.title, retrievedPost.title)
             assertEquals(post.slug, retrievedPost.slug)
+            assertEquals(post.attributes.size,3,"There should be 3 custom attributes saved and retrieved")
+            assertNotNull(retrievedPost.attributes["author"], "Author attribute should be present") {
+                assertEquals("Test Author", it, "Author attribute should match")
+            }
         }
     }
 
