@@ -34,12 +34,19 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
             Response.badRequest(body = APIResult.Error("Invalid project key'"))
         } else {
             val pageList = runBlocking {
-                val pages = dynamoDBService.listAllNodesForProject(domain, SOURCE_TYPE.Pages)
-                    .filterIsInstance<ContentNode.PageNode>()
+                val pages = getPagesFromDB(domain)
                 PageListDTO(count = pages.size, lastUpdated = Clock.System.now(), pages = pages)
             }
             Response.ok(body = APIResult.Success(value = pageList))
         }
+    }
+
+    /**
+     * Return a list of all Page nodes for the given domain
+     */
+    private suspend fun getPagesFromDB(domain: String): List<ContentNode.PageNode> {
+        return dynamoDBService.listAllNodesForProject(domain, SOURCE_TYPE.Pages)
+            .filterIsInstance<ContentNode.PageNode>()
     }
 
     /**
@@ -109,12 +116,22 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
         return if (s3Service.objectExists(srcKey, sourceBucket)) {
             info("Updating existing file '${pageToSave.srcKey}'")
             val length =
-                s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave, domain), "text/markdown")
+                s3Service.putObjectAsString(
+                    srcKey,
+                    sourceBucket,
+                    convertNodeToMarkdown(pageToSave, domain),
+                    "text/markdown"
+                )
             Response.ok(body = APIResult.OK("Updated file $srcKey, $length bytes"))
         } else {
             info("Creating new file with srcKey '${pageToSave.srcKey}'")
             val length =
-                s3Service.putObjectAsString(srcKey, sourceBucket, convertNodeToMarkdown(pageToSave, domain), "text/markdown")
+                s3Service.putObjectAsString(
+                    srcKey,
+                    sourceBucket,
+                    convertNodeToMarkdown(pageToSave, domain),
+                    "text/markdown"
+                )
             Response.ok(body = APIResult.OK("Saved new file $srcKey, $length bytes"))
         }
     }
@@ -155,12 +172,19 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
             Response.badRequest(body = APIResult.Error("Invalid project key'"))
         } else {
             val folderList = runBlocking {
-                val folders = dynamoDBService.listAllNodesForProject(domain, SOURCE_TYPE.Folders)
-                    .filterIsInstance<ContentNode.FolderNode>()
+                val folders = getFoldersFromDB(domain)
                 FolderListDTO(count = folders.size, folders = folders)
             }
             Response.ok(body = APIResult.Success(value = folderList))
         }
+    }
+
+    /**
+     * Return a list of all Folder nodes for the given domain
+     */
+    private suspend fun getFoldersFromDB(domain: String): List<ContentNode.FolderNode> {
+        return dynamoDBService.listAllNodesForProject(domain, SOURCE_TYPE.Folders)
+            .filterIsInstance<ContentNode.FolderNode>()
     }
 
     /**
