@@ -1,11 +1,13 @@
 package org.liamjd.cantilever.models.rest
 
 import kotlinx.datetime.Instant
+import kotlinx.serialization.Serializable
 import org.liamjd.cantilever.models.ContentNode
 
 /**
  * Data transfer object for the Page & Folder tree structure.
  */
+@Serializable
 class PageTreeDTO(val rootFolder: TreeNode.FolderNodeDTO) {
 
     fun buildTreeFromPagesAndFolders(folders: List<ContentNode.FolderNode>, pages: List<ContentNode.PageNode>) {
@@ -131,7 +133,11 @@ class PageTreeDTO(val rootFolder: TreeNode.FolderNodeDTO) {
  * @property srcKey The source key or unique identifier for the node within the content tree.
  * @property lastUpdated The timestamp indicating when the node was last updated.
  */
-sealed class TreeNode(val srcKey: String, val lastUpdated: Instant) {
+@Serializable
+sealed class TreeNode() {
+
+    abstract val srcKey: String
+    abstract val lastUpdated: Instant
 
     /**
      * Represents a folder node within a content tree. A folder node can contain child nodes and may have a specific
@@ -145,8 +151,9 @@ sealed class TreeNode(val srcKey: String, val lastUpdated: Instant) {
      *
      * @property count The total number of child nodes contained within this folder node.
      */
-    class FolderNodeDTO(srcKey: String, lastUpdated: Instant) :
-        TreeNode(srcKey, lastUpdated) {
+    @Serializable
+    class FolderNodeDTO(override val srcKey: String, override val lastUpdated: Instant) :
+        TreeNode() {
         var children: MutableList<TreeNode> = mutableListOf()
         var indexPageKey: String? = null
         val count: Int
@@ -170,13 +177,14 @@ sealed class TreeNode(val srcKey: String, val lastUpdated: Instant) {
      * @param isRoot Indicates whether this file node is the root of the content tree structure.
      * @param templateKey The identifier of the template used to render the file's content.
      */
+    @Serializable
     class FileNodeDTO(
-        srcKey: String,
-        lastUpdated: Instant,
+        override val srcKey: String,
+        override val lastUpdated: Instant,
         val title: String,
         val slug: String,
         val parentFolder: String?,
         var isRoot: Boolean,
         val templateKey: String
-    ) : TreeNode(srcKey, lastUpdated)
+    ) : TreeNode()
 }

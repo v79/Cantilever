@@ -13,7 +13,9 @@ import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.rest.FolderListDTO
 import org.liamjd.cantilever.models.rest.MarkdownPageDTO
 import org.liamjd.cantilever.models.rest.PageListDTO
+import org.liamjd.cantilever.models.rest.PageTreeDTO
 import org.liamjd.cantilever.models.rest.ReassignIndexRequestDTO
+import org.liamjd.cantilever.models.rest.TreeNode
 import java.net.URLDecoder
 import java.nio.charset.Charset
 
@@ -185,6 +187,27 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
     private suspend fun getFoldersFromDB(domain: String): List<ContentNode.FolderNode> {
         return dynamoDBService.listAllNodesForProject(domain, SOURCE_TYPE.Folders)
             .filterIsInstance<ContentNode.FolderNode>()
+    }
+
+    /**
+     * Return the full Page tree for the given domain, containing hierarchy of folders and pages
+     */
+    fun getPageTree(request: Request<Unit>): Response<APIResult<PageTreeDTO>> {
+        val domain = request.headers["cantilever-project-domain"]
+        return if (domain.isNullOrBlank()) {
+            Response.badRequest(body = APIResult.Error("Invalid project key'"))
+        } else {
+            val pageTree = runBlocking {
+                val folders = getFoldersFromDB(domain)
+                val pages = getPagesFromDB(domain)
+                val rootFolderKey = "$domain/sources/pages"
+                val rootFolderNode = TreeNode.FolderNodeDTO(rootFolderKey, Clock.System.now())
+                val pageTreeDTO = PageTreeDTO(rootFolderNode)
+                pageTreeDTO.buildTreeFromPagesAndFolders(folders, pages)
+                pageTreeDTO
+            }
+            Response.ok(body = APIResult.Success(value = pageTree))
+        }
     }
 
     /**

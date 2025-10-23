@@ -98,6 +98,7 @@ class NewLambdaRouter : LambdaRouter() {
             auth(cognitoJWTAuthorizer) {
                 get("", pageController::getPages)
                 get("/{srcKey}", pageController::loadMarkdownSource)
+                get("/tree", pageController::getPageTree)
                 post("/save", pageController::saveMarkdownPageSource).supplies(MimeType.plainText)
                 put("/folder/new/{folderName}", pageController::createFolder).supplies(MimeType.plainText)
                 delete("/{srcKey}", pageController::deleteMarkdownPageSource).supplies(MimeType.plainText)

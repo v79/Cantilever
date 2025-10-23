@@ -1,6 +1,8 @@
 package org.liamjd.cantilevers.models.rest
 
 import kotlinx.datetime.Clock
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import org.liamjd.cantilever.models.ContentNode
 import org.liamjd.cantilever.models.rest.PageTreeDTO
@@ -29,19 +31,20 @@ class PageTreeDTOTest {
         // 4 children - about.md, contact.md, biography folder, index.md
         assertEquals(4, pageTreeDTO.rootFolder.count)
         print(pageTreeDTO.printTree())
-        for(children in pageTreeDTO.rootFolder.children) {
+        for (children in pageTreeDTO.rootFolder.children) {
             when (children) {
                 is TreeNode.FolderNodeDTO -> {
                     // biography folder
                     assertEquals("sources/pages/biography", children.srcKey)
                     assertEquals(2, children.count) // bio.md and career folder
-                    for(bioChildren in children.children) {
-                        when(bioChildren) {
+                    for (bioChildren in children.children) {
+                        when (bioChildren) {
                             is TreeNode.FolderNodeDTO -> {
                                 // career folder
                                 assertEquals("sources/pages/biography/career", bioChildren.srcKey)
                                 assertEquals(1, bioChildren.count) // career.md
                             }
+
                             is TreeNode.FileNodeDTO -> {
                                 // bio.md
                                 assertEquals("sources/pages/biography/bio.md", bioChildren.srcKey)
@@ -49,12 +52,37 @@ class PageTreeDTOTest {
                         }
                     }
                 }
+
                 is TreeNode.FileNodeDTO -> {
                     // about.md, contact.md, index.md
                     assertNotEquals("sources/pages/biography/bio.md", children.srcKey)
                 }
             }
         }
+    }
+
+
+    @Test
+    fun `can serialize and deserialize PageTreeDTO`() {
+        // setup
+        val json = Json { prettyPrint = true }
+        val allNodes = mutableListOf<ContentNode>()
+        allNodes.addAll(pageNodes)
+        allNodes.addAll(folderNodes)
+
+        val pageTreeDTO = PageTreeDTO(TreeNode.FolderNodeDTO("sources/pages", Clock.System.now()))
+        pageTreeDTO.buildTreeFromPagesAndFolders(folderNodes, pageNodes)
+
+        // execute
+        val jsonString = json.encodeToString(pageTreeDTO)
+        val deserialized = json.decodeFromString<PageTreeDTO>(jsonString)
+
+        // verify
+        println(jsonString)
+        assertNotNull(deserialized)
+        assertEquals(pageTreeDTO.rootFolder.srcKey, deserialized.rootFolder.srcKey)
+        assertEquals(pageTreeDTO.rootFolder.count, deserialized.rootFolder.count)
+        assertEquals(pageTreeDTO.printTree(), deserialized.printTree())
     }
 }
 
