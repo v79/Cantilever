@@ -1,37 +1,43 @@
 <script lang="ts">
-    import PostListItem from '$lib/components/FileListItem.svelte';
-    import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
-    import NestedFileList from '$lib/components/NestedFileList.svelte';
-    import TextInput from '$lib/forms/textInput.svelte';
-    import {PageItem} from '$lib/models/markdown';
-    import {FolderNode} from '$lib/models/pages.svelte';
-    import {TemplateNode} from '$lib/models/templates.svelte';
-    import {CLEAR_MARKDOWN, markdownStore} from '$lib/stores/contentStore.svelte';
-    import {project} from '$lib/stores/projectStore.svelte';
-    import {userStore} from '$lib/stores/userStore.svelte';
-    import {getModalStore, getToastStore, type ToastSettings, type TreeViewNode} from '@skeletonlabs/skeleton';
-    import {onMount} from 'svelte';
-    import {Add, Delete, Icon, Refresh, Save} from 'svelte-google-materialdesign-icons';
-    import CreateNewFolder from 'svelte-google-materialdesign-icons/Create_new_folder.svelte';
-    import {
-        createFolder,
-        deleteFolder,
-        deletePage,
-        fetchFolders,
-        fetchPage,
-        fetchPages,
-        folders,
-        pages,
-        savePage
-    } from '$lib/stores/pageStore.svelte';
-    import FolderIconComponent from './FolderIconComponent.svelte';
-    import FolderListItem from './FolderListItem.svelte';
-    import IndexPageIconComponent from './IndexPageIconComponent.svelte';
-    import PageIconComponent from './PageIconComponent.svelte';
-    import SectionTabs from './SectionTabs.svelte';
-    import ParentAndIndexInput from './parentAndIndexInput.svelte';
+	import PostListItem from '$lib/components/FileListItem.svelte';
+	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
+	import NestedFileList from '$lib/components/NestedFileList.svelte';
+	import TextInput from '$lib/forms/textInput.svelte';
+	import { PageItem } from '$lib/models/markdown';
+	import { FolderNode, getTreeItemType, type PageTree } from '$lib/models/pages.svelte';
+	import { TemplateNode } from '$lib/models/templates.svelte';
+	import { CLEAR_MARKDOWN, markdownStore } from '$lib/stores/contentStore.svelte';
+	import { project } from '$lib/stores/projectStore.svelte';
+	import { userStore } from '$lib/stores/userStore.svelte';
+	import {
+		getModalStore,
+		getToastStore,
+		type ToastSettings,
+		type TreeViewNode
+	} from '@skeletonlabs/skeleton';
+	import { onMount } from 'svelte';
+	import { Add, Delete, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
+	import CreateNewFolder from 'svelte-google-materialdesign-icons/Create_new_folder.svelte';
+	import {
+		createFolder,
+		deleteFolder,
+		deletePage,
+		fetchFolders,
+		fetchPage,
+		fetchPages,
+		folders,
+		pages,
+		pageTree,
+		savePage
+	} from '$lib/stores/pageStore.svelte';
+	import FolderIconComponent from './FolderIconComponent.svelte';
+	import FolderListItem from './FolderListItem.svelte';
+	import IndexPageIconComponent from './IndexPageIconComponent.svelte';
+	import PageIconComponent from './PageIconComponent.svelte';
+	import SectionTabs from './SectionTabs.svelte';
+	import ParentAndIndexInput from './parentAndIndexInput.svelte';
 
-    const modalStore = getModalStore();
+	const modalStore = getModalStore();
 	const toastStore = getToastStore();
 
 	$: webPageTitle = $markdownStore.metadata?.title ? ' - ' + $markdownStore.metadata?.title : '';
@@ -163,14 +169,14 @@
 			return;
 		} else {
 			console.log('fetching pages and folders...');
-			const pgCount = await fetchPages($userStore.token, $project.domain);
+			const pageAndFolderCount = await fetchPages($userStore.token, $project.domain);
 			const folderCount = await fetchFolders($userStore.token, $project.domain);
-			if (pgCount instanceof Error) {
-				errorToast.message = 'Failed to load pages. Message was: ' + pgCount.message;
+			if (pageAndFolderCount instanceof Error) {
+				errorToast.message = 'Failed to load pages. Message was: ' + pageAndFolderCount.message;
 				toastStore.trigger(errorToast);
-				console.error(pgCount);
+				console.error(pageAndFolderCount);
 			} else {
-				toast.message = 'Loaded ' + pgCount + ' pages';
+				toast.message = 'Loaded ' + pageAndFolderCount + ' pages & folders';
 				toastStore.trigger(toast);
 			}
 			if (folderCount instanceof Error) {
@@ -181,23 +187,6 @@
 				toast.message = 'Loaded ' + folderCount + ' folders';
 				toastStore.trigger(toast);
 			}
-			// map pages to their folders
-			$pages?.pages.forEach((page) => {
-				if (page.parent) {
-					let folder = $folders?.folders.find((f) => f.srcKey === page.parent);
-					if (folder) {
-						folder.children.push(page.srcKey);
-					} else {
-						console.warn(
-							'Page ' +
-								page.srcKey +
-								' has parent ' +
-								page.parent +
-								' but no matching folder found.'
-						);
-					}
-				}
-			});
 		}
 	}
 
@@ -291,7 +280,7 @@
 			'',
 			//@ts-ignore
 			null,
-			template.srcKey.replace($project.domain,'').replace('/',''),
+			template.srcKey.replace($project.domain, '').replace('/', ''),
 			'',
 			new Date(),
 			new Map<string, string>(),
@@ -339,65 +328,24 @@
 	 * This will construct the TreeViewNodes from the folders and pages
 	 * and subscribe to the folders store to update the view when folders change.
 	 */
-	const foldersUnsubscribe = folders.subscribe((value) => {
+	const pageTreeUnsubscribe = pageTree.subscribe((value) => {
 		var rootFolderKey = '';
 		if ($project.domain) {
 			rootFolderKey = $project.domain + '/sources/pages/';
 		}
-		// console.dir(rootFolderKey);
 
-		if (value && value.count != -1) {
-			// build TreeViewNodes from FolderNodes
+		if (value && value.children && value.children.length != 0) {
+			// build TreeViewNodes from PageTree items
 			pgFolderNodes = [];
 			expandedNodes = [rootFolderKey];
-			for (const folder of value.folders) {
-				let childNodes = [] as TreeViewNode[];
-				// console.log('Iterating through folder ' + folder.srcKey);
-				// console.dir(folder);
-				if (folder.children.length > 0) {
-					for (const child of folder.children) {
-						// child is just the srcKey of the page
-						// find it in the pages list
-						let page = $pages?.pages.find((p) => p.srcKey === child);
-						if (page) {
-							console.dir(page);
-							let displaySrcKey = page.srcKey.slice(
-								$project.domain ? $project.domain.length + 1 : 0
-							);
-							if (page.isRoot) {
-								childNodes.push({
-									id: child,
-									lead: IndexPageIconComponent,
-									content: PostListItem,
-									contentProps: { title: page.title, date: '', srcKey: displaySrcKey }
-								});
-							} else {
-								childNodes.push({
-									id: child,
-									lead: PageIconComponent,
-									content: PostListItem,
-									contentProps: { title: page.title, date: '', srcKey: displaySrcKey }
-								});
-							}
-						}
-					}
-				}
-				let displayTitle =
-					folder.url?.slice($project.domain ? $project.domain.length + 1 : 0) ?? 'unknown';
-				pgFolderNodes.push({
-					id: folder.srcKey,
-					lead: FolderIconComponent,
-					content: FolderListItem,
-					children: childNodes,
-					contentProps: {
-						title: displayTitle,
-						count: folder.children.length,
-						srcKey: folder.srcKey,
-						onDelete: showFolderDelete
-					}
-				});
+			for (const treeItem of value.children) {
+				processTreeItem(treeItem, rootFolderKey);
 			}
+			console.log('Finished processing page tree; pgFolderNodes is:', pgFolderNodes);
 			pgFolderNodes = [...pgFolderNodes];
+		} else {
+			console.log('No children in page tree');
+			pgFolderNodes = [];
 		}
 	});
 
@@ -408,6 +356,69 @@
 			}
 		}
 	});
+
+	// utility to get display name from full srcKey
+	function displayName(treeItem: PageTree): string {
+		return (
+			treeItem.srcKey?.slice(
+				$project.domain ? $project.domain.length + 'sources/pages'.length + 1 : 0
+			) ?? 'unknown'
+		);
+	}
+
+	// build the pgFolderNodes[] array from the PageTree
+	function processTreeItem(treeItem: PageTree, rootFolderKey: string): TreeViewNode[] {
+		let childNodes = [] as TreeViewNode[];
+		console.log('Processing tree item: ' + treeItem.srcKey);
+		// check if folder or page
+		let itemType = getTreeItemType(treeItem);
+		if (itemType === 'folder') {
+			// skip the root pages folder
+			if (treeItem.srcKey !== rootFolderKey) {
+				// I really want this to be recursive call but I'm not sure if I can make it work
+				childNodes = treeItem.children
+					? treeItem.children.map((child) => ({
+							id: child.srcKey,
+							lead: child.isRoot ? IndexPageIconComponent : PageIconComponent,
+							content: PostListItem,
+							contentProps: { title: child.title ?? 'Untitled', date: '', srcKey: displayName(child) }
+						}))
+					: [];
+				let displayTitle = displayName(treeItem);
+
+				pgFolderNodes.push({
+					id: treeItem.srcKey,
+					lead: FolderIconComponent,
+					content: FolderListItem,
+					children: childNodes,
+					contentProps: {
+						title: displayTitle,
+						count: treeItem.children?.length ?? 0,
+						srcKey: treeItem.srcKey,
+						onDelete: showFolderDelete
+					}
+				});
+			}
+		} else if (itemType === 'page') {
+			let displaySrcKey = displayName(treeItem);
+			if (treeItem.isRoot) {
+				pgFolderNodes.push({
+					id: treeItem.srcKey,
+					lead: IndexPageIconComponent,
+					content: PostListItem,
+					contentProps: { title: treeItem.title ?? 'Untitled', date: '', srcKey: displaySrcKey }
+				});
+			} else {
+				pgFolderNodes.push({
+					id: treeItem.srcKey,
+					lead: PageIconComponent,
+					content: PostListItem,
+					contentProps: { title: treeItem.title ?? 'Untitled', date: '', srcKey: displaySrcKey }
+				});
+			}
+		}
+		return childNodes;
+	}
 </script>
 
 <svelte:head>
@@ -431,15 +442,14 @@
 					title="New Page"><Icon icon={Add} />New Page</button>
 			</div>
 			<div class="flex flex-row m-4">
-				{#if $pages?.count === undefined || $pages?.count === -1}
+				{#if $pageTree === undefined}
 					<ListPlaceholder label="Loading pages and posts" rows={5} />
-				{:else if $pages?.count === 0}
-					<p class="text-error-500">No pages</p>
+					<!-- TODO: If PageTree is defined but empty, show message here -->
 				{:else}
 					<span class="text=sm text-secondary-500">{pgAndFoldersLabel}</span>
 				{/if}
 			</div>
-			{#if $pages?.count > 0}
+			{#if $pageTree}
 				<div class="card bg-primary-200 w-full">
 					<NestedFileList nodes={pgFolderNodes} {expandedNodes} onClickFn={intiateLoadPage} />
 				</div>
