@@ -190,7 +190,7 @@ class PageController(sourceBucket: String, generationBucket: String) : KoinCompo
     }
 
     /**
-     * Return the full Page tree for the given domain, containing hierarchy of folders and pages
+     * Return the full Page tree for the given domain, containing the hierarchy of folders and pages
      */
     fun getPageTree(request: Request<Unit>): Response<APIResult<PageTreeDTO>> {
         val domain = request.headers["cantilever-project-domain"]

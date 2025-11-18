@@ -4,6 +4,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import io.mockk.*
 import io.mockk.junit5.MockKExtension
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -17,6 +18,7 @@ import org.koin.test.junit5.mock.MockProviderExtension
 import org.koin.test.mock.declareMock
 import org.liamjd.cantilever.common.SOURCE_TYPE
 import org.liamjd.cantilever.models.ContentNode
+import org.liamjd.cantilever.models.rest.PageTreeDTO
 import org.liamjd.cantilever.models.rest.ReassignIndexRequestDTO
 import org.liamjd.cantilever.services.DynamoDBService
 import org.liamjd.cantilever.services.S3Service
@@ -255,6 +257,79 @@ internal class PageControllerTest : KoinTest {
         assertEquals(200, response.statusCode)
     }
 
+    @Test
+    fun `getPageTree builds hierarchical tree with root and nested pages`() {
+        val domain = "example.com"
+        val now = Clock.System.now()
+        val rootFolderKey = "$domain/sources/pages"
+        val blogFolderKey = "$domain/sources/pages/blog" // no trailing slash to match parent calculation
+
+        val folders = listOf(
+            // Only need to include non-root folders; root is provided by controller/PageTreeDTO
+            ContentNode.FolderNode(srcKey = blogFolderKey, lastUpdated = now)
+        )
+
+        val rootPage = ContentNode.PageNode(
+            srcKey = "$domain/sources/pages/about.md",
+            lastUpdated = now,
+            title = "About",
+            templateKey = "sources/templates/page.hbs",
+            slug = "about.html",
+            isRoot = false,
+            attributes = emptyMap(),
+            sections = mapOf("main" to "About body"),
+            parent = rootFolderKey
+        )
+        val nestedPage = ContentNode.PageNode(
+            srcKey = "$domain/sources/pages/blog/post-1.md",
+            lastUpdated = now,
+            title = "Post 1",
+            templateKey = "sources/templates/page.hbs",
+            slug = "post-1.html",
+            isRoot = false,
+            attributes = emptyMap(),
+            sections = mapOf("main" to "Post body"),
+            parent = blogFolderKey
+        )
+        val pages = listOf(rootPage, nestedPage)
+
+        declareMock<DynamoDBService> {
+            coEvery { mockDynamoDB.listAllNodesForProject(domain, SOURCE_TYPE.Folders) } returns folders
+            coEvery { mockDynamoDB.listAllNodesForProject(domain, SOURCE_TYPE.Pages) } returns pages
+        }
+
+        val controller = PageController(sourceBucket, generationBucket)
+        val request = buildRequest(path = "/pages/tree", pathPattern = "/pages/tree", headers = mapOf("cantilever-project-domain" to domain))
+
+        val response = controller.getPageTree(request)
+        assertNotNull(response)
+        assertEquals(200, response.statusCode)
+
+
+        val body = response.body
+        assertNotNull(body)
+        when (body) {
+            is org.liamjd.cantilever.api.models.APIResult.Success -> {
+                val tree = body.value
+                println(Json.encodeToString(PageTreeDTO.serializer(),tree))
+
+                // Root folder key
+                assertEquals(rootFolderKey, tree.rootFolder.srcKey)
+                // Root should contain the root-level page and the blog folder
+                val rootChildren = tree.rootFolder.children
+                val rootFiles = rootChildren.filterIsInstance<org.liamjd.cantilever.models.rest.TreeNode.FileNodeDTO>()
+                val rootFolders = rootChildren.filterIsInstance<org.liamjd.cantilever.models.rest.TreeNode.FolderNodeDTO>()
+                kotlin.test.assertTrue(rootFiles.any { it.srcKey == rootPage.srcKey }, "Root page not found in tree")
+                kotlin.test.assertTrue(rootFolders.any { it.srcKey == blogFolderKey }, "Blog folder not found in tree")
+
+                // Blog folder should contain the nested page
+                val blogFolder = rootFolders.first { it.srcKey == blogFolderKey }
+                val blogFiles = blogFolder.children.filterIsInstance<org.liamjd.cantilever.models.rest.TreeNode.FileNodeDTO>()
+                kotlin.test.assertTrue(blogFiles.any { it.srcKey == nestedPage.srcKey }, "Nested page not found under blog folder")
+            }
+            else -> kotlin.test.fail("Expected Success result but got $body")
+        }
+    }
 
     private fun buildRequest(
         path: String,
