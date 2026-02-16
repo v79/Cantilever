@@ -27,7 +27,7 @@ internal class DynamoDBServiceImplTest {
 
     companion object {
         @JvmStatic
-        private val localstack = LocalStackContainer(DockerImageName.parse("localstack/localstack:latest"))
+        private val localstack = LocalStackContainer(DockerImageName.parse("localstack/localstack:4.13.0"))
             .withServices(LocalStackContainer.Service.DYNAMODB)
 
         @BeforeAll
@@ -51,6 +51,7 @@ internal class DynamoDBServiceImplTest {
     @BeforeTest
     fun setup() {
         println("Setting up DynamoDBServiceImplTest")
+        System.setProperty("api.version", "1.44");
         // Configure the service to use the localstack endpoint
         val region = Region.of(localstack.region)
         val endpoint = URI.create(localstack.getEndpointOverride(LocalStackContainer.Service.DYNAMODB).toString())
