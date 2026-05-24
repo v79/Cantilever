@@ -4,15 +4,20 @@
 	import {
 		ReassignIndexRequestDTO,
 		type FolderList,
-		type PageList
+		type PageList,
+		type PageTree
+
 	} from '$lib/models/pages.svelte';
 	import { markdownStore } from '$lib/stores/contentStore.svelte';
 	import { get, writable } from 'svelte/store';
 
 	export const pages = createPagesStore();
 	export const folders = createFoldersStore();
+	export const pageTree = createPageTreeStore();
+
 	const CLEAR_PAGES = { count: 0, pages: [] };
 	const CLEAR_FOLDERS = { count: 0, folders: [] };
+	const CLEAR_PAGETREE = { children: [], indexPageKey: null, lastUpdated: new Date(), srcKey: '' };
 
 	function createPagesStore() {
 		const { subscribe, set, update } = writable<PageList>();
@@ -36,11 +41,22 @@
 		};
 	}
 
+	function createPageTreeStore() {
+		const { subscribe, set, update } = writable<PageTree>();
+		return {
+			subscribe,
+			set,
+			update,
+			clear: () => set(CLEAR_PAGETREE),
+			isEmpty: () => get(pageTree).srcKey === ''
+		};
+	}
+
 	// fetch list of pages (not folders) from server
 	export async function fetchPages(token: string, projectDomain: string): Promise<number | Error> {
 		console.log('pageStore: Fetching pages and folders');
 		try {
-			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/pages', {
+			const response = await fetch(PUBLIC_CANTILEVER_API_URL + '/pages/tree', {
 				method: 'GET',
 				headers: {
 					Accept: 'application/json',
@@ -52,8 +68,8 @@
 			if (response.ok) {
 				/** @type {FolderList} */
 				const data = await response.json();
-				pages.set(data.data);
-				return data.data.count as number;
+				pageTree.set(data.data.rootFolder);
+				return data.data.rootFolder.children.length as number;
 			} else {
 				throw new Error('Failed to fetch pages and folders');
 			}

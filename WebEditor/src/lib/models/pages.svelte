@@ -11,6 +11,33 @@
 		folders: FolderNode[];
 	}
 
+	// Represented by 'rootfolder' in the returned JSON from the API
+	export interface PageTree {
+		lastUpdated: Date;
+		srcKey: string;
+		// for folders
+		children?: PageTree[];
+		indexPageKey?: string | null;
+
+		// for pages
+		isRoot?: boolean;
+		parentFolder?: string;
+		slug?: string;
+		templateKey?: string;
+		title?: string;
+		type?: string;
+
+	}
+
+	export function getTreeItemType(item: PageTree): 'folder' | 'page' {
+		// A folder has children, a page does not
+		if ((item as any).children !== undefined) {
+			return 'folder';
+		} else {
+			return 'page';
+		}
+	}
+
 	export class PageNode extends ContentNode {
 		title: string;
 		templateKey: string;
