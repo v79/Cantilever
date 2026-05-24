@@ -44,3 +44,21 @@ web-first application for several years, frustrated by my inability to make webs
 `cdk deploy --context env=<dev|prod> --all` to deploy the stack.cdk 
 
 Build WebEditor with `npm run build`
+
+
+## Project Status
+
+There's a lot in flux and it's quite hard to maintain progress. The current goal is to enable Cantiver to build the liamjd.org website in order to fully replace bascule. But that is not going well.
+
+- liamjd.org migration
+  - Being tracked under [issue 130](https://github.com/v79/Cantilever/issues/130)
+  - Key gap is creating and managing partial templates (which are included using the `{{> includes/headLinks}}` syntax)
+- Web editor
+  - File and folder management/tree is very fragile - work in progress under [issue 155](https://github.com/v79/Cantilever/issues/155) adding a new api route `/pages/tree`
+  - Web session management pretty much non-existent [issue 39](https://github.com/v79/Cantilever/issues/39)
+  - Currently using Cognito for authentication; I think I'd like to move this to Clerk [issue 156](https://github.com/v79/Cantilever/issues/156)
+- Project architecture
+  - The fully event-driven architecture is challenging. For instance, creating a new page means POST to an API, which writes a file to S3. Writing to S3 then triggers a lambda function which reads the file, persists its metadata to DynamoDB, and also triggers the markdown-to-HTML conversion lambda function. That then writes an HTML fragment to a separate S3 bucket, which in turn triggers the template processor lambda to build a complete HTML file to the destination bucket
+  - Recreating bascule's comprehensive page-navigation functionality will be difficult under this model.
+  - Error handling is not good - propagating a backend error to the front end is not easy [issue 119](https://github.com/v79/Cantilever/issues/119) and [issue 120](https://github.com/v79/Cantilever/issues/120)
+  - Something is very wrong with the SQS event bus; apparently I use about 800,000 messages a month even if the application isn't used at all?
