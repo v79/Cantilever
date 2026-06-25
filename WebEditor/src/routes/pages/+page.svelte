@@ -3,20 +3,15 @@
 	import ListPlaceholder from '$lib/components/ListPlaceholder.svelte';
 	import NestedFileList from '$lib/components/NestedFileList.svelte';
 	import TextInput from '$lib/forms/textInput.svelte';
-	import { PageItem } from '$lib/models/markdown';
-	import { FolderNode, getTreeItemType, type PageTree } from '$lib/models/pages.svelte';
-	import { TemplateNode } from '$lib/models/templates.svelte';
-	import { CLEAR_MARKDOWN, markdownStore } from '$lib/stores/contentStore.svelte';
-	import { project } from '$lib/stores/projectStore.svelte';
-	import { userStore } from '$lib/stores/userStore.svelte';
-	import {
-		getModalStore,
-		getToastStore,
-		type ToastSettings,
-		type TreeViewNode
-	} from '@skeletonlabs/skeleton';
-	import { onMount } from 'svelte';
-	import { Add, Delete, Icon, Refresh, Save } from 'svelte-google-materialdesign-icons';
+	import {PageItem} from '$lib/models/markdown';
+	import {FolderNode, getTreeItemType, type PageTree} from '$lib/models/pages.svelte';
+	import {TemplateNode} from '$lib/models/templates.svelte';
+	import {CLEAR_MARKDOWN, markdownStore} from '$lib/stores/contentStore.svelte';
+	import {project} from '$lib/stores/projectStore.svelte';
+	import {userStore} from '$lib/stores/userStore.svelte';
+	import {getModalStore, getToastStore, type ToastSettings, type TreeViewNode} from '@skeletonlabs/skeleton';
+	import {onMount} from 'svelte';
+	import {Add, Delete, Icon, Refresh, Save} from 'svelte-google-materialdesign-icons';
 	import CreateNewFolder from 'svelte-google-materialdesign-icons/Create_new_folder.svelte';
 	import {
 		createFolder,
@@ -47,7 +42,24 @@
 	let pgTitle: string;
 	let isNewPage = false;
 
-	$: pgAndFoldersLabel = $pages?.count + ' pages in ' + $folders?.count + ' folders';
+	function countTreeItems(tree: PageTree, kind: 'page' | 'folder'): number {
+		if (!tree.children) return 0;
+		let count = 0;
+		for (const child of tree.children) {
+			if (child.children !== undefined) {
+				// child is a folder
+				if (kind === 'folder') count++;
+				count += countTreeItems(child, kind);
+			} else {
+				if (kind === 'page') count++;
+			}
+		}
+		return count;
+	}
+
+	$: pgAndFoldersLabel = $pageTree
+		? countTreeItems($pageTree, 'page') + ' pages in ' + countTreeItems($pageTree, 'folder') + ' folders'
+		: '0 pages in 0 folders';
 	$: isValid =
 		$markdownStore.metadata?.srcKey != null ||
 		(isNewPage && $markdownStore.metadata?.title != null);
