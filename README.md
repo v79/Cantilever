@@ -1,5 +1,11 @@
 # Cantilever
 
+## Project Retired
+
+Cantilever is being retired. For further details and an explanation, see [https://www.liamjd.org/2026/bascule-and-cantilevers.html](https://www.liamjd.org/2026/bascule-and-cantilevers.html).
+
+## Project Plan
+
 An AWS Lambda driven static site generator written in Kotlin. Source `markdown` files will be converted to HTML 
 using the [Flexmark-java](https://github.com/vsch/flexmark-java) library, and further processed using [handlebars.
 java](https://github.com/jknack/handlebars.java), in AWS Lambda functions triggered by PUT events on a source S3 
